@@ -17,6 +17,10 @@ from . import host
 log = logging.getLogger("plenio")
 
 COMFYUI_LABEL = "models/LLM"
+TEXT_ENCODERS_LABEL = "models/text_encoders"
+"""ComfyUI's text encoder folders (``text_encoders``, the old ``clip`` and their ``extra_model_paths.yaml``
+lines): ComfyUI-GGUF keeps language models there (a user's report 2026-10-11: a Qwen GGUF its
+CLIPLoaderGGUF lists was not offered as a writer). Only GGUFs that write are listed (``Store.encoders``)."""
 LIST_TTL_S = 5.0
 """How long a model list is reused (ComfyUI asks for every node definition at once)."""
 _cache: dict[str, tuple[float, llm.Discovery]] = {}
@@ -35,6 +39,7 @@ def load_config() -> PlenioConfig:
 def stores(config: PlenioConfig) -> list[llm.Store]:
     found = [llm.Store(COMFYUI_LABEL, folder) for folder in host.llm_folders()]
     found += [llm.Store(label, folder) for label, folder in config.llm_folders.items()]
+    found += [llm.Store(TEXT_ENCODERS_LABEL, folder, encoders=True) for folder in host.text_encoder_folders()]
     if config.llm_other_apps:
         found += llm.app_stores(os.environ, Path.home())
     return found

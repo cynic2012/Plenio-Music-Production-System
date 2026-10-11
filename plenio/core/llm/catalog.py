@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import struct
 import sys
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -34,6 +35,26 @@ MAX_DEPTH = 5
 """Folder levels searched below a store (LM Studio: publisher/repository/file)."""
 _SHARD = re.compile(r"-(\d{5})-of-(\d{5})\.gguf$", re.IGNORECASE)
 _NOT_A_CHAT_MODEL = ("mmproj", "projector", "vision-encoder", "vision_encoder", "embedding", "rerank")
+ENCODER_ARCHITECTURES = frozenset(
+    {
+        "t5",
+        "t5encoder",
+        "clip",
+        "clip-vision",
+        "bert",
+        "nomic-bert",
+        "nomic-bert-moe",
+        "jina-bert-v2",
+        "jina-bert-v3",
+        "neo-bert",
+        "modern-bert",
+        "roberta",
+        "xlm-roberta",
+        "wavtokenizer-dec",
+    }
+)
+"""GGUF architectures that encode and cannot write (T5/UMT5 and CLIP text encoders of image and video
+models, embedding models): left out of a store of encoders (``Store.encoders``)."""
 
 
 @dataclass(frozen=True)
@@ -43,6 +64,10 @@ class Store:
     name: str
     folder: Path
     hf_cache: bool = False
+    encoders: bool = False
+    """A folder of text encoders too - ComfyUI's ``text_encoders``, where ComfyUI-GGUF keeps language
+    models next to T5 and CLIP files: a GGUF is listed only when its header names an architecture that
+    writes, and only when no store before it lists the same file."""
 
 
 @dataclass(frozen=True)
@@ -183,6 +208,90 @@ def is_chat_model_file(name: str) -> bool:
     return shard is None or int(shard.group(1)) == 1
 
 
+_GGUF_SCALARS = {0: 1, 1: 1, 2: 2, 3: 2, 4: 4, 5: 4, 6: 4, 7: 1, 10: 8, 11: 8, 12: 8}
+"""Byte sizes of the GGUF metadata value types (uint8 ... float64); 8 is a string, 9 an array."""
+_GGUF_STRING, _GGUF_ARRAY = 8, 9
+
+
+def gguf_metadata(path: Path, wanted: Iterable[str], max_keys: int = 256) -> dict[str, str]:
+    """The string values of the ``wanted`` keys in a GGUF file's header (those it has); empty when the
+    file is no GGUF. Reading stops when all are found, after the header's keys or ``max_keys`` of them.
+    llama.cpp writes ``general.architecture`` first and ``tokenizer.ggml.model`` before the token lists."""
+    keys = set(wanted)
+    found: dict[str, str] = {}
+    try:
+        with path.open("rb") as file:
+            if file.read(4) != b"GGUF":
+                return found
+            (version,) = struct.unpack("<I", file.read(4))
+            wide = version >= 2  # version 1 counted in 32 bits
+
+            def number() -> int:
+                return int(struct.unpack("<Q" if wide else "<I", file.read(8 if wide else 4))[0])
+
+            def text() -> str:
+                return file.read(number()).decode("utf-8")
+
+            def skip(kind: int) -> None:
+                if kind in _GGUF_SCALARS:
+                    file.seek(_GGUF_SCALARS[kind], os.SEEK_CUR)
+                elif kind == _GGUF_STRING:
+                    file.seek(number(), os.SEEK_CUR)
+                elif kind == _GGUF_ARRAY:
+                    (inner,) = struct.unpack("<I", file.read(4))
+                    length = number()
+                    if inner in _GGUF_SCALARS:
+                        file.seek(_GGUF_SCALARS[inner] * length, os.SEEK_CUR)
+                    else:
+                        for _ in range(length):
+                            skip(inner)
+                else:
+                    raise ValueError(f"unknown GGUF value type {kind}")
+
+            number()  # tensors
+            for _ in range(min(number(), max_keys)):
+                key = text()
+                (kind,) = struct.unpack("<I", file.read(4))
+                if key in keys and kind == _GGUF_STRING:
+                    found[key] = text()
+                    if len(found) == len(keys):
+                        break
+                else:
+                    skip(kind)
+    except (OSError, struct.error, UnicodeDecodeError, ValueError):
+        pass
+    return found
+
+
+def gguf_architecture(path: Path) -> str | None:
+    """``general.architecture`` of a GGUF file (``"qwen2"``, ``"gemma3"``, ``"t5encoder"`` ...)."""
+    return gguf_metadata(path, ("general.architecture",)).get("general.architecture")
+
+
+_WRITES: dict[tuple[str, int, int], bool] = {}
+""":func:`writes` by file, size and time: the lists are read again on every refresh."""
+
+
+def writes(path: Path) -> bool:
+    """A GGUF that llama.cpp can let write: it has its own tokenizer (the parts ComfyUI-GGUF converts for
+    image and video models - ``cow``, ``sdxl``, ``flux`` ... - have none) and an architecture that is no
+    encoder (:data:`ENCODER_ARCHITECTURES`)."""
+    try:
+        stat = path.stat()
+    except OSError:
+        return False
+    key = (str(path), stat.st_size, stat.st_mtime_ns)
+    if key not in _WRITES:
+        header = gguf_metadata(path, ("general.architecture", "tokenizer.ggml.model"))
+        architecture = header.get("general.architecture")
+        _WRITES[key] = (
+            architecture is not None
+            and architecture not in ENCODER_ARCHITECTURES
+            and "tokenizer.ggml.model" in header
+        )
+    return _WRITES[key]
+
+
 def _size(path: Path) -> int | None:
     """Bytes of the file, of all shards for the first shard of a split model."""
     try:
@@ -247,6 +356,7 @@ def scan(store: Store) -> list[Model]:
         return [
             Model(store.name, path.relative_to(store.folder).as_posix(), path=path, size=_size(path))
             for path in _walk(store.folder)
+            if not store.encoders or writes(path)
         ]
     models = []
     try:
@@ -289,11 +399,15 @@ def discover(
         probes = [pool.submit(_probe, server, env, timeout) for server in servers]
         models: list[Model] = []
         seen: set[str] = set()
+        files: set[str] = set()
         for store in stores:
             for model in scan(store):
-                if model.ref not in seen:
-                    seen.add(model.ref)
-                    models.append(model)
+                where = os.path.normcase(os.path.abspath(model.path)) if model.path is not None else ""
+                if model.ref in seen or (store.encoders and where in files):
+                    continue  # an encoders folder adds only the files no store before it lists
+                seen.add(model.ref)
+                files.add(where)
+                models.append(model)
         notes = []
         for probe in probes:
             found, note = probe.result()

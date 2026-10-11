@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import socket
+import struct
 import sys
 import threading
 from collections.abc import Callable, Iterator
@@ -347,6 +348,75 @@ def test_scan_lists_chat_models_only(tmp_path: Path) -> None:
         ("pub/repo/A-model-Q4.gguf", 10),
     ]
     assert models[0].ref == "models/LLM · b-model.gguf"
+
+
+def gguf(
+    path: Path, architecture: str | None, tokenizer: str | None = "gpt2", version: int = 3, extra: int = 0
+) -> Path:
+    """A GGUF file with just a header: the architecture, a number, a string array, the tokenizer."""
+    wide = version >= 2
+
+    def count(value: int) -> bytes:
+        return struct.pack("<Q" if wide else "<I", value)
+
+    def text(value: str) -> bytes:
+        data = value.encode("utf-8")
+        return count(len(data)) + data
+
+    entries = []
+    if architecture is not None:
+        entries.append(text("general.architecture") + struct.pack("<I", 8) + text(architecture))
+    entries.append(text("general.file_type") + struct.pack("<I", 4) + struct.pack("<I", 15))
+    entries.append(
+        text("general.tags") + struct.pack("<I", 9) + struct.pack("<I", 8) + count(2) + text("a") + text("bc")
+    )
+    entries += [text(f"x.pad{i}") + struct.pack("<I", 10) + struct.pack("<Q", i) for i in range(extra)]
+    if tokenizer is not None:
+        entries.append(text("tokenizer.ggml.model") + struct.pack("<I", 8) + text(tokenizer))
+    header = b"GGUF" + struct.pack("<I", version) + count(0) + count(len(entries)) + b"".join(entries)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(header + b"\0" * 64)  # tensor data that must not be read as keys
+    return path
+
+
+def test_the_gguf_header_says_what_a_file_holds(tmp_path: Path) -> None:
+    for version in (1, 2, 3):
+        file = gguf(tmp_path / f"v{version}.gguf", "qwen2", version=version, extra=5)
+        assert catalog.gguf_metadata(file, ("general.architecture", "tokenizer.ggml.model")) == {
+            "general.architecture": "qwen2",
+            "tokenizer.ggml.model": "gpt2",
+        }
+        assert catalog.gguf_architecture(file) == "qwen2" and catalog.writes(file)
+    # the text encoders of image models: an encoder architecture, or ComfyUI-GGUF's parts without a tokenizer
+    assert not catalog.writes(gguf(tmp_path / "umt5-xxl-encoder-Q8_0.gguf", "t5encoder"))
+    assert not catalog.writes(gguf(tmp_path / "cow-mistral3-small-q2_k.gguf", "cow", tokenizer=None))
+    assert not catalog.writes(gguf(tmp_path / "anon.gguf", None))
+    not_gguf = tmp_path / "x.gguf"
+    not_gguf.write_bytes(b"GGML" + b"\0" * 32)
+    assert catalog.gguf_metadata(not_gguf, ("general.architecture",)) == {} and not catalog.writes(not_gguf)
+    cut = tmp_path / "cut.gguf"
+    cut.write_bytes(gguf(tmp_path / "whole.gguf", "llama").read_bytes()[:40])  # a download in progress
+    assert not catalog.writes(cut)
+    assert not catalog.writes(tmp_path / "missing.gguf")
+
+
+def test_a_store_of_encoders_lists_only_the_models_that_write(tmp_path: Path) -> None:
+    """A user's report 2026-10-11: ComfyUI-GGUF keeps language models in models/text_encoders, next to the
+    T5 and CLIP files of image models - a Qwen GGUF its loader lists was not offered as a writer."""
+    encoders = tmp_path / "text_encoders"
+    gguf(encoders / "Qwen" / "Qwen2.5-7B-HyperMix.Q8_0.gguf", "qwen2")
+    gguf(encoders / "umt5-xxl-encoder-Q8_0.gguf", "t5encoder")
+    gguf(encoders / "cow-mistral3-small-q2_k.gguf", "cow", tokenizer=None)
+    gguf(encoders / "mmproj-F16.gguf", "clip", tokenizer=None)
+    store = llm.Store("models/text_encoders", encoders, encoders=True)
+    assert [m.name for m in catalog.scan(store)] == ["Qwen/Qwen2.5-7B-HyperMix.Q8_0.gguf"]
+    # a folder listed before under its own label (config.toml [llm.folders]) is not listed twice
+    own = llm.Store("text encoders", encoders)
+    refs = [m.ref for m in llm.discover([own, store], [], env={}).models]
+    assert "text encoders · Qwen/Qwen2.5-7B-HyperMix.Q8_0.gguf" in refs
+    assert not [ref for ref in refs if ref.startswith("models/text_encoders")]
+    # an ordinary folder lists every GGUF by name, as before
+    assert len(catalog.scan(own)) == 3
 
 
 def test_broken_links_are_skipped(tmp_path: Path) -> None:

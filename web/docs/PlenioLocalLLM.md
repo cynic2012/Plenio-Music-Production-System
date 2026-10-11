@@ -5,6 +5,7 @@ Answers a prompt with a language model on this machine. One list holds everythin
 | Entry | What it is | How it runs |
 |---|---|---|
 | `models/LLM · file.gguf` | a GGUF file in ComfyUI's `models/LLM` folder | a llama.cpp server is started for the call and stopped afterwards, so the GPU memory is free again for ComfyUI's models |
+| `models/text_encoders · file.gguf` | a GGUF language model in ComfyUI's `text_encoders` folder (as ComfyUI-GGUF keeps them; its T5 and CLIP encoders are left out) | as above |
 | `LM Studio files · …`, `HF cache · …`, `llama.cpp cache · …`, `GPT4All files · …` | GGUF files other apps downloaded (Unsloth Studio and `llama-server -hf` use the Hugging Face cache) | the same way, without the app running |
 | `LM Studio · …`, `Ollama · …`, `llama.cpp · …`, `vLLM · …`, `Jan · …`, `KoboldCpp · …`, `text-generation-webui · …`, `GPT4All · …`, `Unsloth Studio · …` | a model of an app whose local server is running | asked over the app's API; the app keeps managing its memory |
 

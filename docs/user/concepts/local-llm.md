@@ -9,7 +9,7 @@ The **writer model** field of the *Write Song* block lists every model:
 | In the list | Written by |
 |---|---|
 | `gemma4_e4b_it_fp8_scaled.safetensors` (the default) and the other ComfyUI text models - bare file names from `models/text_encoders`, as in every ComfyUI loader | ComfyUI's own **Generate Text**; ComfyUI manages the memory and offers the default's download |
-| `models/LLM · …gguf`, `LM Studio files · …`, `HF cache · …` - with where it comes from in front | a GGUF file, run by llama.cpp for the draft (see below) |
+| `models/LLM · …gguf`, `models/text_encoders · …gguf`, `LM Studio files · …`, `HF cache · …` - with where it comes from in front | a GGUF file, run by llama.cpp for the draft (see below) |
 | `LM Studio · …`, `Ollama · …`, `llama.cpp · …` … | a model of a running app |
 
 Choose one and run - nothing else changes. Inside the block, a switch takes the answer of the chosen writer only: the other one is never loaded, and a GGUF does not need the Gemma file at all. *draft seed* and *thinking* apply to whichever writer you chose. The ComfyUI list shows the text encoders of language-model families (Gemma, Qwen, Llama, Mistral) by name; CLIP and T5 encoders are left out.
@@ -19,6 +19,7 @@ Choose one and run - nothing else changes. Inside the block, a switch takes the 
 | In the list | Where it comes from |
 |---|---|
 | `models/LLM · …` | ComfyUI's `models/LLM` folder, every `LLM:` folder of `extra_model_paths.yaml`, and an `LLM` folder beside the model folders of its locations |
+| `models/text_encoders · …` | GGUF language models in ComfyUI's `text_encoders` folder (and the old `clip`, with their `extra_model_paths.yaml` lines) - where ComfyUI-GGUF's *CLIPLoaderGGUF* finds them. Only files llama.cpp can let write are listed: Plenio reads each file's header and leaves out the T5, UMT5 and CLIP encoders of image and video models and the parts ComfyUI-GGUF converts without a tokenizer (such as Flux 2's Mistral encoder) |
 | `LM Studio files · …` | LM Studio's download folder (as set in LM Studio) |
 | `HF cache · …` | the Hugging Face cache - where Unsloth Studio and `llama-server -hf` download GGUFs |
 | `llama.cpp cache · …`, `GPT4All files · …` | those apps' model folders |
@@ -26,6 +27,8 @@ Choose one and run - nothing else changes. Inside the block, a switch takes the 
 | your labels | extra folders and servers from Plenio's `config.toml` ([Configuration](../configuration.md)) |
 
 Vision projectors (`mmproj`), embedding models and the later parts of split files are left out. Press **R** in ComfyUI after you add a file or start an app.
+
+**Where to keep GGUF language models?** `models/LLM` is the place meant for them. A GGUF that another node pack wants in `text_encoders` or `clip` can stay there: it is listed as `models/text_encoders · …`, and no `config.toml` line is needed for it. (A folder you also named in `[llm.folders]` keeps its own label; its files are not listed twice.)
 
 ## Files or apps?
 

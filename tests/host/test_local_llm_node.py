@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import struct
 import threading
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -47,6 +48,19 @@ class _App(BaseHTTPRequestHandler):
         self._send({"choices": [{"finish_reason": "stop", "message": {"content": content}}]})
 
 
+def gguf(path: Path, architecture: str, tokenizer: bool = True) -> None:
+    """A GGUF header: the architecture and, for a model llama.cpp can run, its tokenizer."""
+
+    def text(value: str) -> bytes:
+        return struct.pack("<Q", len(value)) + value.encode("utf-8")
+
+    entries = [text("general.architecture") + struct.pack("<I", 8) + text(architecture)]
+    if tokenizer:
+        entries.append(text("tokenizer.ggml.model") + struct.pack("<I", 8) + text("gpt2"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"GGUF" + struct.pack("<IQQ", 3, 0, len(entries)) + b"".join(entries))
+
+
 @pytest.fixture(scope="module")
 def llm_server(tmp_path_factory: pytest.TempPathFactory, comfy_path: Path) -> Iterator[ComfyServer]:
     app = ThreadingHTTPServer(("127.0.0.1", 0), _App)
@@ -65,6 +79,10 @@ def llm_server(tmp_path_factory: pytest.TempPathFactory, comfy_path: Path) -> It
     (base / "models" / "text_encoders").mkdir(parents=True)
     for name in ("gemma4_e4b_it_fp8_scaled.safetensors", "clip_l.safetensors", "t5xxl_fp16.safetensors"):
         (base / "models" / "text_encoders" / name).write_bytes(b"")
+    # ComfyUI-GGUF keeps language models next to the encoders (a user's report 2026-10-11)
+    gguf(base / "models" / "text_encoders" / "Qwen" / "Qwen2.5-7B-HyperMix.Q8_0.gguf", "qwen2")
+    gguf(base / "models" / "text_encoders" / "umt5-xxl-encoder-Q8_0.gguf", "t5encoder")
+    gguf(base / "models" / "text_encoders" / "cow-mistral3-small-q2_k.gguf", "cow", tokenizer=False)
     (base / "user" / "plenio").mkdir(parents=True)
     (base / "user" / "plenio" / "config.toml").write_text(
         f'[llm.servers]\n"Fake app" = "http://127.0.0.1:{app.server_address[1]}/v1"\n', encoding="utf-8"
@@ -101,7 +119,11 @@ def prompt(model: str, text: str = "Hello") -> dict[str, Any]:
 def test_the_list_holds_files_and_configured_servers(llm_server: ComfyServer) -> None:
     info = llm_server.get("/object_info/PlenioLocalLLM")["PlenioLocalLLM"]
     options = info["input"]["required"]["model"][1]["options"]
-    assert options == ["models/LLM · sub/tiny-Q4.gguf", "Fake app · served-model"]
+    assert options == [
+        "models/LLM · sub/tiny-Q4.gguf",
+        "models/text_encoders · Qwen/Qwen2.5-7B-HyperMix.Q8_0.gguf",  # not its T5 and Mistral encoders
+        "Fake app · served-model",
+    ]
 
 
 def test_an_app_model_answers(llm_server: ComfyServer) -> None:
@@ -177,6 +199,7 @@ def test_the_writer_list_holds_text_models_and_local_models(llm_server: ComfySer
     assert info["input"]["required"]["model"][1]["options"] == [
         "gemma4_e4b_it_fp8_scaled.safetensors",  # bare name; CLIP and T5 encoders are left out
         "models/LLM · sub/tiny-Q4.gguf",
+        "models/text_encoders · Qwen/Qwen2.5-7B-HyperMix.Q8_0.gguf",
         "Fake app · served-model",
     ]
 

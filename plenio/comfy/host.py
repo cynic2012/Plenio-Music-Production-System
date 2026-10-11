@@ -130,6 +130,25 @@ def llm_folders() -> list[Path]:
     return folders
 
 
+def text_encoder_folders() -> list[Path]:
+    """The existing folders of ComfyUI's ``text_encoders`` (the old ``clip`` and ``extra_model_paths.yaml``
+    lines included), each once."""
+    import folder_paths
+
+    try:
+        paths = folder_paths.get_folder_paths("text_encoders")
+    except KeyError:
+        return []
+    folders: list[Path] = []
+    seen: set[str] = set()
+    for path in paths:
+        key = os.path.normcase(os.path.abspath(path))
+        if key not in seen and os.path.isdir(path):
+            seen.add(key)
+            folders.append(Path(path))
+    return folders
+
+
 def register_model_folders() -> None:
     """Register ``models/plenio`` (assets), the audio model folders and ``models/LLM`` next to the other models."""
     import folder_paths
