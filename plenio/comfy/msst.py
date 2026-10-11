@@ -244,9 +244,17 @@ def load(path: Path) -> BSRoformerSeparator:
     )
 
 
+ROTARY_FREQS = ".rotary_embed.freqs"
+"""The rotary embeddings' frequency schedule: a parameter of ``rotary_embedding_torch`` 0.6 (and of
+Plenio's stand-in), which the released checkpoint carries - a version of the package that keeps it out
+of the weights would refuse the file for 16 keys that hold nothing learned."""
+
+
 def _match_state_dict(model: Any, state: dict[str, Any]) -> dict[str, Any]:
-    """A Lightning checkpoint prefixes the weights (``model.``, ``ema_model.``); the plain model not."""
-    expected = set(model.state_dict())
+    """A Lightning checkpoint prefixes the weights (``model.``, ``ema_model.``); the plain model not.
+    The rotary frequencies go where the model has them (:func:`_reconcile_rotary`)."""
+    own = model.state_dict()
+    expected = set(own)
     if set(state) == expected:
         return state
     for prefix in ("model.", "ema_model.", "_orig_mod."):
@@ -254,7 +262,31 @@ def _match_state_dict(model: Any, state: dict[str, Any]) -> dict[str, Any]:
             stripped = {key[len(prefix) :]: value for key, value in state.items()}
             if set(stripped) == expected:
                 return stripped
+            if (reconciled := _reconcile_rotary(own, stripped)) is not None:
+                return reconciled
+    if (reconciled := _reconcile_rotary(own, state)) is not None:
+        return reconciled
     return state  # load_state_dict reports exactly what is missing or unexpected
+
+
+def _reconcile_rotary(own: Mapping[str, Any], state: dict[str, Any]) -> dict[str, Any] | None:
+    """``state`` without the rotary frequencies the model does not keep, and with the model's own where
+    the file has none - when that is the only difference and the file's are the standard schedule (the
+    model computes the same); ``None`` otherwise."""
+    extra = set(state) - set(own)
+    missing = set(own) - set(state)
+    if not (extra or missing) or not all(key.endswith(ROTARY_FREQS) for key in extra | missing):
+        return None
+    torch = _require_torch()
+    for key in extra:
+        freqs = state[key]
+        dim = 2 * int(freqs.shape[-1])
+        standard = 1.0 / (10000 ** (torch.arange(0, dim, 2).float() / dim))
+        if freqs.shape != standard.shape or not torch.allclose(freqs.float().cpu(), standard):
+            return None
+    result = {key: value for key, value in state.items() if key not in extra}
+    result.update({key: own[key] for key in missing})
+    return result
 
 
 def _read_checkpoint(path: Path, torch: Any) -> tuple[dict[str, Any], dict[str, Any]]:

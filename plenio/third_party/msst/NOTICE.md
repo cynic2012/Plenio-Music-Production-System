@@ -28,5 +28,7 @@ other byte is upstream:
 The released config was converted from YAML to JSON (the YAML uses `!!python/tuple` tags); the
 values are unchanged. `beartype` (type-guard decorators, no runtime effect here) and
 `rotary_embedding_torch` (the rotary position embedding) are used when installed; `_compat.py`
-next to this file installs documented stand-ins when they are missing. The MUSDB18-HQ dataset
+next to this file installs documented stand-ins when they are missing (the rotary stand-in
+rebuilds the package's rotation and keeps its `freqs` parameter, so the released checkpoint loads
+and separates bit-identically). The MUSDB18-HQ dataset
 terms are research-oriented: the catalogue and every release record say so.

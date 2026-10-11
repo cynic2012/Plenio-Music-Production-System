@@ -220,6 +220,8 @@ def test_the_stand_ins_are_installed_only_when_the_packages_are_missing(
         from rotary_embedding_torch import RotaryEmbedding
 
         rope = RotaryEmbedding(dim=8)
+        # a module with the frequencies as weights, as in the package: the released checkpoint has them
+        assert list(rope.state_dict()) == ["freqs"]
         x = torch.randn(1, 2, 5, 8)
         rotated = rope.rotate_queries_or_keys(x)
         assert rotated.shape == x.shape
@@ -227,12 +229,91 @@ def test_the_stand_ins_are_installed_only_when_the_packages_are_missing(
         assert torch.allclose(rotated.norm(dim=-1), x.norm(dim=-1), atol=1e-5)
         # and it is the identity at position zero
         assert torch.allclose(rotate_zero(rope), torch.zeros(1, 2, 1, 8), atol=1e-6)
+        # it turns the dimensions in pairs (0, 1), (2, 3) ... as the package does - not the two halves
+        unit = torch.zeros(1, 1, 4, 8)
+        unit[..., 0] = 1.0
+        turned = rope.rotate_queries_or_keys(unit)[0, 0]
+        positions = torch.arange(4.0)
+        assert torch.allclose(turned[:, 0], torch.cos(positions), atol=1e-6)
+        assert torch.allclose(turned[:, 1], torch.sin(positions), atol=1e-6)
+        assert torch.allclose(turned[:, 2:], torch.zeros(4, 6), atol=1e-6)
     finally:
         for name, module in saved.items():
             if module is None:
                 sys.modules.pop(name, None)
             else:
                 sys.modules[name] = module
+
+
+def test_the_stand_in_rotates_exactly_like_rotary_embedding_torch() -> None:
+    """GitHub issue (ComfyUI Desktop, without the package): the stand-in rotated halves of the dimension
+    and kept no weights. It now reproduces the package; compared where the package is installed."""
+    package = pytest.importorskip("rotary_embedding_torch")
+    from plenio.third_party.msst._compat import rotary_embedding_class
+
+    stand_in = rotary_embedding_class()
+    torch.manual_seed(0)
+    for dim, length in ((16, 1), (16, 33), (64, 517)):
+        real, ours = package.RotaryEmbedding(dim=dim), stand_in(dim=dim)
+        assert list(ours.state_dict()) == list(real.state_dict()) == ["freqs"]
+        assert torch.equal(ours.freqs, real.freqs)
+        x = torch.randn(2, 4, length, dim)
+        assert torch.equal(ours.rotate_queries_or_keys(x), real.rotate_queries_or_keys(x)), (dim, length)
+
+
+def test_the_released_weights_load_into_the_model_built_with_the_stand_in(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The released checkpoint carries ``...rotary_embed.freqs``; with the stand-in the model refused them
+    ("Unexpected key(s) in state_dict", GitHub issue on ComfyUI Desktop)."""
+    import importlib
+    import sys
+
+    from plenio.third_party import msst as vendor
+    from plenio.third_party.msst import _compat
+
+    saved = sys.modules.get("rotary_embedding_torch")
+    real = _compat._havable
+    try:
+        sys.modules.pop("rotary_embedding_torch", None)
+        monkeypatch.setattr(
+            _compat, "_havable", lambda name: False if name == "rotary_embedding_torch" else real(name)
+        )
+        assert "rotary_embedding_torch" in vendor.ensure_dependencies()
+        from plenio.third_party.msst import bs_roformer
+
+        bs_roformer = importlib.reload(bs_roformer)  # takes the stand-in
+        released = json.loads((msst.VENDOR / msst.CONFIG_NAME).read_text(encoding="utf-8"))
+        model = bs_roformer.BSRoformer(
+            **msst.model_kwargs({"model": {**released["model"], "dim": 8, "depth": 1}})
+        )
+        weights = model.state_dict()
+        assert sum(key.endswith(msst.ROTARY_FREQS) for key in weights) == 2  # time and frequency, per block
+        model.load_state_dict(msst._match_state_dict(model, dict(weights)))  # strict: nothing unexpected
+    finally:
+        monkeypatch.setattr(_compat, "_havable", real)
+        if saved is not None:
+            sys.modules["rotary_embedding_torch"] = saved
+        else:
+            sys.modules.pop("rotary_embedding_torch", None)
+        from plenio.third_party.msst import bs_roformer as again
+
+        importlib.reload(again)
+
+
+def test_rotary_frequencies_go_where_the_model_keeps_them() -> None:
+    """A rotary package that keeps the standard frequencies out of the weights must not refuse the
+    released checkpoint for them; anything else still is reported by load_state_dict."""
+    standard = 1.0 / (10000 ** (torch.arange(0, 8, 2).float() / 8))
+    own = {"layer.weight": torch.zeros(2)}
+    state = {"layer.weight": torch.ones(2), "layers.0.rotary_embed.freqs": standard.clone()}
+    assert set(msst._reconcile_rotary(own, state) or {}) == {"layer.weight"}
+    learned = {**state, "layers.0.rotary_embed.freqs": standard * 2}
+    assert msst._reconcile_rotary(own, learned) is None
+    keeps = {**own, "layers.0.rotary_embed.freqs": standard}
+    filled = msst._reconcile_rotary(keeps, {"layer.weight": torch.ones(2)})
+    assert filled is not None and torch.equal(filled["layers.0.rotary_embed.freqs"], standard)
+    assert msst._reconcile_rotary(own, {"other": torch.zeros(1)}) is None
 
 
 def rotate_zero(rope: Any) -> Any:
