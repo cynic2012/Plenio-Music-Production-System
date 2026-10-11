@@ -22,7 +22,7 @@ Start with **0 · System Check**: it shows versions, GPUs, which model files of 
 | *Value not in list* for `ckpt_name`, `unet_name`, `clip_name` ... | a file is missing or has another name | Place the file (System Check lists what is missing) or choose your file in the loader |
 | *The connected model is not a supported music model* | a different model is connected to Engine Profile | Use the template's model block (YuE2 or MiniMax Music 3 files) |
 | Cover Art fails although the song renders | Cover Art is optional and needs 16 GB of extra files | Install the FLUX.2 Klein files, or bypass the block again (select it, Ctrl+B) |
-| *... does not match the BS-RoFormer architecture: Unexpected key(s) in state_dict: ...rotary_embed.freqs* (Stems, Sung Pitch) | Plenio 0.6.0 and earlier without the Python package `rotary-embedding-torch` (ComfyUI Desktop) | Update Plenio to the next version; the checkpoint is fine. Until then, installing `rotary-embedding-torch` into ComfyUI's Python also helps |
+| *... does not match the BS-RoFormer architecture: Unexpected key(s) in state_dict: ...rotary_embed.freqs* (Stems, Sung Pitch) | Plenio 0.6.0 and earlier without the Python package `rotary-embedding-torch` (ComfyUI Desktop) | Update Plenio to 0.6.1 or later; the checkpoint is fine (or install `rotary-embedding-torch` into ComfyUI's Python) |
 | *Transcribe Score needs the SheetSage2 audio encoder* | the SheetSage2 file is missing | Place `sheetsage2_bf16.safetensors` in `models/audio_encoders` |
 | The lyrics ASR asks for files / *offline* | faster-whisper is fetched on first use; offline mode or `PLENIO_AUTO_DOWNLOAD=0` stop that | Allow the download once, or place the files as the message says (or use `[asset_paths]`, see [Configuration](configuration.md)) |
 
