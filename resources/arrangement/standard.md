@@ -1,9 +1,9 @@
 ---
 name: standard
 order: 10
-description: Genre-typical arrangement with clear contrast between verse and chorus and a lift at the end.
+description: Genre-typical - calm verses, fuller choruses, the last chorus the strongest; everything well placed, nothing unusual.
 lead: keep, pad, arpeggio, riff, countermelody, octave
-key shift: 0..2
+key shift: 0..0
 tempo change: 0..0
 chord colors: 2
 ---
@@ -18,4 +18,4 @@ chord colors: 2
 - Verses calm and supportive (energy 2-3), choruses fuller (energy 4), the last chorus the strongest (energy 5).
 - Keep YuE2's chords where they already work; change them only where a section needs more colour.
 - Give the instrument line one clear job per section: pads or arpeggios under verses, a riff or countermelody under choruses.
-- A key lift of 1 or 2 semitones in the last chorus is welcome if the song has one; nothing else changes key.
+- The song stays in its key from start to end.

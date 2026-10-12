@@ -326,7 +326,7 @@ def closeness_text(kind: str, closeness: int, genre: str = "") -> str:
         if c_ >= 50:
             return (
                 "Stay recognisably close to the original: the melody, the form and the tempo stay; you may "
-                "recolour chords, change the instrument lines and lift a section's key a little."
+                "recolour chords and change the instrument lines."
             )
         if c_ >= 20:
             return (
@@ -592,9 +592,9 @@ def prompt(
         roles,
         '- "energy": 1 (calm) to 5 (full): how busy the instrument line is.',
         (
-            f'- "key_shift": semitones the section moves, {policy.key_shift[0]} to {policy.key_shift[1]} '
-            "(0 keeps the key; a last chorus often goes up 1 or 2 - a lift holds to the end of the song, and Plenio "
-            "prepares it with the new key's dominant)."
+            f'- "key_shift": semitones the section moves, {policy.key_shift[0]} to {policy.key_shift[1]}: 0 keeps the '
+            "key - the right choice for almost every section; change it only where the mode asks for it. A change "
+            "holds to the end of the song, and Plenio leads into it with chords."
             if policy.key_shift != (0, 0)
             else '- "key_shift": always 0.'
         ),
@@ -610,6 +610,12 @@ def prompt(
             '{"note": "E4", "beats": 1} - a note name with octave (C4 = middle C) or "rest", and its length in '
             "quarter-note beats. Write it over the section's first chord; Plenio moves it onto the chord of "
             "every bar."
+            + (
+                " This mode has one figure for the whole song: give the same motif in every section with lead "
+                '"motif" (Plenio uses the first one everywhere).'
+                if policy.mode.one_motif
+                else ""
+            )
         )
     return "\n".join(parts)
 
@@ -950,6 +956,24 @@ def _int(value: Any, low: int, high: int, default: int) -> tuple[int, bool]:
     return clamped, clamped == number
 
 
+def _one_motif(
+    planned: dict[int, SectionPlan], policy: Policy, notes: list[str], drop: Callable[[str], None]
+) -> None:
+    """The mode's one figure: the first readable motif stands for every section with lead *motif*."""
+    motif_sections = [planned[i] for i in sorted(planned) if planned[i].lead == "motif"]
+    first = next((s for s in motif_sections if s.motif), None)
+    for s in motif_sections:
+        if first is None:
+            drop(f'section {s.section}: lead "motif" without a readable motif; arpeggio instead')
+            lead = "arpeggio" if "arpeggio" in policy.lead else "keep"
+            planned[s.section] = replace(s, lead=lead)
+        elif s.motif != first.motif:
+            notes.append(
+                f"section {s.section}: section {first.section}'s motif (one figure for the whole song)"
+            )
+            planned[s.section] = replace(s, motif=first.motif)
+
+
 def read_plan(answer: str, policy: Policy, sections: int) -> Plan:
     """The plan in ``answer``, held to the policy; unusable parts are dropped and noted.
 
@@ -1026,10 +1050,14 @@ def read_plan(answer: str, policy: Policy, sections: int) -> Plan:
         if not ok:
             notes.append(f"{where}: key shift limited to {shift}")
         motif = _motif(entry.get("motif"), drop, where) if lead == "motif" else ()
-        if lead == "motif" and not motif:
+        if (
+            lead == "motif" and not motif and not policy.mode.one_motif
+        ):  # one figure: taken from another section
             drop(f'{where}: lead "motif" without a readable motif; arpeggio instead')
             lead = "arpeggio" if "arpeggio" in policy.lead else "keep"
         planned[number] = SectionPlan(number, chords, lead, energy, shift, motif)
+    if policy.mode.one_motif:
+        _one_motif(planned, policy, notes, drop)
     missing = [i for i in range(1, sections + 1) if i not in planned]
     if missing:
         drop(

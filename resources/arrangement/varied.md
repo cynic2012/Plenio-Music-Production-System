@@ -1,9 +1,9 @@
 ---
 name: varied
-order: 20
-description: Every section sounds different - changing instrument lines, contrasting energy, fresh chords in the bridge.
+order: 40
+description: Every section sounds different - the instrument line changes from section to section, contrasting energy, fresh chords in the bridge.
 lead: keep, pad, arpeggio, riff, countermelody, solo, octave, motif
-key shift: 0..2
+key shift: 0..0
 tempo change: -5..5
 chord colors: 2
 ---
@@ -18,4 +18,4 @@ chord colors: 2
 - When a section comes back (a second verse or chorus), give it a different lead role than the first time.
 - Give the bridge or the middle section new chords that still fit the key.
 - Use the full energy range: at least one calm section (energy 1-2) and one full section (energy 5).
-- A key lift of 1 or 2 semitones in the last chorus is welcome.
+- Variety comes from the lines, the chords and the energy - the key stays.

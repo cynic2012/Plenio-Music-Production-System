@@ -58,10 +58,13 @@ def rules(
     melody: str = "vocal",
     under: bool = False,
     genre: str = "",
+    key_shift: tuple[int, int] | None = None,
 ) -> Any:
-    return policy(
-        LIBRARY.by_name(name), kind=kind, closeness=closeness, melody=melody, under_singing=under, genre=genre
-    )
+    """The policy of a shipped mode; ``key_shift`` widens it, to test the key change mechanics with any mode."""
+    mode = LIBRARY.by_name(name)
+    if key_shift is not None:
+        mode = replace(mode, key_shift=key_shift)
+    return policy(mode, kind=kind, closeness=closeness, melody=melody, under_singing=under, genre=genre)
 
 
 def with_rests(text: str, bars: tuple[int, ...]) -> str:
@@ -94,19 +97,45 @@ def readable(text: str) -> bool:
 
 
 def test_the_shipped_modes() -> None:
+    # from simple to rich; the one mode that changes the key comes last (owner's request 2026-10-12)
     assert LIBRARY.names() == [
         "off",
         "standard",
-        "varied",
-        "fantasy",
         "sterile",
-        "many instruments",
+        "unplugged",
+        "varied",
+        "call and response",
+        "signature motif",
+        "hypnotic",
+        "breakdown",
         "dramatic",
+        "many instruments",
+        "jazz colours",
+        "fantasy",
+        "key change",
     ]
     for name in LIBRARY.names()[1:]:
         mode = LIBRARY.by_name(name)
         assert mode.arranges and mode.description and mode.arranger and mode.writer, name
         assert set(mode.lead) <= set(LEAD_ROLES)
+        assert len(mode.description) <= 160, name  # one line in the tooltip
+
+
+def test_only_the_key_change_mode_changes_the_key() -> None:
+    """Owner's request 2026-10-12: the writer's plans lifted the key in nearly every song (all 80 sung songs of
+    the owner's demos with *standard*), rarely to their good. No mode promotes a key change but *key change*."""
+    for name in LIBRARY.names()[1:]:
+        mode = LIBRARY.by_name(name)
+        lifts = "lift" in mode.arranger.lower() or "key change" in mode.arranger.lower()
+        if name == "key change":
+            assert mode.key_shift == (0, 2) and lifts
+        else:
+            assert mode.key_shift == (0, 0) and not lifts, name
+    summary = summarize(c.from_abc(FIXTURE), melody="vocal")
+    for name in LIBRARY.names()[1:]:
+        text = prompt(summary, rules(name), brief_text="Song", genre="pop")
+        assert "often goes up" not in text
+        assert ('"key_shift": always 0.' in text) == (name != "key change"), name
     assert not LIBRARY.by_name(OFF).arranges
     # a pre-release called it "simple": saved workflows and API prompts with that name still mean "off"
     assert LIBRARY.by_name("simple") is LIBRARY.by_name(OFF)
@@ -122,6 +151,7 @@ def test_the_shipped_modes() -> None:
         ("tempo change: fast", "must look like"),
         ("chord colors: 4", "must be 1, 2 or 3"),
         ("colour: 2", "unknown fields"),
+        ("motif: twice", "must be each or one"),
     ],
 )
 def test_mode_files_name_their_mistakes(front: str, message: str) -> None:
@@ -159,18 +189,20 @@ def test_cover_closeness_bands() -> None:
         and close.key_shift == (0, 0)
         and close.tempo_change == (0, 0)
     )
-    middle = rules(kind="cover", closeness=60)
+    middle = rules("key change", kind="cover", closeness=60)
     assert middle.chords and middle.key_shift == (0, 2) and middle.tempo_change == (0, 0)
+    assert rules(kind="cover", closeness=60).key_shift == (0, 0)  # every other mode keeps the key
     free = rules("fantasy", kind="cover", closeness=30)
     assert free.tempo_change == (-10, 10) and free.tensions == "colour"
     assert rules("fantasy", kind="cover", closeness=5).tensions == "free"
 
 
 def test_genre_closeness_bands() -> None:
-    assert rules("fantasy", closeness=95).key_shift == (0, 2)
+    assert rules("fantasy", closeness=95, key_shift=(-2, 3)).key_shift == (0, 2)
     assert rules("fantasy", closeness=95).tempo_change == (0, 0)
     assert rules("fantasy", closeness=75).tempo_change == (0, 0)
-    assert rules("fantasy", closeness=75).key_shift == (-2, 3)
+    assert rules("fantasy", closeness=75, key_shift=(-2, 3)).key_shift == (-2, 3)
+    assert rules("fantasy", closeness=75).key_shift == (0, 0)
     assert rules("fantasy", closeness=50).tensions == "colour"
     assert rules("fantasy", closeness=10).tensions == "free"
     assert not rules(closeness=0).skip and rules("off").skip and rules("simple").skip
@@ -280,6 +312,33 @@ def test_no_plan_at_all_is_an_error(answer: str) -> None:
         read_plan(answer, rules(), 2)
 
 
+def test_a_signature_motif_is_one_figure_for_the_whole_song() -> None:
+    """The writer varied the figure from section to section (owner's demos 2026-10-12): with ``motif: one`` the
+    plan's first figure stands for every section with lead motif - also where the writer gave none."""
+    first = [{"note": "E4", "beats": 1}, {"note": "G4", "beats": 1}, {"note": "C5", "beats": 2}]
+    other = [{"note": "D4", "beats": 2}, {"note": "F4", "beats": 2}]
+    answer = plan(
+        entry(1, lead="motif", motif=first), entry(2, lead="motif", motif=other), entry(3, lead="motif")
+    )
+    signature = read_plan(answer, rules("signature motif"), 3)
+    assert LIBRARY.by_name("signature motif").one_motif and LIBRARY.by_name("call and response").one_motif
+    assert [s.lead for s in signature.sections] == ["motif"] * 3
+    assert signature.sections[1].motif == signature.sections[0].motif == signature.sections[2].motif
+    assert any("section 1's motif (one figure for the whole song)" in n for n in signature.notes)
+    assert "one figure for the whole song" in prompt(
+        summarize(c.from_abc(FIXTURE), melody="vocal"),
+        rules("signature motif"),
+        brief_text="Song",
+        genre="pop",
+    )
+    # every other mode: each section its own figure, and none without one
+    each = read_plan(answer, rules("varied"), 3)
+    assert each.sections[1].motif != each.sections[0].motif and each.sections[2].lead == "arpeggio"
+    # no readable figure at all: the motif sections play broken chords instead
+    none = read_plan(plan(entry(1, lead="motif"), entry(2, lead="motif")), rules("signature motif"), 2)
+    assert [s.lead for s in none.sections] == ["arpeggio", "arpeggio"]
+
+
 def test_corrections_and_dropped_parts_are_told_apart() -> None:
     answer = plan(
         entry(1, chords=["Cmaj9", "Hm", "Bb/D"], energy=9, key_shift=5),
@@ -287,7 +346,7 @@ def test_corrections_and_dropped_parts_are_told_apart() -> None:
         entry(7, lead="pad"),  # no such section
         tempo=40,
     )
-    result = read_plan(answer, rules(), 3)
+    result = read_plan(answer, rules(key_shift=(0, 2)), 3)
     assert result.sections[0].chords == ("Cmaj7", "Bm", "Bb")  # nearest names; no slash below colour level 3
     assert result.sections[0].energy == 5 and result.sections[0].key_shift == 2
     assert result.tempo_change == 5
@@ -357,7 +416,7 @@ def test_a_plan_becomes_a_valid_score() -> None:
         entry(2, chords=["Cmaj9", "F", "G7", "C"], lead="countermelody", energy=4, key_shift=2),
         tempo=3,
     )
-    result = arrange(FIXTURE, answer, rules(under=True), seed=1)
+    result = arrange(FIXTURE, answer, rules(under=True, key_shift=(0, 2)), seed=1)
     assert result.status == "applied", (result.notes, [s.kept for s in result.sections])
     assert readable(result.abc)
     model = c.from_abc(result.abc)
@@ -372,7 +431,7 @@ def test_a_plan_becomes_a_valid_score() -> None:
         n.pitch + 2 for n in original.vocal if n.onset >= chorus_start
     ]
     assert (
-        arrange(FIXTURE, answer, rules(under=True), seed=1).abc == result.abc
+        arrange(FIXTURE, answer, rules(under=True, key_shift=(0, 2)), seed=1).abc == result.abc
     )  # the same seed, the same notes
     assert result.harmony["after"]["clashes"] == 0 and result.harmony["after"]["accented_avoid"] == 0
 
@@ -452,9 +511,9 @@ def test_a_score_without_chords_gets_none() -> None:
 
 
 def test_a_key_lift_that_leaves_the_voice_range_is_not_made() -> None:
-    result = arrange(FIXTURE, plan(entry(1), entry(2, key_shift=2)), rules(), seed=0)
+    result = arrange(FIXTURE, plan(entry(1), entry(2, key_shift=2)), rules("key change"), seed=0)
     assert result.status == "applied"  # C5 + 2 stays within the song's highest note + 2
-    high = rules("fantasy", closeness=60)
+    high = rules("fantasy", closeness=60, key_shift=(-2, 3))
     lifted = arrange(FIXTURE, plan(entry(1), entry(2, key_shift=3)), high)
     assert (
         lifted.status == "unchanged"
@@ -467,7 +526,7 @@ def test_a_key_lift_that_leaves_the_midi_range_is_not_reported_as_made() -> None
     model = c.from_abc(FIXTURE)
     second = model.starts[section_ranges(model)[1][1]]
     top = c.validate(replace(model, ins=(c.Note(second, 1, 127),)))
-    result = arrange(c.to_abc(top), plan(entry(1), entry(2, key_shift=1)), rules(), seed=0)
+    result = arrange(c.to_abc(top), plan(entry(1), entry(2, key_shift=1)), rules("key change"), seed=0)
     assert not any(a.startswith("key ") for s in result.sections for a in s.applied)
     assert any("would leave the MIDI range" in kept for kept in result.sections[1].kept)
     if result.status != "unchanged":
@@ -671,7 +730,9 @@ def test_a_key_lift_holds_to_the_end_and_is_prepared() -> None:
     # verse - chorus - chorus; the plan lifts the first chorus and lets the second fall back: the owner's
     # listening (study E7) found the fall back the most abrupt moment, so the lift holds
     three = c.to_abc(ops.arrange_sections(c.from_abc(FIXTURE), [1, 2, 2]).score)
-    result = arrange(three, plan(entry(1), entry(2, key_shift=2), entry(3, key_shift=0)), rules(), seed=0)
+    result = arrange(
+        three, plan(entry(1), entry(2, key_shift=2), entry(3, key_shift=0)), rules("key change"), seed=0
+    )
     assert readable(result.abc)
     model = c.from_abc(result.abc)
     assert [k.key for k in model.keys] == ["C", "D"]
@@ -690,7 +751,9 @@ def test_a_lift_that_cannot_be_made_everywhere_stays_out_everywhere() -> None:
     model = c.from_abc(three)
     last = model.starts[section_ranges(model)[2][1]]
     high = c.to_abc(c.validate(replace(model, ins=(*model.ins, c.Note(last, 1, 127)))))  # bar 9 cannot go up
-    result = arrange(high, plan(entry(1), entry(2, key_shift=1), entry(3, key_shift=1)), rules(), seed=0)
+    result = arrange(
+        high, plan(entry(1), entry(2, key_shift=1), entry(3, key_shift=1)), rules("key change"), seed=0
+    )
     assert [k.key for k in c.from_abc(result.abc).keys] == ["C"]  # no lift that falls back in the last chorus
     assert any("stays out with section 3's" in kept for kept in result.sections[1].kept)
 

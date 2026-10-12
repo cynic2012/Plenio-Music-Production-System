@@ -8,9 +8,10 @@ name: varied                 # the option in the brief's list (lower case, uniqu
 order: 20                    # position in the list (off is 0)
 description: One line for the tooltip.
 lead: keep, pad, arpeggio, riff, countermelody, solo, octave, motif
-key shift: 0..2              # semitones a section may move (-5..5)
+key shift: 0..0              # semitones a section may move (-5..5); the shipped modes keep the key, but key change (0..2)
 tempo change: -5..5          # percent the whole song may change (-25..25)
 chord colors: 2              # 1 plain, 2 with sevenths and sixths, 3 every chord YuE2 reads
+motif: each                  # each: every motif section its own figure; one: the plan's first figure everywhere
 ---
 
 ## Writer

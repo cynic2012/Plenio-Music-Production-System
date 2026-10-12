@@ -67,7 +67,7 @@ The Cover Brief's **arrangement** is *off* by default: the transcribed score goe
 |---|---|
 | 95-100 | nothing - the writer is not even asked |
 | 80-94 | only sections whose instrument line rests get a line; chords, key and tempo stay |
-| 50-79 (default 70) | chords recoloured, the instrument lines changed, a small key lift |
+| 50-79 (default 70) | chords recoloured, the instrument lines changed (*key change*: a lift of up to 2) |
 | 20-49 | new chords and lines, another energy, the tempo by up to 10 % |
 | 0-19 | only a hint of the original: harmony, lines, tempo and energy reinvented |
 

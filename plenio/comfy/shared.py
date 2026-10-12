@@ -84,6 +84,19 @@ def mode_names() -> list[str]:
         return library.names()
 
 
+def mode_guide() -> str:
+    """Every creative mode in a line - its name and what it does (the briefs' *arrangement* tooltip)."""
+    library = mode_library()
+    names = mode_names()
+    modes = library.modes()
+    lines = [
+        f"{name}: {description}" if (description := modes[mode.id].description.strip()) else name
+        for name in names
+        if (mode := library.by_name(name)).arranges and mode.id in modes
+    ]
+    return "\n".join(lines)
+
+
 @lru_cache(maxsize=1)
 def asset_catalogue() -> dict[str, Asset]:
     return load_catalogue(RESOURCES / "assets.toml")

@@ -631,9 +631,15 @@ const pdfOk = (outcome) => !outcome.timeout && outcome.head === '%PDF-' && outco
   // the entry in the File menu
   await page.locator('.comfy-menu-button-wrapper').first().click().catch(() => undefined)
   const file = page.locator('[role=menuitem]', { hasText: /^File/ }).first()
+  await file.waitFor({ timeout: 5000 }).catch(() => undefined)
   if (await file.count()) await file.hover()
-  // a leaf entry: the File entry's own text holds its submenu's
+  // a leaf entry: the File entry's own text holds its submenu's; the submenu opens after the hover
   const entry = page.locator('[role=menuitem]:not(:has([role=menuitem]))', { hasText: 'Continue a Plenio song' }).first()
+  await entry.waitFor({ timeout: 3000 }).catch(() => undefined)
+  if (!(await entry.isVisible().catch(() => false)) && (await file.count())) {
+    await file.click() // the submenu did not open on the hover (later in the run): a click opens it
+    await entry.waitFor({ timeout: 3000 }).catch(() => undefined)
+  }
   const inMenu = (await entry.count()) > 0
   if (inMenu) await entry.click()
   else await page.evaluate(() => window.app.extensionManager.command.execute('Plenio.ContinueSong'))

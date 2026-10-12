@@ -2014,7 +2014,7 @@
     ],
     "extra": {},
     "category": "Plenio/Score",
-    "description": "The creative modes' section plan: the writer model plans every section of the score (chords, what the instrument line plays, energy, a key lift) as a small JSON plan, and Plenio writes the notes and checks the result - or keeps the score as it was and says why (in the report and the Song Sheet). In the brief's arrangement off nothing runs here. The writer model is the same list as Write Song's; GGUF files, LM Studio and Ollama keep to the plan's format exactly. The arrangement seed gives another arrangement of the same song. Sections whose chords the harmony check had to repair much go back to the writer once (the re-ask); the better arrangement is used."
+    "description": "The creative modes' section plan: the writer model plans every section of the score (chords, what the instrument line plays, energy; a key change only in the mode key change) as a small JSON plan, and Plenio writes the notes and checks the result - or keeps the score as it was and says why (in the report and the Song Sheet). In the brief's arrangement off nothing runs here. The writer model is the same list as Write Song's; GGUF files, LM Studio and Ollama keep to the plan's format exactly. The arrangement seed gives another arrangement of the same song. Sections whose chords the harmony check had to repair much go back to the writer once (the re-ask); the better arrangement is used."
    }
   ]
  },

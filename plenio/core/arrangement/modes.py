@@ -13,6 +13,7 @@ A mode is a Markdown file with a front matter block (``resources/arrangement/*.m
     key shift: 0..2
     tempo change: -5..5
     chord colors: 2
+    motif: each
     ---
 
     ## Writer
@@ -91,6 +92,9 @@ class CreativeMode:
     chord_colors: int = 1
     order: int = 100
     source: str = "package"
+    one_motif: bool = False
+    """``motif: one``: the first figure of the plan stands for every section with lead *motif* - the song's one
+    signature (a writer model varied it from section to section, the owner's demos of 2026-10-12)."""
 
     @property
     def arranges(self) -> bool:
@@ -140,7 +144,8 @@ def parse_mode(text: str, mode_id: str, source: str = "package") -> CreativeMode
             raise PlenioUserError(f"Creative mode {mode_id!r}: malformed front matter line {line!r}.")
         fields[key.strip().lower()] = value.strip()
     unknown = sorted(
-        set(fields) - {"name", "order", "description", "lead", "key shift", "tempo change", "chord colors"}
+        set(fields)
+        - {"name", "order", "description", "lead", "key shift", "tempo change", "chord colors", "motif"}
     )
     if unknown:
         raise PlenioUserError(f"Creative mode {mode_id!r}: unknown fields {unknown}.")
@@ -167,6 +172,9 @@ def parse_mode(text: str, mode_id: str, source: str = "package") -> CreativeMode
         ) from None
     if colors not in CHORD_COLORS:
         raise PlenioUserError(f"Creative mode {mode_id!r}: 'chord colors' must be 1, 2 or 3.")
+    motif = fields.get("motif", "each").strip().lower()
+    if motif not in ("each", "one"):
+        raise PlenioUserError(f"Creative mode {mode_id!r}: 'motif' must be each or one, got {motif!r}.")
     body = match.group(2)
     parts = {"writer": "", "arranger": ""}
     headings = list(_HEADING.finditer(body))
@@ -187,6 +195,7 @@ def parse_mode(text: str, mode_id: str, source: str = "package") -> CreativeMode
         chord_colors=colors,
         order=order,
         source=source,
+        one_motif=motif == "one",
     )
 
 

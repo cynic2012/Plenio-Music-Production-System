@@ -24,7 +24,7 @@ from ...core.brief import (
 )
 from ...core.errors import PlenioError
 from ...core.series import series_key
-from ..shared import SERIES, mode_library, mode_names, template_library
+from ..shared import SERIES, mode_guide, mode_library, mode_names, template_library
 from ..types import Brief
 
 MODE_TOOLTIP = (
@@ -57,13 +57,21 @@ EXPERIMENTAL = (
 )
 ARRANGEMENT_TOOLTIP = (
     "off: no arrangement - the music model plans melody, chords and instruments by itself. A creative mode "
-    "(standard, varied, fantasy, sterile, many instruments, dramatic - or your own file in "
-    "user/plenio/arrangement) adds its hints to the writing prompt and, in YuE2 Song, lets the writer model plan "
-    "every section of YuE2's score: chords, what the instrument line plays, energy, a key lift. Plenio writes the "
-    "notes itself and checks the result; a plan it cannot use leaves YuE2's score as it was (the Song Sheet says "
-    "so). Planning works with every writer model - GGUF files, LM Studio and Ollama keep to the format exactly. "
-    + EXPERIMENTAL
+    "(above, or your own file in user/plenio/arrangement) adds its hints to the writing prompt and, in YuE2 Song, "
+    "lets the writer model plan every section of YuE2's score: chords, what the instrument line plays, energy. "
+    "Plenio writes the notes itself and checks the result; a plan it cannot use leaves YuE2's score as it was (the "
+    "Song Sheet says so). Planning works with every writer model - GGUF files, LM Studio and Ollama keep to the "
+    "format exactly. " + EXPERIMENTAL
 )
+
+
+def arrangement_tooltip(text: str) -> str:
+    """What every choice does first - ``off`` (the first sentence of ``text``), then each creative mode from its
+    file (your own too) - and the rest of ``text`` after it: a long tooltip is cut at the window's edge."""
+    off, _, rest = text.partition(". ")
+    return f"{off}.\n{mode_guide()}\n\n{rest}"
+
+
 GENRE_CLOSENESS_TOOLTIP = (
     "Creative modes only (off ignores it; experimental): how close the song stays to its genre - 100 strictly "
     "typical, 70 typical with personal touches, 40 free within the genre, 0 borrow from any style. It shapes the "
@@ -219,7 +227,7 @@ class PlenioSongBrief(io.ComfyNode):
                     options=mode_names(),
                     default=ARRANGEMENT_DEFAULT,
                     optional=True,  # an API prompt of an older version runs as before (off)
-                    tooltip=ARRANGEMENT_TOOLTIP,
+                    tooltip=arrangement_tooltip(ARRANGEMENT_TOOLTIP),
                 ),
                 io.Int.Input(
                     "genre_closeness",

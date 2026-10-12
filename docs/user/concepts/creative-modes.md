@@ -7,18 +7,31 @@
 How freely a song is written and arranged. Song Brief and Cover Brief have an **arrangement** choice:
 
 - **off** (default) - no arrangement: the writer drafts title, style and lyrics, and the music model plans melody, chords and instruments by itself.
-- **a creative mode** - the mode's hints go into the writing prompt (for example *many instruments*: a large ensemble in the style), and in *YuE2 Song* and *YuE2 Cover* the writer model also plans **every section of YuE2's score**: which chords, what the instrument line plays, how busy it is, whether a section lifts its key. Plenio turns that plan into notes, checks the result and shows it in *Song Sheet · Score*.
+- **a creative mode** - the mode's hints go into the writing prompt (for example *many instruments*: a large ensemble in the style), and in *YuE2 Song* and *YuE2 Cover* the writer model also plans **every section of YuE2's score**: which chords, what the instrument line plays, how busy it is (and, in the mode *key change* only, where the key changes). Plenio turns that plan into notes, checks the result and shows it in *Song Sheet · Score*.
 
 ## The modes
 
-| Mode | Sounds | Instrument line | Key, tempo | Chords |
+From simple to rich - the list in the brief has the same order, and the field's tooltip says what each mode does. Only **key change** changes the key; every other mode keeps it from start to end.
+
+| Mode | Sounds | Instrument line | Tempo | Chords |
 |---|---|---|---|---|
-| **standard** | genre-typical: calm verses, fuller choruses, the last chorus strongest | pads or arpeggios under verses, riffs or countermelodies under choruses | a lift of 1-2 semitones in the last chorus | sevenths and sixths where they fit |
-| **varied** | no two neighbouring sections alike; new chords in the bridge | changes from section to section, also solos and motifs | lift 0-2; tempo ±5 % | sevenths and sixths |
-| **fantasy** | imaginative, film-like, surprising but beautiful | countermelodies, a solo, a returning motif | a bridge may move -2..+3; tempo ±10 % | every chord YuE2 reads, slash chords too |
-| **sterile** | clean, sparse, steady | long pad notes or silence | no changes | plain major and minor |
-| **many instruments** | a full ensemble, something always plays besides the voice | riffs, countermelodies, a solo, octave doubling | lift 0-2; tempo up to +5 % | sevenths and sixths |
-| **dramatic** | one long arc from quiet to a big climax | from pads to the busiest line at the climax | the last chorus up to +3 | darker before the climax |
+| **standard** | genre-typical: calm verses, fuller choruses, the last chorus strongest | pads or arpeggios under verses, riffs or countermelodies under choruses | stays | sevenths and sixths where they fit |
+| **sterile** | clean, sparse, steady | long pad notes or silence | stays | plain major and minor |
+| **unplugged** | intimate and acoustic (guitar or piano), warm and close; energy never above 3 | fingerpicked broken chords under verses, soft pads under choruses, sometimes nothing | up to 5 % slower | warm: sus2, sus4, sixths |
+| **varied** | no two neighbouring sections alike; new chords in the bridge | changes from section to section, also solos and motifs | ±5 % | sevenths and sixths |
+| **call and response** | the instruments answer the melody, like a band talking back to the singer | short answers in the gaps between the phrases; the same answering figure in every chorus | stays | sevenths and sixths |
+| **signature motif** | one short figure becomes the song's trademark | the same figure in the intro, every chorus and the outro, moved onto each chord; simple or silent in between | stays | sevenths and sixths |
+| **hypnotic** | a steady repeating pattern, changing little by little (trance, minimal, krautrock) | one riff or arpeggio through most sections | stays | few, plain chords - often two alternating |
+| **breakdown** | full sections, then a breakdown to almost nothing, then a build into a big final section | from riffs down to pads or silence and back up | stays | a darker chord in the breakdown |
+| **dramatic** | one long arc from quiet to a big climax | from pads to the busiest line at the climax | stays | darker before the climax |
+| **many instruments** | a full ensemble, something always plays besides the voice | riffs, countermelodies, a solo, octave doubling | up to +5 % | sevenths and sixths |
+| **jazz colours** | rich jazz harmony, smooth rather than loud | pads and broken chords, a mellow countermelody, a solo | up to 5 % slower | seventh chords throughout, ii-V turns before a section changes |
+| **fantasy** | imaginative, film-like, surprising but beautiful | countermelodies, a solo, a returning motif | ±10 % | every chord YuE2 reads, slash chords too |
+| **key change** | *standard*, plus one key change: the final chorus lifted a half or whole step | as *standard* | stays | as *standard*; leading chords into the new key |
+
+Why only one mode changes the key: in the owner's demos of October 2026 the writer lifted the last chorus in every sung song with *standard* (a half step in 233 sections) - the "truck driver's gear change" that rarely helps a song. A lift now happens only when you choose *key change*.
+
+Checked with a real writer model (Qwen 3.5 9B, held to the plan's format) on two sung songs and two instrumentals of the owner's demos, every mode (52 plans, October 2026): no key change in the twelve modes that keep the key; *key change* lifted the final section (or the last two) in all four songs; and the modes keep their character - *sterile* silence and pads at energy 1-3, *unplugged* broken chords at 2-3, *breakdown* its drop to energy 1 before the finale, *dramatic* a rising arc, *hypnotic* one riff or arpeggio, *jazz colours* new seventh chords in every section, *signature motif* and *call and response* one figure for the whole song (Plenio keeps the plan's first figure in every section that plays it - the writer had varied it).
 
 Your own modes are Markdown files in `<ComfyUI user directory>/plenio/arrangement/` - the format is described in [resources/arrangement/README.md](../../../resources/arrangement/README.md). They appear in the list after a refresh (R); a file with a mistake is skipped and named in the ComfyUI log.
 
@@ -28,7 +41,7 @@ Your own modes are Markdown files in `<ComfyUI user directory>/plenio/arrangemen
 
 | Value | Meaning | The plan may |
 |---|---|---|
-| 90-100 | strictly typical, no surprises | lift a key by at most 2, never change the tempo; chords must hold the melody notes |
+| 90-100 | strictly typical, no surprises | never change the tempo (*key change*: lift by at most 2); chords must hold the melody notes |
 | 70-89 (default 70) | typical with personal touches | as the mode allows, but no tempo change |
 | 40-69 | free within the genre | chords may colour the melody (added 2nd/9th and 6th) |
 | 0-39 | borrow from any style | chords may colour freely (no melody note a half step above a chord note) |
@@ -39,7 +52,7 @@ Your own modes are Markdown files in `<ComfyUI user directory>/plenio/arrangemen
 |---|---|
 | 95-100 | exactly the original: nothing is planned, the writer is not even asked |
 | 80-94 | chords, key and tempo stay; only sections whose instrument line rests get one |
-| 50-79 (default 70) | recognisable: chords recoloured, the instrument lines changed, a small key lift |
+| 50-79 (default 70) | recognisable: chords recoloured, the instrument lines changed (*key change*: a lift of at most 2) |
 | 20-49 | a free version: new chords and lines, another energy, tempo ±10 % |
 | 0-19 | only a hint of the original: harmony, lines, tempo and energy reinvented |
 
@@ -60,11 +73,11 @@ Above 0 the source's lyrics are transcribed for the writer (the lyrics ASR runs)
 ## How a section plan becomes music
 
 1. **Compose Arrangement** shows the writer the score as a table: every section with its bars and chords, the melody notes on the strong beats, what the instrument line plays now - the **chords that fit** each section's key in the genre (for example *B, C#m, D#m, E, F#, G#m; borrowed, typical in pop: A, Em, G*) - plus the mode's rules, the closeness in words and the exact answer format.
-2. The writer answers with a small **JSON plan** - per section the chords (one per bar), the *lead* role of the instrument line, an energy from 1 to 5, a key shift - never notes or ABC. With a Local LLM model (GGUF files, LM Studio, Ollama) the answer is held to the plan's format while it is written; other writers answer freely and Plenio reads leniently (code fences, a missing last brace, chord aliases such as *Cmaj9* -> *Cmaj7* are repaired and reported).
+2. The writer answers with a small **JSON plan** - per section the chords (one per bar), the *lead* role of the instrument line, an energy from 1 to 5, a key shift (always 0 but in *key change*) - never notes or ABC. With a Local LLM model (GGUF files, LM Studio, Ollama) the answer is held to the plan's format while it is written; other writers answer freely and Plenio reads leniently (code fences, a missing last brace, chord aliases such as *Cmaj9* -> *Cmaj7* are repaired and reported).
 3. **Apply Arrangement** writes the notes itself, with the same checked operations as *Score Tools*:
    - **chords**, guarded (the *harmony guard*): the writer's chord stands where it belongs to the section's key or to the genre's usual borrowings (a dominant only when it resolves) and carries the melody of its **whole bar** - every note, weighed by its length and beat; a note a half step above a chord tone on a strong beat or held for a beat is not allowed. Where the writer's chord does not stand, Plenio chooses per section the nearest chord that does - the original chord, the same root in another colour, or an in-key chord sharing two of its tones - and says so (*bar 3: Db is not a chord of C in pop; F instead*). A score **without chords** (a cover on *new accompaniment*) gets none: YuE2 harmonises it itself, as you chose;
    - **the instrument line** (YuE2's second voice, *Ins*): *pad*, *arpeggio*, *riff*, *countermelody*, *solo*, *octave* (the sung melody an octave away; only with lines under the singing), *motif* (the writer's figure in note names, moved onto every chord), *none*, *keep*. Every note follows the chord sounding at it. In YuE2's own scores the *Ins* voice never plays while the voice sings - it is the instrumental melody - so **by default a line plays where the voice rests**: intros, interludes, the outro and the gaps between sung phrases (fills and answers). With the brief's **lines under the singing (experimental)** it also sounds under the voice: calm (energy at most 2), below the voice and never a minor second or major seventh against it. A line that carries the melody - an instrumental with a lead - is never replaced;
-   - **key lifts** - only while the voice stays in its range (at most two semitones above the song's highest note); a lift holds to the end of the song and is led in by chords - a chord of both keys and the new key's dominant (Cm - D7 -> Gm), or the new key's lowered sixth and seventh steps (Eb - F -> Gm), over the last one or two bars, as far as the melody allows;
+   - **key lifts** (the mode *key change*) - only while the voice stays in its range (at most two semitones above the song's highest note); a lift holds to the end of the song and is led in by chords - a chord of both keys and the new key's dominant (Cm - D7 -> Gm), or the new key's lowered sixth and seventh steps (Eb - F -> Gm), over the last one or two bars, as far as the melody allows;
    - the **tempo** change.
 4. A **gate** per section: a section that clashes more after the arrangement than before - melody against its chords, or the voice against the line - goes back to how it was.
    **Asked once more:** where the guard had to replace more than a third of a section's chords, or the gate put a section back, the writer is asked once more about those sections - with what did not fit, the melody on the strong beats and the chords that fit their key. The second plan is used when it needs fewer repairs and clashes no more; otherwise the first stands.
@@ -106,5 +119,6 @@ The plan is written by the template's **Writer model** (one list for every writi
 
 - YuE2 reads the score's two voices and the chord symbols; **what you hear** - the instruments, the production - comes mostly from the style. That is why the modes also shape the style words.
 - The instrument line is one voice. *many instruments* fills it in every section and names a large ensemble in the style; the ensemble itself is YuE2's.
-- A key lift moves the voice: Plenio keeps it within the song's range plus two semitones, and the sheet still checks whether the voice in the style fits.
+- A key lift (*key change*) moves the voice: Plenio keeps it within the song's range plus two semitones, and the sheet still checks whether the voice in the style fits.
+- Instrumental songs: YuE2 often plans an intro and one long part. Before the arrangement, *prepare from brief* splits a part of more than 16 bars into parts of 8 or 16 bars at phrase ends and names them by their music (a part that comes back takes the name of the first one), so every mode has sections to vary - see [YuE2 Song](../paths/yue2-song.md).
 - MiniMax Music 3 and the DAW template have no planned score: there the creative mode shapes only the writing.

@@ -1023,7 +1023,7 @@ def arrange() -> Blueprint:
         "Plenio · Arrange",
         "Plenio/Score",
         "The creative modes' section plan: the writer model plans every section of the score (chords, what the "
-        "instrument line plays, energy, a key lift) as a small JSON plan, and Plenio writes the notes and checks "
+        "instrument line plays, energy; a key change only in the mode key change) as a small JSON plan, and Plenio writes the notes and checks "
         "the result - or keeps the score as it was and says why (in the report and the Song Sheet). In the "
         "brief's arrangement off nothing runs here. The writer model is the same list as Write Song's; GGUF files, "
         "LM Studio and Ollama keep to the plan's format exactly. The arrangement seed gives another arrangement "
@@ -1733,10 +1733,11 @@ WRITER_TEXT = (
 CREATIVE_TEXT = (
     "**Creative modes (experimental):** *arrangement* in the brief. They can give unexpected results and are "
     "meant for experimenting - try a mode, listen, keep what you like. *off* (default, the dependable "
-    "choice): no arrangement - {off}. A creative mode - *standard*, "
-    "*varied*, *fantasy*, *sterile*, *many instruments*, *dramatic* or your own file in `user/plenio/arrangement` "
-    "- adds its hints to the writing and lets the writer model plan every section of the score in **Arrange**: "
-    "chords, what the instrument line plays, energy, a key lift. {closeness} The writer answers with a small "
+    "choice): no arrangement - {off}. A creative mode - from *standard*, *sterile* and *unplugged* over "
+    "*call and response*, *signature motif*, *hypnotic* and *breakdown* to *jazz colours* and *fantasy* (the "
+    "field's tooltip says what each does), *key change* for one lift of the final chorus, or your own file in "
+    "`user/plenio/arrangement` - adds its hints to the writing and lets the writer model plan every section of "
+    "the score in **Arrange**: chords, what the instrument line plays, energy. {closeness} The writer answers with a small "
     "plan, never notes: Plenio writes every note itself and checks the result, so the score stays valid - a plan "
     "it cannot use leaves the score as it was, and Song Sheet · Score says so. A **harmony guard** keeps every "
     "chord in the key and the genre and on the melody, and the instrument line plays where the voice rests "

@@ -1894,17 +1894,24 @@
       "COMBO",
       {
        "display_name": "arrangement (experimental)",
-       "tooltip": "off: no arrangement - the transcribed score stays as it is. A creative mode (standard, varied, fantasy, sterile, many instruments, dramatic - or your own file in user/plenio/arrangement) adds its hints to the writing prompt and lets the writer model re-arrange the score's sections within the song flow closeness: chords, what the instrument line plays, energy, key. The melody and the form always stay. Plenio writes the notes itself and checks the result; a plan it cannot use leaves the transcription as it was (the score's Song Sheet says so). Experimental: creative modes can give unexpected results - they are meant for experimenting: try a mode, listen, keep what you like or run again with another arrangement seed. off is the dependable choice.",
+       "tooltip": "off: no arrangement - the transcribed score stays as it is.\nstandard: Genre-typical - calm verses, fuller choruses, the last chorus the strongest; everything well placed, nothing unusual.\nsterile: Clean, sparse and steady - plain chords, long notes or silence, low even energy, no surprises.\nunplugged: Intimate and acoustic - guitar or piano, fingerpicked broken chords and soft pads, low energy, warm and close.\nvaried: Every section sounds different - the instrument line changes from section to section, contrasting energy, fresh chords in the bridge.\ncall and response: The instruments answer the melody - a short reply in the gaps between its phrases, like a band talking back to the singer.\nsignature motif: One short melodic figure becomes the song's signature - it opens the song, returns in every chorus and closes it.\nhypnotic: A steady repeating pattern drives the song - riffs and broken chords over few chords, changing only little by little (trance, minimal, krautrock).\nbreakdown: Full sections with a breakdown in the middle - everything drops back to almost nothing, then builds again into a big final section.\ndramatic: One long arc - from a quiet start, section by section, to a big climax in the final chorus.\nmany instruments: A full ensemble - an instrument line in every section, riffs, countermelodies and a solo.\njazz colours: Rich jazz harmony - seventh chords throughout, passing chords before a section changes, a mellow countermelody and a solo.\nfantasy: Imaginative and surprising - colourful chords, unusual instrument lines, a returning motif, a touch of film music.\nkey change: Standard arrangement with one key change - the final chorus lifted a half or whole step, prepared by leading chords.\n\nA creative mode (above, or your own file in user/plenio/arrangement) adds its hints to the writing prompt and lets the writer model re-arrange the score's sections within the song flow closeness: chords, what the instrument line plays, energy. The melody and the form always stay. Plenio writes the notes itself and checks the result; a plan it cannot use leaves the transcription as it was (the score's Song Sheet says so). Experimental: creative modes can give unexpected results - they are meant for experimenting: try a mode, listen, keep what you like or run again with another arrangement seed. off is the dependable choice.",
        "default": "off",
        "multiselect": false,
        "options": [
         "off",
         "standard",
-        "varied",
-        "fantasy",
         "sterile",
+        "unplugged",
+        "varied",
+        "call and response",
+        "signature motif",
+        "hypnotic",
+        "breakdown",
+        "dramatic",
         "many instruments",
-        "dramatic"
+        "jazz colours",
+        "fantasy",
+        "key change"
        ]
       }
      ],
@@ -3837,17 +3844,24 @@
       "COMBO",
       {
        "display_name": "arrangement (experimental)",
-       "tooltip": "off: no arrangement - the music model plans melody, chords and instruments by itself. A creative mode (standard, varied, fantasy, sterile, many instruments, dramatic - or your own file in user/plenio/arrangement) adds its hints to the writing prompt and, in YuE2 Song, lets the writer model plan every section of YuE2's score: chords, what the instrument line plays, energy, a key lift. Plenio writes the notes itself and checks the result; a plan it cannot use leaves YuE2's score as it was (the Song Sheet says so). Planning works with every writer model - GGUF files, LM Studio and Ollama keep to the format exactly. Experimental: creative modes can give unexpected results - they are meant for experimenting: try a mode, listen, keep what you like or run again with another arrangement seed. off is the dependable choice.",
+       "tooltip": "off: no arrangement - the music model plans melody, chords and instruments by itself.\nstandard: Genre-typical - calm verses, fuller choruses, the last chorus the strongest; everything well placed, nothing unusual.\nsterile: Clean, sparse and steady - plain chords, long notes or silence, low even energy, no surprises.\nunplugged: Intimate and acoustic - guitar or piano, fingerpicked broken chords and soft pads, low energy, warm and close.\nvaried: Every section sounds different - the instrument line changes from section to section, contrasting energy, fresh chords in the bridge.\ncall and response: The instruments answer the melody - a short reply in the gaps between its phrases, like a band talking back to the singer.\nsignature motif: One short melodic figure becomes the song's signature - it opens the song, returns in every chorus and closes it.\nhypnotic: A steady repeating pattern drives the song - riffs and broken chords over few chords, changing only little by little (trance, minimal, krautrock).\nbreakdown: Full sections with a breakdown in the middle - everything drops back to almost nothing, then builds again into a big final section.\ndramatic: One long arc - from a quiet start, section by section, to a big climax in the final chorus.\nmany instruments: A full ensemble - an instrument line in every section, riffs, countermelodies and a solo.\njazz colours: Rich jazz harmony - seventh chords throughout, passing chords before a section changes, a mellow countermelody and a solo.\nfantasy: Imaginative and surprising - colourful chords, unusual instrument lines, a returning motif, a touch of film music.\nkey change: Standard arrangement with one key change - the final chorus lifted a half or whole step, prepared by leading chords.\n\nA creative mode (above, or your own file in user/plenio/arrangement) adds its hints to the writing prompt and, in YuE2 Song, lets the writer model plan every section of YuE2's score: chords, what the instrument line plays, energy. Plenio writes the notes itself and checks the result; a plan it cannot use leaves YuE2's score as it was (the Song Sheet says so). Planning works with every writer model - GGUF files, LM Studio and Ollama keep to the format exactly. Experimental: creative modes can give unexpected results - they are meant for experimenting: try a mode, listen, keep what you like or run again with another arrangement seed. off is the dependable choice.",
        "default": "off",
        "multiselect": false,
        "options": [
         "off",
         "standard",
-        "varied",
-        "fantasy",
         "sterile",
+        "unplugged",
+        "varied",
+        "call and response",
+        "signature motif",
+        "hypnotic",
+        "breakdown",
+        "dramatic",
         "many instruments",
-        "dramatic"
+        "jazz colours",
+        "fantasy",
+        "key change"
        ]
       }
      ],

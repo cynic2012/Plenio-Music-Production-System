@@ -198,7 +198,13 @@ def summary(entry: dict[str, Any], node: str) -> str:
 def test_the_mode_list_holds_the_users_modes(server: ComfyServer) -> None:
     info = server.get("/object_info/PlenioSongBrief")["PlenioSongBrief"]
     options = info["input"]["optional"]["arrangement"][1]["options"]
-    assert options[:4] == ["off", "standard", "calm", "varied"]
+    assert options[:4] == ["off", "standard", "calm", "sterile"]
+    # the tooltip says what every mode does - the user's too (owner's request 2026-10-12)
+    tooltip = info["input"]["optional"]["arrangement"][1]["tooltip"]
+    lines = tooltip.splitlines()
+    assert "calm" in lines  # a mode file of one's own without a description: its name
+    assert any(line.startswith("hypnotic: A steady repeating pattern") for line in lines)
+    assert any(line.startswith("key change: ") for line in lines)
 
 
 @pytest.mark.parametrize("name", ["off", "simple"])  # "simple": the pre-release name, still accepted
@@ -223,7 +229,8 @@ def test_a_plan_is_written_into_the_score(server: ComfyServer) -> None:
     # the fixture is sung throughout: lines need room under the singing (a fill has none here)
     entry = server.run(graph(song_brief("varied", under=True), seed=11, sheet=True))
     arranged = entry["outputs"]["7"]["received"][0]
-    assert arranged != SCORE and "K:D" in arranged  # the chorus lifted a whole tone
+    # arranged - but in its key: only the mode key change changes it, whatever the writer asks for
+    assert arranged != SCORE and "K:D" not in arranged
     request = ASKED[-1]
     assert request["response_format"]["type"] == "json_schema"  # held to the plan's format
     assert "do not write notes, ABC" in request["messages"][-1]["content"]

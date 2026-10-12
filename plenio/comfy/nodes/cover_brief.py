@@ -30,6 +30,7 @@ from .brief import (
     SONG_SEED_TOOLTIP,
     UNDER_SINGING_TOOLTIP,
     arrangement_line,
+    arrangement_tooltip,
     check_arrangement,
     mode_line,
     series_song,
@@ -44,10 +45,10 @@ MODE_TOOLTIP = (
 )
 COVER_INPUTS = ("mode", "template", "description", "genre", "mood", "vocals", "harmony", "title")
 ARRANGEMENT_TOOLTIP = (
-    "off: no arrangement - the transcribed score stays as it is. A creative mode (standard, varied, fantasy, "
-    "sterile, many instruments, dramatic - or your own file in user/plenio/arrangement) adds its hints to the "
-    "writing prompt and lets the writer model re-arrange the score's sections within the song flow closeness: "
-    "chords, what the instrument line plays, energy, key. The melody and the form always stay. Plenio writes the "
+    "off: no arrangement - the transcribed score stays as it is. A creative mode (above, or your own file in "
+    "user/plenio/arrangement) adds its hints to the writing prompt and lets the writer model re-arrange the "
+    "score's sections within the song flow closeness: chords, what the instrument line plays, energy. The melody "
+    "and the form always stay. Plenio writes the "
     "notes itself and checks the result; a plan it cannot use leaves the transcription as it was (the score's "
     "Song Sheet says so). " + EXPERIMENTAL
 )
@@ -232,7 +233,7 @@ class PlenioCoverBrief(io.ComfyNode):
                     options=mode_names(),
                     default=ARRANGEMENT_DEFAULT,
                     optional=True,  # an API prompt of an older version runs as before (off)
-                    tooltip=ARRANGEMENT_TOOLTIP,
+                    tooltip=arrangement_tooltip(ARRANGEMENT_TOOLTIP),
                 ),
                 io.Int.Input(
                     "song_flow_closeness",
