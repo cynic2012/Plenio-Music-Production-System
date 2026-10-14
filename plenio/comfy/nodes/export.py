@@ -1,8 +1,10 @@
-"""Export Release: FLAC 24-bit / MP3 V0 / WAV 32-bit float with tags and cover art, and a release record."""
+"""Export Release: FLAC 24-bit / MP3 V0 / WAV 32-bit float with tags and cover art, and a release record -
+also inside the FLAC, so the song can be continued from the audio file alone."""
 
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -18,16 +20,20 @@ from ...core.errors import PlenioUserError
 from ...core.files import atomic_write_bytes, atomic_write_text
 from ...core.release import (
     FORMATS,
+    PROJECT_EMBEDDED,
     STEMS_SUFFIX,
     TAG_FIELDS,
     RecordInput,
+    audio_md5,
     build_record,
     cover_jpeg,
     embed_cover,
+    embed_project,
     expand_pattern,
     file_facts,
     naming_values,
     plan_release,
+    project_block,
     read_tags,
     workflow_licences,
     write_audio,
@@ -51,6 +57,13 @@ SHEET_TOOLTIP = (
     "'<name>.pdf' next to the audio, on A4 or Letter pages. An open ComfyUI page draws it right after the export "
     "(as Export notation… in the Song Sheet does), whichever workflow it shows, and Plenio saves it; without an "
     "open page, the next page that opens draws it (within a day, while ComfyUI runs). Needs a score (YuE2)."
+)
+PROJECT_TOOLTIP = (
+    "Also store the release record - workflow, Song Sheets, score, lyrics, style, seeds and settings - inside the "
+    "song's FLAC (compressed, in a metadata block that players skip). File > Continue a Plenio song... opens the song "
+    "again from the FLAC alone, and so does a FLAC dropped onto the empty canvas. The record next to the song is "
+    "written as before. Turn it off for files you share without their making-of (secrets are never stored; "
+    "ComfyUI's --disable-metadata turns it off too)."
 )
 SIZE_TOOLTIP = (
     "How large the sheet music draws the music: standard about 3 bars a line (4 pages for a song of 3-4 "
@@ -180,6 +193,13 @@ class PlenioExportRelease(io.ComfyNode):
                     optional=True,
                     tooltip=SIZE_TOOLTIP,
                 ),
+                io.Boolean.Input(
+                    "project_in_flac",
+                    display_name="project in FLAC",
+                    optional=True,
+                    default=True,
+                    tooltip=PROJECT_TOOLTIP,
+                ),
             ],
             outputs=[
                 io.String.Output(display_name="files", tooltip="Written files, one per line."),
@@ -207,6 +227,7 @@ class PlenioExportRelease(io.ComfyNode):
         reports: dict[str, Any] | None = None,
         sheet_music: str = OFF,
         sheet_music_size: str = DEFAULT_SIZE,
+        project_in_flac: bool = True,
     ) -> io.NodeOutput:
         if sheet_music not in SHEET_MUSIC_OPTIONS:
             raise PlenioUserError(
@@ -257,6 +278,7 @@ class PlenioExportRelease(io.ComfyNode):
             return stem.with_name(stem.name + suffix)
 
         written: list[Path] = []
+        masters: list[Path] = []  # the song's FLAC files, one per take
         facts: list[dict[str, Any]] = []
         loudness: list[dict[str, Any]] = []
         for take, samples in zip(takes, items, strict=True):
@@ -267,14 +289,15 @@ class PlenioExportRelease(io.ComfyNode):
                 if picture is not None and kind != "wav":
                     embed_cover(path, picture)  # FLAC picture block / ID3 APIC; WAV keeps the .jpg only
                 written.append(path)
-                facts.append({**file_facts(path), **audio_facts})
+                masters += [path] * (kind == "flac")
+                facts.append({**file_facts(path), **audio_facts, **_md5(path)})
         if original is not None:
             original_items, original_rate = host.audio_items(original)
             path = file(ORIGINAL_SUFFIX)
             original_facts = write_audio(path, original_items[0], original_rate, "flac", metadata)
             if picture is not None:
                 embed_cover(path, picture)
-            facts.append({**file_facts(path), **original_facts, "role": "original"})
+            facts.append({**file_facts(path), **original_facts, **_md5(path), "role": "original"})
             written.append(path)
         cover_path = None
         warnings: list[str] = []
@@ -310,40 +333,54 @@ class PlenioExportRelease(io.ComfyNode):
             }
             | workflow_licences(cls.hidden.prompt)
         )
-        record = build_record(
-            RecordInput(
-                versions={
-                    "plenio": __version__,
-                    "comfyui": host.comfyui_version(),
-                    "frontend": host.frontend_version(),
-                },
-                prompt=cls.hidden.prompt,
-                workflow=workflow_for_record(
-                    (cls.hidden.extra_pnginfo or {}).get("workflow"), cls.hidden.prompt
-                ),
-                reports=report_dicts,
-                files=facts,
-                audio={
-                    "sample_rate": rate,
-                    "items": len(items),
-                    "seconds": round(items[0].shape[1] / rate, 3),
-                    "loudness": loudness,
-                    "tags": metadata,
-                },
-                title=song_title,
-                licences=licences,
-                sheet_music=(
-                    {
-                        "file": file(SHEET_SUFFIX).name,
-                        "paper": sheet_music.removeprefix("PDF (").removesuffix(")"),
-                        "size": sheet_music_size,
-                        "status": "drawn by the browser after the export",
-                    }
-                    if display
-                    else None
-                ),
-            )
+        # the song's FLAC files carry the record (GitHub issue #9); their entries give the file without it
+        carriers = list(masters) if project_in_flac else []
+        if carriers and host.metadata_disabled():
+            notes.append("project in FLAC: off, ComfyUI runs with --disable-metadata")
+            carriers = []
+        carried = {path.name for path in carriers}
+        facts = [{**f, "project": PROJECT_EMBEDDED} if f.get("name") in carried else f for f in facts]
+        record_input = RecordInput(
+            versions={
+                "plenio": __version__,
+                "comfyui": host.comfyui_version(),
+                "frontend": host.frontend_version(),
+            },
+            prompt=cls.hidden.prompt,
+            workflow=workflow_for_record((cls.hidden.extra_pnginfo or {}).get("workflow"), cls.hidden.prompt),
+            reports=report_dicts,
+            files=facts,
+            audio={
+                "sample_rate": rate,
+                "items": len(items),
+                "seconds": round(items[0].shape[1] / rate, 3),
+                "loudness": loudness,
+                "tags": metadata,
+            },
+            title=song_title,
+            licences=licences,
+            sheet_music=(
+                {
+                    "file": file(SHEET_SUFFIX).name,
+                    "paper": sheet_music.removeprefix("PDF (").removesuffix(")"),
+                    "size": sheet_music_size,
+                    "status": "drawn by the browser after the export",
+                }
+                if display
+                else None
+            ),
         )
+        record = build_record(record_input)
+        if carriers:
+            try:
+                project_block(record)
+            except PlenioUserError as error:  # too large for a FLAC block: the record file holds it alone
+                notes.append(f"project in FLAC: left out ({error.message})")
+                carriers = []
+                plain = [{k: v for k, v in f.items() if k != "project"} for f in facts]
+                record = build_record(replace(record_input, files=plain))
+        for path in carriers:
+            embed_project(path, record)
         record_path = file(RECORD_SUFFIX)
         atomic_write_text(record_path, json.dumps(record, indent=2, ensure_ascii=False))
         notation: list[dict[str, Any]] = []
@@ -407,7 +444,8 @@ class PlenioExportRelease(io.ComfyNode):
                     if stem_names
                     else []
                 ),
-                f"- record: {record_path.name}",
+                f"- record: {record_path.name}"
+                + (" (also inside the FLAC: File > Continue a Plenio song... opens it)" if carriers else ""),
                 *(
                     [f"- sheet music: {notation[0]['file']} - an open ComfyUI page draws and saves it"]
                     if notation
@@ -440,6 +478,14 @@ class PlenioExportRelease(io.ComfyNode):
                 ],
             },
         )
+
+
+def _md5(path: Path) -> dict[str, str]:
+    """``audio_md5`` of a FLAC file (the MD5 of its decoded audio, as its encoder wrote it), when it has one."""
+    if path.suffix != ".flac":
+        return {}
+    digest = audio_md5(path.read_bytes())
+    return {"audio_md5": digest} if digest else {}
 
 
 def loaded_file(prompt: Any) -> str:

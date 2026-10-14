@@ -6,6 +6,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { type Fetcher, PlenioApiError, type RecordRow, listRecords, viewUrl } from '../api/client'
+import { isFlac, projectOfFlac } from '../shared/flacProject'
 
 const props = defineProps<{
   fetcher: Fetcher
@@ -94,7 +95,11 @@ async function openFile(event: Event): Promise<void> {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
   try {
-    const record = JSON.parse(await file.text()) as unknown
+    const record = isFlac(file) ? await projectOfFlac(file) : (JSON.parse(await file.text()) as unknown)
+    if (record === null) {
+      error.value = `${file.name} carries no Plenio project: it was exported before Plenio 0.8.0 or with “project in FLAC” off. Open its <name>.plenio.json instead.`
+      return
+    }
     await run(file.name, { record, name: file.name })
   } catch (reason) {
     error.value = `${file.name} could not be read: ${message(reason)}`
@@ -134,8 +139,8 @@ onBeforeUnmount(() => {
       </header>
       <div class="toolbar">
         <input v-model="query" type="search" placeholder="Search title, folder or date" aria-label="Search songs" />
-        <button title="A release record from another folder (<name>.plenio.json)" @click="picker?.click()">Open a record file…</button>
-        <input ref="picker" type="file" accept=".json,application/json" hidden @change="openFile" />
+        <button title="A release record (<name>.plenio.json) or a song's FLAC (it carries its record since Plenio 0.8.0), from any folder" @click="picker?.click()">Open a record or FLAC…</button>
+        <input ref="picker" type="file" accept=".json,application/json,.flac,audio/flac" hidden @change="openFile" />
       </div>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <div class="list" role="list">

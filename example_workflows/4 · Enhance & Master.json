@@ -512,7 +512,7 @@
    ],
    "size": [
     380,
-    524
+    548
    ],
    "flags": {},
    "order": 8,
@@ -673,6 +673,15 @@
       "name": "sheet_music_size"
      },
      "link": null
+    },
+    {
+     "localized_name": "project_in_flac",
+     "name": "project_in_flac",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "project_in_flac"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -701,7 +710,8 @@
     false,
     "copy from loaded file",
     "off",
-    "standard"
+    "standard",
+    true
    ]
   }
  ],
@@ -871,7 +881,7 @@
     2460,
     -70,
     440,
-    804
+    828
    ],
    "color": "#3f789e",
    "font_size": 24,

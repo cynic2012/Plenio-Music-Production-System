@@ -2433,6 +2433,14 @@
         "large"
        ]
       }
+     ],
+     "project_in_flac": [
+      "BOOLEAN",
+      {
+       "display_name": "project in FLAC",
+       "tooltip": "Also store the release record - workflow, Song Sheets, score, lyrics, style, seeds and settings - inside the song's FLAC (compressed, in a metadata block that players skip). File > Continue a Plenio song... opens the song again from the FLAC alone, and so does a FLAC dropped onto the empty canvas. The record next to the song is written as before. Turn it off for files you share without their making-of (secrets are never stored; ComfyUI's --disable-metadata turns it off too).",
+       "default": true
+      }
      ]
     },
     "hidden": {
@@ -2461,7 +2469,8 @@
      "wav",
      "tags",
      "sheet_music",
-     "sheet_music_size"
+     "sheet_music_size",
+     "project_in_flac"
     ],
     "hidden": [
      "prompt",

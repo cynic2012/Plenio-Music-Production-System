@@ -26,6 +26,8 @@ Writes the finished song into the ComfyUI output folder with a **release record*
 
 With *sheet music* on the record also says which PDF belongs to the export, its paper and size, and whether it was saved.
 
-**Continue the song later**: *File > Continue a Plenio song…* lists the records of the output folder; dropping a record onto ComfyUI works too. The song opens in the workflow it was made with, its title, style, lyrics and score kept in the Song Sheets (*manual*) - new takes with another take seed, or edits from there.
+**project in FLAC** (on by default) - also writes the release record into the song's FLAC files, compressed, in a metadata block players skip (a FLAC *APPLICATION* block, id `PLNO`): the FLAC alone is then enough to continue the song. The record lists such a FLAC with the size and SHA-256 it has without the record (`"project": "embedded"`), and every FLAC with `audio_md5`, the MD5 of its decoded audio. Turn it off for files you share without their making-of; ComfyUI's `--disable-metadata` turns it off too.
+
+**Continue the song later**: *File > Continue a Plenio song…* lists the records of the output folder and opens a record or a song's FLAC from anywhere; dropping a record onto ComfyUI, or the song's FLAC onto the empty canvas, works too. The song opens in the workflow it was made with, its title, style, lyrics and score kept in the Song Sheets (*manual*) - new takes with another take seed, or edits from there.
 
 Samples above full scale are clipped in FLAC and MP3; the node warns. MP3 holds at most 48 kHz: hi-res audio (88.2/96/192 kHz) is converted for the MP3 only (to 44.1 or 48 kHz); FLAC and WAV keep the rate, and the node notes the conversion. Audio with NaN or infinite samples is refused. Put **Loudness & Dynamics** before the export.

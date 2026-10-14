@@ -816,11 +816,12 @@ def test_any_answer_gives_a_readable_score_or_the_old_one(
             }
     else:
         # a cover below closeness 85: the melody follows the chords - a sung one at the same times (its
-        # syllables), an instrument line wherever it played; both in their own range
+        # syllables), an instrument line wherever it played; both in their own range (a note snapped onto a chord
+        # at most a whole step beyond it)
         old, new = (before_vocal, after_vocal) if melody == "vocal" else (before_ins, after_ins)
         assert set(old) <= set(new) and (melody != "vocal" or set(new) == set(old))
         if old:
-            assert all(min(old.values()) <= new[t] - shift_at(t) <= max(old.values()) for t in old)
+            assert all(min(old.values()) - 2 <= new[t] - shift_at(t) <= max(old.values()) + 2 for t in old)
         if melody == "instrument":
             assert after_vocal == {t: p + shift_at(t) for t, p in before_vocal.items()}
     assert Fraction(after.tempo, score.tempo) <= Fraction(140, 100)

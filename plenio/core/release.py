@@ -354,13 +354,155 @@ def _flac_with_picture(flac: bytes, jpeg: bytes) -> bytes:
     if len(picture) >= 1 << 24:
         raise PlenioUserError("The cover image is too large to embed (16 MB limit of a FLAC block).")
     streaminfo, others = blocks[:1], blocks[1:]
-    ordered = [*streaminfo, (6, picture), *others]
+    return _flac_from_blocks([*streaminfo, (6, picture), *others], flac[index:])
+
+
+def _flac_from_blocks(blocks: Sequence[tuple[int, bytes]], frames: bytes) -> bytes:
+    """A FLAC stream of these metadata blocks (``(type, body)``, STREAMINFO first) and audio frames."""
     out = [b"fLaC"]
-    for position, (kind, body) in enumerate(ordered):
-        last = 0x80 if position == len(ordered) - 1 else 0
+    for position, (kind, body) in enumerate(blocks):
+        last = 0x80 if position == len(blocks) - 1 else 0
         out.append(bytes([last | kind]) + len(body).to_bytes(3, "big") + body)
-    out.append(flac[index:])
+    out.append(frames)
     return b"".join(out)
+
+
+def _flac_blocks(flac: bytes) -> tuple[list[tuple[int, bytes]], int]:
+    """The metadata blocks (``(type, body)``) of a FLAC stream and where its audio frames start."""
+    if flac[:4] != b"fLaC":
+        raise PlenioUserError("Not a FLAC file.")
+    blocks: list[tuple[int, bytes]] = []
+    index = 4
+    while True:
+        if index + 4 > len(flac):
+            raise PlenioUserError("The FLAC file ends inside its metadata.")
+        header = flac[index]
+        length = int.from_bytes(flac[index + 1 : index + 4], "big")
+        if index + 4 + length > len(flac):
+            raise PlenioUserError("The FLAC file ends inside its metadata.")
+        blocks.append((header & 0x7F, flac[index + 4 : index + 4 + length]))
+        index += 4 + length
+        if header & 0x80:
+            return blocks, index
+
+
+# --- the Plenio project inside a FLAC (GitHub issue #9) ----------------------------------------------------
+
+PROJECT_ID = b"PLNO"
+"""The application id of the FLAC APPLICATION block that holds a song's release record (a block type every FLAC
+reader skips; the id is not registered with Xiph - the registered ones are listed at xiph.org/flac/id.html, and
+``PLNO`` is none of them)."""
+PROJECT_SCHEMA = "plenio.project/1"
+"""The block's layout: the id, this schema name and a NUL, then the record as gzip-compressed UTF-8 JSON."""
+PROJECT_EMBEDDED = "embedded"
+"""``role``-like marker of a file entry whose FLAC carries the record: its ``bytes`` and ``sha256`` are those of
+the file without the project block (the record cannot hold the hash of the file it is written into)."""
+MAX_PROJECT_BYTES = 32 * 2**20
+"""The largest record a project block may unpack to (as large as a release record file may be)."""
+_APPLICATION = 2
+_PADDING = 1
+
+
+def _is_project(kind: int, body: bytes) -> bool:
+    return kind == _APPLICATION and body[:4] == PROJECT_ID
+
+
+def project_block(record: Mapping[str, Any]) -> bytes:
+    """The body of the APPLICATION block holding ``record`` (deterministic: the same record, the same bytes)."""
+    import gzip
+    import json
+
+    data = json.dumps(record, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    body = (
+        PROJECT_ID + PROJECT_SCHEMA.encode("ascii") + b"\x00" + gzip.compress(data, compresslevel=9, mtime=0)
+    )
+    if len(body) >= 1 << 24:
+        raise PlenioUserError(
+            "The release record is too large to embed in the FLAC (16 MB limit of a FLAC block).",
+            hint="It is written next to the song as <name>.plenio.json all the same.",
+        )
+    return body
+
+
+def with_project(flac: bytes, record: Mapping[str, Any]) -> bytes:
+    """The FLAC stream with ``record`` in its project block (an earlier one replaced), placed before the first
+    padding block (at the end without one) - so removing it gives back exactly the stream without it."""
+    blocks, start = _flac_blocks(flac)
+    kept = [(kind, body) for kind, body in blocks if not _is_project(kind, body)]
+    at = next((i for i, (kind, _body) in enumerate(kept) if kind == _PADDING), len(kept))
+    project = (_APPLICATION, project_block(record))
+    return _flac_from_blocks([*kept[:at], project, *kept[at:]], flac[start:])
+
+
+def without_project(flac: bytes) -> bytes:
+    """The FLAC stream without its project block: the file whose ``bytes`` and ``sha256`` the record lists."""
+    blocks, start = _flac_blocks(flac)
+    if not any(_is_project(kind, body) for kind, body in blocks):
+        return flac
+    return _flac_from_blocks([(k, b) for k, b in blocks if not _is_project(k, b)], flac[start:])
+
+
+def embed_project(path: Path, record: Mapping[str, Any]) -> None:
+    """Write ``record`` into the FLAC at ``path`` (atomic)."""
+    atomic_write_bytes(path, with_project(path.read_bytes(), record))
+
+
+def _project_record(body: bytes, source: str) -> dict[str, Any]:
+    import json
+    import zlib
+
+    prefix = PROJECT_ID + PROJECT_SCHEMA.encode("ascii") + b"\x00"
+    if not body.startswith(prefix):
+        raise PlenioUserError(
+            f"{source} holds a Plenio project of an unknown layout.",
+            hint="A newer Plenio wrote it: update Plenio, or open the <name>.plenio.json next to the song.",
+        )
+    unpacker = zlib.decompressobj(16 + zlib.MAX_WBITS)  # gzip
+    try:
+        data = unpacker.decompress(body[len(prefix) :], MAX_PROJECT_BYTES + 1)
+        record = json.loads(data.decode("utf-8")) if len(data) <= MAX_PROJECT_BYTES else None
+    except (zlib.error, UnicodeDecodeError, ValueError) as error:
+        raise PlenioUserError(f"The Plenio project in {source} is damaged: {error}") from error
+    if not isinstance(record, dict) or record.get("schema") != RECORD_SCHEMA:
+        raise PlenioUserError(f"The Plenio project in {source} is no release record ({RECORD_SCHEMA}).")
+    return record
+
+
+def project_of(flac: bytes, source: str = "the FLAC file") -> dict[str, Any] | None:
+    """The release record a FLAC stream carries (``None``: none - exported before 0.8.0, or without it)."""
+    blocks, _start = _flac_blocks(flac)
+    body = next((body for kind, body in blocks if _is_project(kind, body)), None)
+    return None if body is None else _project_record(body, source)
+
+
+def read_project(path: Path) -> dict[str, Any] | None:
+    """The release record the FLAC file at ``path`` carries, reading its metadata only (not the audio)."""
+    with path.open("rb") as handle:
+        if handle.read(4) != b"fLaC":
+            raise PlenioUserError(f"{path.name} is not a FLAC file.")
+        while True:
+            header = handle.read(4)
+            if len(header) < 4:
+                raise PlenioUserError(f"{path.name} ends inside its metadata.")
+            length = int.from_bytes(header[1:4], "big")
+            if header[0] & 0x7F == _APPLICATION and length >= 4:
+                body = handle.read(length)
+                if _is_project(_APPLICATION, body):
+                    return _project_record(body, path.name)
+            else:
+                handle.seek(length, 1)
+            if header[0] & 0x80:
+                return None
+
+
+def audio_md5(flac: bytes) -> str | None:
+    """The MD5 of the decoded audio that the encoder wrote into STREAMINFO (hex; ``None`` when it wrote none): it
+    stays the same whatever metadata - tags, cover, project - the file carries."""
+    blocks, _start = _flac_blocks(flac)
+    if not blocks or blocks[0][0] != 0 or len(blocks[0][1]) < 34:
+        return None
+    digest = blocks[0][1][18:34]
+    return digest.hex() if any(digest) else None
 
 
 def _syncsafe(value: int) -> bytes:

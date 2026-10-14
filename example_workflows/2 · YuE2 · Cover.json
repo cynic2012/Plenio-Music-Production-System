@@ -2734,6 +2734,15 @@
       "name": "sheet_music_size"
      },
      "link": null
+    },
+    {
+     "localized_name": "project_in_flac",
+     "name": "project_in_flac",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "project_in_flac"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -2762,7 +2771,8 @@
     false,
     "title only",
     "PDF (A4)",
-    "standard"
+    "standard",
+    true
    ]
   },
   {

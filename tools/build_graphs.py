@@ -2453,7 +2453,7 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     export = g.add(
         "PlenioExportRelease",
         (2490, 180),
-        size=(380, 424 + SUMMARY_ROOM),
+        size=(380, 448 + SUMMARY_ROOM),
         autogrow={"reports": 5},
         widgets={
             "folder": "plenio/enhanced",

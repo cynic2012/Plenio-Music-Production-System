@@ -54,6 +54,15 @@ def frontend_version() -> str:
         return "unknown"
 
 
+def metadata_disabled() -> bool:
+    """Whether ComfyUI runs with ``--disable-metadata`` (its own nodes then save no prompt or workflow in files)."""
+    try:
+        from comfy.cli_args import args
+    except ImportError:
+        return False
+    return bool(getattr(args, "disable_metadata", False))
+
+
 def user_directory() -> Path:
     import folder_paths
 

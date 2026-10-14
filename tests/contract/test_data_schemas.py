@@ -48,7 +48,7 @@ def test_release_record_matches_schema(tmp_path: Path) -> None:
 
     from plenio.core.audio.loudness import measure
     from plenio.core.engines import yue2
-    from plenio.core.release import RecordInput, build_record, file_facts, write_audio
+    from plenio.core.release import RecordInput, audio_md5, build_record, file_facts, write_audio
     from plenio.core.sheet import evaluate_sheet
 
     sheet = evaluate_sheet(
@@ -65,6 +65,8 @@ def test_release_record_matches_schema(tmp_path: Path) -> None:
         path = tmp_path / f"Neon.{kind}"
         audio_facts = write_audio(path, take, 96000, kind, {"title": "Neon"})
         files.append({**file_facts(path), **audio_facts})
+        if kind == "flac":  # the song's FLAC carries the record (GitHub issue #9)
+            files[-1].update(audio_md5=audio_md5(path.read_bytes()), project="embedded")
     cover = tmp_path / "Neon.jpg"
     cover.write_bytes(b"\xff\xd8\xff\xd9")
     files.append({**file_facts(cover), "role": "cover"})

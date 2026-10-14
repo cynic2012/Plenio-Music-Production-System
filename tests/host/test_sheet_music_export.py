@@ -67,6 +67,7 @@ def export(
     docs: dict[str, str],
     sheet_music: str = "PDF (A4)",
     workflow: dict[str, Any] | None = None,
+    **settings: Any,
 ) -> tuple[dict[str, Any], Path]:
     folder = f"sheet-music/{uuid.uuid4().hex[:8]}"
     prompt = {
@@ -86,6 +87,7 @@ def export(
                 "tags": "title only",
                 "reports.report_0": ["1", 7],
                 "sheet_music": sheet_music,
+                **settings,
             },
         },
     }
@@ -248,3 +250,36 @@ def test_a_record_keeps_its_workflow_and_continues_the_song(server: ComfyServer)
         "POST", "/plenio/records/continue", {"record": {"nodes": []}, "name": "w.json"}
     )
     assert status == 400 and "no Plenio release record" in refused["error"]["message"]
+
+
+def test_the_flac_carries_the_record_and_continues_the_song(server: ComfyServer) -> None:
+    # GitHub issue #9: the record inside the song's FLAC, so the audio file alone continues the song
+    import hashlib
+
+    from plenio.core.release import audio_md5, project_of, read_project, without_project
+
+    workflow = {
+        "nodes": [{"id": 1, "type": "PlenioSongSheet", "widgets_values": ["continue", ""]}],
+        "links": [],
+    }
+    docs = {"title": "Carried", "lyrics": LYRICS, "score": SCORE}
+    outputs, folder = export(server, docs, sheet_music="off", workflow=workflow)
+    flac = (folder / "Carried.flac").read_bytes()
+    record = json.loads((folder / "Carried.plenio.json").read_text(encoding="utf-8"))
+    assert project_of(flac) == record == read_project(folder / "Carried.flac")  # one record, two copies
+    entry = next(f for f in record["files"] if f["name"] == "Carried.flac")
+    assert entry["project"] == "embedded" and entry["audio_md5"] == audio_md5(flac)
+    plain = without_project(flac)  # the file the entry describes (it cannot hold its own hash)
+    assert entry["sha256"] == hashlib.sha256(plain).hexdigest() and entry["bytes"] == len(plain)
+    assert "also inside the FLAC" in outputs["plenio_summary"][0]["markdown"]
+    status, plan = server.request(
+        "POST", "/plenio/records/continue", {"record": record, "name": "Carried.flac"}
+    )
+    assert status == 200 and plan["from"] == "record" and plan["workflow"] == workflow
+    assert json.loads(plan["sheets"]["1"])["docs"]["lyrics"]["text"] == LYRICS
+
+    _outputs, off = export(server, {**docs, "title": "Plain"}, sheet_music="off", project_in_flac=False)
+    assert read_project(off / "Plain.flac") is None
+    plain_record = json.loads((off / "Plain.plenio.json").read_text(encoding="utf-8"))
+    assert all("project" not in f for f in plain_record["files"])
+    assert hashlib.sha256((off / "Plain.flac").read_bytes()).hexdigest() == plain_record["files"][0]["sha256"]

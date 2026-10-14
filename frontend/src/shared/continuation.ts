@@ -145,7 +145,7 @@ export function documentsIntoSheets(graph: GraphLike, documents: Record<string, 
 /** The workflow tab's name: the record's file name without ``.plenio.json`` (the song's base name). */
 export function workflowName(source: string, title: string): string {
   const base = source.split(/[\\/]/).pop() ?? ''
-  const name = base.replace(/\.plenio\.json$/i, '').replace(/\.json$/i, '')
+  const name = base.replace(/\.plenio\.json$/i, '').replace(/\.(json|flac)$/i, '')
   return name || title || 'Plenio song'
 }
 

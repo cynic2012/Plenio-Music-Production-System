@@ -212,3 +212,85 @@ def test_one_base_name_for_all_files_of_a_release(tmp_path: Path) -> None:
     escaped = plan_release(tmp_path / "sub", "../../x", [".flac"])  # '..' parts become 'Untitled'
     assert (tmp_path / "sub").resolve() in escaped.resolve().parents
     assert plan_release(tmp_path, "a/b/Song", [".flac"]) == tmp_path / "a" / "b" / "Song"
+
+
+# --- the Plenio project inside the FLAC (GitHub issue #9) ---------------------------------------------------
+
+RECORD = {
+    "schema": "plenio.record/1",
+    "title": "Neon Rain",
+    "documents": {"lyrics": {"text": "[Verse]\nÜber den Dächern " * 200}},
+    "files": [{"name": "Neon Rain.flac", "bytes": 1, "sha256": "0" * 64, "project": "embedded"}],
+}
+
+
+def project_blocks(data: bytes) -> list[bytes]:
+    from plenio.core.release import PROJECT_ID, _flac_blocks
+
+    return [body for kind, body in _flac_blocks(data)[0] if kind == 2 and body[:4] == PROJECT_ID]
+
+
+def test_the_release_record_rides_in_the_flac(tmp_path: Path) -> None:
+    pytest.importorskip("PIL")
+    from plenio.core.release import (
+        audio_md5,
+        cover_jpeg,
+        embed_project,
+        project_block,
+        project_of,
+        read_project,
+        without_project,
+    )
+
+    path = tmp_path / "Neon Rain.flac"
+    write_audio(path, noise(1.0), 44100, "flac", TAGS)
+    embed_cover(path, cover_jpeg(np.random.default_rng(0).random((64, 64, 3))))
+    before = path.read_bytes()
+    (tmp_path / "before.flac").write_bytes(before)
+    md5 = audio_md5(before)
+    assert md5 is not None and len(md5) == 32  # the encoder wrote the MD5 of the audio
+    assert project_of(before) is None and read_project(path) is None  # exported without one
+    embed_project(path, RECORD)
+    after = path.read_bytes()
+    assert project_of(after) == RECORD and read_project(path) == RECORD
+    assert without_project(after) == before  # the file the record's sha256 and bytes describe
+    assert audio_md5(after) == md5
+    assert (
+        len(project_blocks(after)) == 1 and len(project_blocks(after)[0]) < len(str(RECORD)) // 10
+    )  # compressed
+    assert project_block(RECORD) == project_block(
+        dict(RECORD)
+    )  # deterministic: the same record, the same bytes
+    # any FLAC reader still plays it, with its tags and cover
+    tags, cover = read_tags(path)
+    assert tags["title"] == "Neon Rain" and cover is not None
+    np.testing.assert_array_equal(decode(path)[0], decode(tmp_path / "before.flac")[0])
+    # a new record replaces the old; a new cover keeps the project
+    embed_project(path, {**RECORD, "title": "Second"})
+    assert len(project_blocks(path.read_bytes())) == 1 and read_project(path)["title"] == "Second"
+    embed_cover(path, cover_jpeg(np.random.default_rng(1).random((64, 64, 3))))
+    assert read_project(path)["title"] == "Second"
+
+
+def test_a_foreign_or_damaged_project_is_refused(tmp_path: Path) -> None:
+    from plenio.core.release import PROJECT_ID, _flac_blocks, _flac_from_blocks, project_of, with_project
+
+    path = tmp_path / "x.flac"
+    write_audio(path, noise(0.3), 44100, "flac")
+    plain = path.read_bytes()
+    blocks, start = _flac_blocks(plain)
+
+    def carrying(body: bytes) -> bytes:
+        return _flac_from_blocks([*blocks, (2, body)], plain[start:])
+
+    with pytest.raises(PlenioUserError, match="unknown layout"):
+        project_of(carrying(PROJECT_ID + b"plenio.project/9\x00..."))
+    with pytest.raises(PlenioUserError, match="damaged"):
+        project_of(carrying(PROJECT_ID + b"plenio.project/1\x00not gzip"))
+    with pytest.raises(PlenioUserError, match="no release record"):
+        project_of(with_project(plain, {"schema": "something/1"}))
+    assert (
+        project_of(carrying(b"riff" + b"another application")) is None
+    )  # other APPLICATION blocks are not ours
+    with pytest.raises(PlenioUserError, match="Not a FLAC"):
+        project_of(b"ID3 an mp3")

@@ -1143,8 +1143,8 @@ def co_adapt_melody(
       pitches and their up and down at 49, free of them at 0; with ``allow_rhythm_change`` below ``RHYTHM_FROM``
       some bars also get a new rhythm (``_new_rhythm``).
 
-    The notes stay in the melody's own range; without ``allow_rhythm_change`` the onsets and lengths stay (a sung
-    melody keeps its syllables on its notes). Returns the notes, sorted, and how many of them changed."""
+    A rewritten melody stays in the melody's own range, a snapped note at most a whole step beyond it; without
+    ``allow_rhythm_change`` the onsets and lengths stay (a sung melody keeps its syllables on its notes). Returns the notes, sorted, and how many of them changed."""
     start, stop = score.starts[first], score.starts[end] if end < score.measure_count else score.total
     ordered = sorted(melody, key=lambda n: n.onset)
     inside = [n for n in ordered if start <= n.onset < stop]

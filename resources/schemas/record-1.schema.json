@@ -62,7 +62,9 @@
           "seconds": { "type": "number", "minimum": 0 },
           "peak": { "type": "number", "minimum": 0 },
           "clipped_samples": { "type": "integer", "minimum": 0 },
-          "converted_from_rate": { "type": "integer", "minimum": 1 }
+          "converted_from_rate": { "type": "integer", "minimum": 1 },
+          "audio_md5": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+          "project": { "enum": ["embedded"] }
         }
       }
     },
