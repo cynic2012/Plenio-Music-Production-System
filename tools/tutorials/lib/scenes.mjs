@@ -470,7 +470,9 @@ export async function arrangementDemo(s, { cover = false } = {}) {
   await s.spotlight(panel, { ms: 3800, pad: 4 })
   await s.read(line, 6200)
   const summary = panel.locator('summary').first()
-  const details = 'Open it: the writer’s idea, and for every section what Plenio wrote - chords, the instrument line, a key lift - and what stayed.'
+  const details = cover
+    ? 'Open it: the writer’s idea, and for every section what Plenio wrote - chords, the melody that follows them, the instrument line - and what stayed.'
+    : 'Open it: the writer’s idea, and for every section what Plenio wrote - chords, the instrument line, a key lift - and what stayed.'
   s.caption(details)
   await s.click(summary, { fx: 0.05, pause: 300 })
   await s.wait(900)
@@ -484,7 +486,7 @@ export async function arrangementDemo(s, { cover = false } = {}) {
     const x0 = Math.min(...ins.visible.map((n) => n.x)) - 6, y0 = Math.min(...ins.visible.map((n) => n.y)) - 6
     const x1 = Math.max(...ins.visible.map((n) => n.x + n.width)) + 6, y1 = Math.max(...ins.visible.map((n) => n.y + n.height)) + 6
     const text = cover
-      ? 'In the roll, the instrument line is the second voice: Plenio wrote it note by note from the plan - the melody stays the original.'
+      ? 'In the roll, the instrument line is the second voice: Plenio wrote it note by note from the plan - and the melody above it now follows the new chords.'
       : 'In the roll, the instrument line is the second voice: Plenio wrote it note by note from the plan, on the chords above it.'
     s.caption(text)
     await s.spotlight({ x: x0, y: y0, width: x1 - x0, height: y1 - y0 }, { ms: 4200, pad: 4 })

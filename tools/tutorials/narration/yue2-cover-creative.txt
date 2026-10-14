@@ -23,19 +23,25 @@ Load the recording into Source recording.
 It's the example from tutorial two: a four-minute synth-pop song, sung in English.
 
 @ In the Cover Brief: arrangement, marked experimental
-In the Cover Brief, there's arrangement, marked experimental. Simple, the default, keeps the transcribed score just as it is.
+In the Cover Brief, there's arrangement, marked experimental. Off, the default, keeps the transcribed score just as it is.
 
 @ A creative mode lets the writer model re-arrange
 A creative mode lets the writer model re-arrange every section. We take many instruments: a full ensemble.
 
 @ song flow closeness: how close the music stays
-Song flow closeness sets how close the music stays to the original. A hundred is exactly the original, eighty keeps chords and key, fifty stays recognisable, and twenty is a free version.
+Song flow closeness sets how close the music stays to the original. A hundred is exactly the original, eighty keeps chords, key and melody, fifty stays recognisable, and twenty is a free version.
+
+@ Below 80 the melody follows the new chords
+Below eighty, the melody follows the new chords. From fifty, only the notes that clash with a chord move. [pause:0.3s] Below fifty, Plenio writes the melody anew.
+
+@ We take 30: a free version
+We take thirty: a free version, with the writer's bold chords, and a new melody over them.
 
 @ Whatever the slider says
-Whatever the slider says, the melody and the form always stay. That's what makes it a cover.
+Whatever the slider says, the form always stays. And the sung melody keeps its rhythm, so every syllable keeps its note.
 
 @ vocals: “new lyrics”
-For the vocals, we choose new lyrics: YuE2 sings new words on the original melody.
+For the vocals, we choose new lyrics: YuE2 sings new words on the cover's melody.
 
 @ voice: describe the singer
 Describe the singer.
@@ -44,7 +50,7 @@ Describe the singer.
 Lyrics closeness sets how close the new words stay to the original's. Zero ignores them, thirty keeps the mood, sixty tells the story in new words, and ninety keeps the meaning, line by line.
 
 @ harmony: “keep original chords”
-Harmony stays on keep original chords: the arrangement recolours them, and YuE2 follows the chords.
+Harmony stays on keep original chords: the writer builds its new chords on them, and YuE2 follows the chords.
 
 @ In SCORE, the new block Arrange
 In the score group, the new block Arrange: the writer answers with a plan for every section, and Plenio writes the notes and checks the score.
@@ -68,7 +74,7 @@ Sung Pitch separates the vocals once, for the curve in the editor.
 SheetSage2 transcribes the recording into a score: melody, chords, sections, and tempo.
 
 @ Arrange: the writer plans the sections anew
-Then Arrange: the writer plans the sections anew, and Plenio writes the notes. The melody stays.
+Then Arrange: the writer plans the sections anew. Plenio writes the notes, and fits the melody to the new chords.
 
 @ Stop 1: Song Sheet · Score - the arranged transcription
 First stop: the Score sheet, with the arranged transcription.
@@ -86,16 +92,16 @@ Here, the arrangement wasn't applied: the writer's plan couldn't be used, so the
 Under the editor, you find the arrangement: the mode, its closeness, and how many sections it changed. [pause:0.2s] Marked experimental, of course.
 
 @ Open it: the writer’s idea | optional
-Open it, and you see the writer's idea, and for every section what Plenio wrote: chords, the instrument line, a key lift. And what stayed.
+Open it, and you see the writer's idea, and for every section what Plenio wrote: chords, the melody that follows them, the instrument line. And what stayed.
 
 @ In the roll, the instrument line | optional
-In the roll, the instrument line is the second voice. Plenio wrote it note by note from the plan, while the melody stays the original.
+In the roll, the instrument line is the second voice. Plenio wrote it note by note from the plan. And the melody above it now follows the new chords.
 
 @ That is what experimental means | optional
 That's what experimental means: sometimes a plan doesn't fit. Approve the transcription, or run again with another arrangement seed.
 
 @ Compare with the original | optional
-Compare it with the original: both plays the source under the notes, and A B switches between them at once.
+Compare it with the original: both plays the source under the notes, and A B switches between them. [pause:0.2s] The old melody, against the new one.
 
 @ Approve: the new lyrics are written for this score
 Approve. The new lyrics will be written for this score.
@@ -107,7 +113,7 @@ Approved. Run again: the original words are transcribed, and the writer writes t
 First, the original words are transcribed, for the writer, who keeps their story.
 
 @ The writer drafts the new lyrics
-Then the writer drafts the new lyrics on the original melody.
+Then the writer drafts the new lyrics on the cover's melody. Its rhythm is still the original's.
 
 @ Stop 2: Song Sheet · Text - the new lyrics
 Second stop: the Text sheet, with the new lyrics.
@@ -118,8 +124,8 @@ Open it.
 @ Lyrics: new words, section by section
 New words, section by section. With lyrics closeness at seventy, they tell the original's story, in their own way.
 
-@ The Score tab: the new words over the original melody
-The Score tab shows the new words over the original melody, each line where it's sung.
+@ The Score tab: the new words over the new melody
+The Score tab shows the new words over the new melody, each line where it's sung.
 
 @ Shift + mouse wheel | optional
 Shift and the mouse wheel scroll to where the singing starts.
@@ -142,14 +148,17 @@ Check Vocals listens to the take,
 @ Master and Export finish the cover
 and Master and Export finish the cover.
 
-@ The arranged cover, with its new lyrics | +8
-Here's the arranged cover, with its new lyrics. [pause:0.4s] Listen for the fuller arrangement.
+@ The arranged cover, with its new melody | +8
+Here's the arranged cover, with its new melody and new lyrics. [pause:0.4s] Listen for the fuller arrangement.
 
 @ Export saved the sheet music too
 Export saved the sheet music too: the arranged score with the new lyrics, as a PDF next to the cover.
 
 @ Creative modes are experimental: the plan can surprise
 Creative modes are experimental, and the plan can surprise you. Try other modes, other closeness values, or another arrangement seed, and keep what you like.
+
+@ Closer to the original?
+Closer to the original? At fifty, only the melody notes that clash with a new chord move. From eighty, the melody stays as it was.
 
 @ song flow closeness 100 keeps the original exactly
 Song flow closeness one hundred keeps the original exactly: the writer isn't even asked. And lyrics closeness zero writes new lyrics as before, without the original's.

@@ -1,8 +1,9 @@
-// Tutorial 7 · YuE2 · Cover · Creative modes (0.4.5, experimental): a cover re-arranged by the writer
-// model, with new lyrics that keep the original's story. The Cover Brief's arrangement, song flow
-// closeness and lyrics closeness, the Writer model, Arrange and its seed; one cover with its review stops
-// - the arranged score against the original (A/B), the new words over the original melody - the rendered
-// cover and its sheet music. The source is the repository's sample song.
+// Tutorial 7 · YuE2 · Cover · Creative modes (0.4.5, recorded again for 0.8.0, experimental): a cover
+// re-arranged by the writer model - a free version (song flow closeness 30), whose melody Plenio writes
+// anew over the writer's chords in the old rhythm - with new lyrics that keep the original's story. The
+// Cover Brief's arrangement, song flow closeness and lyrics closeness, the Writer model, Arrange and its
+// seed; one cover with its review stops - the arranged score against the original (A/B), the new words
+// over the new melody - the rendered cover and its sheet music. The source is the repository's sample song.
 
 import path from 'node:path'
 import { arrangementDemo, sheetMusicSaved, showApproved } from './lib/scenes.mjs'
@@ -29,9 +30,9 @@ const GROUPS = {
 const STAGES = {
   [TRANSCRIBE]: 'SheetSage2 transcribes the recording into a score: melody, chords, sections and tempo.',
   [SUNG]: 'Sung Pitch separates the vocals once, for the curve in the editor.',
-  [ARRANGE]: 'Arrange: the writer plans the sections anew, Plenio writes the notes - the melody stays.',
+  [ARRANGE]: 'Arrange: the writer plans the sections anew, Plenio writes the notes and fits the melody to the new chords.',
   [LYRICS]: 'The original words are transcribed - for the writer, who keeps their story.',
-  [WRITE]: 'The writer drafts the new lyrics on the original melody.',
+  [WRITE]: 'The writer drafts the new lyrics on the cover’s melody - its rhythm is the original’s.',
   [TAKES]: 'YuE2 renders the cover from the arranged score and the new lyrics.',
   [CHECK]: 'Check Vocals listens to the take.',
   [MASTER]: 'Master and Export finish the cover.',
@@ -43,11 +44,11 @@ export default async function coverCreative(s, { project }) {
     kicker: 'Plenio tutorial',
     title: '<span class="num">7 ·</span> YuE2 · Cover · Creative modes',
     subtitle: 'A new arrangement of a recording, with new lyrics that keep its story - an experimental feature to play with',
-    foot: 'Plenio Music Production System 0.4.5 for ComfyUI',
+    foot: 'Plenio Music Production System 0.8.0 for ComfyUI',
   }, 5)
   s.card('chapter', {
     kicker: 'Before we start', part: 'Experimental', title: 'Made for experimenting',
-    subtitle: 'Creative modes are new in 0.4.5 and can give unexpected results - try a mode, listen, keep what you like',
+    subtitle: 'Creative modes are experimental and can give unexpected results - try a mode, listen, keep what you like',
     steps: ['Choose a mode', 'Set the sliders', 'Listen', 'Keep what you like'],
   }, 5)
 
@@ -91,18 +92,22 @@ export default async function coverCreative(s, { project }) {
   // --- the creative parts -------------------------------------------------------------------------
   s.chapter('The creative parts of the template')
   await s.flyNodes([BRIEF], 1200, 0.94)
-  s.caption('In the Cover Brief: arrangement, marked experimental. simple, the default, keeps the transcribed score as it is.')
+  s.caption('In the Cover Brief: arrangement, marked experimental. off, the default, keeps the transcribed score as it is.')
   await s.spotlight(await s.widgetBox(BRIEF, 'arrangement'), { ms: 3000 })
-  await s.read('In the Cover Brief: arrangement, marked experimental. simple, the default, keeps the transcribed score as it is.', 6000)
+  await s.read('In the Cover Brief: arrangement, marked experimental. off, the default, keeps the transcribed score as it is.', 6000)
   s.caption('A creative mode lets the writer model re-arrange every section. We take “many instruments”: a full ensemble.')
   await s.chooseCombo(BRIEF, 'arrangement', 'many instruments', { read: 2200 })
   await s.read('A creative mode lets the writer model re-arrange every section. We take “many instruments”: a full ensemble.', 3000)
-  s.caption('song flow closeness: how close the music stays to the original - 100 exactly, 80 chords and key stay, 50 recognisable, 20 a free version.')
-  await s.slide(BRIEF, 'song_flow_closeness', 50)
-  await s.read('song flow closeness: how close the music stays to the original - 100 exactly, 80 chords and key stay, 50 recognisable, 20 a free version.', 7400)
-  s.caption('Whatever the slider says: the melody and the form always stay - they make it a cover.')
-  await s.read('Whatever the slider says: the melody and the form always stay - they make it a cover.', 4600)
-  s.caption('vocals: “new lyrics” - YuE2 sings new words on the original melody.')
+  s.caption('song flow closeness: how close the music stays to the original - 100 exactly, 80 chords, key and melody stay, 50 recognisable, 20 a free version.')
+  await s.read('song flow closeness: how close the music stays to the original - 100 exactly, 80 chords, key and melody stay, 50 recognisable, 20 a free version.', 7400)
+  s.caption('Below 80 the melody follows the new chords: from 50 only its notes that clash move, below 50 Plenio writes it anew.')
+  await s.read('Below 80 the melody follows the new chords: from 50 only its notes that clash move, below 50 Plenio writes it anew.', 7000)
+  s.caption('We take 30: a free version - the writer’s bold chords, and a new melody over them.')
+  await s.slide(BRIEF, 'song_flow_closeness', 30)
+  await s.read('We take 30: a free version - the writer’s bold chords, and a new melody over them.', 4800)
+  s.caption('Whatever the slider says: the form always stays, and the sung melody keeps its rhythm - every syllable keeps its note.')
+  await s.read('Whatever the slider says: the form always stays, and the sung melody keeps its rhythm - every syllable keeps its note.', 5600)
+  s.caption('vocals: “new lyrics” - YuE2 sings new words on the cover’s melody.')
   await s.chooseCombo(BRIEF, 'vocals', 'new lyrics', { read: 2200 })
   await s.wait(900)
   s.caption('voice: describe the singer.')
@@ -114,9 +119,9 @@ export default async function coverCreative(s, { project }) {
   s.caption('lyrics closeness: how close the new words stay to the original’s - 0 not at all, 30 its mood, 60 its story in new words, 90 its meaning line by line.')
   await s.slide(BRIEF, 'lyrics_closeness', 70)
   await s.read('lyrics closeness: how close the new words stay to the original’s - 0 not at all, 30 its mood, 60 its story in new words, 90 its meaning line by line.', 7800)
-  s.caption('harmony: “keep original chords” - the arrangement recolours them, and YuE2 follows the chords.')
+  s.caption('harmony: “keep original chords” - the writer builds its new chords on them, and YuE2 follows the chords.')
   await s.spotlight(await s.widgetBox(BRIEF, 'harmony'), { ms: 2600 })
-  await s.read('harmony: “keep original chords” - the arrangement recolours them, and YuE2 follows the chords.', 5200)
+  await s.read('harmony: “keep original chords” - the writer builds its new chords on them, and YuE2 follows the chords.', 5200)
 
   await s.flyNodes([ARRANGE, SEED, SUNG], 1100, 0.9)
   s.caption('In SCORE, the new block Arrange: the writer answers with a plan for every section, Plenio writes the notes and checks the score.')
@@ -166,7 +171,7 @@ export default async function coverCreative(s, { project }) {
 
   await openSheet(s, TEXT, 'Open it.')
   await tab(s, 'Lyrics', 'Lyrics: new words, section by section - with lyrics closeness 70 they tell the original’s story in their own way.', { min: 7000 })
-  await tab(s, 'Score', 'The Score tab: the new words over the original melody, each line where it is sung.', { min: 4800 })
+  await tab(s, 'Score', 'The Score tab: the new words over the new melody, each line where it is sung.', { min: 4800 })
   await scrollToVoice(s, 'vocal')
   await s.wait(1600)
   await tab(s, 'Style', 'Style: the mode asked for a full ensemble, with the voice from the brief.', { min: 5000 })
@@ -175,13 +180,14 @@ export default async function coverCreative(s, { project }) {
   await s.resetRunState()
   await s.run()
   await s.follow({ stages: { [TAKES]: STAGES[TAKES], [CHECK]: STAGES[CHECK], [MASTER]: STAGES[MASTER] }, groups: GROUPS })
-  await afterRun(s, 'The arranged cover, with its new lyrics. Listen for the fuller arrangement.')
+  await afterRun(s, 'The arranged cover, with its new melody and new lyrics. Listen for the fuller arrangement.')
   await sheetMusicSaved(s, EXPORT, 'Export saved the sheet music too: the arranged score with the new lyrics, as a PDF next to the cover.')
 
   // --- the close ----------------------------------------------------------------------------------
   s.chapter('Tips')
   await s.flyNodes([BRIEF], 1100, 0.94)
   await s.say('Creative modes are experimental: the plan can surprise. Try other modes, other closeness values, another arrangement seed - and keep what you like.', 7600)
+  await s.say('Closer to the original? At 50 only the melody notes that clash with a new chord move; from 80 the melody stays as it was.', 7000)
   await s.say('song flow closeness 100 keeps the original exactly: the writer is not even asked. And lyrics closeness 0 writes new lyrics as before, without the original’s.', 7600)
   await s.say('Above 90, lyrics closeness keeps the meaning line by line - a singable translation, when you choose another language.', 6400)
   s.card('end', {
@@ -195,7 +201,7 @@ async function abAgainstSource(s) {
   const d = s.page.locator(DIALOG)
   const both = d.locator('.transport .hear button', { hasText: 'both' }).first()
   if (!(await both.count())) return
-  const text = 'Compare with the original: “both” plays the source under the notes, A/B switches between them at once.'
+  const text = 'Compare with the original: “both” plays the source under the notes, A/B switches between them - the old melody against the new one.'
   s.caption(text)
   await s.click(both, { pause: 300 })
   const play = d.locator('button', { hasText: '▶ play' }).first()
