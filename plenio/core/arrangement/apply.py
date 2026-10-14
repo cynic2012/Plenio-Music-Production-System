@@ -1,7 +1,8 @@
 """Apply a section plan to a score - or fall back to the score as it was, and say why.
 
 The order per section: chords (``harmony.repair``: the writer's chord where it belongs to the key and the
-genre and carries the whole bar's melody, else the nearest chord that does), then the instrument line
+genre and carries the whole bar's melody, else the nearest chord that does), in a cover below song flow
+closeness 85 the melody fitted to the new chords (``harmony.co_adapt_melody``), then the instrument line
 (written from the chords sounding, fitted to the voice: only in its rests, or below it with *lines under
 the singing*), a gate (a section that clashes more than before goes back to how it was), then the key
 shift; at the end the tempo.
@@ -103,6 +104,37 @@ def _bars(first: int, end: int) -> str:
     return f"{first + 1}" if end - first == 1 else f"{first + 1}-{end}"
 
 
+def adapts_melody(policy: Policy) -> bool:
+    """Whether the melody follows the arrangement's chords: a cover below song flow closeness 85 whose melody
+    is sung or played by the instrument line (owner's decision 2026-10-15; a song's melody and a melody without
+    a lead stay as they are). From 80 a cover's chords stay, so its melody does too."""
+    return (
+        policy.kind == "cover"
+        and policy.closeness < harmony.ADAPT_FROM
+        and policy.melody in ("vocal", "instrument")
+    )
+
+
+def _adapt_melody(score: c.Score, first: int, end: int, policy: Policy, seed: int) -> tuple[c.Score, int]:
+    """The section's melody fitted to its chords (``harmony.co_adapt_melody``; a new rhythm only for an
+    instrument line that carries the melody - a sung one keeps its syllables on its notes). Returns the score and
+    how many notes changed."""
+    genre = harmony.genre_of(policy.genre)
+    notes, moved = harmony.co_adapt_melody(
+        score,
+        first,
+        end,
+        melody_voice(score, policy.melody),
+        closeness=policy.closeness,
+        tensions=genre.tensions | harmony.TENSIONS.get(policy.tensions, frozenset()),
+        seed=seed,
+        allow_rhythm_change=policy.melody == "instrument",
+    )
+    if not moved:
+        return score, 0
+    return c.validate(score.with_track("vocal" if policy.melody == "vocal" else "ins", notes)), moved
+
+
 def section_vocabulary(score: c.Score, first: int, end: int, policy: Policy) -> harmony.Vocabulary:
     """The chords a section may use: its key, the genre family of the brief's genre and style, the mode's
     qualities narrowed by the closeness."""
@@ -125,9 +157,12 @@ def _apply_chords(
     melody: Sequence[c.Note],
 ) -> tuple[c.Score, list[str], list[str]]:
     """The section's chords after ``harmony.repair``; a bar that keeps its chord gets it written out when the
-    bar before it changed (so a held chord does not silently become the new one)."""
+    bar before it changed (so a held chord does not silently become the new one). Where the melody follows the
+    chords (``adapts_melody``), the old melody weighs only by the closeness: at 20 the writer's chords win over it
+    nearly everywhere, and the melody is fitted to them afterwards."""
     vocab = section_vocabulary(score, first, end, policy)
-    repaired = harmony.repair(score, first, end, progression, melody, vocab)
+    weight = policy.closeness / 100 if adapts_melody(policy) else 1.0
+    repaired = harmony.repair(score, first, end, progression, melody, vocab, melody_weight=weight)
     applied: list[str] = []
     kept = [bar.note for bar in repaired if bar.note]
     chords = list(score.chords)
@@ -235,7 +270,7 @@ def _raw_line(
     if plan.lead == "riff":
         return lines.riff(bars, plan.energy, rng, quarter)
     if plan.lead == "countermelody":
-        return lines.countermelody(bars, plan.energy, rng, step, melody)
+        return lines.countermelody(bars, plan.energy, rng, step, melody, quarter)
     if plan.lead == "solo":
         return lines.solo(bars, plan.energy, rng, quarter)
     if plan.lead == "octave":
@@ -265,7 +300,7 @@ class Trouble:
     """A section's clashes (the gate compares them before and after the arrangement)."""
 
     accented: int
-    """Melody notes a half step above their chord's tone on a strong beat or held for a beat."""
+    """Melody notes that grind against their chord (``harmony.is_avoid``) on a strong beat or held for a beat."""
     clashes: int
     """Moments of an eighth or more with the voice and the line a minor second / major seventh apart."""
     share: float
@@ -294,7 +329,7 @@ def _trouble(score: c.Score, first: int, end: int, melody: str) -> Trouble:
         if name is None or not piece.accented:
             continue
         try:
-            if harmony.is_avoid(piece.pitch % 12, harmony.tones(name)):
+            if harmony.is_avoid(piece.pitch % 12, harmony.tones(name), harmony.parse_chord(name)[0]):
                 accented += 1
         except ValueError:
             continue
@@ -750,6 +785,16 @@ def arrange(
                     kept += stayed
                 except (PlenioValidationError, ValueError, KeyError) as error:
                     kept.append(f"chords left out ({error})")
+            # the melody follows the new chords (or, below 60, is reshaped anyway) before the line is written
+            # and before the gate compares the section with the score as planned
+            if adapts_melody(policy) and (working.chords != section_start.chords or policy.closeness < 60):
+                try:
+                    working, moved = _adapt_melody(working, first, end, policy, seed)
+                    if moved:
+                        applied.append(f"melody follows the chords ({moved} note(s))")
+                        melody = melody_voice(working, policy.melody)
+                except (PlenioValidationError, ValueError, KeyError) as error:
+                    kept.append(f"melody adaptation left out ({error})")
             if attempt == "full":
                 start, stop = working.starts[first], working.starts[end]
                 has_line = any(n.onset < stop and n.end > start for n in working.ins)  # also a held note

@@ -345,6 +345,21 @@ def _display_token(view: dict, element_id: str) -> str:
     return str(view["display_abc"][start:end])
 
 
+def test_a_rest_across_the_middle_of_a_bar_is_shown_as_two() -> None:
+    """CLAUDE_AUFTRAG 2026-10-14, bug 5: abcjs drew c4z24z4 with a rest hiding beat 3. YuE2 writes such rests
+    itself (the native style, S7), so only the display splits them; the model's text stays."""
+    text = build("C", [("verse", '"C"c4z24z4|z32|', "z8c24|z16c16|")])
+    view = score_model.view(text)
+    shown = view["display_abc"]
+    assert "c4z12z12z4|z32|" in shown  # split at beat 3; a whole-bar rest stays one
+    assert "z8c24|z16c16|" in shown  # rests from the bar's start or up to its middle stay as written
+    rest = next(e for e in view["elements"] if e["id"] == "V1.1")
+    assert shown[rest["display"][0] : rest["display"][1]] == "z12z12"
+    odd = text.replace("M:4/4", "M:3/4").replace('"C"c4z24z4|z32|', '"C"c4z16z4|z24|')
+    odd = odd.replace("z8c24|z16c16|", "z24|z24|")
+    assert "c4z16z4|" in score_model.view(odd)["display_abc"]  # an odd meter has no middle
+
+
 @pytest.mark.parametrize("name", sorted(ALL))
 def test_display_ranges_cover_each_element(name: str) -> None:
     text = ALL[name]
@@ -357,7 +372,11 @@ def test_display_ranges_cover_each_element(name: str) -> None:
         if element.kind == "bar_rest":
             assert token == f"z{element.units}"
         elif element.kind == "rest":
-            assert token == text[element.start : element.end]
+            # the source token, or - across the middle of an even bar - rests of the same length, one per half
+            units = [int(size or 1) for size in re.findall(r"z(\d*)", token)]
+            assert token == text[element.start : element.end] or (
+                re.fullmatch(r"(z\d*)+", token) and len(units) > 1 and sum(units) == element.units
+            )
         else:
             # the source token, possibly with an accidental written out in front
             source = text[element.start : element.end]

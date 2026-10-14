@@ -89,7 +89,7 @@ class PlenioComposeArrangement(io.ComfyNode):
             description=(
                 "Experimental (creative modes can give unexpected results - try them and listen). "
                 "The arrangement prompt of the brief's creative mode: the score as a table (sections, chords, the "
-                "melody on the strong beats, what the instrument line plays), the mode's rules, the closeness and "
+                "melody's notes per bar, what the instrument line plays), the mode's rules, the closeness and "
                 "the exact answer format - a small JSON plan, never notes. Connect the prompt to a writer (Generate "
                 "Text or Local LLM; Local LLM also takes the schema) and its answer to Apply Arrangement."
             ),

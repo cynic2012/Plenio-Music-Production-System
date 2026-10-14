@@ -2,8 +2,8 @@
 
 Owner's request 2026-10-08 (``docs/design/harmony-and-lyrics-fit.md`` §3.5): when the guard replaced more than
 a third of a section's bars of the writer's chords, or a section fell back to the plan because it clashed more
-than before, the writer is asked once more - for those sections only, with what did not fit, the melody on the
-strong beats and the chords that fit their key. Its answer goes through the same guard (``arrange`` on the plan
+than before, the writer is asked once more - for those sections only, with what did not fit, the melody's notes
+of every bar and the chords that fit their key. Its answer goes through the same guard (``arrange`` on the plan
 with these sections replaced); the second arrangement is taken only when it has fewer repairs and no more
 clashes. Never more than once.
 """
@@ -130,7 +130,7 @@ def request(text: str, result: Arrangement, policy: Policy, *, engine_name: str 
         lines.append(f"- section {flag.section} ({flag.label}, bars {flag.bars}):")
         lines += [f"  - {reason}" for reason in flag.reasons[:8]]
         if policy.melody != "none":
-            lines.append(f"  - the melody on the strong beats: {' | '.join(info.melody)}")
+            lines.append(f"  - the melody per bar (* on a strong beat): {' | '.join(info.melody)}")
         lines.append(f"  - the chords planned now: {' | '.join(info.chords)}")
         palette = _palette(summary, flag.section, policy)
         if palette:

@@ -45,7 +45,10 @@ def test_a_section_the_guard_repaired_much_is_asked_again_with_feedback() -> Non
     request = reask.request(FIXTURE, first, policy)
     assert request is not None and request.sections == (1,)
     assert "bar 1: Db is not a chord of C in pop" in request.prompt
-    assert "the melody on the strong beats: E E | D D | E B | F G" in request.prompt
+    assert (
+        "the melody per bar (* on a strong beat): E* G A D C | D* E G C | E* G A C B* | F* E D G* C"
+        in request.prompt
+    )
     assert "chords that fit (C major: C, Dm, Em, F, G, Am" in request.prompt
     assert '"<bar 1>"' in request.prompt and '"Db"' not in request.prompt.split("ANSWER")[1]
     jsonschema.validate(json.loads(answer("C", "G", "Am", "Dm")), request.schema)

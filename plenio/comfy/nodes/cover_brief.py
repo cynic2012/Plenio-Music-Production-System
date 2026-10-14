@@ -47,16 +47,17 @@ COVER_INPUTS = ("mode", "template", "description", "genre", "mood", "vocals", "h
 ARRANGEMENT_TOOLTIP = (
     "off: no arrangement - the transcribed score stays as it is. A creative mode (above, or your own file in "
     "user/plenio/arrangement) adds its hints to the writing prompt and lets the writer model re-arrange the "
-    "score's sections within the song flow closeness: chords, what the instrument line plays, energy. The melody "
-    "and the form always stay. Plenio writes the "
+    "score's sections within the song flow closeness: chords, what the instrument line plays, energy. The form "
+    "always stays; below song flow closeness 80 the melody follows the new chords. Plenio writes the "
     "notes itself and checks the result; a plan it cannot use leaves the transcription as it was (the score's "
     "Song Sheet says so). " + EXPERIMENTAL
 )
 SONG_FLOW_TOOLTIP = (
     "Creative modes only (off ignores it; experimental): how close the cover's song flow stays to the "
     "original - 100 exactly the original (nothing is planned), 80 chords, key and tempo stay (only silent sections "
-    "get a line), 50 recognisable (chords recoloured, lines changed, a small key lift), 20 a free version (new "
-    "chords and lines, another tempo), 0 only a hint of the original. The melody and the form always remain."
+    "get a line), 50 recognisable (chords recoloured, lines changed, a small key lift; melody notes that clash "
+    "move onto the new chords), 20 a free version (new chords and lines, another tempo, the melody written anew "
+    "over the chords in its old rhythm), 0 only a hint of the original. The form always remains."
 )
 LYRICS_CLOSENESS_TOOLTIP = (
     "New lyrics only (experimental): how close they stay to the source's lyrics - 0 written without the source's text "

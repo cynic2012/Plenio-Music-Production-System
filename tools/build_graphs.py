@@ -1753,8 +1753,8 @@ CREATIVE_SONG_TEXT = CREATIVE_TEXT.format(
 CREATIVE_COVER_TEXT = CREATIVE_TEXT.format(
     off="the transcribed score stays as it is",
     closeness="*song flow closeness* sets how close it stays to the original: 100 exactly the original (no "
-    "plan), 80 chords and key stay, 50 recognisable, 20 a free version, 0 only a hint - the melody and the form "
-    "always remain. *lyrics closeness* (new lyrics) sets how close the new words stay to the source's: 0 without "
+    "plan), 80 chords and key stay, 50 recognisable, 20 a free version, 0 only a hint - the form always "
+    "remains, below 80 the melody follows the new chords. *lyrics closeness* (new lyrics) sets how close the new words stay to the source's: 0 without "
     "them (as before) up to 100, their meaning line by line.",
 )
 STATUS_TEXT = (

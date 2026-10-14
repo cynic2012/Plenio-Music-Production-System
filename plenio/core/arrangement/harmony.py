@@ -16,6 +16,7 @@ Pure: no ComfyUI, no I/O.
 from __future__ import annotations
 
 import math
+import random
 import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
@@ -441,32 +442,64 @@ def pieces(score: c.Score, notes: Iterable[c.Note], start: int, stop: int) -> li
     return found
 
 
-def is_avoid(pc: int, chord: frozenset[int]) -> bool:
-    """A half step above a chord tone (and not a chord tone itself)."""
-    return pc not in chord and any((pc - t) % 12 == 1 for t in chord)
+def is_avoid(pc: int, chord: frozenset[int], root: int | None = None) -> bool:
+    """A note that is not a chord tone and grinds against one: a half step above a chord tone (b9 over the
+    root, the 4th over a major third, b6 over the fifth - and so also a major third over a minor chord's
+    third). With the chord's ``root`` also a half step under its major seventh (b7 against maj7) and the
+    tritone above the root next to its perfect fifth (#4/b5)."""
+    if pc in chord:
+        return False
+    if any((pc - t) % 12 == 1 for t in chord):
+        return True
+    if root is None:
+        return False
+    interval = (pc - root) % 12
+    if interval == 10 and (root + 11) % 12 in chord:
+        return True
+    return interval == 6 and (root + 7) % 12 in chord
 
 
 BLUE_THIRD = 3
 """A minor third over a major chord (a half step under its third): idiomatic where the genre lists it as a
-tension (blues, rock, metal), a clash elsewhere."""
+tension (blues, rock, metal) - as a short, unaccented blue note over a major triad, also accented or held over a
+dominant seventh chord (the bluesman's I7, where it is the #9) - and a clash elsewhere."""
 
 
-def clashing(pc: int, chord: frozenset[int], root: int, tensions: frozenset[int]) -> bool:
+def clashing(
+    pc: int, chord: frozenset[int], root: int, tensions: frozenset[int], *, accented: bool = False
+) -> bool:
     """Whether a melody pitch class clashes with a chord: an avoid note, or a blue third where the genre does
-    not take it."""
+    not take it, or (``accented``: on a strong beat or held for a beat) over a major triad without a minor
+    seventh."""
     if pc in chord:
         return False
-    if is_avoid(pc, chord):
+    if is_avoid(pc, chord, root):
         return True
-    major = (root + 4) % 12 in chord
-    return major and (pc - root) % 12 == BLUE_THIRD and BLUE_THIRD not in tensions
+    if (root + 4) % 12 not in chord or (pc - root) % 12 != BLUE_THIRD:
+        return False
+    if BLUE_THIRD not in tensions:
+        return True
+    return accented and (root + 10) % 12 not in chord
+
+
+ACCENTED_CLASH = 1.5
+"""The cost per weighted beat of an accented clash where the melody will follow the chords (``fit_cost`` with
+``soft``): one and a half times an unaccented one - the note will move, which is heard - but no longer
+forbidden."""
 
 
 def fit_cost(
-    melody: Sequence[Piece], chord: str | None, *, key: Key, tensions: frozenset[int], beat: int
+    melody: Sequence[Piece],
+    chord: str | None,
+    *,
+    key: Key,
+    tensions: frozenset[int],
+    beat: int,
+    soft: bool = False,
 ) -> float:
     """How badly ``chord`` carries the melody (0 = every note a chord tone; ``inf`` = an accented avoid
-    note). Weighed by length (in beats) and accent."""
+    note). Weighed by length (in beats) and accent. ``soft``: an accented clash costs ``ACCENTED_CLASH`` instead
+    of ruling the chord out (the melody is adapted to the chords afterwards, ``co_adapt_melody``)."""
     if chord is None or not melody:
         return 0.0
     try:
@@ -480,9 +513,12 @@ def fit_cost(
         weight = piece.duration / beat * (1.5 if piece.accented else 1.0)
         if pc in chord_tones:
             continue
-        if clashing(pc, chord_tones, root, tensions):
+        if clashing(pc, chord_tones, root, tensions, accented=piece.accented):
             if piece.accented:
-                return math.inf
+                if not soft:
+                    return math.inf
+                cost += ACCENTED_CLASH * weight
+                continue
             cost += 1.0 * weight
         elif (pc - root) % 12 in tensions:
             cost += 0.15 * weight
@@ -561,14 +597,26 @@ def repair(
     vocab: Vocabulary,
     *,
     weight_intent: float = 1.0,
+    melody_weight: float = 1.0,
 ) -> list[RepairedBar]:
     """The chords of measures ``first`` to ``end`` after the writer's plan (one chord per bar, ``None``
     keeps a bar): per bar the writer's chord when it is in the vocabulary and carries the melody, else the
     cheapest of the original chords, the writer's chord with another quality and in-key chords that share
     two of its tones - chosen together over the section (dynamic programming), so the chords also follow
-    each other well and a secondary dominant resolves."""
+    each other well and a secondary dominant resolves.
+
+    ``melody_weight`` below 1 (a cover whose melody follows the new chords, ``co_adapt_melody``) weighs the
+    melody's fit by that factor and lets an accented clash cost instead of ruling a chord out: at 0 the writer's
+    chord stands wherever it belongs to the vocabulary."""
     beat = max(1, score.units_per_quarter)
     tension = vocab.tensions
+    soft = melody_weight < 1.0
+    melody_weight = max(0.0, min(1.0, melody_weight))
+
+    def fit(melody: Sequence[Piece], name: str | None) -> float:
+        cost = fit_cost(melody, name, key=vocab.key, tensions=tension, beat=beat, soft=soft)
+        return cost * melody_weight if cost != math.inf else cost
+
     entering = None
     for ch in score.chords:
         if ch.onset < score.starts[first]:
@@ -589,7 +637,7 @@ def repair(
         options = [BarChoice(None, "original", INTENT_ORIGINAL if name else 0.0)]
         if name is not None:
             options.append(BarChoice(((start, name),), name, 0.0))
-            if _stands(name, bar_melody[-1], vocab, beat, length):
+            if _stands(name, bar_melody[-1], vocab, beat, length, melody_weight):
                 candidates.append(options)  # the writer's chord stands: no alternative is looked for
                 continue
             try:
@@ -619,17 +667,13 @@ def repair(
                     else score.starts[first + i] + score.lengths[first + i]
                 )
                 inside = [p for p in bar_melody[i] if onset <= p.onset < stop]
-                cost += min(fit_cost(inside, name, key=vocab.key, tensions=tension, beat=beat), 50.0)
+                cost += min(fit(inside, name), 50.0)
             return cost + choice.intent * weight_intent  # the original stays possible even when it clashed
         name = choice.chords[0][1]
         if vocab.kind(name) is None:
             return math.inf
         lost_rhythm = 0.3 if len(original_chords[i]) > 1 else 0.0
-        return (
-            fit_cost(bar_melody[i], name, key=vocab.key, tensions=tension, beat=beat)
-            + choice.intent * weight_intent
-            + lost_rhythm
-        )
+        return fit(bar_melody[i], name) + choice.intent * weight_intent + lost_rhythm
 
     def sounding_name(i: int, choice: BarChoice) -> tuple[str | None, str | None]:
         """The chord a bar starts with and ends with."""
@@ -676,7 +720,7 @@ def repair(
             length = score.lengths[first + i]
             why = (
                 "does not follow well from the chord before it or into the next"
-                if _stands(name, bar_melody[i], vocab, beat, length)
+                if _stands(name, bar_melody[i], vocab, beat, length, melody_weight)
                 else _why(name, bar_melody[i], vocab, beat)
             )
             kept = "the bar keeps its chord" if choice.chords is None else f"{choice.label} instead"
@@ -690,11 +734,13 @@ ACCEPT_PER_BEAT = 0.3
 this much per beat of its bar (``fit_cost``): about one unaccented passing note per bar."""
 
 
-def _stands(name: str, melody: Sequence[Piece], vocab: Vocabulary, beat: int, length: int) -> bool:
+def _stands(
+    name: str, melody: Sequence[Piece], vocab: Vocabulary, beat: int, length: int, melody_weight: float = 1.0
+) -> bool:
     if vocab.kind(name) is None:
         return False
-    cost = fit_cost(melody, name, key=vocab.key, tensions=vocab.tensions, beat=beat)
-    return cost <= ACCEPT_PER_BEAT * max(1.0, length / beat)
+    cost = fit_cost(melody, name, key=vocab.key, tensions=vocab.tensions, beat=beat, soft=melody_weight < 1.0)
+    return cost * max(0.0, melody_weight) <= ACCEPT_PER_BEAT * max(1.0, length / beat)
 
 
 def _entering(score: c.Score, onset: int) -> str | None:
@@ -726,7 +772,7 @@ class Measures:
     melody_on_chord: float
     """Share of the melody's duration on chord tones (or a tension the genre allows)."""
     accented_avoid: int
-    """Melody notes a half step above a chord tone on a strong beat or a beat long."""
+    """Melody notes that clash with their chord (``clashing``) on a strong beat or a beat long."""
     clashes: int
     """Moments of an eighth note or longer with Vocal and Ins a minor second / major seventh apart."""
     overlap: float
@@ -795,7 +841,7 @@ def measure(
             pc = piece.pitch % 12
             if pc in chord_tones or (pc - root) % 12 in tensions:
                 good += piece.duration
-            if clashing(pc, chord_tones, root, tensions):
+            if clashing(pc, chord_tones, root, tensions, accented=piece.accented):
                 bad += piece.duration
                 accented += 1 if piece.accented else 0
     sung = sorted(score.vocal, key=lambda n: n.onset)
@@ -823,3 +869,309 @@ def measure(
         chords_in_key=in_key / all_chords if all_chords else 1.0,
         clash_share=bad / total if total else 0.0,
     )
+
+
+# --- a melody that follows new chords ---------------------------------------------------------------
+
+
+ADAPT_FROM = 85
+"""Song flow closeness of a cover below which its melody follows the arrangement's chords (owner's decision
+2026-10-15, superseding "the melody always stays"): from ``SNAP_FROM`` the notes that clash with a new chord move
+to the nearest note that fits, below it the melody is written anew over the chords. (From 80 a cover keeps its
+chords - ``plan.policy`` - so its melody changes only below 80 in practice.)"""
+SNAP_FROM = 50
+RHYTHM_FROM = 45
+"""Below this closeness an instrument line that carries the melody may also get new rhythms (a sung melody keeps
+its rhythm: its syllables sit on its notes)."""
+RHYTHM_GRIDS = ((0, 2, 4, 6), (0, 3, 6), (0, 2, 3, 4, 6), (0, 4, 6), (0, 1, 2, 4, 6))
+"""Onsets in eighths of a 4/4 bar for a new rhythm: four quarters, the pop 3-3-2, a syncopated phrase, a half
+and two quarters, two eighths and quarters."""
+CONTOURS = ("arch", "wave", "descent")
+"""Shapes a phrase of a rewritten melody follows (the arrangement seed picks one for the whole song): a phrase
+rising and falling, answered lower (``arch``); up and down twice (``wave``); falling from a high start
+(``descent``)."""
+
+
+def _note_chords(score: c.Score, note: c.Note, beat: int) -> list[tuple[frozenset[int], int, bool]]:
+    """``(tones, root, accented)`` of every chord a note sounds under - cut at the chord changes, accented as
+    in ``pieces``."""
+    points = [note.onset, *(ch.onset for ch in score.chords if note.onset < ch.onset < note.end)]
+    found = []
+    for i, a in enumerate(points):
+        b = points[i + 1] if i + 1 < len(points) else note.end
+        name = _entering(score, a)
+        if name is None:
+            continue
+        try:
+            found.append((tones(name), parse_chord(name)[0], strong(score, a) or b - a >= beat))
+        except ValueError:
+            continue
+    return found
+
+
+def _fits_all(
+    pitch: int, under: Sequence[tuple[frozenset[int], int, bool]], tensions: frozenset[int]
+) -> bool:
+    return not any(clashing(pitch % 12, t, r, tensions, accented=a) for t, r, a in under)
+
+
+def _new_rhythm(
+    score: c.Score, first: int, end: int, notes: list[c.Note], *, closeness: int, seed: int
+) -> list[c.Note]:
+    """``notes`` (one section, sorted) with some 4/4 bars on a new rhythm from ``RHYTHM_GRIDS``: more of them the
+    lower the closeness; from 20 the section's first bar keeps its rhythm (the hook). A bar takes its new rhythm
+    from its own notes and chord, so a repeated bar is rewritten the same way. Each new note starts with the pitch
+    the old line sounded there (``co_adapt_melody`` then chooses the pitches)."""
+    beat = score.units_per_quarter
+    if beat < 2 or beat % 2:
+        return notes
+    eighth = beat // 2
+    result: list[c.Note] = []
+    for m in range(first, end):
+        b_start, b_len = score.starts[m], score.lengths[m]
+        bar = [n for n in notes if b_start <= n.onset < b_start + b_len]
+        if (
+            len(bar) < 2
+            or score.meters[m] != (4, 4)
+            or b_len != 4 * beat
+            or any(n.end > b_start + b_len for n in bar)
+            or (closeness >= 20 and m == first)
+        ):
+            result += bar
+            continue
+        pattern = tuple((n.onset - b_start, n.duration, n.pitch) for n in bar)
+        rng = random.Random(f"rhythm:{seed}:{closeness}:{pattern}:{_entering(score, b_start)}")
+        if rng.random() >= 0.65 - closeness / 100:
+            result += bar
+            continue
+        grid = rng.choice(RHYTHM_GRIDS)
+        begin, finish = bar[0].onset, max(n.end for n in bar)
+        onsets = sorted(
+            {begin} | {b_start + g * eighth for g in grid if begin < b_start + g * eighth < finish}
+        )
+        if len(onsets) < 2:
+            result += bar
+            continue
+        for k, onset in enumerate(onsets):
+            stop = onsets[k + 1] if k + 1 < len(onsets) else finish
+            pitch = [n.pitch for n in bar if n.onset <= onset][-1]
+            result.append(c.Note(onset, stop - onset, pitch))
+    return result
+
+
+def _contour(shape: str, t: float, phrase: int) -> float:
+    """Where a phrase's melody heads at ``t`` (0 = its first note, 1 = its last), in the section's half range."""
+    if shape == "wave":
+        return math.sin(2 * math.pi * t) * 0.8
+    if shape == "descent":
+        return 0.9 - 1.6 * t if phrase % 2 == 0 else 0.4 - 0.9 * t
+    # arch: a rising question, a falling answer
+    return math.sin(math.pi * t * 0.85) if phrase % 2 == 0 else math.sin(math.pi * t) - 0.6 * t
+
+
+def _step_cost(step: int) -> float:
+    """The cost of a melodic interval (in semitones): steps cheap, a tritone leap almost forbidden."""
+    size = abs(step)
+    if size == 0:
+        return 0.15
+    if size <= 2:
+        return 0.05 * size
+    if size <= 4:
+        return 0.2 * size
+    if size == 6:
+        return 4.0
+    if size <= 7:
+        return 0.25 * size
+    return 2.0 + 0.6 * (size - 7)
+
+
+def _snapped(
+    score: c.Score,
+    inside: Sequence[c.Note],
+    *,
+    low: int,
+    high: int,
+    scale_pcs: frozenset[int],
+    tensions: frozenset[int],
+) -> list[c.Note]:
+    """The notes that clash with their chord moved to the nearest note that fits: a chord tone within a major
+    third when the clash is accented, a scale note within a step when not; a note with no such neighbour stays."""
+    beat = max(1, score.units_per_quarter)
+    adapted: list[c.Note] = []
+    previous: int | None = None
+    for note in inside:
+        under = _note_chords(score, note, beat)
+        pitch = note.pitch
+        if under and not _fits_all(pitch, under, tensions):
+            accented = any(a for _, _, a in under)
+            reach = 4 if accented else 2
+            allowed = under[0][0] if accented else scale_pcs | under[0][0]
+            options = [
+                p
+                for p in range(max(low - 2, pitch - reach), min(high + 2, pitch + reach) + 1)
+                if p % 12 in allowed and _fits_all(p, under, tensions)
+            ]
+            if options:
+                before = note.pitch if previous is None else previous
+                pitch = min(options, key=lambda p: (abs(p - note.pitch), abs(p - before), p))
+        adapted.append(note if pitch == note.pitch else c.Note(note.onset, note.duration, pitch))
+        previous = pitch
+    return adapted
+
+
+def _rewritten(
+    score: c.Score,
+    notes: Sequence[c.Note],
+    inside: Sequence[c.Note],
+    *,
+    closeness: int,
+    low: int,
+    high: int,
+    scale_pcs: frozenset[int],
+    tensions: frozenset[int],
+    seed: int,
+) -> list[c.Note]:
+    """``notes`` with new pitches chosen together over the section (dynamic programming, see
+    ``co_adapt_melody``); ``inside`` are the old notes, whose middle and range the new line keeps.
+
+    Where the new line heads: the phrase's shape (``CONTOURS``) plus the old line's motion around its phrase's
+    middle turned upside down (a melodic inversion: the new line moves as busily as the old one, against it)."""
+    beat = max(1, score.units_per_quarter)
+    keep = closeness / SNAP_FROM  # how much the old line steers the new one: 0.98 at 49, 0 at 0
+    centre = sum(n.pitch for n in inside) / len(inside)
+    half_range = max(2.0, (high - low) / 2)
+    shape = CONTOURS[random.Random(f"contour:{seed}").randrange(len(CONTOURS))]
+    bars = [score.measure_at(n.onset) for n in notes]
+    phrases: list[
+        int
+    ] = []  # the phrase of every note: a new one after a rest of a beat, every two bars at most
+    for i, note in enumerate(notes):
+        new = i > 0 and (
+            note.onset - notes[i - 1].end >= beat or (bars[i] - bars[0]) // 2 != (bars[i - 1] - bars[0]) // 2
+        )
+        phrases.append(phrases[-1] + int(new) if i else 0)
+    sizes = [phrases.count(p) for p in range(phrases[-1] + 1)]
+    positions = [phrases[:i].count(phrases[i]) for i in range(len(notes))]
+    middles = [
+        sum(n.pitch for n, p in zip(notes, phrases, strict=True) if p == phrase) / sizes[phrase]
+        for phrase in range(len(sizes))
+    ]
+
+    layers: list[dict[int, tuple[float, int]]] = []
+    for i, note in enumerate(notes):
+        under = _note_chords(score, note, beat)
+        if not under:  # no chord sounds: the note keeps its pitch
+            if not layers:
+                layers.append({note.pitch: (0.0, note.pitch)})
+                continue
+            previous = layers[-1]
+            best_previous = min(previous, key=lambda q: previous[q][0])
+            layers.append({note.pitch: (previous[best_previous][0], best_previous)})
+            continue
+        chord_tones, root, _ = under[0]
+        accented = any(a for _, _, a in under)
+        candidates = (
+            [
+                p
+                for p in range(low, high + 1)
+                if _fits_all(p, under, tensions)
+                and (p % 12 in chord_tones or (not accented and p % 12 in scale_pcs))
+            ]
+            or [p for p in range(low, high + 1) if p % 12 in chord_tones]
+            or [note.pitch]
+        )
+        size = sizes[phrases[i]]
+        t = positions[i] / (size - 1) if size > 1 else 0.0
+        inversion = middles[phrases[i]] - note.pitch
+        target = centre + 0.6 * half_range * _contour(shape, t, phrases[i]) + 0.8 * inversion
+        phrase_end = positions[i] == size - 1
+        old_step = note.pitch - notes[i - 1].pitch if i else 0
+        new_phrase = i > 0 and phrases[i] != phrases[i - 1]
+        layer: dict[int, tuple[float, int]] = {}
+        for p in candidates:
+            pc = p % 12
+            own = 0.0 if pc in chord_tones else 0.25 if (pc - root) % 12 in tensions else 0.5
+            if phrase_end and pc not in chord_tones:
+                own += 0.5  # a phrase ends on a chord tone
+            if i == len(notes) - 1 and pc != root:
+                own += 0.4  # the section on its chord's root
+            own += keep * 0.6 * abs(p - note.pitch) + (1 - keep) * 0.35 * abs(p - target)
+            if not layers:
+                layer[p] = (own, p)
+                continue
+            best: tuple[float, int] | None = None
+            for q, (total, _) in layers[-1].items():
+                step = p - q
+                move = _step_cost(step) * (0.5 if new_phrase else 1.0)
+                if step == 0 and old_step != 0:
+                    move += 0.3 * keep + 0.5 * (1 - keep)  # a note repeats where the old line repeated one
+                if old_step and step and (step > 0) != (old_step > 0):
+                    move += 0.8 * keep  # the old line's up and down, less and less
+                option = (total + own + move, q)
+                if best is None or option < best:
+                    best = option
+            assert best is not None
+            layer[p] = best
+        layers.append(layer)
+    chosen = [0] * len(notes)
+    pitch = min(layers[-1], key=lambda p: layers[-1][p][0])
+    for i in range(len(notes) - 1, -1, -1):
+        chosen[i] = pitch
+        pitch = layers[i][pitch][1]
+    return [n if p == n.pitch else c.Note(n.onset, n.duration, p) for n, p in zip(notes, chosen, strict=True)]
+
+
+def co_adapt_melody(
+    score: c.Score,
+    first: int,
+    end: int,
+    melody: Sequence[c.Note],
+    *,
+    closeness: int,
+    tensions: frozenset[int] = frozenset({2, 9}),
+    seed: int = 0,
+    allow_rhythm_change: bool = False,
+) -> tuple[list[c.Note], int]:
+    """The melody (all of its notes; those that start in measures ``first`` to ``end`` change) fitted to the
+    chords of ``score`` by the song flow closeness:
+
+    - ``ADAPT_FROM`` and above: unchanged;
+    - ``SNAP_FROM`` to ``ADAPT_FROM``: a note that clashes with its chord on a strong beat or held for a beat moves
+      to the nearest chord tone, an unaccented clash to the nearest scale note that fits (``_snapped``);
+    - below ``SNAP_FROM``: the melody is written anew (``_rewritten``): chord tones on the accents, scale notes
+      between them, small steps, phrases that follow a shape (``CONTOURS``) and end on a chord tone - near the old
+      pitches and their up and down at 49, free of them at 0; with ``allow_rhythm_change`` below ``RHYTHM_FROM``
+      some bars also get a new rhythm (``_new_rhythm``).
+
+    The notes stay in the melody's own range; without ``allow_rhythm_change`` the onsets and lengths stay (a sung
+    melody keeps its syllables on its notes). Returns the notes, sorted, and how many of them changed."""
+    start, stop = score.starts[first], score.starts[end] if end < score.measure_count else score.total
+    ordered = sorted(melody, key=lambda n: n.onset)
+    inside = [n for n in ordered if start <= n.onset < stop]
+    outside = [n for n in ordered if not start <= n.onset < stop]
+    if closeness >= ADAPT_FROM or not inside or not score.chords:
+        return ordered, 0
+    low, high = min(n.pitch for n in ordered), max(n.pitch for n in ordered)
+    scale_pcs = frozenset(section_key(score, first, end).scale)
+    if closeness >= SNAP_FROM:
+        adapted = _snapped(score, inside, low=low, high=high, scale_pcs=scale_pcs, tensions=tensions)
+    else:
+        notes = list(inside)
+        if allow_rhythm_change and closeness < RHYTHM_FROM:
+            notes = _new_rhythm(score, first, end, notes, closeness=closeness, seed=seed)
+        adapted = _rewritten(
+            score,
+            notes,
+            inside,
+            closeness=closeness,
+            low=low,
+            high=high,
+            scale_pcs=scale_pcs,
+            tensions=tensions,
+            seed=seed,
+        )
+    if [(n.onset, n.duration) for n in adapted] != [(n.onset, n.duration) for n in inside]:
+        changed = len(adapted)  # a new rhythm: every note of the section is new
+    else:
+        changed = sum(1 for a, b in zip(inside, adapted, strict=True) if a.pitch != b.pitch)
+    return sorted([*outside, *adapted], key=lambda n: n.onset), changed

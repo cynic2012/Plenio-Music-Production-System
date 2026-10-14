@@ -183,6 +183,30 @@ Docs, help pages, CHANGELOG and the tutorials' captions where screens change; a 
 | D4 | Syllable counting: own rules (no dependency) or pyphen/CMUdict? | **Own rules** first; pyphen only if A2 shows the counter is the bottleneck |
 | D5 | Neural harmonisers / accompaniment models | **Not now** - later as a study if the guard is not enough |
 
+## 7. Addendum 2026-10-15: the whole bar for the writer, more avoid notes, a melody that follows
+
+Owner's request (an external review of the arrangement code), checked against the code before it was taken:
+
+- **The writer saw beats 1 and 3 only** while the guard weighs the whole bar - the score table and the re-ask now
+  show every melody note on a beat or an eighth long, `*` after those on a strong beat (`plan._bar_notes`).
+- **Avoid notes**: besides a half step above a chord tone (which already covers a major third over a minor chord),
+  a half step under the chord's major seventh and the #4 beside its fifth (`harmony.is_avoid` with the root; the
+  lines' `lines.is_avoid` alike). The blue third stays where the genre takes it only as a short unaccented note over a
+  major triad, accented or held only over a dominant seventh chord (owner's choice; the review wanted it short
+  everywhere, which would have rejected the blues' I7 under its typical melodies). Consequence seen in the tests: an
+  E sung over Bb (its #4) now rules Bb out, so a lift into D from a C major chorus is led in by C alone where Bb - C
+  stood before.
+- **Motifs** move along the key's scale (a tonal sequence), lines take chord tones on every beat.
+- **A cover's melody follows the chords** below song flow closeness 85 (80 in practice: from 80 the chords stay) -
+  owner's decision, superseding ADR-0011's "the melody and the form always stay" for covers: `repair(melody_weight=closeness /
+  100)` lets the writer's chords win more often (an accented clash costs instead of ruling a chord out), then
+  `harmony.co_adapt_melody` snaps clashing notes (50-79) or writes the melody anew by dynamic programming (below 50:
+  chord tones on accents, steps, a phrase shape plus the old line's motion inverted). The gate, the lyrics fit and the
+  checks run on the adapted melody as before. The review's patch lowered `weight_intent` instead, which would have
+  favoured the original chords; it was not taken.
+- **Not taken**: splitting rests at the half bar in the score YuE2 reads - YuE2's and MiniMax's own scores write
+  them greedily (`c2z12z2`, S7 golden test), so the split went into the display ABC only (`model.display`).
+
 ## Sources
 
 - REFFLY: Melody-Constrained Lyrics Editing Model - https://aclanthology.org/2025.naacl-long.564.pdf

@@ -7,9 +7,10 @@ the upstream parser exactly (accidentals by letter across octaves, unmarked tied
 continuations keep their pitch), and the upstream parser must accept the text first.
 
 ``display_abc`` is the text abcjs renders: the same score with every accidental that
-standard ABC would read differently written out, section names as annotations and, with
-lyrics, a ``w:`` line under every Vocal line (``lyric_layout``). It is never used as the
-model's score (extra tokens would change what YuE2 reads).
+standard ABC would read differently written out, section names as annotations, a rest
+across the middle of an even bar shown as two and, with lyrics, a ``w:`` line under every
+Vocal line (``lyric_layout``). It is never used as the model's score (extra tokens would
+change what YuE2 reads).
 """
 
 from __future__ import annotations
@@ -388,6 +389,36 @@ class Display:
     """Element and chord ids -> their range in ``abc``."""
 
 
+_DURATIONS: tuple[int, ...] = tuple(sorted(upstream.DURATIONS, reverse=True))
+
+
+def _half_bar_rests(model: ScoreModel) -> list[tuple[int, int, int, str]]:
+    """Display edits for the rests that start in the first half of an even bar (4/4, 2/2, 6/8 ...) and run over
+    its middle: each is shown as two rests, one per half (``c2z6z6z2`` instead of ``c2z12z2``, whose dotted half
+    rest hides beat 3). YuE2's own scores write such rests (the native style, S7), so the model's text keeps
+    them; only what abcjs draws changes."""
+    bars = {(voice, bar.number): bar for voice in VOICES for bar in model.bars[voice]}
+    edits: list[tuple[int, int, int, str]] = []
+    for element in model.elements:
+        bar = bars.get((element.voice, element.bar))
+        if element.kind != "rest" or bar is None or bar.meter[0] % 2 or not element.units:
+            continue
+        middle = bar.length / 2
+        if not 0 < element.offset < middle < element.offset + element.duration:
+            continue
+        before = (middle - element.offset) / (element.duration / element.units)
+        if before.denominator != 1:
+            continue
+        sizes: list[int] = []
+        for part in (int(before), element.units - int(before)):
+            for size in _DURATIONS:
+                while part >= size:
+                    sizes.append(size)
+                    part -= size
+        edits.append((element.start, element.end, 2, "".join(f"z{size}" for size in sizes)))
+    return edits
+
+
 def display(model: ScoreModel, words: Mapping[int, str] | None = None) -> Display:
     """``display_abc`` and the display range of every element and chord.
 
@@ -438,6 +469,7 @@ def display(model: ScoreModel, words: Mapping[int, str] | None = None) -> Displa
         (start, end, 2, "|".join([rest_bars[(start, end)]] * span))
         for (start, end), span in compressed.items()
     ]
+    edits += _half_bar_rests(model)
     edits.sort(key=lambda item: (item[0], item[2]))
     parts: list[str] = []
     cursor = 0

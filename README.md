@@ -118,7 +118,7 @@ The cover template has the same choice (*one cover, stop to review* is its defau
 1. Open **2 · YuE2 · Cover** and load the source recording.
 2. Choose the mode, the target style in the **Cover Brief**, the vocals (the template starts with the *original lyrics* on the style template *pop/dance-pop-vocal*; *instrumental* lets an instrument play the vocal melody) and the harmony (the template starts with *keep original chords*). With an empty title the cover is named after its source recording: `<title>-cover`.
 3. Queue: with *one cover, stop to review* the run stops at **Song Sheet · Score** and later at **Song Sheet · Text**, so you can inspect and edit the transcribed score and the lyrics before YuE2 renders. With *new cover every run* it renders straight through, a new version every run.
-4. Optional: a **creative mode** re-arranges the transcription within the *song flow closeness* (100 the original ... 0 only a hint; the melody and the form always stay), and with *new lyrics* the *lyrics closeness* sets how close the new words stay to the original ones.
+4. Optional: a **creative mode** re-arranges the transcription within the *song flow closeness* (100 the original ... 0 only a hint; the form always stays, below 80 the melody follows the new chords), and with *new lyrics* the *lyrics closeness* sets how close the new words stay to the original ones.
 
 <p align="center">
   <img src="assets/branding/0.4.5/Screenshot%20YuE2-cover-graph.png" alt="The 2 · YuE2 · Cover template: source, Cover Brief, score, lyrics, render and finish" width="100%" />

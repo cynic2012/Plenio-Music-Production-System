@@ -2,6 +2,16 @@
 
 All notable changes of the current version and the one before. Versions follow semantic versioning; published Registry versions are immutable. Earlier versions (0.2.0 to 0.6.0): the [changelog of 0.6.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.6.0/CHANGELOG.md) (0.5.0 and 0.6.0), the [changelog of 0.4.4](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.4.4/CHANGELOG.md) (0.2.0 to 0.4.4) and the [GitHub releases](https://github.com/jplenio/Plenio-Music-Production-System/releases).
 
+## Unreleased
+
+### Changed
+
+- **A cover's melody follows the new chords** (owner's decision): below *song flow closeness* 80 the melody no longer stays frozen while the writer re-harmonises. From 50 a melody note that clashes with a new chord moves onto it (the nearest chord tone on a strong beat or held for a beat, a step otherwise); below 50 Plenio writes the melody anew over the chords - chord tones on the accents, small steps, phrases that end on a chord tone, near the old line at 49 and freer down to 0 (the arrangement seed picks the phrase shape). A sung melody keeps its rhythm, so its syllables stay on their notes; an instrumental's lead line may also get new rhythms below 45 (from 20 its first bar keeps its rhythm). The lower the closeness, the less the old melody holds the writer's chords back - at 20 they win nearly everywhere. The form always stays; from 80, and in songs, the melody stays as before.
+- **The writer sees the whole bar's melody**: the score table of *Compose Arrangement* and the re-ask showed only the notes on beats 1 and 3, while the harmony guard weighs every note of the bar - now every note on a beat or an eighth long is shown, those on a strong beat marked (`E* G A* B`).
+- **More clashes recognised**: the harmony guard also rejects a melody note a half step under a chord's major seventh (Bb against Cmaj7), the #4 beside a chord's fifth (F# over C) and, on a strong beat or held, a minor third over a major triad - blues, rock and metal keep their blue third as a short passing note, and over a dominant seventh chord (the blues' I7) also held. The instrument lines follow the same rules.
+- **Motifs move along the key's scale**: a *motif* figure moved onto another chord keeps its scale steps (C E G over C becomes A C E over Am - before, it moved by semitones and sang A C# E), takes the chord's own tone where the chord alters the scale (G# over E in A minor), and no motif, line or countermelody note clashes on beats 2 and 4 any more.
+- **Rests in the notation**: the score editor and the sheet music draw a rest that runs over the middle of an even bar as two (`c2z6z6z2` instead of a dotted half rest hiding beat 3). The score YuE2 reads keeps its own way of writing rests.
+
 ## 0.7.0 - 2026-10-12
 
 More creative modes, no key change unless you ask for one, and instrumentals with more sections to vary.

@@ -95,8 +95,19 @@ def nearest(target: int, candidates: Sequence[int]) -> int:
 
 
 def is_avoid(pc: int, classes: Sequence[int]) -> bool:
-    """A half step above a chord tone (and not a chord tone itself)."""
-    return pc not in classes and any((pc - t) % 12 == 1 for t in classes)
+    """A note that grinds against the chord (``classes``, root first), as ``harmony.is_avoid``: a half step above
+    a chord tone, a half step under its major seventh, the tritone above the root next to its perfect fifth."""
+    if pc in classes:
+        return False
+    if any((pc - t) % 12 == 1 for t in classes):
+        return True
+    if not classes:
+        return False
+    root = classes[0]
+    interval = (pc - root) % 12
+    if interval == 10 and (root + 11) % 12 in classes:
+        return True
+    return interval == 6 and (root + 7) % 12 in classes
 
 
 @dataclass(frozen=True)
@@ -276,10 +287,16 @@ def _vocal_pitch_at(vocal: Sequence[c.Note], onset: int) -> int | None:
 
 
 def countermelody(
-    bars: Sequence[Bar], energy: int, rng: random.Random, step: int, vocal: Sequence[c.Note]
+    bars: Sequence[Bar],
+    energy: int,
+    rng: random.Random,
+    step: int,
+    vocal: Sequence[c.Note],
+    quarter: int = 0,
 ) -> list[LineNote]:
     """A second line that moves against the sung melody: long notes while the voice sings, motion in its
-    rests (where it answers the voice)."""
+    rests (where it answers the voice). Every beat (``quarter`` units; without it beats 1 and 3) takes a chord
+    tone, the notes between them scale notes."""
     notes: list[LineNote] = []
     sung = [n.pitch for n in vocal]
     centre = sum(sung) / len(sung) if sung else 67
@@ -299,8 +316,11 @@ def countermelody(
                 position += length
                 continue
             sung_now = _vocal_pitch_at(vocal, onset)
-            strong = position == 0 or position * 2 == bar.length
-            pool = chord_pool if strong or sung_now is not None else key_pool or chord_pool
+            pool = (
+                chord_pool
+                if _on_beat(bar, onset, quarter) or sung_now is not None
+                else key_pool or chord_pool
+            )
             if previous is None:
                 pitch = nearest((low + high) // 2, pool)
             elif sung_now is not None and previous_sung is not None and sung_now != previous_sung:
@@ -388,13 +408,55 @@ def _strong(bar: Bar, onset: int) -> bool:
     return bar.meter[0] % 2 == 0 and bar.length >= 2 and onset == bar.start + bar.length // 2
 
 
+def _on_beat(bar: Bar, onset: int, quarter: int) -> bool:
+    """On a beat: every quarter of the bar (beats 2 and 4 too), and its strong beats (``_strong``) in any case
+    (without ``quarter`` only those)."""
+    return _strong(bar, onset) or (quarter > 0 and (onset - bar.start) % quarter == 0)
+
+
+def _degree(pc: int, key: str) -> int | None:
+    """The scale step (0-6) of a pitch class in ``key`` (``None`` outside its scale)."""
+    steps = scale(key)
+    return steps.index(pc % 12) if pc % 12 in steps else None
+
+
+def _move_in_scale(pitch: int, steps: int, key: str) -> int:
+    """``pitch`` moved by ``steps`` steps of the key's scale; a note outside the scale moves with the scale note
+    below it and keeps its distance to it."""
+    pcs = set(scale(key))
+    below = pitch
+    while below % 12 not in pcs:
+        below -= 1
+    ladder = [p for p in range(below - 24, below + 25) if p % 12 in pcs]
+    return ladder[ladder.index(below) + steps] + pitch - below
+
+
+def _transpose(pitch: int, reference: int, root: int, key: str, classes: Sequence[int] = ()) -> int:
+    """A figure note written over a chord on ``reference`` moved onto the chord on ``root`` (pitch classes
+    ``classes``): along the key's scale when both roots belong to it (a tonal sequence - C E G over C becomes A C E
+    over Am, not A C# E), taking the chord's own tone where it alters the scale (G# over E in A minor); by the
+    nearest chromatic shift otherwise (a borrowed chord keeps the figure's shape on its own root)."""
+    a, b = _degree(reference, key), _degree(root, key)
+    if a is None or b is None:
+        shift = (root - reference) % 12
+        return pitch + (shift - 12 if shift > 6 else shift)
+    steps = (b - a) % 7
+    moved = _move_in_scale(pitch, steps - 7 if steps > 3 else steps, key)
+    if moved % 12 not in classes:
+        for alteration in (1, -1):
+            if (moved + alteration) % 12 in classes and (moved + alteration) % 12 not in scale(key):
+                return moved + alteration
+    return moved
+
+
 def motif(
     bars: Sequence[Bar], figure: Sequence[tuple[int | None, Fraction]], units_per_quarter: int
 ) -> list[LineNote]:
-    """The writer's figure, moved onto every bar's chord root and restarted on the downbeat of every bar (or
-    of every pair of bars for a longer figure). A note on a strong beat that is not in the chord sounding
-    takes the nearest chord note; the notes between keep the writer's line (study A1: a quarter to a half
-    of the writers' strong-beat notes missed the chord)."""
+    """The writer's figure, moved onto every bar's chord (``_transpose``: along the key's scale) and restarted on
+    the downbeat of every bar (or of every pair of bars for a longer figure). A note on a strong beat that is not
+    in the chord sounding takes the nearest chord note, and so does a note on any other beat (or a beat long) that
+    clashes with it (``is_avoid``); the notes between keep the writer's line (study A1: a quarter to a half of the
+    writers' strong-beat notes missed the chord)."""
     if not bars or not figure or units_per_quarter < 1:
         return []
     low, high = REGISTER["motif"]
@@ -426,17 +488,22 @@ def motif(
                 bar = next((b for b in group if b.start <= onset < b.start + b.length), group[-1])
                 chord = bar.chord_at(onset)
                 root = chord_root(chord) if chord else reference
-                shift = (root - reference) % 12
-                if shift > 6:
-                    shift -= 12
-                moved = pitch + shift
+                classes = _chord_classes_or_key(bar, onset)
+                moved = _transpose(pitch, reference, root, bar.key, classes)
                 while moved < low:
                     moved += 12
                 while moved > high:
                     moved -= 12
-                if _strong(bar, onset):
-                    tones = in_register(_chord_classes_or_key(bar, onset), low, high)
-                    if tones and moved % 12 not in {p % 12 for p in tones}:
+                if (
+                    _strong(bar, onset)
+                    and moved % 12 not in classes
+                    or (
+                        (_on_beat(bar, onset, units_per_quarter) or length >= units_per_quarter)
+                        and is_avoid(moved % 12, classes)
+                    )
+                ):
+                    tones = in_register(classes, low, high)
+                    if tones:
                         moved = nearest(moved, tones)
                 notes.append((onset, min(length, tile_end - onset), moved))
             tile += span
@@ -447,8 +514,8 @@ def motif(
 
 
 def settle(notes: Sequence[LineNote], bars: Sequence[Bar], quarter: int) -> list[LineNote]:
-    """A note on a strong beat or held for a beat that clashes with its chord (a half step above a chord
-    tone) moves to the nearest chord tone."""
+    """A note on a beat (beats 2 and 4 too) or held for a beat that clashes with its chord (``is_avoid``) moves to
+    the nearest chord tone."""
     result: list[LineNote] = []
     for onset, length, pitch in notes:
         bar = next((b for b in bars if b.start <= onset < b.end), None)
@@ -456,7 +523,7 @@ def settle(notes: Sequence[LineNote], bars: Sequence[Bar], quarter: int) -> list
             result.append((onset, length, pitch))
             continue
         classes = _chord_classes_or_key(bar, onset)
-        if (_strong(bar, onset) or length >= quarter) and is_avoid(pitch % 12, classes):
+        if (_on_beat(bar, onset, quarter) or length >= quarter) and is_avoid(pitch % 12, classes):
             pool = in_register(classes, pitch - 7, pitch + 7)
             pitch = nearest(pitch, pool) if pool else pitch
         result.append((onset, length, pitch))

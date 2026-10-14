@@ -61,7 +61,8 @@ class SectionInfo:
     chords: tuple[str, ...]
     """The chord sounding at the start of every bar (``-`` for none)."""
     melody: tuple[str, ...]
-    """The melody's notes on the strong beats of every bar (``-`` where it rests)."""
+    """The melody's notes of every bar, ``*`` after those on a strong beat (``_bar_notes``; ``-`` where it
+    rests)."""
     line: str
     """What the instrument line plays now: ``rests``, ``melody`` (it carries the song's melody) or ``line``."""
     key: str = ""
@@ -102,7 +103,11 @@ class ScoreSummary:
         ]
         for s in self.sections:
             bars = f"bar {s.first_bar}" if s.bars == 1 else f"bars {s.first_bar}-{s.first_bar + s.bars - 1}"
-            melody = f"; melody on the strong beats {' | '.join(s.melody)}" if self.melody != "none" else ""
+            melody = (
+                f"; melody per bar (* on a strong beat) {' | '.join(s.melody)}"
+                if self.melody != "none"
+                else ""
+            )
             lines.append(
                 f"{s.index}. {s.label} ({bars}): chords {' | '.join(s.chords)}{melody}; instrument line: {s.line}"
             )
@@ -143,12 +148,29 @@ def strong_positions(start: int, length: int, meter: tuple[int, int]) -> list[in
     return [start]
 
 
-def _strong_notes(score: c.Score, voice: Sequence[c.Note], measure: int) -> str:
-    names = []
-    for position in strong_positions(score.starts[measure], score.lengths[measure], score.meters[measure]):
-        pitch = next((n.pitch for n in voice if n.onset <= position < n.end), None)
-        names.append(_LETTER_NAMES[pitch % 12] if pitch is not None else "-")
-    return " ".join(names)
+def _bar_notes(score: c.Score, voice: Sequence[c.Note], measure: int) -> str:
+    """The melody's notes in a bar as the writer needs them to choose its chord: every note that sounds on a beat
+    or for an eighth or more, each name once in the order they first sound, ``*`` after a note on a strong beat
+    (``E* G A* B``; ``-`` where the melody rests). The guard weighs every note of the bar, so the writer sees the
+    notes on beats 2 and 4 too (before, only beats 1 and 3: a fifth to a half of the writers' chords clashed)."""
+    start, length = score.starts[measure], score.lengths[measure]
+    stop = start + length
+    beat = max(1, score.units_per_quarter)
+    eighth = max(1, beat // 2)
+    strong = strong_positions(start, length, score.meters[measure])
+    beats = range(start, stop, beat)
+    names: list[str] = []
+    starred: set[str] = set()
+    for note in sorted(voice, key=lambda n: n.onset):
+        a, b = max(note.onset, start), min(note.end, stop)
+        if b <= a or (b - a < eighth and not any(a <= p < b for p in beats)):
+            continue
+        name = _LETTER_NAMES[note.pitch % 12]
+        if name not in names:
+            names.append(name)
+        if any(a <= p < b for p in strong):
+            starred.add(name)
+    return " ".join(name + ("*" if name in starred else "") for name in names) or "-"
 
 
 def melody_of(*, instrumental: bool, melody: str) -> str:
@@ -172,7 +194,7 @@ def summarize(score: c.Score, *, melody: str) -> ScoreSummary:
     for index, (label, first, end) in enumerate(section_ranges(score), start=1):
         start, stop = score.starts[first], score.starts[end]
         chords = tuple(chord_at(score, score.starts[m]) or "-" for m in range(first, end))
-        notes = tuple(_strong_notes(score, voice, m) for m in range(first, end))
+        notes = tuple(_bar_notes(score, voice, m) for m in range(first, end))
         plays = any(start <= n.onset < stop for n in score.ins)
         line = "rests" if not plays else "melody" if melody == "instrument" else "line"
         key = harmony.section_key(score, first, end).name
@@ -203,7 +225,8 @@ class Policy:
     """``song`` (closeness to the genre) or ``cover`` (closeness to the original's song flow)."""
     closeness: int
     melody: str
-    """``MELODY``: where the melody is - it always stays."""
+    """``MELODY``: where the melody is - its voice always stays; in a cover below song flow closeness 85 its notes
+    follow the new chords (``apply.adapts_melody``)."""
     chords: bool
     lead: tuple[str, ...]
     replace_lines: bool
@@ -247,9 +270,9 @@ def policy(
     genre: str = "",
     under_singing: bool = False,
 ) -> Policy:
-    """The limits of a section plan: the mode's choices narrowed by the closeness slider, and the melody kept
-    (an instrument line that carries it is never replaced). Doubling the voice (*octave*) needs lines under
-    the singing."""
+    """The limits of a section plan: the mode's choices narrowed by the closeness slider, and the melody's voice
+    kept (an instrument line that carries it is never replaced by another role). Doubling the voice (*octave*)
+    needs lines under the singing."""
     closeness = max(0, min(100, int(closeness)))
     chords, replace_lines, tensions = True, True, "strict"
     key_shift, tempo = mode.key_shift, mode.tempo_change
@@ -325,17 +348,18 @@ def closeness_text(kind: str, closeness: int, genre: str = "") -> str:
             )
         if c_ >= 50:
             return (
-                "Stay recognisably close to the original: the melody, the form and the tempo stay; you may "
-                "recolour chords and change the instrument lines."
+                "Stay recognisably close to the original: the form and the tempo stay; you may recolour chords and "
+                "change the instrument lines. Where a new chord clashes with a melody note, Plenio moves the note "
+                "onto the chord."
             )
         if c_ >= 20:
             return (
-                "Make a free version: new chords, new instrument lines, another energy and tempo; the melody and "
-                "the form stay."
+                "Make a free version: new chords, new instrument lines, another energy and tempo; the form stays. "
+                "Bold new chords are welcome: Plenio adapts the melody to them and keeps a trace of its shape."
             )
         return (
-            "Keep only a hint of the original: reinvent the harmony, the lines, the tempo and the energy; only "
-            "the melody and the form remain."
+            "Keep only a hint of the original: reinvent the harmony, the lines, the tempo and the energy. Plenio "
+            "writes a new melody over your chords; only the form remains."
         )
     genre = genre.strip() or "the genre"
     if c_ >= 90:
@@ -430,12 +454,28 @@ def schema(policy: Policy, sections: int) -> dict[str, Any]:
 
 
 _FIT_TEXT = {
-    "strict": "- Choose chords from the list above that contain the melody notes of their bar (the strong beats are "
-    "shown per bar).",
-    "colour": "- Choose chords from the list above that contain the melody notes of their bar (the strong beats "
-    "are shown per bar) or have them as their 2nd/9th or 6th.",
+    "strict": "- Choose chords from the list above that contain the melody notes of their bar (shown per bar; "
+    "those with * fall on a strong beat and matter most).",
+    "colour": "- Choose chords from the list above that contain the melody notes of their bar (shown per bar; "
+    "those with * fall on a strong beat and matter most) or have them as their 2nd/9th or 6th.",
     "free": "- You may colour the melody freely, but no melody note may lie a half step above a chord note.",
 }
+_FIT_REWRITTEN = (
+    "- Choose chords from the list above. The melody shown is the original's: Plenio writes the melody anew over "
+    "your chords, so they need not contain its notes."
+)
+
+
+def _fit_text(policy: Policy) -> list[str]:
+    """The rule for chords against the melody (none without chords or a melody): a cover below song flow closeness
+    ``harmony.SNAP_FROM`` gets its melody written anew over the chords, so they are free of the old one."""
+    if not policy.chords or policy.melody == "none":
+        return []
+    if policy.kind == "cover" and policy.closeness < harmony.SNAP_FROM:
+        return [_FIT_REWRITTEN]
+    return [_FIT_TEXT[policy.tensions]]
+
+
 _CHECK_TEXT = (
     "- Plenio checks every melody note of a bar against its chord, and the chord against the key and the genre: "
     "a chord that clashes or does not belong is replaced by the nearest one that fits (and reported)."
@@ -586,7 +626,7 @@ def prompt(
             if policy.chords
             else '- "chords": always "keep" (the chords stay as they are).'
         ),
-        *([_FIT_TEXT[policy.tensions]] if policy.chords and policy.melody != "none" else []),
+        *_fit_text(policy),
         *([_CHECK_TEXT] if policy.chords else []),
         '- "lead": what the instrument line plays:',
         roles,

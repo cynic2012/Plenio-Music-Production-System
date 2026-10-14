@@ -36,7 +36,7 @@ from plenio.core.arrangement import (
     summarize,
     writer_lines,
 )
-from plenio.core.arrangement.apply import SHARE_TOLERANCE
+from plenio.core.arrangement.apply import SHARE_TOLERANCE, adapts_melody
 from plenio.core.arrangement.plan import CHORD_PATTERN, closeness_text, melody_voice, normalize_chord
 from plenio.core.errors import PlenioUserError
 from plenio.core.score import canonical as c
@@ -240,7 +240,8 @@ def test_the_prompt_shows_the_score_and_never_asks_for_notation() -> None:
     summary = summarize(c.from_abc(FIXTURE), melody="vocal")
     text = prompt(summary, rules(), brief_text="Genre: indie pop", genre="indie pop")
     assert (
-        "1. verse (bars 1-4): chords C | G | Am | F; melody on the strong beats E E | D D | E B | F G" in text
+        "1. verse (bars 1-4): chords C | G | Am | F; melody per bar (* on a strong beat) "
+        "E* G A D C | D* E G C | E* G A C B* | F* E D G* C" in text
     )
     assert "do not write notes, ABC or any other notation" in text
     assert "exactly 2 entries" in text and "MODE: varied" in text
@@ -615,6 +616,95 @@ def test_riff_figures_take_the_chords_own_third() -> None:
         assert all(pitch % 12 != 3 for _onset, _length, pitch in notes)  # never E-flat over C major
 
 
+def test_a_motif_moves_along_the_scale() -> None:
+    """CLAUDE_AUFTRAG 2026-10-14, bug 1: moved by semitones, C E G over C became A C# E over Am."""
+    model = c.from_abc(FIXTURE)
+    quarter = model.units_per_quarter
+    figure = [(60, Fraction(1)), (64, Fraction(1)), (67, Fraction(1)), (None, Fraction(1))]
+
+    def bar_classes(chords: list[str], key: str = "C") -> list[list[int]]:
+        keyed = replace(model, keys=(c.KeyChange(0, key, "header"),))
+        bars = lines.bars_of(keyed, 0, len(chords), chords)
+        notes = lines.motif(bars, figure, quarter)
+        return [
+            [pitch % 12 for onset, _length, pitch in notes if bars[i].start <= onset < bars[i].end]
+            for i in range(len(chords))
+        ]
+
+    assert bar_classes(["C", "Am", "F", "Dm"]) == [[0, 4, 7], [9, 0, 4], [5, 9, 0], [2, 5, 9]]
+    # the chord's own tone where it alters the scale: the figure over Am moved onto E in A minor takes G#
+    minor = [(57, Fraction(1)), (60, Fraction(1)), (64, Fraction(1)), (None, Fraction(1))]
+    keyed = replace(model, keys=(c.KeyChange(0, "Am", "header"),))
+    bars = lines.bars_of(keyed, 0, 2, ["Am", "E"])
+    notes = lines.motif(bars, minor, quarter)
+    assert [pitch % 12 for onset, _l, pitch in notes if onset >= bars[1].start] == [4, 8, 11]
+    # a borrowed chord keeps the figure's shape on its own root
+    assert bar_classes(["C", "Bb"])[1] == [10, 2, 5]
+
+
+def test_a_clash_on_beat_two_moves_too() -> None:
+    model = c.from_abc(FIXTURE)
+    quarter = model.units_per_quarter
+    bars = lines.bars_of(model, 0, 1, ["C"])
+    eighth = quarter // 2
+    notes = [(bars[0].start + quarter, eighth, 65), (bars[0].start + quarter + eighth, eighth, 65)]
+    settled = lines.settle(notes, bars, quarter)
+    assert settled[0][2] % 12 in (0, 4, 7)  # F on beat 2 over C: moved onto the chord
+    assert settled[1][2] == 65  # the same F off the beat passes
+
+
+def test_a_countermelody_takes_chord_tones_on_every_beat() -> None:
+    model = c.from_abc(with_rests(FIXTURE, (0, 1, 2, 3)))
+    quarter = model.units_per_quarter
+    bars = lines.bars_of(model, 0, 4, ["C", "G", "Am", "F"])
+    for seed in range(6):
+        notes = lines.countermelody(
+            bars, 4, __import__("random").Random(seed), lines.step_units(model, 4), (), quarter
+        )
+        for onset, _length, pitch in notes:
+            bar = next(b for b in bars if b.start <= onset < b.end)
+            if (onset - bar.start) % quarter == 0:
+                assert pitch % 12 in lines.chord_classes(bar.chord_at(onset) or "C")
+
+
+# --- a cover's melody follows the chords (owner's decision 2026-10-15) ------------------------------------
+
+
+def test_a_free_cover_fits_its_melody_to_the_new_chords() -> None:
+    answer = plan(entry(1, chords=["Am", "Em", "F", "G"]), entry(2))
+    result = arrange(FIXTURE, answer, rules("varied", kind="cover", closeness=20))
+    assert result.status in ("applied", "partial"), result.notes
+    after = c.from_abc(result.abc)
+    assert [ch.name for ch in after.chords][:4] == ["Am", "Em", "F", "G"]  # the writer's chords win
+    assert any(a.startswith("melody follows the chords") for a in result.sections[0].applied)
+    before = c.from_abc(FIXTURE)
+    assert [(n.onset, n.duration) for n in after.vocal] == [(n.onset, n.duration) for n in before.vocal]
+    assert after.vocal != before.vocal
+    assert result.harmony["after"]["accented_avoid"] == 0
+
+
+def test_a_song_and_a_close_cover_keep_their_melody() -> None:
+    answer = plan(entry(1, chords=["Am", "Em", "F", "G"]), entry(2))
+    for policy_ in (rules("varied", kind="song", closeness=20), rules("varied", kind="cover", closeness=90)):
+        result = arrange(FIXTURE, answer, policy_)
+        if result.status in ("applied", "partial"):
+            assert c.from_abc(result.abc).vocal == c.from_abc(FIXTURE).vocal
+        assert not any(a.startswith("melody") for s in result.sections for a in s.applied)
+
+
+def test_the_writer_hears_that_the_melody_follows() -> None:
+    assert "Plenio adapts the melody" in closeness_text("cover", 30)
+    assert "writes a new melody" in closeness_text("cover", 10)
+    assert "moves the note onto the chord" in closeness_text("cover", 60)
+    assert "melody" not in closeness_text("cover", 85)
+    summary = summarize(c.from_abc(FIXTURE), melody="vocal")
+    free = prompt(summary, rules("varied", kind="cover", closeness=30), brief_text="Genre: pop", genre="pop")
+    assert "Plenio writes the melody anew over your chords" in free
+    assert "contain the melody notes of their bar" not in free
+    close = prompt(summary, rules("varied", kind="cover", closeness=60), brief_text="Genre: pop", genre="pop")
+    assert "contain the melody notes of their bar" in close
+
+
 def test_genre_words_choose_the_vocabulary() -> None:
     answer = plan(entry(1, chords=["C", "G", "Am", "Bb"]), entry(2))
     pop = arrange(FIXTURE, answer, rules("standard", genre="indie pop"))
@@ -714,15 +804,25 @@ def test_any_answer_gives_a_readable_score_or_the_old_one(
     def sounding(notes: tuple[c.Note, ...]) -> dict[int, int]:
         return {t: n.pitch for n in notes for t in range(n.onset, n.end)}
 
-    # the melody stays: the same pitches at the same times, moved only by a section's key lift
     before_vocal, after_vocal = sounding(score.vocal), sounding(after.vocal)
-    assert after_vocal == {t: p + shift_at(t) for t, p in before_vocal.items()}
-    if melody == "instrument":
-        before_ins, after_ins = sounding(score.ins), sounding(after.ins)
-        played = {t for t in before_ins}
-        assert {t: p for t, p in after_ins.items() if t in played} == {
-            t: p + shift_at(t) for t, p in before_ins.items()
-        }
+    before_ins, after_ins = sounding(score.ins), sounding(after.ins)
+    played = {t for t in before_ins}
+    if not adapts_melody(rules_):
+        # the melody stays: the same pitches at the same times, moved only by a section's key lift
+        assert after_vocal == {t: p + shift_at(t) for t, p in before_vocal.items()}
+        if melody == "instrument":
+            assert {t: p for t, p in after_ins.items() if t in played} == {
+                t: p + shift_at(t) for t, p in before_ins.items()
+            }
+    else:
+        # a cover below closeness 85: the melody follows the chords - a sung one at the same times (its
+        # syllables), an instrument line wherever it played; both in their own range
+        old, new = (before_vocal, after_vocal) if melody == "vocal" else (before_ins, after_ins)
+        assert set(old) <= set(new) and (melody != "vocal" or set(new) == set(old))
+        if old:
+            assert all(min(old.values()) <= new[t] - shift_at(t) <= max(old.values()) for t in old)
+        if melody == "instrument":
+            assert after_vocal == {t: p + shift_at(t) for t, p in before_vocal.items()}
     assert Fraction(after.tempo, score.tempo) <= Fraction(140, 100)
 
 
@@ -738,11 +838,12 @@ def test_a_key_lift_holds_to_the_end_and_is_prepared() -> None:
     assert [k.key for k in model.keys] == ["C", "D"]
     assert "the key lift holds to the end of the song" in " ".join(result.notes)
     # the last bar leads into D with chords that clash with nothing sung there: the melody ends on C, so the
-    # dominant A7 does not fit - the new key's lowered sixth and seventh steps rise to it (Bb - C -> D)
+    # dominant A7 does not fit, and the lowered sixth and seventh steps (Bb - C) neither - the E sung over Bb is
+    # its #4 next to the fifth; the chord on the new key's lowered seventh step leads in over the last half bar
     lift = model.starts[4]
     leading = [ch.name for ch in model.chords if model.starts[3] <= ch.onset < lift]
-    assert leading == ["Bb", "C"]
-    assert any(n.startswith("bar 4: Bb - C lead into D") for n in result.notes)
+    assert leading == ["F", "C"]  # the bar's own chord, then C
+    assert any(n.startswith("bar 4: C lead into D") for n in result.notes)
     assert result.harmony["after"]["accented_avoid"] == 0
 
 
