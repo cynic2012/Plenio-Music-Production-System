@@ -181,7 +181,6 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
 .visual.dim {
   opacity: 0.24;
   mix-blend-mode: screen;
-  filter: saturate(1.2) blur(1px);
 }
 .view-notation .visual.dim {
   opacity: 0.12;
