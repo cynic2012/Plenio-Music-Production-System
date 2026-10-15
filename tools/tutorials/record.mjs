@@ -4,7 +4,8 @@
 //        [--out dist/tutorials] [--record-only | --render-only] [--headed]
 //
 // <script> is a file name here without .mjs; its narration is narration/<script>.txt. --tts-url is a
-// ComfyUI with TTS Audio Suite (OmniVoice) for the lines not yet in the voice cache.
+// ComfyUI with TTS Audio Suite (OmniVoice) for the lines not yet in the voice cache. A script whose meta
+// says `page: true` records another page at --url (the Plenio Player) instead of ComfyUI.
 //
 // See tools/tutorials/README.md for the server and the settings it expects.
 
@@ -47,8 +48,9 @@ const SETTINGS = {
   'Comfy.EnableTooltips': false,
 }
 
+const comfy = !script.meta.page
 if (!args.includes('--render-only')) {
-  for (const [key, value] of Object.entries(SETTINGS)) {
+  for (const [key, value] of comfy ? Object.entries(SETTINGS) : []) {
     const r = await fetch(`${url}/settings/${key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) })
     if (!r.ok) throw new Error(`could not set ${key} on ${url}: ${r.status}`)
   }
@@ -56,7 +58,7 @@ if (!args.includes('--render-only')) {
   const studio = await openStudio({ url, out: dir, headless: !args.includes('--headed') })
   let failure = null
   try {
-    await studio.openComfy()
+    await (comfy ? studio.openComfy() : studio.openPage())
     await script.prepare?.(studio, { project: PROJECT })
     await studio.startCapture()
     await script.default(studio, { project: PROJECT })

@@ -382,6 +382,12 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     await read(text, min)
   }
 
+  // --- another page (the Plenio Player) ---
+  async function openPage(route = '') {
+    await page.goto(url + route, { waitUntil: 'load' })
+    await page.waitForTimeout(1500)
+  }
+
   // --- ComfyUI ---
   async function openComfy() {
     await page.goto(url, { waitUntil: 'networkidle' })
@@ -498,7 +504,7 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     startCapture, stopCapture, saveMarkers,
     moveTo, rest, hover, click, drag, type, keys, spotlight, boxOf, centre,
     caption, say, read, chapter, card, fast, wait, sfx,
-    openComfy, fly, flyGroups, flyNodes, widgetBox, nodeButton, audioBox, listen, chooseCombo, slide, widgetValue, run, follow, resetRunState,
+    openComfy, openPage, fly, flyGroups, flyNodes, widgetBox, nodeButton, audioBox, listen, chooseCombo, slide, widgetValue, run, follow, resetRunState,
     get mouse() { return mouse },
   }
 }

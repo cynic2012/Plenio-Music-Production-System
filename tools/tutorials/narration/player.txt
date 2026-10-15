@@ -1,0 +1,130 @@
+# Narration of player.mjs (Tutorial 8 · Plenio Player). Format: lib/voice.mjs.
+
+@ card 8 · Plenio Player
+Your songs deserve a proper stage. This is the Plenio Player.
+
+@ The Plenio Player plays the songs
+The Plenio Player plays the songs you made with Plenio, right in your browser. ComfyUI doesn't even need to run.
+
+@ Start it with ComfyUI’s Python
+Start it with ComfyUI's own Python: python, plenio underscore player dot py.
+
+@ It finds every song Export Release wrote
+It finds every song Export Release wrote, and it never writes into their folder.
+
+@ Search looks through titles
+Search looks through titles, lyrics, genres, moods and briefs.
+
+@ Fields narrow it down
+Fields narrow it down: genre, tempo, key, model, language, or just your favourites.
+
+@ The chips filter
+The chips filter by your most common genres, moods, models and creative modes.
+
+@ A grid or a list
+A grid or a list, sorted by date, title, length, tempo or loudness.
+
+@ Press play on a cover
+Press play on a cover, or double-click a song.
+
+@ The bar shows the song’s section
+The bar always shows the section, and the line that's sung right now.
+
+@ The waveform is the seek bar
+The waveform is the seek bar. It marks the sections, and under the mouse, it shows the line sung there.
+
+@ A click on the title opens
+A click on the title opens the song's page.
+
+@ Its lyrics light up
+Its lyrics light up as they're sung. The times were measured by listening, when the song was exported.
+
+@ A click on a line plays | optional
+Click a line, and the song plays from there.
+
+@ The notation follows the music | optional
+The notation follows the music. The notes that sound light up, and a click on a note jumps right there.
+
+@ The details: the brief
+The details: the brief, the model and the writer, the loudness, and the seeds, to make the same take again.
+
+@ Every file to download
+And every file to download: the audio, the sheet music, the subtitles, the cover, and the record.
+
+@ The song’s other takes | optional
+The song's other takes, to compare them,
+
+@ … and songs alike | optional
+and songs that are alike.
+
+@ F opens Now playing
+Press F for Now playing. The stage: the cover, and the lyrics as they're sung.
+
+@ The sections are chips | optional
+The sections are chips. One click, and the chorus plays.
+
+@ Lyrics: large
+Lyrics view: big, and painted syllable by syllable, like karaoke.
+
+@ Notation: the sheet scrolls along
+Notation view: the sheet scrolls along with the music, and the lyrics sit at the side.
+
+@ And the visual, full screen
+And the visual, full screen, with the lyrics as subtitles. Leave the mouse alone, and the controls fade away.
+
+@ The visuals’ settings
+These are the visual settings.
+
+@ Match the music picks
+Match the music picks a visual for the song's genre, mood and tempo.
+
+@ Random picks from the visuals you tick
+Random picks from the visuals you tick. Cycle goes through them in turn, and Fixed keeps just one.
+
+@ Tick the ones you like
+Tick the ones you like.
+
+@ They change with every song
+They can change with every song, at every section, every few seconds, or when the music drops in.
+
+@ A song can have a visual of its own
+A song can have a visual of its own, and so can a playlist. The song's choice wins, then the playlist's, then the mode.
+
+@ N shows the next one
+Press N for the next one.
+
+@ A new playlist: plus, a name
+A new playlist: click plus, and give it a name.
+
+@ Add songs with the search
+Add songs with the search, and drag them into order.
+
+@ A playlist can have its own colour
+Every playlist can have its own colour, and its own visual.
+
+@ Next to yours: favourites
+Next to your own playlists, there are smart ones: favourites, most played, recently played, and never played.
+
+@ The queue: what comes next
+The queue shows what comes next. Reorder it, or save it as a playlist.
+
+@ Crossfades between songs
+Songs crossfade into each other, and the sleep timer fades the music out.
+
+@ A right-click on a song
+Right-click a song to play it next, add it to a playlist, or start a radio of songs that are alike.
+
+@ A/B: the unmastered take | optional
+A, B: the unmastered take, at exactly the same moment, without a gap.
+
+@ Speed, from three quarters
+Speed goes from three quarters to one and a quarter, and the pitch stays the same.
+
+@ Every key is listed
+Every keyboard shortcut is listed under the question mark.
+
+@ Make songs in ComfyUI
+Make your songs in ComfyUI, and listen to them here.
+
+@ card Plenio Player
+That's the Plenio Player. Enjoy your music!
