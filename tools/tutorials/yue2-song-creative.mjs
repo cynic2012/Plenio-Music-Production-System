@@ -1,11 +1,12 @@
-// Tutorial 6 · YuE2 · Song · Creative modes (0.4.5, experimental): the writer model plans the
+// Tutorial 6 · YuE2 · Song · Creative modes (0.4.5, recorded again for 0.8.0, experimental): the writer model plans the
 // arrangement. The brief's arrangement and genre closeness, the Writer model, Arrange and its seed; one
 // song with its review stops - the style the mode wrote, the arrangement in Song Sheet · Score (its line
 // with the badge, the details, the instrument line in the roll) - the rendered song and its sheet music;
 // then another arrangement of the same song from the arrangement seed.
 
 import { arrangementDemo, sheetMusicSaved, showApproved } from './lib/scenes.mjs'
-import { approve, maximize, openSheet, tab } from './lib/sheet.mjs'
+import { SECTION_WARNING, approve, maximize, openSheet, tab } from './lib/sheet.mjs'
+import { FOOT } from './lib/studio.mjs'
 
 export const meta = {
   name: 'Plenio tutorial 6 - YuE2 Song creative modes',
@@ -36,11 +37,11 @@ export default async function songCreative(s) {
     kicker: 'Plenio tutorial',
     title: '<span class="num">6 ·</span> YuE2 · Song · Creative modes',
     subtitle: 'The writer model plans the arrangement, Plenio writes the notes - an experimental feature to play with',
-    foot: 'Plenio Music Production System 0.4.5 for ComfyUI',
+    foot: FOOT,
   }, 5)
   s.card('chapter', {
     kicker: 'Before we start', part: 'Experimental', title: 'Made for experimenting',
-    subtitle: 'Creative modes are new in 0.4.5 and can give unexpected results - try a mode, listen, keep what you like',
+    subtitle: 'Creative modes are experimental and can give unexpected results - try a mode, listen, keep what you like',
     steps: ['Choose a mode', 'Listen', 'Edit or run again', 'Keep what you like'],
   }, 5)
 
@@ -69,19 +70,25 @@ export default async function songCreative(s) {
   s.chapter('The creative parts of the template')
   await s.flyGroups(['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · SCORE', '5 · RENDER', '6 · FINISH'], 1400)
   await s.say('The template is the one from tutorial 1. Three parts make the creative modes.', 4000)
-  await s.flyNodes([BRIEF], 1100, 0.94)
-  s.caption('In the Song Brief: arrangement - marked experimental. simple, the default, lets YuE2 plan everything itself.')
+  // the brief's lower half in the upper part of the picture: the long list of modes opens below the field
+  await s.fly(await page.evaluate((key) => {
+    const r = window.__tut.nodeRect(key)
+    return { x: r.x - 40, y: r.y + r.h * 0.35, w: r.w + 80, h: r.h * 1.15 }
+  }, BRIEF), 1100, 0.94)
+  s.caption('In the Song Brief: arrangement - marked experimental. off, the default, lets YuE2 plan everything itself.')
   await s.spotlight(await s.widgetBox(BRIEF, 'arrangement'), { ms: 3000 })
-  await s.read('In the Song Brief: arrangement - marked experimental. simple, the default, lets YuE2 plan everything itself.', 6000)
-  s.caption('The creative modes: standard, varied, fantasy, sterile, many instruments, dramatic - or your own Markdown file.')
+  await s.read('In the Song Brief: arrangement - marked experimental. off, the default, lets YuE2 plan everything itself.', 6000)
+  s.caption('Thirteen creative modes, from simple to rich - standard, sterile, unplugged … jazz colours, fantasy, key change - or your own Markdown file.')
   await s.click(() => s.widgetBox(BRIEF, 'arrangement'), { fx: 0.72 })
   const menu = page.locator('.litecontextmenu').first()
   await menu.waitFor({ state: 'visible', timeout: 5000 })
-  for (const name of ['standard', 'varied', 'fantasy', 'sterile', 'many instruments']) {
-    await s.hover(page.locator('.litecontextmenu .litemenu-entry', { hasText: name }).first())
-    await s.wait(650)
+  for (const name of ['standard', 'sterile', 'unplugged', 'varied', 'call and response', 'signature motif', 'hypnotic', 'breakdown', 'many instruments', 'jazz colours', 'fantasy', 'key change']) {
+    await s.hover(page.locator('.litecontextmenu .litemenu-entry', { hasText: name }).first(), { ms: 260 })
+    await s.wait(380)
   }
-  await s.read('The creative modes: standard, varied, fantasy, sterile, many instruments, dramatic - or your own Markdown file.', 4200)
+  await s.read('Thirteen creative modes, from simple to rich - standard, sterile, unplugged … jazz colours, fantasy, key change - or your own Markdown file.', 3000)
+  s.caption('Only “key change” changes the key - every other mode keeps it from start to end.')
+  await s.read('Only “key change” changes the key - every other mode keeps it from start to end.', 4200)
   s.caption('We take “dramatic”: one long arc, from a quiet start to a big last chorus.')
   await s.click(page.locator('.litecontextmenu .litemenu-entry', { hasText: 'dramatic' }).first(), { pause: 400 })
   await s.read('We take “dramatic”: one long arc, from a quiet start to a big last chorus.', 4600)
@@ -95,8 +102,8 @@ export default async function songCreative(s) {
   await s.read('Writer model: one choice for every writing step - the lyrics and the arrangement. Gemma 4 by default, or any local LLM.', 6400)
 
   await s.flyNodes([ARRANGE, SEED], 1100, 0.9)
-  s.caption('In SCORE, the new block Arrange: after YuE2’s plan it asks the writer for a section plan - chords, the instrument line, energy, a key lift.')
-  await s.read('In SCORE, the new block Arrange: after YuE2’s plan it asks the writer for a section plan - chords, the instrument line, energy, a key lift.', 7400)
+  s.caption('In SCORE, the block Arrange: after YuE2’s plan it asks the writer for a section plan - the chords, what the instrument line plays, the energy.')
+  await s.read('In SCORE, the block Arrange: after YuE2’s plan it asks the writer for a section plan - the chords, what the instrument line plays, the energy.', 7400)
   s.caption('The writer never writes notes: Plenio writes every note itself and checks the score. A plan it cannot use leaves the score as it was.')
   await s.read('The writer never writes notes: Plenio writes every note itself and checks the score. A plan it cannot use leaves the score as it was.', 7200)
   s.caption('Arrangement seed: another arrangement of the same song.')
@@ -145,9 +152,9 @@ export default async function songCreative(s) {
   await maximize(s, '⛶ gives the editor the whole window.')
   s.chapter('Part 1 · The arranged score')
   const status = await arrangementDemo(s)
-  const sections = page.locator('.plenio-overlay .plenio-dialog li', { hasText: 'lyrics have sections' }).first()
+  const sections = page.locator('.plenio-overlay .plenio-dialog li', { hasText: SECTION_WARNING }).first()
   if (await sections.count()) {
-    const warn = 'The sheet also warns: YuE2’s plan has fewer sections than the lyrics. Tutorial 1 shows how to fix sections - here we keep the plan.'
+    const warn = 'The sheet also warns: YuE2’s plan does not sing the same sections as the lyrics. Tutorial 1 shows how to fix sections - here we keep the plan.'
     s.caption(warn)
     await s.spotlight(sections, { ms: 3400, pad: 4 })
     await s.read(warn, 6600)
@@ -213,8 +220,8 @@ export default async function songCreative(s) {
   // --- the close ------------------------------------------------------------------------------------
   s.chapter('Tips')
   await s.flyNodes([BRIEF], 1100, 0.94)
-  await s.say('Creative modes are experimental: try several modes and closeness values, and keep the takes you like. simple stays the dependable choice.', 7400)
-  await s.say('Your own modes are Markdown files in user/plenio/arrangement: the instruments, the lines and the key changes a mode allows.', 6600)
+  await s.say('Creative modes are experimental: try several modes and closeness values, and keep the takes you like. off stays the dependable choice.', 7400)
+  await s.say('Your own modes are Markdown files in user/plenio/arrangement: the instrument lines a mode allows, its chord colours, and hints for the writer.', 6600)
   await s.say('A local LLM as the writer model is held to the plan’s format exactly - and answers from its cache when nothing changed.', 6400)
   s.card('end', {
     title: 'Next: 7 · YuE2 · Cover · Creative modes',

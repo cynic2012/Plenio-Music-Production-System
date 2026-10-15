@@ -9,6 +9,13 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
+import { TAP } from './tap.mjs'
+
+// the Plenio version the videos show on their title cards (pyproject.toml of this repository)
+const PYPROJECT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'pyproject.toml')
+export const PLENIO_VERSION = /^version\s*=\s*"([^"]+)"/m.exec(fs.readFileSync(PYPROJECT, 'utf8'))?.[1] ?? '?'
+export const FOOT = `Plenio Music Production System ${PLENIO_VERSION} for ComfyUI`
 
 export function loadPlaywright() {
   const require = createRequire(import.meta.url)
@@ -205,6 +212,11 @@ const CAMERA = `(() => {
   api.addEventListener('execution_error', (e) => { tut.running = false; tut.error = e.detail; note('error', JSON.stringify(e.detail).slice(0, 400)) })
   api.addEventListener('execution_interrupted', () => { tut.running = false; note('interrupted') })
   api.addEventListener('plenio.sheet', (e) => { tut.stop = e.detail; note('sheet', JSON.stringify(e.detail).slice(0, 200)) })
+  // a review stop: a Song Sheet's output says it waits for approval (the event above comes with a conflict only)
+  api.addEventListener('executed', (e) => {
+    const sheet = e.detail?.output?.plenio_sheet?.[0]
+    if (sheet?.waiting) { tut.stop = sheet; note('sheet', 'waiting') }
+  })
 })()`
 
 // --- the studio -------------------------------------------------------------------------------------
@@ -212,16 +224,20 @@ const CAMERA = `(() => {
 export async function openStudio({ url, out, width = 1920, height = 1000, scale = 1, fps = 30, headless = true, log = console.log }) {
   fs.mkdirSync(out, { recursive: true })
   const { chromium } = loadPlaywright()
-  const browser = await chromium.launch({ headless, args: ['--force-color-profile=srgb', '--hide-scrollbars'] })
+  // sound without a click first: the score editor's playback starts from the script (tap.mjs records it)
+  const browser = await chromium.launch({ headless, args: ['--force-color-profile=srgb', '--hide-scrollbars', '--autoplay-policy=no-user-gesture-required'] })
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale, locale: 'en-US', colorScheme: 'dark' })
   await context.addInitScript(OVERLAY)
+  await context.addInitScript(TAP)
   const page = await context.newPage()
   page.on('pageerror', (e) => log('page error:', String(e).slice(0, 300)))
 
   const W = Math.round(width * scale), H = Math.round(height * scale)
-  const markers = { width: W, height: H, fps, captions: [], chapters: [], cards: [], fast: [], notes: [], sounds: [] }
+  const markers = { width: W, height: H, fps, captions: [], chapters: [], cards: [], fast: [], notes: [], sounds: [], sfx: [], taps: [] }
   let t0 = null
   const now = () => (t0 === null ? 0 : (Date.now() - t0) / 1000)
+  // what the effects track hears (render.mjs, sfx.mjs): a click, a key, typing, a camera move, a stop ...
+  const sfx = (kind, data = {}) => { if (t0 !== null) markers.sfx.push({ t: now(), kind, ...data }) }
 
   // --- capture: screencast frames -> ffmpeg at a constant frame rate (the latest frame repeats) ---
   let ffmpeg = null, latest = null, written = 0, timer = null, cdp = null, frames = 0
@@ -254,6 +270,15 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     await new Promise((resolve) => { ffmpeg.on('close', resolve); ffmpeg.stdin.end() })
     markers.duration = written / fps
     markers.screencastFrames = frames
+    // what the page played (the score editor's playback): one recording per audio context, placed by its start
+    const taps = await page.evaluate(() => window.__tutTap?.collect() ?? []).catch((e) => { log('audio tap:', String(e).slice(0, 200)); return [] })
+    for (const tap of taps) {
+      const bytes = Buffer.from(tap.data, 'base64')
+      if (bytes.length < 2000) continue
+      const file = `tap-${markers.taps.length + 1}.webm`
+      fs.writeFileSync(path.join(out, file), bytes)
+      markers.taps.push({ file, t: (tap.started - t0) / 1000 })
+    }
   }
 
   // --- the pointer ---
@@ -290,6 +315,7 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
   async function click(target, { fx = 0.5, fy = 0.5, ms, pause = 180, button = 'left', count = 1 } = {}) {
     const p = await hover(target, { fx, fy, ms })
     await page.waitForTimeout(pause)
+    sfx('click', { count })
     await page.mouse.click(p.x, p.y, { button, clickCount: count, delay: 60 })
     await page.waitForTimeout(250)
     return p
@@ -299,14 +325,17 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
   async function drag(from, to, { ms = 900, hold = 150 } = {}) {
     await moveTo(from.x, from.y)
     await page.waitForTimeout(150)
+    sfx('press')
     await page.mouse.down()
     await page.waitForTimeout(hold)
     await moveTo(to.x, to.y, ms)
     await page.waitForTimeout(hold)
+    sfx('release')
     await page.mouse.up()
     await page.waitForTimeout(300)
   }
   async function type(text, { delay = 45 } = {}) {
+    sfx('type', { chars: text.length, delay })
     await page.keyboard.type(text, { delay })
   }
   // a shortcut with its keys shown on screen
@@ -314,12 +343,14 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     const shown = labels ?? combo.split('+').map((k) => ({ Control: 'Ctrl', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Escape: 'Esc', Delete: 'Del' })[k] ?? k)
     for (let i = 0; i < times; i++) {
       await page.evaluate(([l, ms]) => window.__tut.keys(l, ms), [shown, 1400])
+      sfx('key', { n: shown.length })
       await page.keyboard.press(combo)
       await page.waitForTimeout(gap)
     }
   }
   async function spotlight(target, { ms = 1600, pad = 6 } = {}) {
     const b = await boxOf(target)
+    sfx('spot', { ms })
     await page.evaluate(([r, m, p]) => window.__tut.spot(r, m, p), [b, ms, pad])
   }
 
@@ -359,7 +390,10 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     await page.waitForTimeout(1500)
     await page.keyboard.press('Escape')
   }
-  const fly = (rect, ms = 1100, pad = 0.94) => page.evaluate(([r, m, p]) => window.__tut.fly(r, m, p), [rect, ms, pad])
+  const fly = (rect, ms = 1100, pad = 0.94) => {
+    sfx('fly', { ms })
+    return page.evaluate(([r, m, p]) => window.__tut.fly(r, m, p), [rect, ms, pad])
+  }
   const flyGroups = async (titles, ms, pad) => fly(await page.evaluate((t) => window.__tut.unite(t.map((x) => window.__tut.groupRect(x)), 10), titles), ms, pad)
   const flyNodes = async (ids, ms, pad, margin = 30) => fly(await page.evaluate(([i, m]) => window.__tut.unite(i.map((x) => window.__tut.nodeRect(x)), m), [ids, margin]), ms, pad)
   const widgetBox = (nodeId, name) => page.evaluate(([n, w]) => window.__tut.widgetBox(n, w), [nodeId, name])
@@ -433,7 +467,10 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     await page.waitForTimeout(600)
     const error = await page.evaluate(() => window.__tut.error ?? null)
     if (error) throw new Error('the run failed: ' + JSON.stringify(error).slice(0, 600))
-    return page.evaluate(() => window.__tut.stop)
+    const stop = await page.evaluate(() => window.__tut.stop)
+    // the run ends: at a review stop, or with everything done
+    sfx(stop ? 'stop' : 'done')
+    return stop
   }
   // The song a preview node plays from now on: saved next to the recording, the edit mixes it under the
   // voice (the recording itself has no sound).
@@ -460,7 +497,7 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     page, browser, context, markers, now, W, H,
     startCapture, stopCapture, saveMarkers,
     moveTo, rest, hover, click, drag, type, keys, spotlight, boxOf, centre,
-    caption, say, read, chapter, card, fast, wait,
+    caption, say, read, chapter, card, fast, wait, sfx,
     openComfy, fly, flyGroups, flyNodes, widgetBox, nodeButton, audioBox, listen, chooseCombo, slide, widgetValue, run, follow, resetRunState,
     get mouse() { return mouse },
   }

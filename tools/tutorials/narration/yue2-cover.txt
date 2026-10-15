@@ -4,31 +4,31 @@
 Welcome back! This time, we turn an existing recording into a brand-new cover.
 
 @ Open the template browser
-Open the template browser once more.
+Open the template browser once more,
 
 @ Plenio’s templates:
-Plenio's templates are under Extensions.
+and Plenio's folder under Extensions.
 
 @ 2 · YuE2 · Cover makes
-We pick template two: YuE2 Cover. [pause:0.4s] It makes a new version of a recording, one you own, or are allowed to use.
+We pick template two: YuE2 Cover. [pause:0.3s] It makes a new version of a recording, one you own or are allowed to use.
 
 @ The template reads from left to right
-Again, the template reads from left to right.
+Like the others, it reads from left to right.
 
 @ SOURCE - the recording
-Source: the recording to cover.
+Source: the recording we want to cover.
 
 @ COVER - the Cover Brief
-The Cover Brief sets the new style, and what happens to the vocals.
+The Cover Brief sets the new style, and decides what happens to the vocals.
 
 @ SCORE - SheetSage2
-SheetSage2 transcribes the music into a score. Arrange can re-arrange it, and the Score sheet shows it.
+SheetSage2 transcribes the music into a score, and Arrange can re-arrange it.
 
 @ LYRICS - the original words
 Lyrics: the original words, brand-new lyrics, or just section tags.
 
 @ TEXT - Song Sheet · Text
-The Text sheet shows the words and the style YuE2 gets.
+The Text sheet shows the words and the style YuE2 receives.
 
 @ RENDER - YuE2 renders the cover
 YuE2 renders the cover, and Check Vocals picks the best take.
@@ -43,7 +43,7 @@ Part one: a new cover, every run. Straight through, no stops.
 First, load the recording, right here in Source recording.
 
 @ Our example:
-Our example is a four-minute synth-pop song.
+Our example: a four-minute synth-pop song.
 
 @ Longer songs:
 For longer songs, switch on Excerpt, and cover one part at a time.
@@ -58,16 +58,19 @@ With new cover every run, each run makes a different version, without any stops.
 Genre and mood set the new style.
 
 @ vocals: “instrumental”
-Instrumental: an instrument plays the melody.
+For now, instrumental: an instrument plays the melody.
 
 @ harmony: keep the original chords
-Keep the original chords, or let YuE2 re-harmonize.
+Harmony: the original chords, or new ones.
 
-@ arrangement: “simple” keeps the transcription
-The arrangement stays on simple, which keeps the transcription as it is. [pause:0.3s] The experimental creative modes, with their sliders, get a video of their own: tutorial seven.
+@ arrangement: “off” keeps the transcription
+Arrangement stays off: the transcription stays as it is. Creative modes are tutorial seven.
 
 @ Press Run.
 Now, press Run.
+
+@ Sung Pitch separates the vocals | optional
+First, Sung Pitch separates the vocals, for the pitch curve in the editor.
 
 @ SheetSage2 transcribes the recording
 SheetSage2 transcribes the melody, the chords and the sections,
@@ -75,14 +78,14 @@ SheetSage2 transcribes the melody, the chords and the sections,
 @ YuE2 renders the cover from the score
 YuE2 renders the cover from that score,
 
-@ Check Vocals listens
+@ Check Vocals listens | optional
 Check Vocals listens to the take,
 
 @ Master and Export finish the cover
 and Master and Export finish it.
 
-@ Done: the instrumental cover | +7 | seed 8
-Done! Here's our instrumental cover. [pause:0.5s] Let's have a listen.
+@ Done: the instrumental cover | +5 | seed 8
+Done! Here's our instrumental cover. [pause:0.5s] Let's listen.
 
 @ Press Run again for another version
 Run again for another version. The transcription is reused, so only the new cover renders.
@@ -94,16 +97,16 @@ Part two: one cover, with stops to review. You check the score and the words fir
 Switch the mode to one cover, stop to review. The run now pauses at both Song Sheets.
 
 @ vocals: “original lyrics”
-And set vocals to original lyrics: YuE2 sings the words of the recording.
+And set the vocals to original lyrics: YuE2 sings the words of the recording.
 
 @ voice: describe the singer
-Describe the singer you'd like to hear.
+Then describe the singer you'd like to hear.
 
 @ Press Run. The transcription
-Press Run. [pause:0.4s] The transcription from part one is simply reused.
+Press Run. [pause:0.3s] The transcription from part one is simply reused.
 
 @ Stop 1: Song Sheet · Score
-Stop number one: the Score sheet waits for your approval.
+First stop: the Score sheet waits for your approval.
 
 @ Open it with
 Open it with Edit Song Sheet,
@@ -112,46 +115,46 @@ Open it with Edit Song Sheet,
 and give the editor the whole window.
 
 @ This sheet holds the score
-This is the score SheetSage2 transcribed. The words come at the next stop, and they follow this score.
+This is the score SheetSage2 transcribed. The words come at the next stop.
 
 @ First a quick tour, then the details
-First, a quick tour, then the details. The score editor shows one score in several views, and they always stay in step.
+A quick refresher first: the editor shows one score in several views, always in step.
 
 @ On top, the piano roll
-On top, the piano roll: the notes of the melody and of the second voice, bar by bar. The bar numbers are the ruler.
+The piano roll on top holds the melody and the second voice, bar by bar.
 
 @ Above the notes, the chord lane
-Above the notes, the chord lane, with each chord where it starts.
+Above them, the chord lane.
 
 @ For a cover, the original recording runs in a lane | optional
-For a cover, the original recording runs in a lane of its own. [pause:0.3s] And the pink curve is the pitch the singer really sang.
+For a cover, the original runs in a lane of its own, with the sung pitch as a pink curve.
 
 @ The roll’s toolbar
-The roll's toolbar: draw or select, the voice you draw into, the grid, copy and paste, zoom, and quantize.
+The toolbar: draw or select, the voice, the grid, copy and paste, zoom and quantize.
 
 @ Under the roll, the transport
-Under the roll, the transport: play from the cursor, record with a MIDI keyboard, the sounds of the tracks, [pause:0.2s] and what you hear: the notes, the original, or both.
+The transport plays your notes, the original, or both.
 
 @ Below, the notation
-Below, the notation: both voices, with the chords, the sections, and the lyrics. Click a note there, and it's selected everywhere.
+Then the notation. Click a note there, and it's selected everywhere.
 
 @ On the right, the inspector
-On the right, the inspector, for the exact values of a note, a chord, or a bar.
+The inspector on the right shows exact values.
 
 @ And the song’s sections with the bar strip
-And the song's sections, with the bar strip, to arrange the song, like on a DAW's arranger track.
+The sections and the bar strip arrange the song.
 
 @ At the top: undo and the edit buttons
-At the top: undo and the edit buttons, the layouts, and the files: MIDI, MusicXML, the notation as PDF or picture, and the project.
+And at the top: undo, the edit buttons, the layouts, and the files.
 
 @ “keys” lists every key
-And keys lists every shortcut and mouse gesture.
+Keys lists every shortcut and mouse gesture.
 
-@ Shift + mouse wheel
+@ Shift + mouse wheel | optional
 Shift and the mouse wheel scroll to where the singing starts.
 
 @ Click a note: | seed 6
-Editing works just like in the song video: click a note to select it everywhere,
+Editing works just as in the song video: click a note to select it everywhere,
 
 @ The arrow keys move it
 move it with the arrow keys, and undo with Control Z.
@@ -163,10 +166,10 @@ The toolbar offers the same moves.
 Drag a note to move it, [pause:0.3s] and undo again.
 
 @ Drag its right end
-Drag its right edge to change its length.
+Drag its right edge to change its length,
 
 @ Draw mode:
-Draw a new note on an empty spot,
+draw a new note on an empty spot,
 
 @ Select mode:
 or frame several notes in Select mode,
@@ -177,41 +180,53 @@ and move them together.
 @ Ctrl+Z again
 One more undo, and the melody is back.
 
+@ Double-click a chord symbol
+And a double-click changes a chord.
+
 @ Click in the ruler - the bar numbers
-Now, the cursor. Click into the ruler to set it, just like in Cubase.
+Now, the cursor. Click into the ruler to set it, as in Cubase.
 
 @ Playback starts at the cursor
-Playback starts at the cursor, with a green line following along. [pause:0.4s] Stop, and the cursor stays put.
+Playback starts at the cursor, with a green line following along. [pause:0.3s] Stop, and the cursor stays put.
 
 @ The transport sits right under the roll
-The transport sits right under the roll, within reach. Space plays and stops, Home and End jump to either end.
+Space plays and stops; Home and End jump to either end.
 
 @ The original recording plays right under the notes
-And here's the clever part for covers: the original recording plays right under the notes, bar by bar. [pause:0.3s] And A-B switches between them, at once.
+And here's the clever part for covers: with both, the original plays right under your notes, bar by bar.
+
+@ A/B switches at once: the source alone
+A B switches at once: the original alone,
+
+@ … and the notes alone.
+and your notes alone.
 
 @ The pink curve is the sung pitch | optional
-The pink curve is the singer's actual pitch, taken from the original vocals. [pause:0.3s] Where it leaves a note, the transcription is off: a wrong pitch, or a missed note.
+The pink curve is the singer's real pitch. Where it leaves a note, the transcription is off.
 
 @ A cover far from the original? | optional
-A cover far from the original? Untick wave and sung, and the roll shows only your notes.
+Making a cover far from the original? Untick wave and sung, and the roll shows only your notes.
 
 @ ⇆ align moves the recording | optional
 And if the beats don't line up, align moves the recording against the bars.
 
 @ Every track plays in a sound of its own
-Every track plays in a sound of its own. Sounds, in the transport, sets them.
+Every track plays in a sound of its own, set under Sounds.
 
 @ Vocal, Instrument, Chords and Guide
-Vocal, instrument, chords, and guide: piano, strings, pad, organ, a sung ah, and more. [pause:0.2s] The play button lets you hear a few notes in each sound.
+Vocal, instrument, chords and guide each pick one, and the play button lets you hear it.
 
 @ Presets set them for a kind of song
-Presets set them all at once. Here: cover, check the transcription, with the original under the notes.
+This time we pick the preset made for covers: check the transcription, with the original under the notes.
 
 @ “save current as preset…” keeps your own
-And save current as preset keeps your own: in ComfyUI, ready for every song, in every browser.
+Your own settings can be saved as a preset, too.
 
 @ Arrange the song
-Let's arrange. Select the chorus, and press Control D: a copy right after it.
+Let's arrange. Select the chorus,
+
+@ … and Ctrl+D duplicates it
+and press Control D: a copy, right after it.
 
 @ Ctrl+↑ / Ctrl+↓ move the selection
 Control and the arrow keys move sections. We keep the copy, and undo the move.
@@ -220,28 +235,28 @@ Control and the arrow keys move sections. We keep the copy, and undo the move.
 With the original lyrics, the words follow their bars. So the copied chorus will sing the same words again.
 
 @ Export MusicXML hands the sheet music
-Export MusicXML hands the sheet music, lyrics included, to MuseScore, Sibelius, Dorico, or Cubase.
+Export MusicXML hands the sheet music to MuseScore, Sibelius, Dorico or Cubase.
 
 @ Export notation… gives the sheet music
-Export notation gives the sheet music as a PDF, on A4 or letter pages, as a PNG or SVG picture, [pause:0.2s] or prints it.
+Export notation makes a PDF, a PNG or an SVG, or prints it.
 
 @ A click on PDF
-One click on PDF: both voices, the chords, the sections, and the lyrics, with the song's title, ready to print.
+One click, and the PDF is ready to print.
 
 @ Save project keeps
-And save project keeps the score, the guide notes, the lyrics, and the editor's settings together, in one file.
+And save project keeps everything together in one file.
 
 @ Approve: this score
 Approve. The words will be placed into this score, extra chorus and all.
 
 @ The node says ✓ approved at once
-The node turns green at once. [pause:0.5s] Run again: now the words are transcribed, and the run stops at the Text sheet.
+The node turns green at once. [pause:0.4s] Run again: now the words are transcribed, and the run stops at the Text sheet.
 
 @ faster-whisper transcribes | optional
 Faster Whisper listens to the vocals, and places every word into the score's sections.
 
 @ Stop 2: Song Sheet · Text
-Stop two: the Text sheet.
+Second stop: the Text sheet.
 
 @ Open the text. | seed 6
 Let's open it, and take a look.
@@ -249,14 +264,14 @@ Let's open it, and take a look.
 @ The Score tab shows the transcribed words
 The Score tab shows the transcribed words, right over the notes they're sung on.
 
-@ Shift + mouse wheel
+@ Shift + mouse wheel | optional
 Let's scroll to the vocals.
 
 @ Each line over its phrase
-Each line sits over its phrase. And to fix a word, just double-click its line.
+Each line sits over its phrase; the copied chorus sings its words again. Double-click a line to fix it.
 
 @ The score can still be changed here
-You can still change the score right here. Apply writes it back to the Score sheet.
+The score can still change here; Apply writes it back to the Score sheet.
 
 @ Lyrics: the transcribed words
 The Lyrics tab lists the words, section by section. Unsure words are highlighted, so you know where to look.
@@ -265,28 +280,31 @@ The Lyrics tab lists the words, section by section. Unsure words are highlighted
 Style: the new style, with the voice from the brief.
 
 @ Title & artwork
-And the title, with a prompt for optional cover art.
+And the title, with a prompt for the optional cover art.
 
 @ Approve: exactly these words
 Approve: exactly these words go to YuE2.
 
 @ ✓ approved at once
-Approved. [pause:0.4s] One last run, and YuE2 renders the cover.
+Approved. [pause:0.3s] One last run, and YuE2 renders the cover.
 
 @ YuE2 renders the cover from the score
 YuE2 sings the new version,
 
+@ Check Vocals listens | optional
+Check Vocals listens to the takes,
+
 @ Master and Export finish the cover
 and Master and Export finish it.
 
-@ The approved cover is finished | +7
+@ The approved cover is finished | +5
 And there it is: the approved cover, finished and exported. [pause:0.5s] Enjoy!
 
 @ Export also saved the sheet music
-Export also saved the sheet music: your score, with the original words under the notes, as a PDF next to the cover.
+Export saved the sheet music as well, with the original words under the notes.
 
 @ Every further Run
 Every further run renders a new take of the same cover.
 
 @ card Next: 3 · MiniMax · Song | seed 2
-Next up: template three, MiniMax Song. Thanks for watching!
+Next up: template three, MiniMax Song. See you there!

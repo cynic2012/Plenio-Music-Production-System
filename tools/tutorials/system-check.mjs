@@ -1,6 +1,8 @@
 // Tutorial 0 · System Check: open the template, run the check and read its report - versions, the GPU,
 // which templates are ready, the model files, the download policy and the hardware table.
 
+import { FOOT } from './lib/studio.mjs'
+
 export const meta = {
   name: 'Plenio tutorial 0 - System Check',
   template: '0 · System Check',
@@ -11,12 +13,22 @@ const CHECK = 'System Check', ABOUT = 'About this template'
 // The report is as tall as its text: the node grows to show all of it (as a drag on its corner would),
 // and the camera moves over it, section by section.
 async function growNode(s) {
-  await s.page.evaluate((key) => {
+  // the report arrives a moment after the run: wait for its last section
+  await s.page.waitForFunction(() => document.querySelector('.plenio-summary')?.textContent.includes('Recommendations'), null, { timeout: 30000 }).catch(() => {})
+  await s.page.evaluate(async (key) => {
     const n = window.__tut.node(key)
     const el = document.querySelector('.plenio-summary')
-    const extra = el ? el.scrollHeight - el.clientHeight : 0
-    n.setSize([Math.max(n.size[0], 760), n.size[1] + Math.max(0, extra) + 24])
-    window.app.canvas.setDirty(true, true)
+    if (!el) return
+    n.setSize([Math.max(n.size[0], 760), n.size[1]])
+    // grow until nothing of the report is hidden (its height follows the node a frame later)
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 250))
+      const hidden = el.scrollHeight - el.clientHeight
+      if (hidden <= 1) break
+      n.setSize([n.size[0], n.size[1] + hidden + 4])
+      window.app.canvas.setDirty(true, true)
+      window.app.canvas.draw(true, true)
+    }
   }, CHECK)
   await s.wait(600)
 }
@@ -48,7 +60,7 @@ export default async function systemCheck(s) {
     kicker: 'Plenio tutorial',
     title: '<span class="num">0 ·</span> System Check',
     subtitle: 'Is this ComfyUI ready for Plenio? One run tells you - and changes nothing',
-    foot: 'Plenio Music Production System 0.4.5 for ComfyUI',
+    foot: FOOT,
   }, 5)
 
   s.chapter('Getting started')

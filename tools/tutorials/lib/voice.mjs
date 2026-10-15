@@ -87,15 +87,24 @@ export function anchorNarration(lines, markers, file = 'narration') {
   const cards = markers.cards.map((c, index) => ({ ...c, index })).sort((a, b) => a.t - b.t)
   const title = (c) => norm(String(c.data?.title ?? '').replace(/<[^>]+>/g, ''))
   let t = -Infinity
-  const anchored = lines.map((line) => {
+  const cardAfter = (cue, after) => cards.find((c) => c.t >= after - 1e-6 && title(c).startsWith(cue))
+  const captionAfter = (cue, after) => captions.find((c) => c.t0 >= after - 1e-6 && norm(c.text).startsWith(cue))
+  const anchored = lines.map((line, i) => {
     const cue = norm(line.cue)
     if (line.card) {
-      const card = cards.find((c) => c.t >= t - 1e-6 && title(c).startsWith(cue))
+      const card = cardAfter(cue, t)
       if (!card) throw new Error(`${file}: no card "${line.cue}" after ${t.toFixed(1)} s`)
       t = card.t
       return { ...line, anchor: { kind: 'card', index: card.index, t: card.t } }
     }
-    const caption = captions.find((c) => c.t0 >= t - 1e-6 && norm(c.text).startsWith(cue))
+    let caption = captionAfter(cue, t)
+    // an optional scene the script skipped: its cue must not take a later scene's caption of the same
+    // words - it only counts before the next cue that is not optional
+    const next = lines.slice(i + 1).find((l) => !l.optional)
+    if (caption && line.optional && next) {
+      const at = next.card ? cardAfter(norm(next.cue), t)?.t : captionAfter(norm(next.cue), t)?.t0
+      if (at !== undefined && at < caption.t0) caption = null
+    }
     if (!caption && line.optional) return null
     if (!caption) throw new Error(`${file}: no caption "${line.cue}" after ${t.toFixed(1)} s`)
     t = caption.t0 + 1e-3
@@ -186,10 +195,12 @@ export async function synthesize(lines, { url, cache, voiceDir, log = console.lo
   return lines
 }
 
-// all lines mixed into one mono track (48 kHz) at their start times, levelled for speech
+// all lines mixed into one mono track (48 kHz, 24 bit) at their start times, levelled for speech - exactly
+// `total` seconds long (the video's length)
 export function mixVoice(lines, total, file, work) {
   const RATE = 48000
-  const mix = new Float32Array(Math.ceil((total + 1) * RATE))
+  const length = Math.round(total * RATE)
+  const mix = new Float32Array(length)
   for (const line of lines) {
     const r = spawnSync('ffmpeg', ['-v', 'error', '-i', line.audio, '-f', 'f32le', '-ac', '1', '-ar', String(RATE), '-'], { maxBuffer: 1 << 28 })
     if (r.status !== 0) throw new Error(`could not decode ${line.audio}`)
@@ -200,7 +211,8 @@ export function mixVoice(lines, total, file, work) {
   const raw = path.join(work, 'voice.f32')
   fs.writeFileSync(raw, Buffer.from(mix.buffer))
   const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'f32le', '-ar', String(RATE), '-ac', '1', '-i', raw,
-    '-af', 'highpass=f=70,loudnorm=I=-16:TP=-1.5:LRA=11', '-ar', String(RATE), '-c:a', 'pcm_s16le', file], { encoding: 'utf8' })
+    '-af', `highpass=f=70,loudnorm=I=-16:TP=-1.5:LRA=11,aresample=${RATE},apad=whole_len=${length},atrim=end_sample=${length}`,
+    '-ar', String(RATE), '-c:a', 'pcm_s24le', file], { encoding: 'utf8' })
   if (r.status !== 0) throw new Error(`voice mix failed: ${r.stderr}`)
   fs.rmSync(raw)
 }

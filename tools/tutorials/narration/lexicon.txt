@@ -17,3 +17,5 @@ FLUX.2 => Flux two
 faster-whisper => faster whisper
 LLM => L L M
 GGUF => G G U F
+FLAC => flack
+LM Studio => L M Studio

@@ -10,7 +10,7 @@ Open the template browser,
 and Plenio's folder under Extensions.
 
 @ 3 · MiniMax · Song writes
-Template three: MiniMax Song. [pause:0.4s] It writes a new song, and renders it with MiniMax Music 3.
+Template three: MiniMax Song. [pause:0.3s] It writes a new song, and renders it with MiniMax Music 3.
 
 @ Five groups, from left to right
 Five groups, from left to right.
@@ -19,40 +19,40 @@ Five groups, from left to right.
 The Song Brief says what the song should be.
 
 @ WRITE - the writer drafts
-The writer drafts a title, a caption, and the lyrics.
+The writer drafts a title, a caption and the lyrics.
 
 @ SHEET - the Song Sheet
-The Song Sheet shows what MiniMax gets. No score needed, so just one sheet.
+The Song Sheet shows exactly what MiniMax gets. No score, so just one sheet.
 
 @ RENDER - MiniMax Music 3
 Then MiniMax renders the song.
 
 @ MUSIC MODEL - the MiniMax files
-Here are the model files: the diffusion model, the text encoder, and the decoder.
+Its model files: diffusion model, text encoder and decoder.
 
 @ REFINE - brings the take
-Then the take is refined, up to forty-eight kilohertz.
+Refine lifts the take to forty-eight kilohertz,
 
 @ FINISH - Master
-And Master and Export finish it, just like in the other templates.
+and Master and Export finish it, just as in the other templates.
 
 @ card A new song every run
 Part one: a new song, every run.
 
 @ The Song Brief works as in
-The Song Brief works just like in the YuE2 templates. Here, a new song every run.
+The Song Brief works just as in the YuE2 templates. Here, a new song every run.
 
 @ Describe the song in your own words
-Describe the song in your own words. [pause:0.4s] Tonight: late-night jazz pop, with soft piano and brushed drums.
+Describe the song in your own words. [pause:0.3s] Tonight: late-night jazz pop, with soft piano and brushed drums.
 
 @ length: short
 Keep it short. MiniMax may end a song a little earlier than asked.
 
 @ arrangement: MiniMax takes no score
-MiniMax takes no score, so a creative mode, which is experimental, only shapes the writing here. Simple is fine.
+MiniMax takes no score, so a creative mode only shapes the writing. Off is fine.
 
 @ The Writer model writes caption and lyrics
-The Writer model writes the caption and the lyrics: Gemma 4 by default, or a local LLM from your own machine.
+The writer model writes caption and lyrics: Gemma 4, or a local LLM.
 
 @ Press Run.
 And press Run.
@@ -64,7 +64,7 @@ The writer drafts the title, the caption and the lyrics,
 MiniMax renders the song from them,
 
 @ Refine brings the take | seed 2
-then Refine raises the sample rate,
+Refine raises the sample rate,
 
 @ Master and Export finish
 and Master and Export finish it.
@@ -73,7 +73,7 @@ and Master and Export finish it.
 Done! Let's listen.
 
 @ Run again for another song
-Run again for another song, or set a number next to Run, for a whole series.
+Run again for another song, or set a number next to Run for a whole series.
 
 @ card One song, stop to review
 Part two: one song, with a stop to review.
@@ -85,10 +85,10 @@ Switch the mode to one song, stop to review. Now the run waits at the Song Sheet
 Press Run.
 
 @ The writer model drafts
-The writer drafts a new song.
+The writer drafts a new song,
 
 @ The run stopped at the Song Sheet
-And the run stops, waiting for your approval.
+and the run stops, waiting for your approval.
 
 @ Open it with
 Open it with Edit Song Sheet,
@@ -97,31 +97,31 @@ Open it with Edit Song Sheet,
 and give it the whole window.
 
 @ Caption: MiniMax reads it in three parts
-The caption describes the song for MiniMax: tempo, key and genre first, then the vocals, then the arrangement. [pause:0.3s] The notes below check its form.
+The caption describes the song for MiniMax in three parts: tempo, key and genre first, then the vocals, then the arrangement. [pause:0.3s] The notes below check its form.
 
 @ Lyrics: section by section
 The lyrics, section by section. MiniMax sings roughly one line every five seconds.
 
-@ The budget:
-Caption and lyrics share five thousand tokens. If they don't fit, the run stops before rendering.
+@ The budget: | optional
+Caption and lyrics share five thousand tokens; if they don't fit, the run stops before rendering.
 
 @ Title & artwork
-Here's the title, and a prompt for optional cover art.
+Here's the title, and a prompt for the optional cover art.
 
 @ Approve: exactly this caption
 Approve: exactly this caption and these lyrics go to MiniMax.
 
 @ The node says ✓ approved at once
-The node turns green right away. [pause:0.4s] Run again, and MiniMax renders the approved song.
+The node turns green right away. [pause:0.3s] Run again, and MiniMax renders the approved song.
 
 @ MiniMax Music 3 renders
-MiniMax renders,
+MiniMax renders it,
 
 @ Refine brings the take
-Refine refines,
+Refine restores the high end,
 
 @ Master and Export finish
-and Master and Export finish the job.
+and Master and Export wrap it up.
 
 @ The approved song is finished | +6
 Here it is: the approved song, finished and exported.
@@ -130,4 +130,4 @@ Here it is: the approved song, finished and exported.
 Every further run renders a new take of the same song.
 
 @ card Next: 4 · Enhance & Master
-Next up: template four, Enhance and Master.
+In the next video: template four, Enhance and Master.

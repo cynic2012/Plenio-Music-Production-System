@@ -1,7 +1,7 @@
 // Record and edit a tutorial video against a running ComfyUI with Plenio and the real models.
 //
 //   node tools/tutorials/record.mjs <script> [--url http://127.0.0.1:8190] [--tts-url http://127.0.0.1:8191]
-//        [--out dist/tutorials] [--render-only] [--headed]
+//        [--out dist/tutorials] [--record-only | --render-only] [--headed]
 //
 // <script> is a file name here without .mjs; its narration is narration/<script>.txt. --tts-url is a
 // ComfyUI with TTS Audio Suite (OmniVoice) for the lines not yet in the voice cache.
@@ -71,6 +71,8 @@ if (!args.includes('--render-only')) {
     await studio.browser.close()
   }
   if (failure) process.exit(1)
+  // the voice comes later (the TTS server holds GPU memory while the songs render): cut with --render-only
+  if (args.includes('--record-only')) process.exit(0)
 }
 await renderTutorial({
   dir,

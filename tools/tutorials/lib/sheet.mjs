@@ -17,6 +17,7 @@ export async function openSheet(s, nodeId, text) {
   await s.spotlight(box, { ms: 1200 })
   await s.click(box, { pause: 400 })
   await s.page.locator(DIALOG).waitFor({ state: 'visible', timeout: 15000 })
+  s.sfx('open')
   await s.wait(1200)
 }
 
@@ -32,7 +33,10 @@ export async function approve(s, text) {
   if (text) s.caption(text)
   await s.spotlight(button, { ms: 1400 })
   await s.wait(700)
-  await s.click(button, { pause: 400 })
+  await s.hover(button)
+  await s.wait(400)
+  s.sfx('approve')
+  await s.click(button, { pause: 0 })
   await s.page.locator(DIALOG).waitFor({ state: 'detached', timeout: 15000 }).catch(() => {})
   await s.rest()
   await s.wait(500)
@@ -118,25 +122,44 @@ export async function undo(s, times = 1, text, { to } = {}) {
   await s.wait(700)
 }
 
+// The sheet's warning that the lyrics' sections and the score's differ, in either form: "The lyrics have
+// sections [...] but the score has [...]" (every section) or, with YuE2's plan, "The lyrics sing in the
+// sections [...] but the score's sung sections are [...]" (the sections with Vocal notes only). Returns the
+// two lists and, per score entry, its index in the section list on the left (null: no such warning).
+export const SECTION_WARNING = /lyrics (have|sing in the) sections/
+
+function sectionMismatch(s) {
+  return s.page.evaluate((sel) => {
+    const dialog = document.querySelector(sel)
+    const text = [...dialog.querySelectorAll('li')].map((x) => x.innerText).find((t) => /lyrics (have|sing in the) sections/.test(t))
+    const m = text?.match(/lyrics have sections \[(.*?)\] but the score has \[(.*?)\]/) ?? text?.match(/lyrics sing in the sections \[(.*?)\] but the score's sung sections are \[(.*?)\]/)
+    if (!m) return null
+    const list = (x) => [...x.matchAll(/'([^']*)'/g)].map((y) => y[1])
+    const lyrics = list(m[1]), score = list(m[2])
+    // a score entry's place in the section list: the n-th section of that name
+    const labels = [...dialog.querySelectorAll('.navigator .sections li .section-head strong')].map((x) => x.textContent.trim().toLowerCase())
+    const at = score.map((name, k) => {
+      const nth = score.slice(0, k).filter((x) => x === name).length
+      let seen = -1
+      return labels.findIndex((label) => label === name && ++seen === nth)
+    })
+    if (at.some((i) => i < 0)) return null
+    return { lyrics, score, at }
+  }, DIALOG)
+}
+
 // A real fix first, when the sheet has one: the score's section names against the lyrics' (the
 // planner may call a section "interlude" where the lyrics have a chorus). This edit stays.
 export async function fixSections(s) {
   const d = s.page.locator(DIALOG)
-  const mismatch = await s.page.evaluate((sel) => {
-    const dialog = document.querySelector(sel)
-    const text = [...dialog.querySelectorAll('li')].map((x) => x.innerText).find((t) => /lyrics have sections/.test(t))
-    const m = text?.match(/lyrics have sections \[(.*?)\] but the score has \[(.*?)\]/)
-    if (!m) return null
-    const list = (x) => [...x.matchAll(/'([^']*)'/g)].map((y) => y[1])
-    const lyrics = list(m[1]), score = list(m[2])
-    if (lyrics.length !== score.length) return null
-    const index = lyrics.findIndex((name, k) => name !== score[k])
-    return index < 0 ? null : { index, from: score[index], to: lyrics[index] }
-  }, DIALOG)
-  if (!mismatch) return
+  const found = await sectionMismatch(s)
+  if (!found || found.lyrics.length !== found.score.length) return
+  const k = found.lyrics.findIndex((name, i) => name !== found.score[i])
+  if (k < 0) return
+  const mismatch = { index: found.at[k], from: found.score[k], to: found.lyrics[k] }
   const warning = `The sheet warns: the lyrics expect a ${mismatch.to} where the score says “${mismatch.from}”.`
   s.caption(warning)
-  await s.spotlight(d.locator('li', { hasText: 'lyrics have sections' }).first(), { ms: 3200, pad: 4 })
+  await s.spotlight(d.locator('li', { hasText: SECTION_WARNING }).first(), { ms: 3200, pad: 4 })
   await s.read(warning, 4600)
   s.caption(`Fix it in the section list on the left: Rename “${mismatch.from}” to “${mismatch.to}”.`)
   await s.click(d.getByRole('button', { name: 'Rename', exact: true }).nth(mismatch.index), { pause: 500 })
@@ -157,24 +180,17 @@ export async function fixSections(s) {
 // with one) - the extra ones are selected in the section list and deleted. This edit stays.
 export async function trimSections(s) {
   const d = s.page.locator(DIALOG)
-  const extra = await s.page.evaluate((sel) => {
-    const dialog = document.querySelector(sel)
-    const text = [...dialog.querySelectorAll('li')].map((x) => x.innerText).find((t) => /lyrics have sections/.test(t))
-    const m = text?.match(/lyrics have sections \[(.*?)\] but the score has \[(.*?)\]/)
-    if (!m) return null
-    const list = (x) => [...x.matchAll(/'([^']*)'/g)].map((y) => y[1])
-    const lyrics = list(m[1]), score = list(m[2])
-    if (lyrics.length >= score.length) return null
-    // the lyrics as a subsequence of the score: what is left over goes
-    const out = []
-    let j = 0
-    score.forEach((name, i) => (j < lyrics.length && name === lyrics[j] ? j++ : out.push(i)))
-    return j === lyrics.length ? { out, names: out.map((i) => score[i]) } : null
-  }, DIALOG)
-  if (!extra) return false
+  const found = await sectionMismatch(s)
+  if (!found || found.lyrics.length >= found.score.length) return false
+  // the lyrics as a subsequence of the score: what is left over goes
+  const out = []
+  let j = 0
+  found.score.forEach((name, i) => (j < found.lyrics.length && name === found.lyrics[j] ? j++ : out.push(i)))
+  if (j !== found.lyrics.length) return false
+  const extra = { out: out.map((i) => found.at[i]), names: out.map((i) => found.score[i]) }
   const warning = `The sheet warns: the lyrics have fewer sections than the sketch - ${extra.names.length} of the score’s sections would have no words.`
   s.caption(warning)
-  await s.spotlight(d.locator('li', { hasText: 'lyrics have sections' }).first(), { ms: 3200, pad: 4 })
+  await s.spotlight(d.locator('li', { hasText: SECTION_WARNING }).first(), { ms: 3200, pad: 4 })
   await s.read(warning, 5000)
   s.caption(`Arrange the score to the words: select the extra ${extra.names.join(' and the ')} - Ctrl+click adds to the selection …`)
   const heads = d.locator('.navigator .sections li .section-head')
@@ -198,6 +214,45 @@ export async function trimSections(s) {
   s.caption(done)
   await s.read(done, 5000)
   return true
+}
+
+// The lyrics follow the sections only when the score has exactly the lyrics' sections (score editor guide):
+// a plan with one section more - an instrumental ending named like the section before it - keeps the
+// lyrics from following, and a copied chorus would get no words. Join ↑ joins that section to the one
+// before it (the music stays as it is), and from then on the lyrics follow every section edit. This edit
+// stays. Returns whether the lyrics follow the sections now.
+const lyricsFollow = (s) =>
+  s.page.evaluate((sel) => /arranges them too/.test(document.querySelector(sel)?.querySelector('.lyrics-follow')?.textContent ?? ''), DIALOG)
+
+export async function alignSections(s) {
+  const d = s.page.locator(DIALOG)
+  const panel = d.locator('.lyrics-follow').first()
+  if (!(await panel.count()) || (await lyricsFollow(s))) return true
+  const labels = (await d.locator('.navigator .sections li .section-head strong').allTextContents()).map((x) => x.trim().toLowerCase())
+  // a section named like the one before it, from the end: the instrumental tail first
+  const candidates = labels.map((name, i) => (i > 0 && name === labels[i - 1] ? i : -1)).filter((i) => i > 0).reverse()
+  for (const index of candidates) {
+    const to = await undoMark(s)
+    const name = labels[index]
+    const item = d.locator('.navigator .sections li').nth(index)
+    await item.scrollIntoViewIfNeeded()
+    const warning = `The lyrics do not follow the sections yet: the score has two “${name}” sections, the lyrics one - the second is the instrumental ending.`
+    s.caption(warning)
+    await s.spotlight(d.locator('.navigator').first(), { ms: 3000, pad: 4 })
+    await s.read(warning, 5200)
+    s.caption(`Join ↑ joins the second “${name}” to the one before it - the music stays as it is.`)
+    await s.click(item.locator('button', { hasText: 'Join' }).first(), { pause: 500 })
+    await s.wait(1600)
+    if (await lyricsFollow(s)) {
+      const done = 'Now the lyrics follow the sections: copy, move or delete a section, and its words go with it.'
+      s.caption(done)
+      await s.spotlight(panel, { ms: 3000, pad: 4 })
+      await s.read(done, 4800)
+      return true
+    }
+    await undo(s, 1, undefined, { to })
+  }
+  return false
 }
 
 // Scroll the roll to where the voice starts (an instrumental intro can fill the first bars).

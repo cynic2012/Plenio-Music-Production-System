@@ -7,6 +7,7 @@
 import path from 'node:path'
 import { arrangeDemo, cursorDemo, editorTour, filesDemo, sheetMusicSaved, showApproved, soundsDemo } from './lib/scenes.mjs'
 import { DIALOG, approve, maximize, noteEditing, openSheet, scrollToVoice, tab } from './lib/sheet.mjs'
+import { FOOT } from './lib/studio.mjs'
 
 export const meta = {
   name: 'Plenio tutorial 2 - YuE2 Cover',
@@ -26,6 +27,7 @@ const GROUPS = {
   [TAKES]: '6 · RENDER', [CHECK]: '6 · RENDER', [MASTER]: '7 · FINISH', [PREVIEW]: '7 · FINISH', [EXPORT]: '7 · FINISH',
 }
 const STAGES = {
+  [SUNG]: 'Sung Pitch separates the vocals once, for the curve in the editor.',
   [TRANSCRIBE]: 'SheetSage2 transcribes the recording into a score: melody, chords, sections and tempo.',
   [LYRICS]: 'faster-whisper transcribes the sung words and places them into the score’s sections.',
   [TAKES]: 'YuE2 renders the cover from the score.',
@@ -39,7 +41,7 @@ export default async function cover(s, { project }) {
     kicker: 'Plenio tutorial',
     title: '<span class="num">2 ·</span> YuE2 · Cover',
     subtitle: 'A new version of a recording - transcribed, reviewed and rendered by YuE2',
-    foot: 'Plenio Music Production System 0.4.5 for ComfyUI',
+    foot: FOOT,
   }, 5)
 
   // --- open the template -------------------------------------------------------------------------
@@ -126,9 +128,9 @@ export default async function cover(s, { project }) {
   s.caption('harmony: keep the original chords, or let YuE2 re-harmonise.')
   await s.hover(await s.widgetBox(BRIEF, 'harmony'), { fx: 0.7 })
   await s.wait(3000)
-  s.caption('arrangement: “simple” keeps the transcription as it is. The experimental creative modes, with their sliders, are tutorial 7.')
+  s.caption('arrangement: “off” keeps the transcription as it is. The experimental creative modes, with their sliders, are tutorial 7.')
   await s.spotlight(await s.widgetBox(BRIEF, 'arrangement'), { ms: 2600 })
-  await s.read('arrangement: “simple” keeps the transcription as it is. The experimental creative modes, with their sliders, are tutorial 7.', 6000)
+  await s.read('arrangement: “off” keeps the transcription as it is. The experimental creative modes, with their sliders, are tutorial 7.', 6000)
 
   s.caption('Press Run.')
   await s.resetRunState()

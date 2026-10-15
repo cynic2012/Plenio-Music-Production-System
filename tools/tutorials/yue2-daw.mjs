@@ -8,6 +8,7 @@
 import path from 'node:path'
 import { barsDemo, cursorDemo, editorTour, filesDemo, recordDemo, sheetMusicSaved, showApproved, simulateKeyboard, soundsDemo } from './lib/scenes.mjs'
 import { DIALOG, approve, fixSections, maximize, openSheet, scrollToVoice, tab, trimSections } from './lib/sheet.mjs'
+import { FOOT } from './lib/studio.mjs'
 
 export const meta = {
   name: 'Plenio tutorial 5 - YuE2 DAW',
@@ -38,7 +39,7 @@ export default async function daw(s, { project }) {
     kicker: 'Plenio tutorial',
     title: '<span class="num">5 ·</span> YuE2 · DAW',
     subtitle: 'The writer drafts the words, you bring the music - YuE2 renders exactly your score',
-    foot: 'Plenio Music Production System 0.4.5 for ComfyUI',
+    foot: FOOT,
   }, 5)
 
   // --- open the template -------------------------------------------------------------------------

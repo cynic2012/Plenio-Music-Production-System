@@ -6,8 +6,9 @@
 // over the new melody - the rendered cover and its sheet music. The source is the repository's sample song.
 
 import path from 'node:path'
-import { arrangementDemo, sheetMusicSaved, showApproved } from './lib/scenes.mjs'
+import { abDemo, arrangementDemo, sheetMusicSaved, showApproved } from './lib/scenes.mjs'
 import { DIALOG, approve, maximize, openSheet, scrollToVoice, tab } from './lib/sheet.mjs'
+import { FOOT } from './lib/studio.mjs'
 
 export const meta = {
   name: 'Plenio tutorial 7 - YuE2 Cover creative modes',
@@ -44,7 +45,7 @@ export default async function coverCreative(s, { project }) {
     kicker: 'Plenio tutorial',
     title: '<span class="num">7 ·</span> YuE2 · Cover · Creative modes',
     subtitle: 'A new arrangement of a recording, with new lyrics that keep its story - an experimental feature to play with',
-    foot: 'Plenio Music Production System 0.8.0 for ComfyUI',
+    foot: FOOT,
   }, 5)
   s.card('chapter', {
     kicker: 'Before we start', part: 'Experimental', title: 'Made for experimenting',
@@ -124,8 +125,8 @@ export default async function coverCreative(s, { project }) {
   await s.read('harmony: “keep original chords” - the writer builds its new chords on them, and YuE2 follows the chords.', 5200)
 
   await s.flyNodes([ARRANGE, SEED, SUNG], 1100, 0.9)
-  s.caption('In SCORE, the new block Arrange: the writer answers with a plan for every section, Plenio writes the notes and checks the score.')
-  await s.read('In SCORE, the new block Arrange: the writer answers with a plan for every section, Plenio writes the notes and checks the score.', 7000)
+  s.caption('In SCORE, the block Arrange: the writer answers with a plan for every section, Plenio writes the notes and checks the score.')
+  await s.read('In SCORE, the block Arrange: the writer answers with a plan for every section, Plenio writes the notes and checks the score.', 7000)
   await s.flyNodes([WRITER], 1100, 0.9)
   s.caption('Writer model: the same writer for the new lyrics and the arrangement - Gemma 4, or a local LLM.')
   await s.spotlight(await s.widgetBox(WRITER, 'model'), { ms: 2600 })
@@ -196,21 +197,13 @@ export default async function coverCreative(s, { project }) {
   }, 5)
 }
 
-// A/B against the original: the transcribed (and arranged) notes and the source, bar by bar.
+// A/B against the original: the arranged notes and the source, bar by bar - heard.
 async function abAgainstSource(s) {
-  const d = s.page.locator(DIALOG)
-  const both = d.locator('.transport .hear button', { hasText: 'both' }).first()
-  if (!(await both.count())) return
-  const text = 'Compare with the original: “both” plays the source under the notes, A/B switches between them - the old melody against the new one.'
-  s.caption(text)
-  await s.click(both, { pause: 300 })
-  const play = d.locator('button', { hasText: '▶ play' }).first()
-  const at = await s.click(play, { pause: 300 })
-  await s.wait(4000)
-  await s.click(d.locator('.transport button', { hasText: 'A/B' }).first(), { pause: 300 })
-  await s.wait(3500)
-  await s.click({ x: at.x, y: at.y, width: 0, height: 0 }, { pause: 200 })
-  await s.read(text, 2000)
+  await abDemo(s, {
+    both: 'Compare with the original: “both” plays the source under the arranged notes.',
+    source: 'A/B: the original alone, with its old melody …',
+    notes: '… and the new arrangement alone, with the new melody.',
+  })
 }
 
 async function afterRun(s, text) {

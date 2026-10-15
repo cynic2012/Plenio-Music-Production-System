@@ -151,14 +151,11 @@ export async function cursorDemo(s, { source = false } = {}) {
   await s.read(keys, 5200)
   const both = d.locator('.transport .hear button', { hasText: 'both' }).first()
   if (source && (await both.count())) {
-    s.caption('The original recording plays right under the notes, bar by bar - A/B switches between the notes and the source at once.')
-    await s.click(both, { pause: 300 })
-    const at = await s.click(play, { pause: 300 })
-    await s.wait(4000)
-    await s.click(d.locator('.transport button', { hasText: 'A/B' }).first(), { pause: 300 })
-    await s.wait(3000)
-    await s.click({ x: at.x, y: at.y, width: 0, height: 0 }, { pause: 200 })
-    await s.wait(800)
+    await abDemo(s, {
+      both: 'The original recording plays right under the notes, bar by bar: “both” plays them together.',
+      source: 'A/B switches at once: the source alone …',
+      notes: '… and the notes alone.',
+    })
     // the sung pitch (node Sung Pitch), the view of the source, the beat grid by hand
     const curve = d.locator('.roll-svg path.sung-pitch')
     if (await curve.count()) {
@@ -188,6 +185,30 @@ export async function cursorDemo(s, { source = false } = {}) {
       await s.read(text, 4200)
     }
   }
+}
+
+// A/B against the source, heard: "both" from the cursor, then A/B to the source alone, A/B again to the
+// notes alone (the editor's sound is a track of the video). The three captions are what the narration says.
+export async function abDemo(s, captions) {
+  const d = s.page.locator(DIALOG)
+  const both = d.locator('.transport .hear button', { hasText: 'both' }).first()
+  if (!(await both.count())) return false
+  const play = d.locator('button', { hasText: '▶ play' }).first()
+  const swap = d.locator('.transport button', { hasText: 'A/B' }).first()
+  s.caption(captions.both)
+  await s.click(both, { pause: 300 })
+  const at = await s.click(play, { pause: 300 })
+  await s.wait(5200)
+  s.caption(captions.source)
+  await s.click(swap, { pause: 200 })
+  await s.wait(4200)
+  s.caption(captions.notes)
+  await s.click(swap, { pause: 200 })
+  await s.wait(4200)
+  await s.click({ x: at.x, y: at.y, width: 0, height: 0 }, { pause: 200 })
+  await s.click(both, { pause: 200 })
+  await s.wait(700)
+  return true
 }
 
 // A simulated MIDI keyboard for recordDemo (Web MIDI is asked for at the first rec, so the page needs
@@ -472,7 +493,7 @@ export async function arrangementDemo(s, { cover = false } = {}) {
   const summary = panel.locator('summary').first()
   const details = cover
     ? 'Open it: the writer’s idea, and for every section what Plenio wrote - chords, the melody that follows them, the instrument line - and what stayed.'
-    : 'Open it: the writer’s idea, and for every section what Plenio wrote - chords, the instrument line, a key lift - and what stayed.'
+    : 'Open it: the writer’s idea, and for every section what Plenio wrote - chords, the instrument line, the energy - and what stayed.'
   s.caption(details)
   await s.click(summary, { fx: 0.05, pause: 300 })
   await s.wait(900)
@@ -523,4 +544,57 @@ export async function sheetMusicSaved(s, node, text) {
   )
   if (box?.width) await s.spotlight(box, { ms: 3800, pad: 4 })
   await s.read(text, 6000)
+}
+
+// Continue a song (0.6.0; from the song's FLAC since 0.8.0): File > Continue a Plenio song… lists the songs
+// of the output folder, Continue opens the newest in the workflow it was made with.
+export async function continueDemo(s) {
+  const page = s.page
+  s.chapter('Continue a song')
+  const intro = 'Later, go on where you stopped: File → Continue a Plenio song…'
+  s.caption(intro)
+  await s.click(page.locator('.comfy-menu-button-wrapper').first(), { pause: 300 })
+  const file = page.locator('[role=menuitem]', { hasText: /^File/ }).first()
+  await file.waitFor({ timeout: 5000 })
+  const at = await s.hover(file)
+  // a leaf entry: the File entry's own text holds its submenu's; the submenu opens after the hover
+  const entry = page.locator('[role=menuitem]:not(:has([role=menuitem]))', { hasText: 'Continue a Plenio song' }).first()
+  await entry.waitFor({ timeout: 3000 }).catch(() => {})
+  if (!(await entry.isVisible().catch(() => false))) {
+    await s.click(file, { pause: 200 })
+    await entry.waitFor({ timeout: 3000 })
+  }
+  await s.wait(500)
+  // into the submenu sideways first, then down inside it: a diagonal move crossed Edit and View, whose
+  // submenu opened instead (the click hit its Minimap)
+  const box = await entry.boundingBox()
+  await s.moveTo(box.x + 40, at.y, 450)
+  await s.moveTo(box.x + 40, box.y + box.height / 2, 600)
+  await s.wait(300)
+  if (!(await entry.isVisible())) throw new Error('the File menu closed before Continue a Plenio song… was clicked')
+  await s.click(entry, { fx: 0.3, pause: 300 })
+  const dialog = page.locator('.plenio-continue')
+  await dialog.waitFor({ timeout: 15000 })
+  await dialog.locator('.row').first().waitFor({ timeout: 15000 })
+  s.sfx('open')
+  await s.read(intro, 2600)
+  const list = 'Every song of the output folder, newest first - with its cover, date, length and Plenio version. ▶ listens, the search finds a title, a folder or a date.'
+  s.caption(list)
+  await s.spotlight(dialog.locator('.list').first(), { ms: 3200, pad: 4 })
+  await s.read(list, 6400)
+  const any = 'Open a record or FLAC… takes a song from any folder: since 0.8.0 the song’s FLAC carries its whole project.'
+  s.caption(any)
+  const button = dialog.locator('button', { hasText: 'Open a record or FLAC' }).first()
+  await s.spotlight(button, { ms: 2600, pad: 4 })
+  await s.hover(button)
+  await s.read(any, 5600)
+  const go = 'Continue opens the song in the workflow it was made with - its lyrics and score in the Song Sheets, ready for the next take.'
+  s.caption(go)
+  await s.click(dialog.locator('.row').first().locator('button.primary').first(), { pause: 500 })
+  await dialog.waitFor({ state: 'detached', timeout: 30000 }).catch(() => {})
+  await s.rest()
+  await s.read(go, 5600)
+  const drop = 'Quicker still: drop the song’s FLAC onto the empty canvas.'
+  s.caption(drop)
+  await s.read(drop, 3400)
 }

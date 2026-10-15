@@ -5,25 +5,28 @@
 Welcome back! In this video, the writer model plans the arrangement of a YuE2 song, and Plenio writes the notes.
 
 @ card Made for experimenting
-One thing first: creative modes are new, and experimental. They can surprise you, in good ways and in odd ones. [pause:0.4s] So treat them as a playground: try a mode, listen, and keep what you like.
+One thing first: creative modes are experimental. They can surprise you, in good ways and in odd ones. [pause:0.4s] So treat them as a playground: try a mode, listen, and keep what you like.
 
 @ Open the template browser
-Open the template browser.
+Open the template browser,
 
 @ Plenio’s templates: Extensions
-Plenio's templates are under Extensions.
+and Plenio's folder under Extensions.
 
 @ Creative modes live in the song templates
 Creative modes live in the song templates. We take YuE2 Song, where they reach the furthest.
 
 @ The template is the one from tutorial 1
-It's the same template as in tutorial one. Three parts make the creative modes.
+It's the template from tutorial one. Three parts make the creative modes.
 
 @ In the Song Brief: arrangement
-First, in the Song Brief: arrangement, marked experimental. [pause:0.3s] Simple, the default, lets YuE2 plan everything by itself, just like before.
+First, arrangement in the Song Brief. Off, the default, lets YuE2 plan everything itself.
 
-@ The creative modes: standard, varied
-The creative modes: standard, varied, fantasy, sterile, many instruments, and dramatic. [pause:0.3s] Or a mode of your own, written as a small Markdown file.
+@ Thirteen creative modes
+Thirteen creative modes, sorted from simple to rich: from standard, sterile and unplugged, all the way to jazz colours, fantasy and key change. [pause:0.2s] Or a mode of your own, written as a small Markdown file.
+
+@ Only “key change” changes the key
+Only key change changes the key. Every other mode keeps it.
 
 @ We take “dramatic”
 We take dramatic: one long arc, from a quiet start to a big last chorus.
@@ -32,22 +35,22 @@ We take dramatic: one long arc, from a quiet start to a big last chorus.
 Genre closeness sets how typical the song stays. A hundred is strictly by the book, seventy adds personal touches, forty is free within the genre, and zero borrows from any style.
 
 @ Writer model: one choice for every writing step
-Second, the Writer model: one choice for every writing step, the lyrics and the arrangement. Gemma 4 by default, or any local LLM on your machine.
+Second, the writer model: one choice for the lyrics and the arrangement. Gemma 4, or any local LLM.
 
-@ In SCORE, the new block Arrange
-Third, in the score group, the new block Arrange. After YuE2 has planned the score, it asks the writer for a section plan: chords, what the instrument line plays, the energy, and maybe a key lift.
+@ In SCORE, the block Arrange
+Third, the Arrange block: after YuE2's plan, the writer plans each section's chords, instrument line and energy.
 
 @ The writer never writes notes
-The writer never writes notes itself. Plenio writes every note, and checks the score. [pause:0.3s] If a plan can't be used, the score simply stays as it was.
+The writer never writes notes: Plenio does, and checks them. A plan it can't use changes nothing.
 
 @ Arrangement seed: another arrangement
-And the arrangement seed gives you another arrangement of the same song.
+The arrangement seed gives another arrangement.
 
 @ card A dramatic song
 Part one: a dramatic song, with stops to review the text and the arranged score.
 
 @ mode: “one song, stop to review” - we want
-Set the mode to one song, stop to review. We want to see what the mode does, before anything is rendered.
+Set the mode to one song, stop to review, to see what the mode does first.
 
 @ Describe the song.
 Describe the song. Here: a night drive along the coast, from quiet doubt to a chorus that opens up like the sea.
@@ -59,7 +62,7 @@ And keep it short: about a minute and a half.
 Press Run.
 
 @ The writer drafts title, style and lyrics
-The writer drafts the title, the style and the lyrics, with the hints of the dramatic mode.
+The writer drafts the title, the style and the lyrics, guided by the dramatic mode.
 
 @ Stop 1: Song Sheet · Text
 First stop: the Text sheet.
@@ -68,7 +71,7 @@ First stop: the Text sheet.
 Let's open it.
 
 @ Style: the sound YuE2 is asked for
-The style is the sound YuE2 is asked for. The dramatic mode's hints went into the writer's prompt, [pause:0.2s] and the template keeps the song acoustic here.
+The style is the sound YuE2 is asked for. The mode's hints went into the writer's prompt; the template keeps it acoustic.
 
 @ Lyrics: the words YuE2 will sing - edit anything
 The lyrics are what YuE2 will sing. Edit anything you like.
@@ -77,43 +80,43 @@ The lyrics are what YuE2 will sing. Edit anything you like.
 Approve.
 
 @ ✓ approved. Run again: YuE2 plans the score
-Approved. Run again: YuE2 plans the score, and Arrange arranges it.
+Approved. Run again: YuE2 plans the score, and Arrange re-arranges it.
 
 @ YuE2 plans the melody and the chords
 YuE2 plans the melody and the chords.
 
 @ Arrange: the writer answers with a section plan
-Then Arrange: the writer answers with a section plan, and Plenio writes the notes and checks the score.
+Then Arrange: the writer answers with a plan for each section, and Plenio writes the notes and checks the score.
 
 @ Stop 2: Song Sheet · Score - the arranged score
-Second stop: the Score sheet, where the arranged score waits for your approval.
+Second stop: the Score sheet, with the arranged score.
 
 @ Open the score.
-Let's open the score.
+Let's open the score,
 
 @ ⛶ gives the editor
-This button gives the editor the whole window.
+and give the editor the whole window.
 
 @ Arrangement not applied | optional
-Here, the arrangement wasn't applied: the writer's plan couldn't be used, so the score stays as YuE2 wrote it. The line says why.
+This time, the arrangement wasn't applied: the writer's plan couldn't be used, so the score stays as YuE2 wrote it. The line says why.
 
 @ Under the editor, the arrangement | optional
-Under the editor, you find the arrangement: the mode, its closeness, and how many sections it changed. [pause:0.2s] And yes, it's marked experimental.
+Under the editor: the arrangement, with its mode, closeness, and how many sections it changed.
 
 @ Open it: the writer’s idea | optional
-Open it, and you see the writer's idea, and for every section what Plenio wrote: chords, the instrument line, a key lift. And what stayed as it was.
+Open it to read the writer's idea, and for every section what Plenio wrote: the chords, the instrument line, the energy. And what stayed as it was.
 
 @ In the roll, the instrument line | optional
-In the roll, the instrument line is the second voice. Plenio wrote it note by note from the plan, on the chords above it.
+In the roll, the instrument line is the second voice, written from the plan on the chords above.
 
 @ The sheet also warns | optional
-The sheet also warns: YuE2's plan has fewer sections than the lyrics. Tutorial one shows how to fix sections. Here, we keep the plan.
+The sheet also warns: YuE2's plan sings other sections than the lyrics. Here, we keep it.
 
 @ That is what experimental means | optional
 That's what experimental means: sometimes a plan doesn't fit. Approve YuE2's own score, or run Arrange again with another seed.
 
 @ Everything stays editable | optional
-And everything stays editable: chords, notes, sections. The arrangement is a starting point, not the last word.
+Everything stays editable: the arrangement is a starting point, not the last word.
 
 @ Approve: this arranged score
 Approve. This arranged score is what YuE2 renders.
@@ -122,22 +125,22 @@ Approve. This arranged score is what YuE2 renders.
 Approved. Run again, and YuE2 renders the song.
 
 @ YuE2 renders the song from the lyrics and the arranged score
-YuE2 renders the song from the lyrics and the arranged score,
+YuE2 sings the lyrics over the arranged score,
 
 @ Master and Export finish the song
 and Master and Export finish it.
 
-@ The dramatic song - listen | +8
+@ The dramatic song - listen | +5
 Here's our dramatic song. [pause:0.4s] Listen to how it builds.
 
 @ Export also saved the sheet music
-Export also saved the sheet music: the arranged score with the lyrics, as a PDF, right next to the song.
+Export saved the sheet music, too: the arranged score with the lyrics.
 
 @ card Another arrangement
 Part two: another arrangement of the same song.
 
 @ Not your taste? Change the arrangement seed
-Not quite your taste? Change the arrangement seed. Only Arrange and what follows run again. The lyrics and YuE2's plan stay as they are.
+Not quite your taste? Change the arrangement seed. Only Arrange and what follows run again; the lyrics and YuE2's plan stay as they are.
 
 @ Press Run.
 Press Run.
@@ -149,10 +152,10 @@ The writer plans again, with the new seed.
 The new score stops for review again.
 
 @ Open it: a different arrangement
-Open it: a different arrangement of the same melody.
+A different arrangement of the same melody.
 
 @ Another plan from the same mode | optional
-Another plan from the same mode. Open it, and compare the sections with the first one. Keep what you like, and edit the rest.
+Another plan from the same mode. Open it, compare the sections with the first one, keep what you like, and edit the rest.
 
 @ Approve.
 Approve, and run.
@@ -163,17 +166,17 @@ YuE2 renders the new version,
 @ Master and Export finish the song
 and Master and Export finish it.
 
-@ The same song with its new arrangement | +8
+@ The same song with its new arrangement | +5
 The same song, with its new arrangement. [pause:0.4s] Have a listen.
 
 @ Creative modes are experimental: try several
-Creative modes are experimental. Try several modes and closeness values, and keep the takes you like. Simple stays the dependable choice.
+Creative modes are experimental: try a few, keep what you like. Off stays the dependable choice.
 
 @ Your own modes are Markdown files
-You can also write your own modes: small Markdown files in your ComfyUI user folder. They say which instruments, lines and key changes a mode allows.
+Your own modes are small Markdown files in your ComfyUI user folder: lines, chord colours, and hints for the writer.
 
 @ A local LLM as the writer model
-And a local LLM as the writer model is held to the plan's format exactly. When nothing changed, it answers from its cache.
+A local LLM keeps exactly to the plan's format, and answers from its cache when nothing changed.
 
 @ card Next: 7 · YuE2 · Cover · Creative modes
 Next up: creative modes for covers. Thanks for watching!

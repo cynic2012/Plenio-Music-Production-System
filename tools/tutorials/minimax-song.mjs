@@ -4,6 +4,7 @@
 
 import { showApproved } from './lib/scenes.mjs'
 import { approve, maximize, openSheet, tab } from './lib/sheet.mjs'
+import { FOOT } from './lib/studio.mjs'
 
 export const meta = {
   name: 'Plenio tutorial 3 - MiniMax Song',
@@ -32,7 +33,7 @@ export default async function minimax(s) {
     kicker: 'Plenio tutorial',
     title: '<span class="num">3 ·</span> MiniMax · Song',
     subtitle: 'A new song with MiniMax Music 3 - in one run, or with a review stop',
-    foot: 'Plenio Music Production System 0.4.5 for ComfyUI',
+    foot: FOOT,
   }, 5)
 
   // --- open the template -------------------------------------------------------------------------
@@ -93,9 +94,9 @@ export default async function minimax(s) {
   s.caption('length: short. MiniMax may end a song a little earlier than asked.')
   await s.chooseCombo(BRIEF, 'length', 'short (about 1:30)', { read: 2400 })
   await s.wait(1200)
-  s.caption('arrangement: MiniMax takes no score, so a creative mode (experimental) shapes only the writing here - simple is fine.')
+  s.caption('arrangement: MiniMax takes no score, so a creative mode (experimental) shapes only the writing here - off is fine.')
   await s.spotlight(await s.widgetBox(BRIEF, 'arrangement'), { ms: 2600 })
-  await s.read('arrangement: MiniMax takes no score, so a creative mode (experimental) shapes only the writing here - simple is fine.', 6000)
+  await s.read('arrangement: MiniMax takes no score, so a creative mode (experimental) shapes only the writing here - off is fine.', 6000)
   s.caption('The Writer model writes caption and lyrics: Gemma 4 by default - or a local LLM from your machine.')
   await s.flyNodes([WRITER], 1000, 0.9)
   await s.spotlight(await s.widgetBox(WRITER, 'model'), { ms: 2400 })

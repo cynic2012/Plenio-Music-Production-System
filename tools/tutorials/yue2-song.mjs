@@ -8,6 +8,7 @@ import {
   arrangeDemo,
   barsDemo,
   clipboardDemo,
+  continueDemo,
   cursorDemo,
   editorTour,
   filesDemo,
@@ -18,7 +19,8 @@ import {
   simulateKeyboard,
   soundsDemo,
 } from './lib/scenes.mjs'
-import { approve, fixSections, maximize, noteEditing, openSheet, tab } from './lib/sheet.mjs'
+import { alignSections, approve, fixSections, maximize, noteEditing, openSheet, tab } from './lib/sheet.mjs'
+import { FOOT } from './lib/studio.mjs'
 
 export const meta = {
   name: 'Plenio tutorial 1 - YuE2 Song',
@@ -48,7 +50,7 @@ export default async function song(s) {
     kicker: 'Plenio tutorial',
     title: '<span class="num">1 ·</span> YuE2 · Song',
     subtitle: 'Write, review and render a song with YuE2 - in one run, or with two review stops',
-    foot: 'Plenio Music Production System 0.4.5 for ComfyUI',
+    foot: FOOT,
   }, 5)
 
   // --- open the template -------------------------------------------------------------------------
@@ -119,9 +121,9 @@ export default async function song(s) {
   s.caption('vocals: a sung song - or an instrumental.')
   await s.hover(await s.widgetBox(BRIEF, 'vocals'), { fx: 0.7 })
   await s.wait(2600)
-  s.caption('arrangement: “simple” - YuE2 plans melody, chords and instruments itself. The experimental creative modes are tutorial 6.')
+  s.caption('arrangement: “off” - YuE2 plans melody, chords and instruments itself. The experimental creative modes are tutorial 6.')
   await s.spotlight(await s.widgetBox(BRIEF, 'arrangement'), { ms: 2600 })
-  await s.read('arrangement: “simple” - YuE2 plans melody, chords and instruments itself. The experimental creative modes are tutorial 6.', 6000)
+  await s.read('arrangement: “off” - YuE2 plans melody, chords and instruments itself. The experimental creative modes are tutorial 6.', 6000)
   s.caption('The Writer model writes the text: Gemma 4 by default - or a local LLM from your machine.')
   await s.flyNodes([WRITER], 1000, 0.9)
   await s.spotlight(await s.widgetBox(WRITER, 'model'), { ms: 2400 })
@@ -132,7 +134,7 @@ export default async function song(s) {
   await s.run()
   await s.follow({ stages: STAGES, groups: GROUPS })
   await afterRun(s, 'Done: the finished song is in Preview (mastered).')
-  await sheetMusicSaved(s, EXPORT, 'Export wrote the mastered FLAC, the unmastered take, a release record - and the sheet music with the lyrics as a PDF.')
+  await sheetMusicSaved(s, EXPORT, 'Export wrote the mastered FLAC - it carries the whole project - the unmastered take, a release record and the sheet music with the lyrics as a PDF.')
   s.caption('Press Run again for another, different song - or set a number next to Run for a whole series.')
   const batch = page.locator('.actionbar input, .queue-button-group input, [data-testid="batch-count-edit"] input').first()
   if (await batch.count()) await s.spotlight(batch, { ms: 2600, pad: 10 })
@@ -186,6 +188,7 @@ export default async function song(s) {
   await editorTour(s)
   await fixSections(s)
   s.chapter('Score editor · Lyrics')
+  await alignSections(s)
   await lyricsDemo(s)
   s.chapter('Score editor · Notes')
   await noteEditing(s)
@@ -232,6 +235,7 @@ export default async function song(s) {
   s.caption('Every further Run renders a new take of the same approved song.')
   await s.flyGroups(['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · SCORE', '5 · RENDER', '6 · FINISH'], 1600)
   await s.read('Every further Run renders a new take of the same approved song.', 3800)
+  await continueDemo(s)
   s.card('end', {
     title: 'Next: 2 · YuE2 · Cover',
     lines: ['Install: ComfyUI Manager → <b>Plenio Music Production System</b>', 'Guides and source: <b>github.com/jplenio/Plenio-Music-Production-System</b>'],
