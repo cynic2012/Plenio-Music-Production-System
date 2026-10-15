@@ -71,6 +71,19 @@
       }
     },
     "licences": { "type": "array", "items": { "type": "string" } },
+    "timing": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["take", "timing", "lines"],
+        "properties": {
+          "take": { "type": "string" },
+          "timing": { "enum": ["measured", "heard"] },
+          "warp": { "type": ["array", "null"] },
+          "lines": { "type": "array", "items": { "type": "object", "required": ["text", "start", "end", "units"] } }
+        }
+      }
+    },
     "sheet_music": {
       "type": "object",
       "required": ["file", "status"],

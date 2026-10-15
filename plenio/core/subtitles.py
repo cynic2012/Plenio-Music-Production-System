@@ -70,6 +70,8 @@ class Unit:
 
     start: float
     cut: int
+    score: float | None = None
+    """Where the syllable's note is in the score (seconds at the score's tempo); ``None`` without a score."""
 
 
 @dataclass(frozen=True)
@@ -90,6 +92,8 @@ class Subtitles:
     matched: float = 0.0
     """The share of the lyrics' words that were heard."""
     notes: tuple[str, ...] = field(default=())
+    warp: tuple[float, float] | None = None
+    """``(a, b)``: the song against its score, ``t_audio = a * t_score + b`` (``None`` without a score)."""
 
     def lines_srt(self) -> str:
         return srt([(line.start, line.end, wrapped(line.text)) for line in self.lines])
@@ -107,6 +111,28 @@ class Subtitles:
                 if end - unit.start >= GAP_S:
                     cues.append((unit.start, end, wrapped(line.text, unit.cut)))
         return srt(cues)
+
+    def to_timing(self, take: str = "") -> dict[str, Any]:
+        """The times for the release record (the Plenio Player): every line with its units ``[start, cut]``
+        - ``[start, cut, score]`` where the syllable has a note - and the warp against the score."""
+
+        def unit(u: Unit) -> list[float | int]:
+            return [round(u.start, 3), u.cut] + ([round(u.score, 3)] if u.score is not None else [])
+
+        return {
+            "take": take.strip(),
+            "timing": self.timing,
+            "warp": [round(self.warp[0], 4), round(self.warp[1], 3)] if self.warp else None,
+            "lines": [
+                {
+                    "text": line.text,
+                    "start": round(line.start, 3),
+                    "end": round(line.end, 3),
+                    "units": [unit(u) for u in line.units],
+                }
+                for line in self.lines
+            ],
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -462,7 +488,7 @@ def time_lyrics(
         index += count
     finished = _finish(timed, duration)
     matched = len(pairs) / max(1, sum(1 for w in lyric_words if w))
-    return Subtitles(tuple(finished), "measured", tuple(untimed), matched)
+    return Subtitles(tuple(finished), "measured", tuple(untimed), matched, warp=warp if notes else None)
 
 
 def _line_starts(lines: Sequence[LyricLine], times: Mapping[int, float]) -> list[float | None]:
@@ -514,10 +540,10 @@ def _units(line: LyricLine, word_times: Sequence[float], placed: ScoreNotes | No
         start = word_times[word] + a * (when - first_score[word])
         if units:
             start = max(start, units[-1].start)
-        units.append(Unit(start, cut))
+        units.append(Unit(start, cut, when))
     # words the layout put on no note (a short phrase) are shown with the word before them
     if units and units[-1].cut < len(line.text.rstrip()):
-        units[-1] = Unit(units[-1].start, len(line.text))
+        units[-1] = Unit(units[-1].start, len(line.text), units[-1].score)
     return units
 
 
@@ -554,7 +580,7 @@ def _finish(lines: Sequence[TimedLine], duration: float) -> list[TimedLine]:
         end = min(max(line.end + LINE_TAIL_S, start + MIN_CUE_S), limit)
         if end - start < GAP_S:
             continue
-        units = tuple(Unit(min(max(u.start, start), end), u.cut) for u in line.units)
+        units = tuple(Unit(min(max(u.start, start), end), u.cut, u.score) for u in line.units)
         result.append(TimedLine(line.text, start, end, units))
     return result
 

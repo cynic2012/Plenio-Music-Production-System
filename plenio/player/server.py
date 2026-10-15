@@ -1,0 +1,253 @@
+"""The Plenio Player's local web server: the player page, the library as JSON, the songs' files (with byte
+ranges, so the audio seeks) and the listener's own state (playlists, favourites, plays).
+
+Standard library only. It serves the files of the songs it found and nothing else, and listens on
+127.0.0.1 unless told otherwise.
+"""
+
+from __future__ import annotations
+
+import json
+import mimetypes
+import re
+import threading
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+from urllib.parse import unquote, urlparse
+
+from .. import __version__
+from .library import Library, song_detail
+from .peaks import peaks
+
+STATIC = Path(__file__).resolve().parent / "static"
+MEDIA_KINDS = {
+    "audio",
+    "original",
+    "cover",
+    "pdf",
+    "lines",
+    "notes",
+    "record",
+    "audio_flac",
+    "audio_mp3",
+    "audio_wav",
+}
+STATE_LIMIT = 4 * 2**20
+CHUNK = 256 * 1024
+TYPES = {".flac": "audio/flac", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".srt": "text/plain; charset=utf-8",
+         ".json": "application/json", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".js": "text/javascript",
+         ".mjs": "text/javascript", ".css": "text/css", ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
+         ".png": "image/png", ".woff2": "font/woff2"}  # fmt: skip
+EMPTY_STATE: dict[str, Any] = {
+    "playlists": [],
+    "favorites": [],
+    "plays": {},
+    "last_played": {},
+    "settings": {},
+}
+
+
+class State:
+    """The listener's playlists, favourites, play counts and settings in one JSON file (outside the songs'
+    folders: the player never writes there)."""
+
+    def __init__(self, path: Path):
+        self.path = path
+        self.lock = threading.Lock()
+
+    def read(self) -> dict[str, Any]:
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            return {**EMPTY_STATE, **data} if isinstance(data, dict) else dict(EMPTY_STATE)
+        except (OSError, ValueError):
+            return dict(EMPTY_STATE)
+
+    def write(self, data: dict[str, Any]) -> None:
+        with self.lock:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            temp = self.path.with_suffix(".tmp")
+            temp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+            temp.replace(self.path)
+
+
+def make_handler(
+    library: Library,
+    state: State,
+    static: Path = STATIC,
+    cache: Path | None = None,
+    hosts: frozenset[str] = frozenset(),
+) -> type[BaseHTTPRequestHandler]:
+    """The requests' handler; with ``hosts`` it answers only requests addressed to one of them (a player on
+    the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding)."""
+
+    class Handler(BaseHTTPRequestHandler):
+        server_version = f"PlenioPlayer/{__version__}"
+
+        def parse_request(self) -> bool:
+            if not super().parse_request():
+                return False
+            if hosts and (self.headers.get("Host") or "").lower() not in hosts:
+                self._error(403, "unknown host")
+                return False
+            return True
+
+        def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 - the base class's name
+            pass  # quiet: a player streams many ranges
+
+        # --- answers ------------------------------------------------------------------------------
+        def _json(self, data: Any, status: int = 200) -> None:
+            body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _error(self, status: int, message: str) -> None:
+            self._json({"error": message}, status)
+
+        def _file(self, path: Path, *, cache: bool = False) -> None:
+            if not path.is_file():
+                return self._error(404, "not found")
+            size = path.stat().st_size
+            kind = (
+                TYPES.get(path.suffix.lower())
+                or mimetypes.guess_type(path.name)[0]
+                or "application/octet-stream"
+            )
+            start, end = 0, size - 1
+            ranged = self.headers.get("Range")
+            match = re.fullmatch(r"bytes=(\d*)-(\d*)", ranged.strip()) if ranged else None
+            if match and (match.group(1) or match.group(2)):
+                if match.group(1):
+                    start = int(match.group(1))
+                    end = int(match.group(2)) if match.group(2) else size - 1
+                else:
+                    start = max(0, size - int(match.group(2)))
+                end = min(end, size - 1)
+                if start > end or start >= size:
+                    self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                    self.send_header("Content-Range", f"bytes */{size}")
+                    self.end_headers()
+                    return
+                self.send_response(HTTPStatus.PARTIAL_CONTENT)
+                self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+            else:
+                self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", kind)
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Length", str(end - start + 1))
+            self.send_header("Cache-Control", "max-age=86400" if cache else "no-cache")
+            self.end_headers()
+            if self.command == "HEAD":
+                return
+            with path.open("rb") as handle:
+                handle.seek(start)
+                left = end - start + 1
+                try:
+                    while left > 0:
+                        chunk = handle.read(min(CHUNK, left))
+                        if not chunk:
+                            break
+                        self.wfile.write(chunk)
+                        left -= len(chunk)
+                except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError):
+                    pass  # the browser stopped reading (a seek): normal
+
+        # --- routes ---------------------------------------------------------------------------------
+        def do_HEAD(self) -> None:  # noqa: N802 - the base class's name
+            self.do_GET()
+
+        def do_GET(self) -> None:  # noqa: N802
+            route = unquote(urlparse(self.path).path)
+            if route == "/api/library":
+                return self._json(
+                    {
+                        "songs": library.songs(),
+                        "folders": [str(f) for f in library.folders],
+                        "errors": library.errors[:20],
+                        "version": __version__,
+                    }
+                )
+            if route.startswith("/api/song/"):
+                song = library.song(route.removeprefix("/api/song/"))
+                if song is None:
+                    return self._error(404, "no such song")
+                try:
+                    return self._json(song_detail(song))
+                except (OSError, ValueError) as error:
+                    return self._error(500, str(error))
+            if route == "/api/state":
+                return self._json(state.read())
+            if route.startswith("/api/peaks/"):
+                song = library.song(route.removeprefix("/api/peaks/"))
+                audio = song.files.get("audio") if song else None
+                levels = peaks(audio, cache or state.path.parent / "peaks") if audio else None
+                return self._json({"peaks": levels}) if levels else self._error(404, "no waveform")
+            if route.startswith("/media/"):
+                parts = route.split("/")
+                if len(parts) != 4 or parts[3] not in MEDIA_KINDS:
+                    return self._error(404, "not found")
+                song = library.song(parts[2])
+                path = song.files.get(parts[3]) if song else None
+                return self._file(path) if path else self._error(404, "no such file")
+            # the page itself and its assets; every other path is the page (the player routes by #)
+            target = (
+                (static / route.lstrip("/")).resolve() if route not in ("", "/") else static / "index.html"
+            )
+            if static.resolve() not in target.parents and target != static / "index.html":
+                return self._error(404, "not found")
+            if not target.is_file():
+                target = static / "index.html"
+            return self._file(target, cache="/assets/" in route)
+
+        def do_PUT(self) -> None:  # noqa: N802
+            if unquote(urlparse(self.path).path) != "/api/state":
+                return self._error(404, "not found")
+            length = int(self.headers.get("Content-Length") or 0)
+            if length <= 0 or length > STATE_LIMIT:
+                return self._error(413, "state too large")
+            try:
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+            except ValueError:
+                return self._error(400, "not JSON")
+            if not isinstance(data, dict):
+                return self._error(400, "the state is an object")
+            state.write({**EMPTY_STATE, **{k: v for k, v in data.items() if k in EMPTY_STATE}})
+            return self._json({"ok": True})
+
+        def do_POST(self) -> None:  # noqa: N802
+            if unquote(urlparse(self.path).path) == "/api/rescan":
+                library.scan(force=True)
+                return self._json({"songs": len(library.songs())})
+            return self._error(404, "not found")
+
+    return Handler
+
+
+LOOPBACK = {"127.0.0.1", "localhost", "::1"}
+
+
+def serve(library: Library, state: State, host: str = "127.0.0.1", port: int = 8765) -> ThreadingHTTPServer:
+    """The player's server; on the loopback address only for requests addressed to it."""
+
+    class Server(ThreadingHTTPServer):
+        daemon_threads = True
+
+        def server_bind(self) -> None:
+            super().server_bind()
+            if host in LOOPBACK:
+                bound = self.server_address[1]
+                names = ("127.0.0.1", "localhost", "[::1]")
+                # the port is known only now
+                self.RequestHandlerClass = make_handler(
+                    library,
+                    state,
+                    cache=state.path.parent / "peaks",
+                    hosts=frozenset(f"{name}:{bound}" for name in names),
+                )
+
+    return Server((host, port), make_handler(library, state, cache=state.path.parent / "peaks"))

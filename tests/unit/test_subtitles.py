@@ -127,6 +127,14 @@ def test_with_a_score_the_syllables_sit_on_their_notes() -> None:
     notes_srt = timed.notes_srt()
     assert "\nwal\n" in notes_srt and "\nwalking down the river side\n" in notes_srt
     assert timed.lines_srt().count(" --> ") == 2
+    # the record keeps the times for the Plenio Player: each syllable with its note's place in the score
+    timing = timed.to_timing("Take 1")
+    assert timing["take"] == "Take 1" and timing["timing"] == timed.timing
+    # (the warp is fitted to the heard starts, which come LEAD_S early)
+    assert timing["warp"] is not None and abs(timing["warp"][1] - (shift - s.LEAD_S)) < 0.06
+    first_unit = timing["lines"][0]["units"][0]
+    assert first_unit[:2] == [round(line.units[0].start, 3), 3] and first_unit[2] == 2.0
+    assert [entry["text"] for entry in timing["lines"]] == [line.text for line in timed.lines]
 
 
 def test_without_lyrics_the_words_as_heard_and_no_inventions() -> None:

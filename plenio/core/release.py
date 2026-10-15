@@ -745,6 +745,9 @@ class RecordInput:
     workflow: Mapping[str, Any] | None = field(default=None)
     """The workflow the run was queued with, secrets redacted (``continuation.workflow_for_record``): opening
     the record restores it exactly. ``None``: queued without one (the API)."""
+    timing: Sequence[Mapping[str, Any]] | None = field(default=None)
+    """Per take, when each lyrics line and syllable is sung (``subtitles.Subtitles.to_timing``) - the Plenio
+    Player shows the lyrics and the notation in time with it. ``None``: no subtitles were made."""
 
 
 def record_fingerprint(record: Mapping[str, Any]) -> str:
@@ -786,5 +789,7 @@ def build_record(data: RecordInput) -> dict[str, Any]:
         record["sheet_music"] = dict(data.sheet_music)
     if data.workflow is not None:
         record["workflow"] = dict(data.workflow)
+    if data.timing:
+        record["timing"] = [dict(t) for t in data.timing]
     record["fingerprint"] = record_fingerprint(record)
     return record

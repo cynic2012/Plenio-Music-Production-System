@@ -1,0 +1,241 @@
+"""The Plenio Player's server (owner's request 2026-10-15): the songs of a folder from their release records,
+one song with its times and notation, the files in ranges, the listener's state - and it never writes into
+the songs' folder."""
+
+from __future__ import annotations
+
+import http.client
+import json
+import threading
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+
+from plenio.player.library import Library, brief_facts, parse_srt, prompt_facts, score_facts, song_detail
+from plenio.player.server import State, serve
+
+SCORE = """X:1
+T:
+M:4/4
+L:1/8
+Q:1/4=120
+V: Vocal clef=treble name="Vocal Melody" snm="Vocal"
+V: Ins clef=treble name="Ins Melody" snm="Inst."
+K:C
+% intro
+V: Vocal
+z8|
+V: Ins
+C8|
+% verse
+V: Vocal
+CDEF GABc|
+V: Ins
+C8|
+"""
+LYRICS = "[Verse]\nwalking down the river side"
+PROMPT = {
+    "1": {
+        "class_type": "PlenioSongBrief",
+        "inputs": {
+            "template": "none",
+            "genre": "folk, acoustic",
+            "mood": "warm",
+            "vocals": "female",
+            "key": "C",
+        },
+    },
+    "2": {
+        "class_type": "PlenioSeed",
+        "_meta": {"title": "Take seed"},
+        "inputs": {"seed": 42, "keep_seed": True},
+    },
+    "3": {"class_type": "PlenioWriterChoice", "inputs": {"model": "llm/gemma-4-e4b.gguf"}},
+}
+TIMING = [
+    {
+        "take": "",
+        "timing": "measured",
+        "warp": [1.0, -0.2],
+        "lines": [
+            {
+                "text": "walking down the river side",
+                "start": 1.8,
+                "end": 4.0,
+                "units": [[1.8, 3, 2.0], [2.05, 7, 2.25], [2.3, 12, 2.5]],
+            }
+        ],
+    }
+]
+
+
+def record(title: str, **extra: object) -> dict[str, object]:
+    return {
+        "schema": "plenio.record/1",
+        "title": title,
+        "created": "2026-10-15T10:00:00Z",
+        "documents": {
+            "lyrics": {"text": LYRICS, "sha256": "l1"},
+            "score": {"text": SCORE, "sha256": "s1"},
+            "style": {"text": "folk, warm female voice"},
+        },
+        "prompt": PROMPT,
+        "audio": {"seconds": 6.0, "loudness": [{"integrated_lufs": -14.2}], "tags": {"artist": "Plenio"}},
+        "files": [
+            {"name": f"{title}.flac", "format": "flac"},
+            {"name": "../outside.flac", "role": "original"},
+        ],
+        "reports": [{"kind": "render", "data": {"engine": "yue2"}}],
+        **extra,
+    }
+
+
+@pytest.fixture
+def songs(tmp_path: Path) -> Path:
+    folder = tmp_path / "output" / "plenio"
+    folder.mkdir(parents=True)
+    (folder / "River.plenio.json").write_text(json.dumps(record("River", timing=TIMING)), encoding="utf-8")
+    (folder / "River.flac").write_bytes(bytes(range(256)) * 4)
+    (tmp_path / "output" / "outside.flac").write_bytes(b"secret")
+    (folder / "Old.plenio.json").write_text(json.dumps(record("Old")), encoding="utf-8")
+    (folder / "Old.flac").write_bytes(b"x" * 100)
+    (folder / "Old (lines).srt").write_text(
+        "1\n00:00:01,800 --> 00:00:04,000\nwalking down the river side\n", encoding="utf-8"
+    )
+    (folder / "Old (notes).srt").write_text(
+        "1\n00:00:01,800 --> 00:00:02,300\nwalking\n\n2\n00:00:02,300 --> 00:00:04,000\nwalking down the river side\n",
+        encoding="utf-8",
+    )
+    (folder / "broken.plenio.json").write_text("{not json", encoding="utf-8")
+    return tmp_path / "output"
+
+
+@pytest.fixture
+def server(songs: Path, tmp_path: Path) -> Iterator[tuple[str, int, Library]]:
+    library = Library([songs], cache=tmp_path / "state" / "cache.json")
+    library.scan(force=True)
+    running = serve(library, State(tmp_path / "state" / "state.json"), "127.0.0.1", 0)
+    thread = threading.Thread(target=running.serve_forever, daemon=True)
+    thread.start()
+    yield "127.0.0.1", running.server_address[1], library
+    running.shutdown()
+    running.server_close()
+
+
+def request(
+    address: tuple[str, int, Library], method: str, path: str, body: bytes | None = None, **headers: str
+) -> tuple[int, dict[str, str], bytes]:
+    host, port, _ = address
+    connection = http.client.HTTPConnection(host, port, timeout=10)
+    connection.request(method, path, body=body, headers=headers)
+    answer = connection.getresponse()
+    data = answer.read()
+    connection.close()
+    return answer.status, dict(answer.getheaders()), data
+
+
+def test_the_library_reads_records_and_leaves_out_broken_ones(songs: Path, tmp_path: Path) -> None:
+    library = Library([songs], cache=tmp_path / "cache.json")
+    found = {s["title"]: s for s in library.songs()}
+    assert set(found) == {"River", "Old"}
+    assert library.errors and "broken.plenio.json" in library.errors[0]
+    river = found["River"]
+    assert river["genre"] == "folk, acoustic" and river["mood"] == "warm" and river["model"] == "YuE2"
+    assert river["bpm"] == 120 and river["score_key"] == "C" and river["score_meter"] == "4/4"
+    assert river["seeds"] == {"take": 42} and river["writer"] == "gemma-4-e4b"
+    assert river["has"]["audio"] and river["has"]["timing"] and not river["has"]["original"]
+    assert river["lyrics"] == "walking down the river side"
+    # a second library reads the cache, with the same songs
+    again = Library([songs], cache=tmp_path / "cache.json")
+    assert {s["id"] for s in again.songs()} == {s["id"] for s in found.values()}
+
+
+def test_a_song_brings_its_times_and_its_notation(songs: Path) -> None:
+    library = Library([songs])
+    river = next(library.song(s["id"]) for s in library.songs() if s["title"] == "River")
+    assert river is not None
+    detail = song_detail(river)
+    assert detail["timing_source"] == "measured"
+    assert detail["lines"][0]["units"][0] == [1.8, 3, 2.0]
+    assert detail["notation"]["tempo"] == 120 and detail["notation"]["warp"] == [1.0, -0.2]
+    assert [s["label"] for s in detail["notation"]["sections"]] == ["intro", "verse"]
+    assert detail["notation"]["sections"][1]["start"] == 2.0
+    assert "w: wal-king down the ri-ver side" in detail["notation"]["abc"]
+    assert detail["files"]["audio"] == "River.flac" and "original" not in detail["files"]
+
+
+def test_without_times_in_the_record_the_subtitle_files_give_them(songs: Path) -> None:
+    library = Library([songs])
+    old = next(library.song(s["id"]) for s in library.songs() if s["title"] == "Old")
+    assert old is not None
+    detail = song_detail(old)
+    assert detail["timing_source"] == "subtitles"
+    line = detail["lines"][0]
+    assert line["text"] == "walking down the river side"
+    assert line["units"] == [[1.8, 7], [2.3, 27]]
+
+
+def test_the_server_answers_the_page_the_library_and_a_song(server: tuple[str, int, Library]) -> None:
+    status, headers, body = request(server, "GET", "/api/library")
+    assert status == 200 and headers["Content-Type"].startswith("application/json")
+    answer = json.loads(body)
+    assert len(answer["songs"]) == 2 and answer["errors"]
+    river = next(s for s in answer["songs"] if s["title"] == "River")
+    status, _, body = request(server, "GET", f"/api/song/{river['id']}")
+    assert status == 200 and json.loads(body)["lines"]
+    assert request(server, "GET", "/api/song/nope")[0] == 404
+    # the page for every other path (the player routes by #), never a file outside it
+    status, headers, _ = request(server, "GET", "/playlists")
+    assert status == 200 and headers["Content-Type"].startswith("text/html")
+    status, _, body = request(server, "GET", "/../../pyproject.toml")
+    assert b"[project]" not in body
+
+
+def test_files_stream_in_ranges(server: tuple[str, int, Library]) -> None:
+    songs = json.loads(request(server, "GET", "/api/library")[2])["songs"]
+    river = next(s for s in songs if s["title"] == "River")
+    url = f"/media/{river['id']}/audio"
+    status, headers, body = request(server, "GET", url)
+    assert status == 200 and len(body) == 1024 and headers["Accept-Ranges"] == "bytes"
+    status, headers, body = request(server, "GET", url, Range="bytes=10-19")
+    assert status == 206 and body == bytes(range(10, 20)) and headers["Content-Range"] == "bytes 10-19/1024"
+    status, _, body = request(server, "GET", url, Range="bytes=-4")
+    assert status == 206 and body == bytes([252, 253, 254, 255])
+    assert request(server, "GET", url, Range="bytes=5000-")[0] == 416
+    assert request(server, "GET", f"/media/{river['id']}/secrets")[0] == 404
+    # a record naming a file outside its folder does not serve it
+    assert request(server, "GET", f"/media/{river['id']}/original")[0] == 404
+
+
+def test_the_state_is_kept_outside_the_songs_folder(server: tuple[str, int, Library], songs: Path) -> None:
+    before = sorted(p.name for p in songs.rglob("*"))
+    state = {"playlists": [{"id": "pl-1", "name": "Evening", "songs": ["a"]}], "favorites": ["a"], "junk": 1}
+    status, _, _ = request(
+        server, "PUT", "/api/state", json.dumps(state).encode(), **{"Content-Type": "application/json"}
+    )
+    assert status == 200
+    saved = json.loads(request(server, "GET", "/api/state")[2])
+    assert saved["playlists"][0]["name"] == "Evening" and saved["favorites"] == ["a"] and "junk" not in saved
+    assert request(server, "PUT", "/api/state", b"[1, 2]")[0] == 400
+    assert request(server, "POST", "/api/rescan")[0] == 200
+    assert sorted(p.name for p in songs.rglob("*")) == before
+
+
+def test_on_the_loopback_address_only_requests_addressed_to_it(server: tuple[str, int, Library]) -> None:
+    assert request(server, "GET", "/api/library", Host="evil.example:80")[0] == 403
+    assert request(server, "GET", "/api/library", Host=f"localhost:{server[1]}")[0] == 200
+
+
+def test_facts_from_a_score_a_prompt_and_subtitles() -> None:
+    assert score_facts("X:1\nM:3/4\nQ:1/4=96\nK:Am\nabc|") == {
+        "bpm": 96,
+        "score_key": "Am",
+        "score_meter": "3/4",
+    }
+    assert score_facts("") == {}
+    assert prompt_facts(PROMPT) == {"seeds": {"take": 42}, "writer": "gemma-4-e4b"}
+    assert brief_facts(PROMPT)["genre"] == "folk, acoustic"
+    assert brief_facts({}) == {}
+    cues = parse_srt("1\r\n00:01:02,500 --> 00:01:04,000\r\nhello\r\nthere\r\n")
+    assert cues == [{"start": 62.5, "end": 64.0, "text": "hello\nthere"}]

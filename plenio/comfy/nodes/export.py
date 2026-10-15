@@ -495,6 +495,7 @@ class PlenioExportRelease(io.ComfyNode):
             facts.append({**file_facts(path), **original_facts, **_md5(path), "role": "original"})
             written.append(path)
         subtitle_lines: list[str] = []
+        timings: list[dict[str, Any]] = []
         if lyrics_srt:
             for take, samples in zip(takes, items, strict=True):
                 timed = _subtitles(samples, rate, sheet, spans, brief, notes)
@@ -518,6 +519,7 @@ class PlenioExportRelease(io.ComfyNode):
                     f"listening ({heard})"
                 )
                 notes.extend(_subtitle_notes(timed, take))
+                timings.append(timed.to_timing(take))
         cover_path = None
         warnings: list[str] = []
         if picture is not None:
@@ -567,6 +569,7 @@ class PlenioExportRelease(io.ComfyNode):
             },
             prompt=cls.hidden.prompt,
             workflow=workflow_for_record((cls.hidden.extra_pnginfo or {}).get("workflow"), cls.hidden.prompt),
+            timing=timings or None,
             reports=report_dicts,
             files=facts,
             audio={

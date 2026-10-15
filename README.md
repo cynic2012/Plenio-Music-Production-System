@@ -225,6 +225,35 @@ Both blocks sit between the render and the master and are bypassed until you swi
 
 Details and limits: [Mastering and audio formats](docs/user/concepts/mastering.md).
 
+## Listen in the Plenio Player
+
+New in 0.8.1: your songs in the browser, without ComfyUI. Start it with ComfyUI's Python - it opens at `http://127.0.0.1:8765/`:
+
+```bash
+python custom_nodes/Plenio-Music-Production-System/plenio_player.py
+```
+
+It finds every song Export Release wrote into ComfyUI's output folder and never writes there.
+
+- **Find songs**: search titles, lyrics and briefs, or narrow it with fields like `genre:jazz`, `bpm:>110`, `key:Am` or `is:fav`; filter chips; eight sorts.
+- **A page per song**: the lyrics (click a line to hear it), the notation, the sheet music PDF, the brief and the seeds, every file, the other takes and songs alike.
+- **While it plays**: the lyrics light up syllable by syllable; on the sheet, the notes light up as they sound. The times are measured when the song is exported.
+- **Visuals after Winamp and MilkDrop**: 13 visuals that move with the music. Let the player match them to the music, pick at random from the ones you tick, cycle or fix one - or give a song or a playlist its own.
+- **Playlists**: smart lists, your own lists, a radio of songs alike, crossfades, A/B with the unmastered take and a sleep timer.
+
+<p align="center">
+  <img src="assets/branding/0.8.1/player-stage.jpg" alt="The Plenio Player's Now playing view: the song's cover, the lyrics lit up as they are sung, the sections as chips and the waveform as the seek bar, a visual behind" width="49%" />
+  <img src="assets/branding/0.8.1/player-notation.jpg" alt="The Plenio Player's notation view: the score with the lyrics under the notes, the cursor at the note sung now, the lyrics at the side" width="49%" />
+</p>
+<p align="center">
+  <img src="assets/branding/0.8.1/player-library.jpg" alt="The Plenio Player's library: a featured song, the search with filter chips, the songs as cards, the bar with the line sung now" width="49%" />
+  <img src="assets/branding/0.8.1/player-visual.jpg" alt="The Plenio Player's visual view: the Retro Grid visual full screen with the lyrics as subtitles" width="49%" />
+</p>
+
+*The Plenio Player: Now playing, the sheet following the music, the library and a visual with the lyrics as subtitles.*
+
+Guide: [Plenio Player](docs/user/concepts/player.md).
+
 ## Built for different computers
 
 The **0 · System Check** template reads your GPU and marks your row. Nothing is switched automatically; you choose the model files in the loaders.
@@ -276,7 +305,7 @@ Plenio is the successor of the [Music Production Toolkit](https://github.com/jpl
 
 ## Documentation
 
-- Users: [Getting started](docs/user/getting-started.md) · [YuE2 Song](docs/user/paths/yue2-song.md) · [YuE2 Cover](docs/user/paths/yue2-cover.md) · [YuE2 DAW](docs/user/paths/yue2-daw.md) · [MiniMax Song](docs/user/paths/minimax-song.md) · [Enhance & Master](docs/user/paths/enhance-master.md) · [Song Sheet](docs/user/concepts/song-sheet.md) · [Continue a song](docs/user/concepts/continue-a-song.md) · [Brief templates](docs/user/concepts/brief-templates.md) · [Score editor](docs/user/concepts/score-editor.md) · [Stems](docs/user/concepts/stems.md) · [Refine (48 kHz)](docs/user/concepts/refine.md) · [Instrumental](docs/user/concepts/instrumental.md) · [Mastering](docs/user/concepts/mastering.md) · [App mode](docs/user/concepts/app-mode.md) · [Local LLMs](docs/user/concepts/local-llm.md) · [Models](docs/user/models.md) · [Configuration](docs/user/configuration.md) · [Licensing](docs/user/licensing.md) · [Troubleshooting](docs/user/troubleshooting.md)
+- Users: [Getting started](docs/user/getting-started.md) · [YuE2 Song](docs/user/paths/yue2-song.md) · [YuE2 Cover](docs/user/paths/yue2-cover.md) · [YuE2 DAW](docs/user/paths/yue2-daw.md) · [MiniMax Song](docs/user/paths/minimax-song.md) · [Enhance & Master](docs/user/paths/enhance-master.md) · [Song Sheet](docs/user/concepts/song-sheet.md) · [Continue a song](docs/user/concepts/continue-a-song.md) · [Brief templates](docs/user/concepts/brief-templates.md) · [Score editor](docs/user/concepts/score-editor.md) · [Stems](docs/user/concepts/stems.md) · [Refine (48 kHz)](docs/user/concepts/refine.md) · [Instrumental](docs/user/concepts/instrumental.md) · [Mastering](docs/user/concepts/mastering.md) · [Plenio Player](docs/user/concepts/player.md) · [App mode](docs/user/concepts/app-mode.md) · [Local LLMs](docs/user/concepts/local-llm.md) · [Models](docs/user/models.md) · [Configuration](docs/user/configuration.md) · [Licensing](docs/user/licensing.md) · [Troubleshooting](docs/user/troubleshooting.md)
 - Contributors: [Architecture](docs/dev/architecture.md) · [Extending Plenio](docs/dev/extending.md) · [Testing](docs/dev/testing.md) · [Design documents](docs/design/README.md) · [Decisions](docs/adr/README.md) · [Acceptance review](docs/audit/2026-09-25-phase-10-acceptance.md)
 - Videos: [the spot](https://youtu.be/XpNpks9ZCgE) · [Plenio in 75 seconds](https://youtu.be/q_dMH834E1o) · [all tutorials (playlist)](https://www.youtube.com/playlist?list=PLAFqTtP59fgE)
 - [Changelog](CHANGELOG.md): what changed in each version · [Security and privacy](SECURITY.md): what Plenio downloads, starts and writes

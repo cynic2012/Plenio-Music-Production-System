@@ -65,8 +65,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - name: The committed build matches the sources
-        run: git diff --exit-code -- ../web/js
+      - run: npm run build:player
+      - name: The committed builds match the sources
+        run: git diff --exit-code -- ../web/js ../plenio/player/static && test -z "$(git status --porcelain -- ../web/js ../plenio/player/static)"
 
   package:
     name: Registry package

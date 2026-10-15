@@ -1,0 +1,306 @@
+<script setup lang="ts">
+/** The bar at the bottom: the song, the controls, the waveform, Winamp's little bars, A/B, speed, volume. */
+import { computed } from 'vue'
+
+import { engine } from '../engine'
+import { lineIndex, lines, paletteStyle, section, sections } from '../now'
+import {
+  ab,
+  current,
+  duration,
+  go,
+  isFavorite,
+  muted,
+  next,
+  nowPlayingOpen,
+  playing,
+  previous,
+  setVolume,
+  settings,
+  sleep,
+  sleepLeft,
+  time,
+  toggleAB,
+  toggleFavorite,
+  toggleMute,
+} from '../store'
+import { formatTime, sectionName } from '../timing'
+import CoverArt from './CoverArt.vue'
+import Icon from './Icon.vue'
+import VisualCanvas from './VisualCanvas.vue'
+import Waveform from './Waveform.vue'
+
+const emit = defineEmits<{ queue: [] }>()
+const RATES = [0.75, 0.85, 1, 1.1, 1.25]
+
+const line = computed(() => (lineIndex.value >= 0 && time.value <= (lines.value[lineIndex.value]?.end ?? 0) + 0.3 ? lines.value[lineIndex.value].text : ''))
+
+function cycleRepeat(): void {
+  settings.repeat = settings.repeat === 'all' ? 'one' : settings.repeat === 'one' ? 'off' : 'all'
+}
+function cycleRate(): void {
+  const at = RATES.indexOf(settings.rate)
+  settings.rate = RATES[(at + 1) % RATES.length]
+  engine.setRate(settings.rate)
+}
+function volume(event: Event): void {
+  setVolume(Number((event.target as HTMLInputElement).value))
+}
+</script>
+
+<template>
+  <footer class="bar" :style="paletteStyle">
+    <div class="song" v-if="current">
+      <button class="art" title="Now playing (F)" @click="nowPlayingOpen = true">
+        <CoverArt :song="current" :live="playing" rounded />
+        <span class="open"><Icon name="expand" :size="18" /></span>
+      </button>
+      <div class="meta">
+        <a class="title" @click="go(`/song/${current.id}`)">{{ current.title }}</a>
+        <div class="sub">
+          <span v-if="section" class="sec">{{ sectionName(section.label) }}</span>
+          <Transition name="lyric" mode="out-in"><span :key="line" class="line">{{ line || current.genre }}</span></Transition>
+        </div>
+      </div>
+      <button class="icon-btn" :class="{ on: isFavorite(current.id) }" title="Favourite" @click="toggleFavorite(current.id)">
+        <Icon name="heart" :filled="isFavorite(current.id)" />
+      </button>
+    </div>
+    <div v-else class="song empty">Choose a song - double-click, or press ▶ on a cover.</div>
+
+    <div class="centre">
+      <div class="controls">
+        <button class="icon-btn" :class="{ on: settings.shuffle }" title="Shuffle (S)" @click="settings.shuffle = !settings.shuffle"><Icon name="shuffle" /></button>
+        <button class="icon-btn" title="Previous" @click="previous()"><Icon name="prev" /></button>
+        <button class="play" :class="{ playing }" title="Play / pause (Space)" @click="engine.toggle()">
+          <Icon :name="playing ? 'pause' : 'play'" :size="22" />
+        </button>
+        <button class="icon-btn" title="Next" @click="next()"><Icon name="next" /></button>
+        <button class="icon-btn repeat" :class="{ on: settings.repeat !== 'off' }" :title="`Repeat: ${settings.repeat} (R)`" @click="cycleRepeat">
+          <Icon name="repeat" /><i v-if="settings.repeat === 'one'">1</i>
+        </button>
+      </div>
+      <div class="progress">
+        <span class="t">{{ formatTime(time) }}</span>
+        <Waveform :song-id="current?.id ?? null" :time="time" :duration="duration" :sections="sections" :lines="lines" />
+        <span class="t">{{ formatTime(duration) }}</span>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="mini" title="Visuals (V)" @click="nowPlayingOpen = true"><VisualCanvas mini /></div>
+      <button v-if="current?.has.original" class="chip" :class="{ on: ab }" title="A/B: the unmastered take, in step (B)" @click="toggleAB">
+        {{ ab ? 'B · original' : 'A · master' }}
+      </button>
+      <button class="chip" title="Speed (keeps the pitch)" @click="cycleRate">{{ settings.rate }}×</button>
+      <div class="vol">
+        <button class="icon-btn" :title="muted ? 'Sound on (M)' : 'Mute (M)'" @click="toggleMute">
+          <Icon :name="muted || settings.volume === 0 ? 'mute' : 'volume'" />
+        </button>
+        <input type="range" min="0" max="1" step="0.01" :value="muted ? 0 : settings.volume" @input="volume" />
+      </div>
+      <span v-if="sleep" class="sleep" title="Sleep timer (in the queue)"><Icon name="timer" :size="16" />{{ sleep === 'song' ? 'song' : formatTime(sleepLeft) }}</span>
+      <button class="icon-btn" title="Queue (Q)" @click="emit('queue')"><Icon name="queue" /></button>
+    </div>
+  </footer>
+</template>
+
+<style scoped>
+.bar {
+  grid-area: bar;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(360px, 2fr) minmax(220px, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 10px 18px 16px;
+  background: linear-gradient(180deg, rgba(14, 13, 22, 0.88), rgba(9, 8, 14, 0.98));
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+  position: relative;
+  z-index: 20;
+}
+.bar::before {
+  content: '';
+  position: absolute;
+  inset: -1px 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+  opacity: 0.6;
+}
+.song {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.song.empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+.art {
+  position: relative;
+  width: 56px;
+  flex: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px var(--glow);
+}
+.art .open {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  border-radius: 12px;
+  transition: opacity 0.2s;
+}
+.art:hover .open {
+  opacity: 1;
+}
+.meta {
+  min-width: 0;
+  flex: 1;
+}
+.title {
+  display: block;
+  font: 600 14px var(--font);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.title:hover {
+  text-decoration: underline;
+}
+.sub {
+  display: flex;
+  gap: 8px;
+  font: 12px var(--font);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sec {
+  color: var(--accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  padding-top: 1px;
+}
+.line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.centre {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+}
+.play {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  color: #0b0a12;
+  background: linear-gradient(135deg, #fff, #dcd6ff);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.3s;
+  box-shadow: 0 0 0 0 var(--glow);
+}
+.play:hover {
+  transform: scale(1.07);
+}
+.play.playing {
+  box-shadow: 0 0 24px 2px var(--glow);
+}
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.progress > :deep(.wave) {
+  flex: 1;
+}
+.t {
+  font: 11px var(--mono);
+  color: var(--muted);
+  width: 38px;
+  text-align: center;
+}
+.repeat {
+  position: relative;
+}
+.repeat i {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  font: 700 9px var(--font);
+  font-style: normal;
+}
+.right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.mini {
+  width: 92px;
+  height: 34px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #05060a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.vol {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.vol input {
+  width: 90px;
+  accent-color: var(--accent);
+}
+.lyric-enter-active,
+.lyric-leave-active {
+  transition: opacity 0.25s, transform 0.25s;
+}
+.lyric-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.lyric-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.sleep {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 12px var(--mono);
+  color: var(--accent);
+}
+@media (max-width: 980px) {
+  .bar {
+    grid-template-columns: 1fr;
+  }
+  .right {
+    justify-content: center;
+  }
+}
+</style>

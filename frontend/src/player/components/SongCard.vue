@@ -1,0 +1,256 @@
+<script setup lang="ts">
+/** A song in the library: its cover with a play button, the title, genre and length; playing, it moves. */
+import type { SongSummary } from '../api'
+import { current, go, isFavorite, playing } from '../store'
+import { formatTime } from '../timing'
+import CoverArt from './CoverArt.vue'
+import Icon from './Icon.vue'
+
+defineProps<{ song: SongSummary; snippet?: string | null; list?: boolean; index?: number }>()
+const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
+</script>
+
+<template>
+  <article
+    class="card"
+    :class="{ list, now: current?.id === song.id, playing: current?.id === song.id && playing }"
+    tabindex="0"
+    @dblclick="emit('play')"
+    @keydown.enter="emit('play')"
+    @contextmenu.prevent="emit('menu', $event)"
+  >
+    <div class="art">
+      <CoverArt :song="song" :live="current?.id === song.id && playing" rounded />
+      <button class="play" title="Play" @click.stop="emit('play')"><Icon :name="current?.id === song.id && playing ? 'pause' : 'play'" :size="22" /></button>
+      <span v-if="current?.id === song.id && playing" class="eq"><i /><i /><i /><i /></span>
+    </div>
+    <div class="text">
+      <a class="title" @click="go(`/song/${song.id}`)">{{ song.title }}</a>
+      <p class="sub">
+        <span>{{ song.genre || song.style.split(',')[0] || '—' }}</span>
+        <span class="dot">·</span>
+        <span>{{ formatTime(song.seconds) }}</span>
+      </p>
+      <p v-if="snippet" class="snippet">“{{ snippet }}”</p>
+      <p class="tags">
+        <span v-if="song.model" class="tag model">{{ song.model.replace('MiniMax Music 3', 'MiniMax') }}</span>
+        <span v-if="song.kind === 'cover'" class="tag">cover</span>
+        <span v-if="song.instrumental" class="tag">instrumental</span>
+        <span v-if="song.has.pdf" class="tag">sheet</span>
+        <span v-if="song.has.timing || song.has.lines" class="tag">lyrics ⏱</span>
+        <span v-if="song.arrangement && song.arrangement !== 'off'" class="tag">{{ song.arrangement }}</span>
+      </p>
+    </div>
+    <span v-if="list" class="len">{{ song.bpm ? `${song.bpm} BPM` : '' }}</span>
+    <span v-if="list" class="len">{{ song.created.slice(0, 10) }}</span>
+    <Icon v-if="isFavorite(song.id)" class="fav" name="heart" filled :size="16" />
+    <button class="more icon-btn" title="More" @click.stop="emit('menu', $event)"><Icon name="more" /></button>
+  </article>
+</template>
+
+<style scoped>
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.25s, box-shadow 0.25s;
+  outline: none;
+  animation: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+.card.now {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 18px 50px var(--glow);
+}
+.art {
+  position: relative;
+}
+.play {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #0b0a12;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(8px) scale(0.9);
+  transition: opacity 0.2s, transform 0.25s;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.card:hover .play,
+.card.now .play {
+  opacity: 1;
+  transform: none;
+}
+.eq {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 18px;
+}
+.eq i {
+  width: 4px;
+  background: #fff;
+  border-radius: 2px;
+  animation: eq 0.9s ease-in-out infinite;
+}
+.eq i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.eq i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+.eq i:nth-child(4) {
+  animation-delay: -0.15s;
+}
+.title {
+  display: block;
+  font: 600 15px/1.3 var(--font);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.title:hover {
+  color: var(--accent);
+}
+.sub,
+.snippet,
+.tags {
+  margin: 3px 0 0;
+  font: 12px var(--font);
+  color: var(--muted);
+}
+.sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dot {
+  margin: 0 5px;
+}
+.snippet {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+}
+.tag.model {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: #fff;
+}
+.fav {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  color: #ff5f8f;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+.more {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  opacity: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+.card:hover .more {
+  opacity: 1;
+}
+/* the list view */
+.card.list {
+  flex-direction: row;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 12px;
+  animation: none;
+}
+.card.list:hover {
+  transform: none;
+}
+.card.list .art {
+  width: 48px;
+  flex: none;
+}
+.card.list .play {
+  width: 30px;
+  height: 30px;
+  right: 9px;
+  bottom: 9px;
+}
+.card.list .text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) 1fr;
+  align-items: center;
+  column-gap: 16px;
+}
+.card.list .tags {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.card.list .snippet {
+  display: none;
+}
+.card.list .fav {
+  position: static;
+  margin-right: 4px;
+}
+.card.list .more {
+  position: static;
+}
+.len {
+  font: 12px var(--mono);
+  color: var(--muted);
+  width: 90px;
+  text-align: right;
+}
+@keyframes eq {
+  0%,
+  100% {
+    height: 4px;
+  }
+  50% {
+    height: 18px;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+</style>

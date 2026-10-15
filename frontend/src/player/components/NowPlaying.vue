@@ -1,0 +1,440 @@
+<script setup lang="ts">
+/**
+ * Now playing, full screen: the visual behind everything, and four ways to watch - Stage (the cover and
+ * the lyrics), Lyrics (karaoke, large), Notation (the sheet following the music) and Visual (only the
+ * visual, the lyrics as subtitles, the controls fading away while the mouse rests). Sections are chips to
+ * jump to; a title card greets every song.
+ */
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+import { engine } from '../engine'
+import { lineIndex, lines, paletteStyle, playlistVisual, section, sections } from '../now'
+import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, playing, previous, settings, time, toggleFavorite } from '../store'
+import { chunksAt, formatTime, sectionName } from '../timing'
+import CoverArt from './CoverArt.vue'
+import Icon from './Icon.vue'
+import Karaoke from './Karaoke.vue'
+import Notation from './Notation.vue'
+import VisualCanvas from './VisualCanvas.vue'
+import VisualsPanel from './VisualsPanel.vue'
+import Waveform from './Waveform.vue'
+
+type View = 'stage' | 'lyrics' | 'notation' | 'visual'
+const view = ref<View>((localStorage.getItem('plenio.view') as View) || 'stage')
+watch(view, (v) => localStorage.setItem('plenio.view', v))
+const panel = ref(false)
+const visual = ref<InstanceType<typeof VisualCanvas> | null>(null)
+const activeVisual = ref('')
+const idle = ref(false)
+const card = ref(false)
+let idleTimer: number | undefined
+
+const subtitle = computed(() => {
+  const i = lineIndex.value
+  if (i < 0) return null
+  const line = lines.value[i]
+  return time.value <= line.end + 0.3 ? line : null
+})
+
+watch(view, () => wake())
+function wake(): void {
+  idle.value = false
+  clearTimeout(idleTimer)
+  idleTimer = window.setTimeout(() => (idle.value = view.value === 'visual' && !panel.value), 2800)
+}
+
+watch(
+  () => current.value?.id,
+  () => {
+    if (!settings.visuals.titles) return
+    card.value = true
+    window.setTimeout(() => (card.value = false), 3800)
+  },
+  { immediate: true }
+)
+
+function fullscreen(): void {
+  if (document.fullscreenElement) void document.exitFullscreen()
+  else void document.documentElement.requestFullscreen().catch(() => {})
+}
+
+onMounted(() => {
+  wake()
+  window.addEventListener('mousemove', wake)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', wake)
+  clearTimeout(idleTimer)
+})
+defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (view.value = v), togglePanel: () => (panel.value = !panel.value) })
+</script>
+
+<template>
+  <div class="np" :class="[`view-${view}`, { idle }]" :style="paletteStyle">
+    <div class="backdrop">
+      <CoverArt v-if="current" :song="current" class="blur" />
+      <div class="tint" />
+    </div>
+    <div v-if="settings.visuals.enabled" class="visual" :class="{ dim: view !== 'visual' }">
+      <VisualCanvas ref="visual" :section="section?.label" :playlist-visual="playlistVisual" @change="activeVisual = $event" />
+    </div>
+
+    <header class="top">
+      <button class="icon-btn" title="Close (Esc)" @click="nowPlayingOpen = false"><Icon name="back" /></button>
+      <nav class="views">
+        <button v-for="v in (['stage', 'lyrics', 'notation', 'visual'] as const)" :key="v" :class="{ on: view === v }" @click="view = v">
+          {{ { stage: 'Stage', lyrics: 'Lyrics', notation: 'Notation', visual: 'Visual' }[v] }}
+        </button>
+      </nav>
+      <div class="tools">
+        <button class="icon-btn" :class="{ on: panel }" title="Visuals (V)" @click="panel = !panel"><Icon name="sparkles" /></button>
+        <button class="icon-btn" title="Full screen" @click="fullscreen"><Icon name="expand" /></button>
+      </div>
+    </header>
+
+    <Transition name="panel"><VisualsPanel v-if="panel" class="vpanel" :active="activeVisual" @close="panel = false" @next="visual?.next()" /></Transition>
+
+    <main v-if="current" class="stage">
+      <section v-if="view === 'stage'" class="cover-col">
+        <div class="cover-wrap" :class="{ playing }">
+          <CoverArt :song="current" :live="playing" rounded />
+        </div>
+        <h1 @click="go(`/song/${current.id}`); nowPlayingOpen = false">{{ current.title }}</h1>
+        <p class="facts">
+          <span v-if="current.genre">{{ current.genre }}</span><span v-if="current.mood">{{ current.mood }}</span><span v-if="current.bpm">{{ current.bpm }} BPM</span><span v-if="current.score_key">{{ current.score_key }}</span><span>{{ current.model || 'recording' }}</span>
+        </p>
+      </section>
+      <section v-if="view === 'stage' || view === 'lyrics'" class="lyrics-col">
+        <Karaoke :lines="lines" :time="time" :plain="detail?.lyrics_raw ? current.lyrics : ''" />
+      </section>
+      <section v-if="view === 'notation'" class="notation-col">
+        <Notation v-if="detail" :notation="detail.notation" :lines="lines" :time="time" :following="true" />
+      </section>
+      <section v-if="view === 'notation'" class="side-lyrics">
+        <Karaoke :lines="lines" :time="time" :plain="current.lyrics" compact />
+      </section>
+    </main>
+
+    <div v-if="view === 'visual' && settings.visuals.lyrics && subtitle" class="subtitle">
+      <span v-for="(chunk, k) in chunksAt(subtitle, time)" :key="k" class="chunk" :style="{ '--fill': `${chunk.fill * 100}%` }">{{ chunk.text }}</span>
+    </div>
+
+    <Transition name="card">
+      <div v-if="card && current" class="title-card">
+        <small>{{ [current.model || 'Plenio', current.genre].filter(Boolean).join(' · ') }}</small>
+        <h2>{{ current.title }}</h2>
+      </div>
+    </Transition>
+
+    <footer class="dock">
+      <div class="chips">
+        <button v-for="s in sections" :key="s.at" class="chip" :class="{ on: section?.at === s.at }" @click="engine.seek(s.at)">{{ sectionName(s.label) }}</button>
+      </div>
+      <Waveform :song-id="current?.id ?? null" :time="time" :duration="duration" :sections="sections" :lines="lines" tall />
+      <div class="row">
+        <span class="t">{{ formatTime(time) }}</span>
+        <div class="controls">
+          <button class="icon-btn" :class="{ on: settings.shuffle }" @click="settings.shuffle = !settings.shuffle"><Icon name="shuffle" /></button>
+          <button class="icon-btn" @click="previous()"><Icon name="prev" :size="24" /></button>
+          <button class="play" @click="engine.toggle()"><Icon :name="playing ? 'pause' : 'play'" :size="28" /></button>
+          <button class="icon-btn" @click="next()"><Icon name="next" :size="24" /></button>
+          <button v-if="current" class="icon-btn" :class="{ on: isFavorite(current.id) }" @click="toggleFavorite(current.id)"><Icon name="heart" :filled="isFavorite(current.id)" /></button>
+        </div>
+        <span class="t">{{ formatTime(duration) }}</span>
+      </div>
+    </footer>
+  </div>
+</template>
+
+<style scoped>
+.np {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  color: #fff;
+  overflow: hidden;
+  background: #05040a;
+}
+.backdrop,
+.visual {
+  position: absolute;
+  inset: 0;
+}
+.backdrop .blur {
+  position: absolute;
+  inset: -10%;
+  width: 120%;
+  filter: blur(60px) saturate(1.4);
+  opacity: 0.55;
+  animation: pan 30s ease-in-out infinite alternate;
+}
+.tint {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 20%, transparent, var(--deep) 75%), linear-gradient(180deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.75));
+}
+.visual {
+  transition: opacity 0.8s;
+}
+.visual.dim {
+  opacity: 0.24;
+  mix-blend-mode: screen;
+  filter: saturate(1.2) blur(1px);
+}
+.view-notation .visual.dim {
+  opacity: 0.12;
+}
+.top {
+  grid-row: 1;
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  transition: opacity 0.6s;
+}
+.views {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  border-radius: 99px;
+  backdrop-filter: blur(12px);
+}
+.views button {
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.7);
+  font: 600 13px var(--font);
+  padding: 7px 16px;
+  border-radius: 99px;
+  cursor: pointer;
+}
+.views button.on {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.tools {
+  display: flex;
+  gap: 6px;
+}
+.vpanel {
+  position: absolute;
+  right: 20px;
+  top: 64px;
+  bottom: 170px;
+  z-index: 6;
+}
+.stage {
+  grid-row: 2;
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) 1.1fr;
+  gap: 5vw;
+  padding: 0 6vw;
+  min-height: 0;
+  align-items: center;
+}
+.view-lyrics .stage {
+  grid-template-columns: 1fr;
+  padding: 0 14vw;
+}
+.view-notation .stage {
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  padding: 0 3vw;
+}
+.view-visual .stage {
+  visibility: hidden;
+}
+.cover-col {
+  text-align: left;
+}
+.cover-wrap {
+  width: min(38vh, 100%);
+  border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 60px var(--glow);
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.cover-wrap.playing {
+  animation: float 6s ease-in-out infinite;
+}
+h1 {
+  font: 800 clamp(26px, 3.4vw, 50px) / 1.05 var(--font);
+  margin: 26px 0 10px;
+  letter-spacing: -0.5px;
+  cursor: pointer;
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+.facts span {
+  font: 12px var(--font);
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+.lyrics-col,
+.notation-col,
+.side-lyrics {
+  height: 100%;
+  max-height: calc(100vh - 260px);
+  min-height: 0;
+}
+.lyrics-col,
+.side-lyrics {
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.55);
+}
+.view-lyrics .lyrics-col :deep(.line) {
+  font-size: clamp(26px, 3.4vw, 52px);
+  text-align: center;
+  transform-origin: center;
+}
+.subtitle {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 190px;
+  text-align: center;
+  font: 800 clamp(24px, 3vw, 46px) / 1.2 var(--font);
+  padding: 0 8vw;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.8);
+}
+.chunk {
+  background: linear-gradient(90deg, #fff var(--fill), rgba(255, 255, 255, 0.4) var(--fill));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.title-card {
+  position: absolute;
+  z-index: 4;
+  left: 6vw;
+  top: 18vh;
+  pointer-events: none;
+}
+.title-card small {
+  font: 600 14px var(--font);
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.title-card h2 {
+  font: 900 clamp(40px, 6vw, 96px) / 1 var(--font);
+  margin: 6px 0 0;
+  letter-spacing: -1px;
+  text-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
+}
+.view-stage .title-card,
+.view-notation .title-card {
+  display: none;
+}
+.dock {
+  grid-row: 3;
+  position: relative;
+  z-index: 3;
+  padding: 10px 6vw 22px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+  transition: opacity 0.6s, transform 0.6s;
+}
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.play {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: #0b0a12;
+  cursor: pointer;
+  box-shadow: 0 0 40px var(--glow);
+  transition: transform 0.15s;
+}
+.play:hover {
+  transform: scale(1.06);
+}
+.t {
+  font: 12px var(--mono);
+  color: rgba(255, 255, 255, 0.7);
+}
+.idle .top,
+.idle .dock {
+  opacity: 0;
+}
+.idle .dock {
+  transform: translateY(20px);
+}
+.idle {
+  cursor: none;
+}
+.panel-enter-active,
+.panel-leave-active,
+.card-enter-active,
+.card-leave-active {
+  transition: opacity 0.5s, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.panel-enter-from,
+.panel-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+.card-enter-from {
+  opacity: 0;
+  transform: translateY(30px);
+}
+.card-leave-to {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.98);
+}
+@keyframes pan {
+  from {
+    transform: scale(1.05) translate(-2%, -1%);
+  }
+  to {
+    transform: scale(1.15) translate(2%, 2%);
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.3deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(0.3deg);
+  }
+}
+@media (max-width: 900px) {
+  .stage {
+    grid-template-columns: 1fr;
+  }
+  .cover-col {
+    display: none;
+  }
+}
+</style>
