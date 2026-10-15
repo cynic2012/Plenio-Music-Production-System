@@ -34,12 +34,10 @@ class PlenioRefine(io.ComfyNode):
             is_experimental=True,
             has_intermediate_output=True,
             description=(
-                "Brings audio to 48 kHz. 'model' extends the top octaves with a super-resolution model "
-                "and keeps everything below the crossover from the original (complementary crossover); "
-                "'resample only' converts the rate without new content. The model always runs when it is "
-                "connected, also for an input that already reaches 20 kHz - nothing below the crossover "
-                "changes. A prepared preset sets PRE, POST and the crossover in one go; *custom* uses the "
-                "three fields. Same duration, no normalisation. Experimental."
+                "Brings audio to 48 kHz. 'model' extends the top octaves with a super-resolution model and keeps "
+                "everything below the crossover from the original; 'resample only' converts the rate. A preset sets "
+                "PRE, POST and the crossover in one go; *custom* uses the three fields. Same duration, no "
+                "normalisation. Experimental."
             ),
             inputs=[
                 io.Audio.Input("audio", tooltip="The rendered song (any sample rate)."),

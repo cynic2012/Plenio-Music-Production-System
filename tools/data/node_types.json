@@ -1488,7 +1488,7 @@
      "mode": [
       "COMBO",
       {
-       "tooltip": "one cover, stop to review: Song Sheet · Score and Song Sheet · Text stop so you can check the transcription and the lyrics; later runs keep them and render new takes. new cover every run: each run writes a different version (title, style and - for new lyrics - the lyrics, with its own draft seed) and renders it; the transcription of the source is reused. A Song Sheet set to 'stop for review' stops each new version; after Approve the next run renders it, the run after it writes the next one.",
+       "tooltip": "one cover, stop to review: the Song Sheets stop so you can check the transcription and the lyrics; later runs render new takes. new cover every run: each run writes and renders another version.",
        "default": "one cover, stop to review",
        "multiselect": false,
        "options": [
@@ -1774,7 +1774,7 @@
      "vocals": [
       "COMFY_DYNAMICCOMBO_V3",
       {
-       "tooltip": "instrumental (the node's default): an instrument plays the vocal melody, or accompaniment only. original lyrics: the source's words, transcribed (the 2 · YuE2 · Cover template starts with these). new lyrics: new words on the source's melody.",
+       "tooltip": "original lyrics: the source's words, transcribed. new lyrics: new words on the source's melody. instrumental: an instrument plays the vocal melody, or accompaniment only.",
        "options": [
         {
          "key": "instrumental",
@@ -1882,7 +1882,7 @@
      "title": [
       "STRING",
       {
-       "tooltip": "Optional fixed title, e.g. 'Original Title (Jazz Cover)'. Empty: the source recording's title with '-cover' (its title tag, else its file name) when 'source' is connected, as in the template; without it the writer proposes one.",
+       "tooltip": "Optional fixed title, e.g. 'Original Title (Jazz Cover)'. Empty: the source recording's title with '-cover' when 'source' is connected; else the writer proposes one.",
        "advanced": true,
        "default": "",
        "multiline": false
@@ -1894,7 +1894,7 @@
       "COMBO",
       {
        "display_name": "arrangement (experimental)",
-       "tooltip": "off: no arrangement - the transcribed score stays as it is.\nstandard: Genre-typical - calm verses, fuller choruses, the last chorus the strongest; everything well placed, nothing unusual.\nsterile: Clean, sparse and steady - plain chords, long notes or silence, low even energy, no surprises.\nunplugged: Intimate and acoustic - guitar or piano, fingerpicked broken chords and soft pads, low energy, warm and close.\nvaried: Every section sounds different - the instrument line changes from section to section, contrasting energy, fresh chords in the bridge.\ncall and response: The instruments answer the melody - a short reply in the gaps between its phrases, like a band talking back to the singer.\nsignature motif: One short melodic figure becomes the song's signature - it opens the song, returns in every chorus and closes it.\nhypnotic: A steady repeating pattern drives the song - riffs and broken chords over few chords, changing only little by little (trance, minimal, krautrock).\nbreakdown: Full sections with a breakdown in the middle - everything drops back to almost nothing, then builds again into a big final section.\ndramatic: One long arc - from a quiet start, section by section, to a big climax in the final chorus.\nmany instruments: A full ensemble - an instrument line in every section, riffs, countermelodies and a solo.\njazz colours: Rich jazz harmony - seventh chords throughout, passing chords before a section changes, a mellow countermelody and a solo.\nfantasy: Imaginative and surprising - colourful chords, unusual instrument lines, a returning motif, a touch of film music.\nkey change: Standard arrangement with one key change - the final chorus lifted a half or whole step, prepared by leading chords.\n\nA creative mode (above, or your own file in user/plenio/arrangement) adds its hints to the writing prompt and lets the writer model re-arrange the score's sections within the song flow closeness: chords, what the instrument line plays, energy. The form always stays; below song flow closeness 80 the melody follows the new chords. Plenio writes the notes itself and checks the result; a plan it cannot use leaves the transcription as it was (the score's Song Sheet says so). Experimental: creative modes can give unexpected results - they are meant for experimenting: try a mode, listen, keep what you like or run again with another arrangement seed. off is the dependable choice.",
+       "tooltip": "off (default): the transcribed score stays as it is. A creative mode (experimental) re-arranges the sections within the song flow closeness; the line under the brief says what the chosen mode does.",
        "default": "off",
        "multiselect": false,
        "options": [
@@ -1919,7 +1919,7 @@
       "INT",
       {
        "display_name": "song flow closeness",
-       "tooltip": "Creative modes only (off ignores it; experimental): how close the cover's song flow stays to the original - 100 exactly the original (nothing is planned), 80 chords, key and tempo stay (only silent sections get a line), 50 recognisable (chords recoloured, lines changed, a small key lift; melody notes that clash move onto the new chords), 20 a free version (new chords and lines, another tempo, the melody written anew over the chords in its old rhythm), 0 only a hint of the original. The form always remains.",
+       "tooltip": "Creative modes only (experimental): how close the cover stays to the original - 100 exactly, 80 chords and key stay, 50 recognisable, 20 a free version, 0 only a hint. The form always stays.",
        "default": 70,
        "min": 0,
        "max": 100,
@@ -1931,7 +1931,7 @@
       "INT",
       {
        "display_name": "lyrics closeness",
-       "tooltip": "New lyrics only (experimental): how close they stay to the source's lyrics - 0 written without the source's text (default), 1-29 only a hint of it, 30-59 its theme and mood, 60-89 its story in new words, 90-100 its meaning line by line (a singable translation when the language differs). Above 0 the source's lyrics are transcribed for the writer (lyrics ASR); the source must have clear singing.",
+       "tooltip": "New lyrics only (experimental): how close they stay to the source's lyrics - 0 without its text (default), 30 its theme, 60 its story, 90-100 its meaning line by line.",
        "default": 0,
        "min": 0,
        "max": 100,
@@ -1943,7 +1943,7 @@
       "BOOLEAN",
       {
        "display_name": "lines under the singing (experimental)",
-       "tooltip": "Creative modes only (experimental): off (default) - the instrument line plays where the voice rests (intros, interludes, gaps between phrases), as in YuE2's own scores, where the second voice is the instrumental melody. On - it also sounds under the singing: calm, below the voice and never a minor second against it. More accompaniment, but further from what YuE2 knows.",
+       "tooltip": "Creative modes only (experimental): off - the instrument line plays where the voice rests, as in YuE2's own scores; on - it also sounds under the singing, calm and below the voice.",
        "default": false
       }
      ],
@@ -1991,16 +1991,52 @@
     "STRING",
     "BOOLEAN",
     "BOOLEAN",
-    "INT"
+    "INT",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "INT",
+    "INT",
+    "BOOLEAN"
    ],
    "output_name": [
     "brief",
     "brief_text",
     "use_source_lyrics",
     "instrumental",
-    "song_seed"
+    "song_seed",
+    "template",
+    "genre",
+    "mood",
+    "vocals",
+    "language",
+    "voice",
+    "theme",
+    "harmony",
+    "arrangement",
+    "song_flow_closeness",
+    "lyrics_closeness",
+    "lines_under_singing"
    ],
    "output_is_list": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
     false,
     false,
     false,
@@ -2231,7 +2267,7 @@
      "naming": [
       "STRING",
       {
-       "tooltip": "File name pattern: {title}, {date}, {time}, {seed}. '/' makes sub-folders.",
+       "tooltip": "File name: {title}, {date}, {seed}, {genre}, {artist} ... (the variables of the tags); '/' makes sub-folders; [optional {parts}] vanish when empty.",
        "default": "{date} {title}",
        "multiline": false
       }
@@ -2270,6 +2306,12 @@
       "IMAGE",
       {
        "tooltip": "Cover art (square crop, JPEG)."
+      }
+     ],
+     "brief": [
+      "PLENIO_BRIEF",
+      {
+       "tooltip": "Optional: the brief, so that tags and the file name can use its fields ({genre}, {mood} ...)."
       }
      ],
      "reports": [
@@ -2317,7 +2359,7 @@
      "tags": [
       "COMFY_DYNAMICCOMBO_V3",
       {
-       "tooltip": "Metadata written into the files.",
+       "tooltip": "Metadata written into the files: the title only, tags typed or connected (with {variables}), or the tags of the loaded file.",
        "options": [
         {
          "key": "title only",
@@ -2332,7 +2374,7 @@
            "artist": [
             "STRING",
             {
-             "tooltip": "The artist, written into the files' tags.",
+             "tooltip": "The artist tag. Text with {variables}, or connect a text output to the field.",
              "default": "",
              "multiline": false
             }
@@ -2340,7 +2382,7 @@
            "album": [
             "STRING",
             {
-             "tooltip": "The album, written into the files' tags.",
+             "tooltip": "The album tag. Text with {variables}, or connect a text output to the field.",
              "default": "",
              "multiline": false
             }
@@ -2348,7 +2390,7 @@
            "date": [
             "STRING",
             {
-             "tooltip": "Year or date, e.g. 2026 or 2026-10-09.",
+             "tooltip": "Year or date, e.g. 2026 or {date}. Text with {variables}, or connect a text output to the field.",
              "default": "",
              "multiline": false
             }
@@ -2356,7 +2398,7 @@
            "track": [
             "STRING",
             {
-             "tooltip": "Track number, e.g. 3 or 3/12.",
+             "tooltip": "Track number, e.g. 3 or 3/12. Text with {variables}, or connect a text output to the field.",
              "default": "",
              "multiline": false
             }
@@ -2364,7 +2406,7 @@
            "genre": [
             "STRING",
             {
-             "tooltip": "The genre, written into the files' tags.",
+             "tooltip": "The genre tag, e.g. {genre} (the brief's). Text with {variables}, or connect a text output to the field.",
              "default": "",
              "multiline": false
             }
@@ -2372,7 +2414,7 @@
            "comment": [
             "STRING",
             {
-             "tooltip": "The comment tag; empty: none.",
+             "tooltip": "The comment tag; empty: none. Text with {variables}, or connect a text output to the field.",
              "default": "Powered by Plenio Music Production System / ComfyUI",
              "multiline": false
             }
@@ -2380,7 +2422,7 @@
            "album_artist": [
             "STRING",
             {
-             "tooltip": "The album artist, written into the files' tags.",
+             "tooltip": "The album artist tag. Text with {variables}, or connect a text output to the field.",
              "default": "",
              "multiline": false
             }
@@ -2388,7 +2430,17 @@
            "composer": [
             "STRING",
             {
-             "tooltip": "The composer, written into the files' tags.",
+             "tooltip": "The composer tag. Text with {variables}, or connect a text output to the field.",
+             "default": "",
+             "multiline": false
+            }
+           ]
+          },
+          "optional": {
+           "lyrics": [
+            "STRING",
+            {
+             "tooltip": "The lyrics tag (FLAC, MP3; players show it), e.g. {lyrics}. Text with {variables}, or connect a text output to the field.",
              "default": "",
              "multiline": false
             }
@@ -2409,7 +2461,7 @@
       "COMBO",
       {
        "display_name": "sheet music",
-       "tooltip": "Also save the sheet music - both voices, chord symbols, sections and the lyrics under the notes - as '<name>.pdf' next to the audio, on A4 or Letter pages. An open ComfyUI page draws it right after the export (as Export notation… in the Song Sheet does), whichever workflow it shows, and Plenio saves it; without an open page, the next page that opens draws it (within a day, while ComfyUI runs). Needs a score (YuE2).",
+       "tooltip": "Also save the sheet music (both voices, chords, sections, the lyrics under the notes) as '<name>.pdf' on A4 or Letter pages; an open ComfyUI page draws it after the export. Needs a score (YuE2).",
        "default": "off",
        "multiselect": false,
        "options": [
@@ -2423,7 +2475,7 @@
       "COMBO",
       {
        "display_name": "sheet music size",
-       "tooltip": "How large the sheet music draws the music: standard about 3 bars a line (4 pages for a song of 3-4 minutes), smaller 3-4 (3 pages), compact about 4 (2-3 pages), large 1-2 bars a line (the biggest notes). The same sizes as Export notation… in the Song Sheet.",
+       "tooltip": "How large the sheet music draws: standard about 3 bars a line, smaller 3-4, compact about 4, large 1-2 (the biggest notes).",
        "default": "standard",
        "multiselect": false,
        "options": [
@@ -2438,7 +2490,15 @@
       "BOOLEAN",
       {
        "display_name": "project in FLAC",
-       "tooltip": "Also store the release record - workflow, Song Sheets, score, lyrics, style, seeds and settings - inside the song's FLAC (compressed, in a metadata block that players skip). File > Continue a Plenio song... opens the song again from the FLAC alone, and so does a FLAC dropped onto the empty canvas. The record next to the song is written as before. Turn it off for files you share without their making-of (secrets are never stored; ComfyUI's --disable-metadata turns it off too).",
+       "tooltip": "Store the release record (workflow, Song Sheets, seeds, settings) inside the song's FLAC: File > Continue a Plenio song... opens the song from the FLAC alone. Off for files you share without their making-of.",
+       "default": true
+      }
+     ],
+     "lyrics_srt": [
+      "BOOLEAN",
+      {
+       "display_name": "lyrics subtitles (SRT)",
+       "tooltip": "Write the lyrics as subtitles next to the song: '(lines).srt' with whole lines, '(notes).srt' painted on note by note. Timed by listening (the lyrics ASR, 3.1 GB, fetched on first use).",
        "default": true
       }
      ]
@@ -2463,6 +2523,7 @@
      "title",
      "original",
      "cover",
+     "brief",
      "reports",
      "flac",
      "mp3",
@@ -2470,7 +2531,8 @@
      "tags",
      "sheet_music",
      "sheet_music_size",
-     "project_in_flac"
+     "project_in_flac",
+     "lyrics_srt"
     ],
     "hidden": [
      "prompt",
@@ -2684,7 +2746,7 @@
      "reuse_answers": [
       "BOOLEAN",
       {
-       "tooltip": "On: a request answered before (same model file or app model, prompt, seed and settings) is answered from Plenio's answer cache (user/plenio/cache/llm) - no call, also after a restart or when an earlier node ran again. Off: always ask the model.",
+       "tooltip": "On: a request answered before (same model, prompt, seed and settings) is answered from Plenio's cache (user/plenio/cache/llm), also after a restart. Off: always ask the model.",
        "advanced": true,
        "default": true
       }
@@ -2692,7 +2754,7 @@
      "schema": [
       "STRING",
       {
-       "tooltip": "Optional JSON schema of the answer (Compose Arrangement provides one): GGUF files, LM Studio, Ollama and vLLM are held to it while they write, so the answer always has that format. Apps without this feature answer freely.",
+       "tooltip": "Optional JSON schema of the answer (Compose Arrangement provides one): GGUF files, LM Studio, Ollama and vLLM keep to it while they write; other apps answer freely.",
        "forceInput": true,
        "multiline": false
       }
@@ -3259,7 +3321,7 @@
      "operation": [
       "COMFY_DYNAMICCOMBO_V3",
       {
-       "tooltip": "prepare from brief: what the brief asks for - sung songs unchanged; in a sung cover a rest of 4 bars or more inside a sung section becomes an interlude section (YuE2 would end the section there); instrumentals get a silent Vocal voice (the melody moved to Ins, or accompaniment only). new score from brief: an all-rest score to compose in (the DAW template). strip chords: all chord symbols removed. fit length: close to the given seconds. voices: keep, silence or move the Vocal voice. transpose: by semitones. tempo: a new tempo, the notes stay.",
+       "tooltip": "prepare from brief: what the brief asks for (instrumentals: a silent Vocal). new score from brief: an empty score to compose in. Also: strip chords, fit length, voices, transpose, tempo (the help page explains them).",
        "options": [
         {
          "key": "prepare from brief",
@@ -3409,6 +3471,50 @@
    "category": "Plenio/Score",
    "display_name": "Score Tools"
   },
+  "PlenioSeed": {
+   "input": {
+    "required": {
+     "seed": [
+      "INT",
+      {
+       "tooltip": "The number behind this part's random choices: the same number gives the same result.",
+       "default": 0,
+       "min": 0,
+       "max": 9223372036854775807,
+       "control_after_generate": false
+      }
+     ],
+     "keep_seed": [
+      "BOOLEAN",
+      {
+       "display_name": "each run",
+       "tooltip": "🎲 new seed: every run draws a new number before it starts - something new each time. 🔒 same seed: every run uses this number again - the same result while you change other things.",
+       "default": false,
+       "label_on": "🔒 same seed",
+       "label_off": "🎲 new seed"
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "seed",
+     "keep_seed"
+    ]
+   },
+   "output": [
+    "INT"
+   ],
+   "output_name": [
+    "seed"
+   ],
+   "output_is_list": [
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Utilities",
+   "display_name": "Seed"
+  },
   "PlenioSeparateStems": {
    "input": {
     "required": {
@@ -3454,7 +3560,7 @@
      "mode": [
       "COMBO",
       {
-       "tooltip": "new song every run: each run writes and renders a different song from this brief (with its own draft and plan seeds) - set the batch count next to Run for a whole series. A Song Sheet set to 'stop for review' stops each new song; after Approve the next run renders that song, the run after it writes the next one. one song, stop to review: the Song Sheets stop so you can check and edit the documents before rendering; later runs keep them and render new takes.",
+       "tooltip": "new song every run: each run writes and renders another song from this brief (the batch count next to Run makes a series). one song, stop to review: the Song Sheets stop for checking; later runs render new takes.",
        "default": "new song every run",
        "multiselect": false,
        "options": [
@@ -3853,7 +3959,7 @@
       "COMBO",
       {
        "display_name": "arrangement (experimental)",
-       "tooltip": "off: no arrangement - the music model plans melody, chords and instruments by itself.\nstandard: Genre-typical - calm verses, fuller choruses, the last chorus the strongest; everything well placed, nothing unusual.\nsterile: Clean, sparse and steady - plain chords, long notes or silence, low even energy, no surprises.\nunplugged: Intimate and acoustic - guitar or piano, fingerpicked broken chords and soft pads, low energy, warm and close.\nvaried: Every section sounds different - the instrument line changes from section to section, contrasting energy, fresh chords in the bridge.\ncall and response: The instruments answer the melody - a short reply in the gaps between its phrases, like a band talking back to the singer.\nsignature motif: One short melodic figure becomes the song's signature - it opens the song, returns in every chorus and closes it.\nhypnotic: A steady repeating pattern drives the song - riffs and broken chords over few chords, changing only little by little (trance, minimal, krautrock).\nbreakdown: Full sections with a breakdown in the middle - everything drops back to almost nothing, then builds again into a big final section.\ndramatic: One long arc - from a quiet start, section by section, to a big climax in the final chorus.\nmany instruments: A full ensemble - an instrument line in every section, riffs, countermelodies and a solo.\njazz colours: Rich jazz harmony - seventh chords throughout, passing chords before a section changes, a mellow countermelody and a solo.\nfantasy: Imaginative and surprising - colourful chords, unusual instrument lines, a returning motif, a touch of film music.\nkey change: Standard arrangement with one key change - the final chorus lifted a half or whole step, prepared by leading chords.\n\nA creative mode (above, or your own file in user/plenio/arrangement) adds its hints to the writing prompt and, in YuE2 Song, lets the writer model plan every section of YuE2's score: chords, what the instrument line plays, energy. Plenio writes the notes itself and checks the result; a plan it cannot use leaves YuE2's score as it was (the Song Sheet says so). Planning works with every writer model - GGUF files, LM Studio and Ollama keep to the format exactly. Experimental: creative modes can give unexpected results - they are meant for experimenting: try a mode, listen, keep what you like or run again with another arrangement seed. off is the dependable choice.",
+       "tooltip": "off (default): the music model plans the music by itself. A creative mode (experimental) lets the writer plan chords, lines and energy per section; the line under the brief says what the chosen mode does.",
        "default": "off",
        "multiselect": false,
        "options": [
@@ -3878,7 +3984,7 @@
       "INT",
       {
        "display_name": "genre closeness",
-       "tooltip": "Creative modes only (off ignores it; experimental): how close the song stays to its genre - 100 strictly typical, 70 typical with personal touches, 40 free within the genre, 0 borrow from any style. It shapes the style words and the section plan.",
+       "tooltip": "Creative modes only (experimental): how close the song stays to its genre - 100 strictly typical, 70 typical with personal touches, 40 free within the genre, 0 any style.",
        "default": 70,
        "min": 0,
        "max": 100,
@@ -3890,7 +3996,7 @@
       "BOOLEAN",
       {
        "display_name": "lines under the singing (experimental)",
-       "tooltip": "Creative modes only (experimental): off (default) - the instrument line plays where the voice rests (intros, interludes, gaps between phrases), as in YuE2's own scores, where the second voice is the instrumental melody. On - it also sounds under the singing: calm, below the voice and never a minor second against it. More accompaniment, but further from what YuE2 knows.",
+       "tooltip": "Creative modes only (experimental): off - the instrument line plays where the voice rests, as in YuE2's own scores; on - it also sounds under the singing, calm and below the voice.",
        "default": false
       }
      ]
@@ -3920,16 +4026,58 @@
     "STRING",
     "FLOAT",
     "BOOLEAN",
-    "INT"
+    "INT",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "STRING",
+    "INT",
+    "BOOLEAN"
    ],
    "output_name": [
     "brief",
     "brief_text",
     "max_seconds",
     "instrumental",
-    "song_seed"
+    "song_seed",
+    "template",
+    "genre",
+    "mood",
+    "tempo",
+    "length",
+    "vocals",
+    "language",
+    "voice",
+    "theme",
+    "key",
+    "meter",
+    "arrangement",
+    "genre_closeness",
+    "lines_under_singing"
    ],
    "output_is_list": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
     false,
     false,
     false,
@@ -3946,7 +4094,7 @@
      "review": [
       "COMBO",
       {
-       "tooltip": "as the brief says: stop for review when the brief's mode is 'one song/cover, stop to review', continue for 'new song/cover every run'. stop for review: the documents are released only after you approve them in the editor - in a series every new song stops, and the run after Approve renders that song before the next one is written. continue: never stop for review.",
+       "tooltip": "as the brief says: stop in the brief's mode 'one song/cover, stop to review'. stop for review: the documents go on only after Approve in the editor (in a series: every song). continue: never stop.",
        "default": "as the brief says",
        "multiselect": false,
        "options": [
@@ -4526,7 +4674,7 @@
      "model": [
       "COMBO",
       {
-       "tooltip": "A bare file name (gemma4_e4b_it_fp8_scaled.safetensors): a text model in models/text_encoders, written by ComfyUI's Generate Text. 'models/LLM · ...gguf', '... files · ...', 'HF cache · ...': a GGUF run by llama.cpp for the draft. 'LM Studio · ...', 'Ollama · ...': a model of a running app.",
+       "tooltip": "A bare file name: a text model in models/text_encoders (ComfyUI's Generate Text). 'models/LLM · …', '… files · …', 'HF cache · …': a GGUF file. 'LM Studio · …', 'Ollama · …': a running app's model.",
        "multiselect": false,
        "options": [
         "(choose a model)"

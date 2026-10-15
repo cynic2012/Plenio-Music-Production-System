@@ -24,15 +24,12 @@ from ...core.brief import (
 )
 from ...core.errors import PlenioError
 from ...core.series import series_key
-from ..shared import SERIES, mode_guide, mode_library, mode_names, template_library
+from ..shared import SERIES, mode_description, mode_library, mode_names, template_library
 from ..types import Brief
 
 MODE_TOOLTIP = (
-    "new song every run: each run writes and renders a different song from this brief (with its own draft and "
-    "plan seeds) - set the batch count next to Run for a whole series. A Song Sheet set to 'stop for review' "
-    "stops each new song; after Approve the next run renders that song, the run after it writes the next one. "
-    "one song, stop to review: the Song Sheets stop so you can check and edit the documents before rendering; "
-    "later runs keep them and render new takes."
+    "new song every run: each run writes and renders another song from this brief (the batch count next to "
+    "Run makes a series). one song, stop to review: the Song Sheets stop for checking; later runs render new takes."
 )
 SONG_INPUTS = (
     "mode",
@@ -51,37 +48,19 @@ SONG_SEED_TOOLTIP = (
     "0 for one song."
 )
 
-EXPERIMENTAL = (
-    "Experimental: creative modes can give unexpected results - they are meant for experimenting: try a mode, "
-    "listen, keep what you like or run again with another arrangement seed. off is the dependable choice."
-)
 ARRANGEMENT_TOOLTIP = (
-    "off: no arrangement - the music model plans melody, chords and instruments by itself. A creative mode "
-    "(above, or your own file in user/plenio/arrangement) adds its hints to the writing prompt and, in YuE2 Song, "
-    "lets the writer model plan every section of YuE2's score: chords, what the instrument line plays, energy. "
-    "Plenio writes the notes itself and checks the result; a plan it cannot use leaves YuE2's score as it was (the "
-    "Song Sheet says so). Planning works with every writer model - GGUF files, LM Studio and Ollama keep to the "
-    "format exactly. " + EXPERIMENTAL
+    "off (default): the music model plans the music by itself. A creative mode (experimental) lets the writer "
+    "plan chords, lines and energy per section; the line under the brief says what the chosen mode does."
 )
-
-
-def arrangement_tooltip(text: str) -> str:
-    """What every choice does first - ``off`` (the first sentence of ``text``), then each creative mode from its
-    file (your own too) - and the rest of ``text`` after it: a long tooltip is cut at the window's edge."""
-    off, _, rest = text.partition(". ")
-    return f"{off}.\n{mode_guide()}\n\n{rest}"
 
 
 GENRE_CLOSENESS_TOOLTIP = (
-    "Creative modes only (off ignores it; experimental): how close the song stays to its genre - 100 strictly "
-    "typical, 70 typical with personal touches, 40 free within the genre, 0 borrow from any style. It shapes the "
-    "style words and the section plan."
+    "Creative modes only (experimental): how close the song stays to its genre - 100 strictly typical, 70 "
+    "typical with personal touches, 40 free within the genre, 0 any style."
 )
 UNDER_SINGING_TOOLTIP = (
-    "Creative modes only (experimental): off (default) - the instrument line plays where the voice rests "
-    "(intros, interludes, gaps between phrases), as in YuE2's own scores, where the second voice is the "
-    "instrumental melody. On - it also sounds under the singing: calm, below the voice and never a minor second "
-    "against it. More accompaniment, but further from what YuE2 knows."
+    "Creative modes only (experimental): off - the instrument line plays where the voice rests, as in YuE2's "
+    "own scores; on - it also sounds under the singing, calm and below the voice."
 )
 TEXT = {
     "description": "What the song is about and how it should sound. Sent to the writing model.",
@@ -93,19 +72,58 @@ TEXT = {
     "meter": "Optional meter, e.g. '3/4' or '6/8'. Music models that use a score take the meter from the score; the "
     "DAW template's empty score is built in it.",
 }
+SONG_FIELD_OUTPUTS: tuple[tuple[str, str, str], ...] = (
+    ("template", "STRING", "The brief template ('' for none)."),
+    ("genre", "STRING", "The genre (the template's when the field is empty)."),
+    ("mood", "STRING", "The mood."),
+    ("tempo", "STRING", "The tempo as written."),
+    ("length", "STRING", "The target length, e.g. 'standard (about 3:00)'."),
+    ("vocals", "STRING", "sung or instrumental."),
+    ("language", "STRING", "The language of the lyrics ('' for an instrumental)."),
+    ("voice", "STRING", "The vocal character."),
+    ("theme", "STRING", "What the lyrics are about."),
+    ("key", "STRING", "The key as written."),
+    ("meter", "STRING", "The meter as written."),
+    ("arrangement", "STRING", "The creative mode."),
+    ("genre_closeness", "INT", "The genre closeness (0-100)."),
+    ("lines_under_singing", "BOOLEAN", "Whether instrument lines also sound under the singing."),
+)
+"""The brief's fields as outputs (owner's request 2026-10-15): name, type, tooltip."""
+FIELD_ATTRIBUTES = {"genre_closeness": "closeness", "song_flow_closeness": "closeness"}
+VOCAL_FIELDS = ("language", "voice", "theme")
+
+
+def field_outputs(fields: tuple[tuple[str, str, str], ...]) -> list[Any]:
+    kinds = {"STRING": io.String, "INT": io.Int, "BOOLEAN": io.Boolean}
+    return [kinds[kind].Output(display_name=name, tooltip=tip) for name, kind, tip in fields]
+
+
+def field_values(brief: Any, fields: tuple[tuple[str, str, str], ...]) -> list[Any]:
+    """The values of ``fields`` from ``brief`` (an instrumental has no language, voice or theme)."""
+    values: list[Any] = []
+    for name, kind, _tip in fields:
+        value = getattr(brief, FIELD_ATTRIBUTES.get(name, name))
+        if name in VOCAL_FIELDS and brief.instrumental:
+            value = ""
+        values.append(bool(value) if kind == "BOOLEAN" else int(value) if kind == "INT" else str(value or ""))
+    return values
 
 
 def arrangement_line(brief: Any) -> str:
-    """The summary line of the creative mode (Song Brief and Cover Brief)."""
+    """The summary lines of the creative mode (Song Brief and Cover Brief): the mode, its closeness and what it
+    does (its file's description - the list of every mode is in the help page)."""
     if brief.arrangement == ARRANGEMENT_DEFAULT:
         return "Arrangement: off (the music model plans the music by itself)"
     under = ", lines also under the singing" if getattr(brief, "lines_under_singing", False) else ""
+    described = mode_description(brief.arrangement)
+    what = f"\n\n*{brief.arrangement}*: {described}" if described else ""
     if brief.kind == "song":
-        return (
-            f"Arrangement: **{brief.arrangement}** (experimental), genre closeness {brief.closeness}{under}"
-        )
+        return f"Arrangement: **{brief.arrangement}** (experimental), genre closeness {brief.closeness}{under}{what}"
     lyrics = f", lyrics closeness {brief.lyrics_closeness}" if brief.writes_lyrics else ""
-    return f"Arrangement: **{brief.arrangement}** (experimental), song flow closeness {brief.closeness}{lyrics}{under}"
+    return (
+        f"Arrangement: **{brief.arrangement}** (experimental), song flow closeness {brief.closeness}{lyrics}"
+        f"{under}{what}"
+    )
 
 
 def check_arrangement(name: Any) -> str | None:
@@ -227,7 +245,7 @@ class PlenioSongBrief(io.ComfyNode):
                     options=mode_names(),
                     default=ARRANGEMENT_DEFAULT,
                     optional=True,  # an API prompt of an older version runs as before (off)
-                    tooltip=arrangement_tooltip(ARRANGEMENT_TOOLTIP),
+                    tooltip=ARRANGEMENT_TOOLTIP,
                 ),
                 io.Int.Input(
                     "genre_closeness",
@@ -256,6 +274,9 @@ class PlenioSongBrief(io.ComfyNode):
                 io.Float.Output(display_name="max_seconds", tooltip="Render headroom for the target length."),
                 io.Boolean.Output(display_name="instrumental", tooltip="True for instrumental songs."),
                 io.Int.Output(display_name="song_seed", tooltip=SONG_SEED_TOOLTIP),
+                # appended: saved links keep their slots; the brief's final values (a field left empty gives
+                # the template's), e.g. for Export Release's tags
+                *field_outputs(SONG_FIELD_OUTPUTS),
             ],
         )
 
@@ -342,6 +363,7 @@ class PlenioSongBrief(io.ComfyNode):
             brief.max_seconds,
             brief.instrumental,
             brief.song_seed,
+            *field_values(brief, SONG_FIELD_OUTPUTS),
             ui={
                 "plenio_summary": [
                     {

@@ -11,7 +11,7 @@ How freely a song is written and arranged. Song Brief and Cover Brief have an **
 
 ## The modes
 
-From simple to rich - the list in the brief has the same order, and the field's tooltip says what each mode does. Only **key change** changes the key; every other mode keeps it from start to end.
+From simple to rich - the list in the brief has the same order, and the line under the brief says what the chosen mode does (the Song Brief's help page lists them all). Only **key change** changes the key; every other mode keeps it from start to end.
 
 | Mode | Sounds | Instrument line | Tempo | Chords |
 |---|---|---|---|---|

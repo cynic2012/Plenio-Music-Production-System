@@ -1,9 +1,12 @@
 """Export Release: FLAC 24-bit / MP3 V0 / WAV 32-bit float with tags and cover art, and a release record -
-also inside the FLAC, so the song can be continued from the audio file alone."""
+also inside the FLAC, so the song can be continued from the audio file alone. Tags and the file name take
+variables (``core.variables``); the lyrics go next to the song as subtitles, timed by listening
+(``core.subtitles``)."""
 
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -12,11 +15,15 @@ from comfy_api.latest import io
 
 from ... import __version__
 from ...core import score as score_rules
+from ...core import subtitles as subtitle_rules
+from ...core import syllables, variables
+from ...core.asr import AsrSettings, weak_segments
 from ...core.audio import measure
 from ...core.audio.stems import SavedStems
+from ...core.brief import COVER_MODES, COVER_VOCALS, HARMONY_OPTIONS, MELODY_OPTIONS, SONG_MODES
 from ...core.continuation import workflow_for_record
 from ...core.engines import ENGINES
-from ...core.errors import PlenioUserError
+from ...core.errors import PlenioCancelledError, PlenioError, PlenioUserError
 from ...core.files import atomic_write_bytes, atomic_write_text
 from ...core.release import (
     FORMATS,
@@ -31,17 +38,19 @@ from ...core.release import (
     embed_project,
     expand_pattern,
     file_facts,
-    naming_values,
     plan_release,
     project_block,
     read_tags,
+    safe_filename,
     workflow_licences,
     write_audio,
 )
 from ...core.reports import Report, Status
+from ...core.score import canonical, lyric_layout
 from .. import host
+from ..lyrics_asr import language_code, run_asr
 from ..sheet_music import DEFAULT_SIZE, JOBS, OFF, PAPERS, SHEET_MUSIC_OPTIONS, SIZES, hand_placed
-from ..types import ReportType
+from ..types import Brief, ReportType
 from .stems import write_saved_stems
 
 COLLISIONS = ("number", "overwrite", "error")
@@ -52,55 +61,207 @@ EXTRA_TAGS = tuple(field for field in TAG_FIELDS if field != "title")
 # what the *tags* mode writes as the comment unless the user changes it
 DEFAULT_COMMENT = "Powered by Plenio Music Production System / ComfyUI"
 SHEET_SUFFIX = ".pdf"
+SUBTITLE_SUFFIXES = {"lines": " (lines).srt", "notes": " (notes).srt"}
+SEED_NODES = ("PlenioSeed", "SeedNode")
+LOW_MATCH = 0.5
+"""Below this share of the lyrics' words heard, the subtitles get a note: the times rest on few words."""
+SEED_TITLES = {"take seed": "take_seed", "draft seed": "draft_seed", "arrangement seed": "arrangement_seed"}
 SHEET_TOOLTIP = (
-    "Also save the sheet music - both voices, chord symbols, sections and the lyrics under the notes - as "
-    "'<name>.pdf' next to the audio, on A4 or Letter pages. An open ComfyUI page draws it right after the export "
-    "(as Export notation… in the Song Sheet does), whichever workflow it shows, and Plenio saves it; without an "
-    "open page, the next page that opens draws it (within a day, while ComfyUI runs). Needs a score (YuE2)."
+    "Also save the sheet music (both voices, chords, sections, the lyrics under the notes) as '<name>.pdf' on "
+    "A4 or Letter pages; an open ComfyUI page draws it after the export. Needs a score (YuE2)."
 )
 PROJECT_TOOLTIP = (
-    "Also store the release record - workflow, Song Sheets, score, lyrics, style, seeds and settings - inside the "
-    "song's FLAC (compressed, in a metadata block that players skip). File > Continue a Plenio song... opens the song "
-    "again from the FLAC alone, and so does a FLAC dropped onto the empty canvas. The record next to the song is "
-    "written as before. Turn it off for files you share without their making-of (secrets are never stored; "
-    "ComfyUI's --disable-metadata turns it off too)."
+    "Store the release record (workflow, Song Sheets, seeds, settings) inside the song's FLAC: File > Continue "
+    "a Plenio song... opens the song from the FLAC alone. Off for files you share without their making-of."
 )
 SIZE_TOOLTIP = (
-    "How large the sheet music draws the music: standard about 3 bars a line (4 pages for a song of 3-4 "
-    "minutes), smaller 3-4 (3 pages), compact about 4 (2-3 pages), large 1-2 bars a line (the biggest notes). "
-    "The same sizes as Export notation… in the Song Sheet."
+    "How large the sheet music draws: standard about 3 bars a line, smaller 3-4, compact about 4, large 1-2 "
+    "(the biggest notes)."
+)
+SRT_TOOLTIP = (
+    "Write the lyrics as subtitles next to the song: '(lines).srt' with whole lines, '(notes).srt' painted on "
+    "note by note. Timed by listening (the lyrics ASR, 3.1 GB, fetched on first use)."
+)
+BRIEF_TOOLTIP = (
+    "Optional: the brief, so that tags and the file name can use its fields ({genre}, {mood} ...)."
+)
+NAMING_TOOLTIP = (
+    "File name: {title}, {date}, {seed}, {genre}, {artist} ... (the variables of the tags); '/' makes "
+    "sub-folders; [optional {parts}] vanish when empty."
 )
 
 
 def sheet_documents(reports: list[dict[str, Any]]) -> dict[str, Any]:
-    """The final score and lyrics of the release (the Song Sheets' reports) and the sheets that hold them."""
-    found: dict[str, Any] = {"score": "", "lyrics": "", "score_sheet": None, "lyrics_sheet": None}
+    """The final documents of the release (the Song Sheets' reports), the sheets that hold them and the music
+    model (``engine``)."""
+    found: dict[str, Any] = {
+        "score": "",
+        "lyrics": "",
+        "score_sheet": None,
+        "lyrics_sheet": None,
+        "engine": "",
+    }
     for report in reports:
         data = report.get("data") or {}
         documents = data.get("documents") or {}
-        for kind in ("score", "lyrics"):
-            doc = documents.get(kind)
+        for kind, doc in documents.items():
             if isinstance(doc, dict) and str(doc.get("text") or "").strip():
                 found[kind] = str(doc["text"])
                 found[f"{kind}_sheet"] = data.get("node_id")
+        if data.get("engine") in ENGINES and not found["engine"]:
+            found["engine"] = str(data["engine"])
     return found
 
 
+TAG_TIPS = {
+    "artist": "The artist tag.",
+    "album": "The album tag.",
+    "date": "Year or date, e.g. 2026 or {date}.",
+    "track": "Track number, e.g. 3 or 3/12.",
+    "genre": "The genre tag, e.g. {genre} (the brief's).",
+    "comment": "The comment tag; empty: none.",
+    "album_artist": "The album artist tag.",
+    "composer": "The composer tag.",
+    "lyrics": "The lyrics tag (FLAC, MP3; players show it), e.g. {lyrics}.",
+}
+VARIABLE_HINT = " Text with {variables}, or connect a text output to the field."
+
+
 def _tag_inputs() -> list[Any]:
-    tips = {
-        "artist": "The artist, written into the files' tags.",
-        "album": "The album, written into the files' tags.",
-        "date": "Year or date, e.g. 2026 or 2026-10-09.",
-        "track": "Track number, e.g. 3 or 3/12.",
-        "genre": "The genre, written into the files' tags.",
-        "comment": "The comment tag; empty: none.",
-        "album_artist": "The album artist, written into the files' tags.",
-        "composer": "The composer, written into the files' tags.",
-    }
     defaults = {"comment": DEFAULT_COMMENT}
     return [
-        io.String.Input(field, default=defaults.get(field, ""), tooltip=tips[field]) for field in EXTRA_TAGS
+        io.String.Input(
+            field,
+            default=defaults.get(field, ""),
+            # added in 0.8.1: optional, so an API prompt of 0.8.0 in *tags* mode runs as before
+            optional=field == "lyrics",
+            tooltip=TAG_TIPS[field] + VARIABLE_HINT,
+        )
+        for field in EXTRA_TAGS
     ]
+
+
+def _plain(value: Any) -> str:
+    if isinstance(value, bool):
+        return "on" if value else "off"
+    return "" if value is None else str(value).strip()
+
+
+def brief_variables(brief: Any) -> dict[str, str]:
+    """The brief's fields as variables (a Song Brief or a Cover Brief; nothing without one)."""
+    if brief is None:
+        return {}
+    labels = {v: k for k, v in MELODY_OPTIONS.items()}
+    modes = {v: k for k, v in (COVER_MODES if brief.kind == "cover" else SONG_MODES).items()}
+    values: dict[str, Any] = {
+        "description": brief.description,
+        "template": brief.template,
+        "mode": modes.get(brief.mode, brief.mode),
+        "genre": brief.genre,
+        "mood": brief.mood,
+        "language": "" if brief.instrumental else brief.language,
+        "voice": "" if brief.instrumental else brief.voice,
+        "theme": "" if brief.instrumental else brief.theme,
+        "melody": labels.get(brief.melody, brief.melody) if brief.instrumental else "",
+        "lead_instrument": brief.lead_instrument if brief.instrumental else "",
+        "arrangement": brief.arrangement,
+        "lines_under_singing": bool(brief.lines_under_singing),
+        "length": brief.length,
+    }
+    if brief.kind == "cover":
+        values["vocals"] = {v: k for k, v in COVER_VOCALS.items()}.get(brief.vocals, brief.vocals)
+        values["harmony"] = {v: k for k, v in HARMONY_OPTIONS.items()}.get(brief.harmony, brief.harmony)
+        values["song_flow_closeness"] = brief.closeness
+        values["lyrics_closeness"] = brief.lyrics_closeness if brief.writes_lyrics else ""
+    else:
+        values.update(
+            vocals=brief.vocals,
+            tempo=brief.tempo,
+            key=brief.key,
+            meter=brief.meter,
+            genre_closeness=brief.closeness,
+        )
+    return {key: _plain(value) for key, value in values.items()}
+
+
+def prompt_variables(prompt: Any) -> dict[str, str]:
+    """The seeds of the template's seed nodes (by their titles) and the writer model, from the executed graph."""
+    found: dict[str, str] = {}
+    for node in (prompt or {}).values():
+        if not isinstance(node, dict):
+            continue
+        inputs = node.get("inputs") or {}
+        title = str((node.get("_meta") or {}).get("title") or "").strip().lower()
+        if node.get("class_type") in SEED_NODES and title in SEED_TITLES:
+            seed = inputs.get("seed")
+            if isinstance(seed, int) and not isinstance(seed, bool):
+                found.setdefault(SEED_TITLES[title], str(seed))
+        if node.get("class_type") == "PlenioWriterChoice" and isinstance(inputs.get("model"), str):
+            name = Path(str(inputs["model"]).replace("\\", "/")).name
+            found.setdefault("writer", name.removesuffix(".safetensors").removesuffix(".gguf"))
+    if "take_seed" in found:
+        found["seed"] = found["take_seed"]
+    return found
+
+
+def score_variables(score_text: str) -> dict[str, str]:
+    """The score's tempo and key (YuE2)."""
+    if not score_text.strip():
+        return {}
+    try:
+        score = canonical.from_abc(score_text)
+    except PlenioError:
+        return {}
+    key = score.keys[0].key if score.keys else ""
+    return {"bpm": str(score.tempo), "score_key": key}
+
+
+def song_variables(
+    documents: dict[str, Any], title: str, seconds: float, now: time.struct_time | None = None
+) -> dict[str, str]:
+    moment = now or time.localtime()
+    minutes, rest = divmod(round(seconds), 60)
+    engine = ENGINES.get(documents.get("engine") or "")
+    return {
+        "title": title,
+        "lyrics": subtitle_rules.plain_lyrics(documents.get("lyrics") or ""),
+        "style": str(documents.get("style") or "").strip(),
+        "artwork_prompt": str(documents.get("artwork_prompt") or "").strip(),
+        "duration": f"{minutes}:{rest:02d}",
+        "date": time.strftime("%Y-%m-%d", moment),
+        "year": time.strftime("%Y", moment),
+        "time": time.strftime("%H%M%S", moment),
+        "model": str(getattr(engine, "DISPLAY_NAME", "")) if engine else "",
+        "plenio_version": __version__,
+        **score_variables(str(documents.get("score") or "")),
+    }
+
+
+def typed_tag_values(tags: Any) -> dict[str, str]:
+    """The tag fields' values as ``validate_inputs`` sees them (nested or ``tags.<field>``)."""
+    if isinstance(tags, dict):
+        return {field: tags[field] for field in EXTRA_TAGS if isinstance(tags.get(field), str)}
+    return {}
+
+
+def unknown_variables(naming: Any, tags: Any, flat: dict[str, Any]) -> str | None:
+    """Why a typed file name pattern or tag field cannot run (a name that is no variable), checked when the
+    run is queued, before anything renders."""
+    if isinstance(naming, str) and variables.unknown_names(naming):
+        return variables.unknown_message("The file name pattern", variables.unknown_names(naming))
+    fields = {**typed_tag_values(tags)}
+    fields.update(
+        {
+            key.removeprefix("tags."): value
+            for key, value in flat.items()
+            if key.startswith("tags.") and isinstance(value, str)
+        }
+    )
+    for field, value in fields.items():
+        unknown = variables.unknown_names(value)
+        if unknown:
+            return variables.unknown_message(f"The tag field '{field}'", unknown)
+    return None
 
 
 class PlenioExportRelease(io.ComfyNode):
@@ -132,6 +293,7 @@ class PlenioExportRelease(io.ComfyNode):
                     tooltip="Also export this audio (for example the unmastered take) as '<name> (original).flac'.",
                 ),
                 io.Image.Input("cover", optional=True, tooltip="Cover art (square crop, JPEG)."),
+                Brief.Input("brief", optional=True, tooltip=BRIEF_TOOLTIP),
                 io.Autogrow.Input(
                     "reports",
                     optional=True,
@@ -149,7 +311,7 @@ class PlenioExportRelease(io.ComfyNode):
                 io.String.Input(
                     "naming",
                     default="{date} {title}",
-                    tooltip="File name pattern: {title}, {date}, {time}, {seed}. '/' makes sub-folders.",
+                    tooltip=NAMING_TOOLTIP,
                 ),
                 io.Boolean.Input("flac", optional=True, default=True, tooltip="FLAC 24-bit (lossless)."),
                 io.Boolean.Input("mp3", optional=True, default=False, tooltip="MP3 VBR V0 (LAME)."),
@@ -167,7 +329,8 @@ class PlenioExportRelease(io.ComfyNode):
                         io.DynamicCombo.Option("tags", _tag_inputs()),
                         io.DynamicCombo.Option("copy from loaded file", []),
                     ],
-                    tooltip="Metadata written into the files.",
+                    tooltip="Metadata written into the files: the title only, tags typed or connected (with "
+                    "{variables}), or the tags of the loaded file.",
                 ),
                 io.Combo.Input(
                     "collision",
@@ -200,6 +363,13 @@ class PlenioExportRelease(io.ComfyNode):
                     default=True,
                     tooltip=PROJECT_TOOLTIP,
                 ),
+                io.Boolean.Input(
+                    "lyrics_srt",
+                    display_name="lyrics subtitles (SRT)",
+                    optional=True,
+                    default=True,
+                    tooltip=SRT_TOOLTIP,
+                ),
             ],
             outputs=[
                 io.String.Output(display_name="files", tooltip="Written files, one per line."),
@@ -209,6 +379,13 @@ class PlenioExportRelease(io.ComfyNode):
             is_output_node=True,
             not_idempotent=True,
         )
+
+    @classmethod
+    def validate_inputs(cls, **kwargs: Any) -> bool | str:
+        # a typo in a typed variable stops the run when it is queued, not after the render; linked text is
+        # known only when the export runs (an unknown name there stays as written, with a note)
+        flat = {key: value for key, value in kwargs.items() if key.startswith("tags.")}
+        return unknown_variables(kwargs.get("naming"), kwargs.get("tags"), flat) or True
 
     @classmethod
     def execute(
@@ -228,6 +405,8 @@ class PlenioExportRelease(io.ComfyNode):
         sheet_music: str = OFF,
         sheet_music_size: str = DEFAULT_SIZE,
         project_in_flac: bool = True,
+        brief: Any = None,
+        lyrics_srt: bool = True,
     ) -> io.NodeOutput:
         if sheet_music not in SHEET_MUSIC_OPTIONS:
             raise PlenioUserError(
@@ -242,8 +421,6 @@ class PlenioExportRelease(io.ComfyNode):
         target_folder = (base / folder.strip().strip("/\\")) if folder.strip() else base
         if base.resolve() not in (target_folder.resolve(), *target_folder.resolve().parents):
             raise PlenioUserError(f"The export folder {folder!r} leaves the ComfyUI output folder.")
-        metadata, picture, notes = _metadata(tags or {"tags": "title only"}, title, cover, cls.hidden.prompt)
-        song_title = metadata.get("title") or "Untitled"
         items, rate = host.audio_items(audio)
         received = [r for r in (reports or {}).values() if r is not None]
         report_dicts = [r.to_dict() if isinstance(r, Report) else dict(r) for r in received]
@@ -251,9 +428,26 @@ class PlenioExportRelease(io.ComfyNode):
         saved_stems = [
             r.attachment for r in received if isinstance(r, Report) and isinstance(r.attachment, SavedStems)
         ]
-        relative = expand_pattern(naming, naming_values(song_title, None))
+        sheet = sheet_documents(report_dicts)
+        # the variables of the tags and the file name (core.variables)
+        values = {
+            **song_variables(sheet, "", items[0].shape[1] / rate),
+            **brief_variables(brief),
+            **prompt_variables(cls.hidden.prompt),
+        }
+        metadata, picture, notes = _metadata(
+            tags or {"tags": "title only"}, title, cover, cls.hidden.prompt, values
+        )
+        song_title = metadata.get("title") or "Untitled"
+        values.update({"title": song_title, **{k: metadata.get(k, "") for k in variables.TAG_VARIABLES}})
+        relative = expand_pattern(naming, {**values, "title": safe_filename(song_title)})
         takes = ["" if len(items) == 1 else f" take {index + 1}" for index in range(len(items))]
-        sheet = sheet_documents(report_dicts) if sheet_music != OFF else {}
+        # the lyrics lines placed by hand on the Song Sheet, from the workflow the run was queued with
+        spans = (
+            hand_placed(cls.hidden.extra_pnginfo, (sheet["score_sheet"], sheet["lyrics_sheet"]))
+            if sheet["score"].strip()
+            else []
+        )
         display = ""
         if sheet_music != OFF:
             if not sheet["score"].strip():
@@ -261,8 +455,6 @@ class PlenioExportRelease(io.ComfyNode):
                     "sheet music: this release has no score (MiniMax Music 3, or planning was off) - no PDF"
                 )
             else:
-                # the lyrics lines placed by hand on the Song Sheet, from the workflow the run was queued with
-                spans = hand_placed(cls.hidden.extra_pnginfo, (sheet["score_sheet"], sheet["lyrics_sheet"]))
                 view = score_rules.editor_view(sheet["score"], sheet["lyrics"] or None, spans or None)
                 display = str(view.get("display_abc") or "")
                 if not display:
@@ -271,6 +463,9 @@ class PlenioExportRelease(io.ComfyNode):
         suffixes += [ORIGINAL_SUFFIX] * (original is not None) + [".jpg"] * (picture is not None)
         suffixes += [SHEET_SUFFIX] * bool(display)
         suffixes += [STEMS_SUFFIX] * bool(saved_stems)
+        suffixes += [take + suffix for take in takes for suffix in SUBTITLE_SUFFIXES.values()] * bool(
+            lyrics_srt
+        )
         # one base name for every file of this export, record included (AUD-04)
         stem = plan_release(target_folder, relative, [*suffixes, RECORD_SUFFIX], collision=collision)
 
@@ -299,6 +494,30 @@ class PlenioExportRelease(io.ComfyNode):
                 embed_cover(path, picture)
             facts.append({**file_facts(path), **original_facts, **_md5(path), "role": "original"})
             written.append(path)
+        subtitle_lines: list[str] = []
+        if lyrics_srt:
+            for take, samples in zip(takes, items, strict=True):
+                timed = _subtitles(samples, rate, sheet, spans, brief, notes)
+                if timed is None:
+                    continue
+                for kind, text in (("lines", timed.lines_srt()), ("notes", timed.notes_srt())):
+                    path = file(take + SUBTITLE_SUFFIXES[kind])
+                    atomic_write_text(path, text)
+                    facts.append(
+                        {**file_facts(path), "role": "subtitles", "subtitles": kind, "timing": timed.timing}
+                    )
+                    written.append(path)
+                where = f" ({take.strip()})" if take else ""
+                heard = (
+                    "the words as heard"
+                    if timed.timing == "heard"
+                    else f"{timed.matched:.0%} of the lyrics' words heard"
+                )
+                subtitle_lines.append(
+                    f"- subtitles{where}: (lines).srt and (notes).srt, {len(timed.lines)} lines timed by "
+                    f"listening ({heard})"
+                )
+                notes.extend(_subtitle_notes(timed, take))
         cover_path = None
         warnings: list[str] = []
         if picture is not None:
@@ -397,7 +616,7 @@ class PlenioExportRelease(io.ComfyNode):
             notation.append({**job, "token": JOBS.reserve(pdf_path, record_path, job)})
         relative_names = [str(Path(p).relative_to(base)) for p in written]
         # the released files: a clip there is a mistake (a limiter before the export avoids it)
-        released = [f for f in facts if f.get("role") not in ("original", "cover", "stem")]
+        released = [f for f in facts if f.get("role") not in ("original", "cover", "stem", "subtitles")]
         clipped = sum(int(f.get("clipped_samples", 0)) for f in released)
         if clipped:
             warnings.append(
@@ -451,6 +670,7 @@ class PlenioExportRelease(io.ComfyNode):
                     if notation
                     else []
                 ),
+                *subtitle_lines,
                 (
                     f"- loudness: {level['integrated_lufs']} LUFS, true peak {level['true_peak_dbtp']} dBTP"
                     if level["valid"]
@@ -480,6 +700,77 @@ class PlenioExportRelease(io.ComfyNode):
         )
 
 
+def asr_language(brief: Any, lyrics: str) -> str:
+    """The language the ASR is told: the brief's, else the lyrics' (English or German), else detected."""
+    for candidate in (str(getattr(brief, "language", "") or ""), syllables.guess_language(lyrics)):
+        if not candidate.strip():
+            continue
+        if candidate.strip().lower().startswith("deutsch"):
+            return "de"
+        try:
+            return language_code(candidate)
+        except PlenioUserError:
+            continue
+    return ""
+
+
+def _subtitles(
+    samples: Any, rate: int, sheet: dict[str, Any], spans: list[list[int]], brief: Any, notes: list[str]
+) -> subtitle_rules.Subtitles | None:
+    """The lyrics subtitles of one take, timed by listening (``None``: nothing to subtitle, or no ASR - noted)."""
+    lyrics = str(sheet.get("lyrics") or "")
+    if getattr(brief, "instrumental", False) or (lyrics.strip() and not subtitle_rules.sung_lines(lyrics)):
+        return None  # an instrumental: no words
+    audio = host.make_audio([samples], rate)
+    settings = AsrSettings(language=asr_language(brief, lyrics))
+    progress = host.Progress()
+    try:
+        result = run_asr(audio, settings, host.audio_sha256(audio), progress)
+    except PlenioCancelledError:
+        host.raise_if_interrupted()
+        raise
+    except PlenioError as error:
+        notes.append(f"subtitles: not written - the lyrics ASR could not run ({error.message})")
+        return None
+    finally:
+        progress.update(1.0)
+    weak = weak_segments(result)
+    words = [w for w in result.words if w.segment not in weak]
+    seconds = samples.shape[1] / rate
+    if not lyrics.strip():
+        timed = subtitle_rules.time_heard(words, duration=seconds)
+        if not timed.lines:
+            notes.append("subtitles: not written - no lyrics given and no singing heard")
+            return None
+        return timed
+    score = layout = None
+    if str(sheet.get("score") or "").strip():
+        try:
+            score = canonical.from_abc(sheet["score"])
+            layout = lyric_layout.layout(score, lyrics, spans or None)
+        except PlenioError:
+            score = layout = None
+    return subtitle_rules.time_lyrics(lyrics, words, duration=seconds, score=score, layout=layout)
+
+
+def _subtitle_notes(timed: subtitle_rules.Subtitles, take: str) -> list[str]:
+    where = f" ({take.strip()})" if take else ""
+    found: list[str] = []
+    if timed.timing == "heard":
+        found.append(f"subtitles{where}: no lyrics given - the words as heard")
+    elif timed.matched < LOW_MATCH:
+        found.append(
+            f"subtitles{where}: only {timed.matched:.0%} of the lyrics' words were heard - check the times "
+            "(the song may not sing its lyrics as written)"
+        )
+    if timed.untimed:
+        shown = "; ".join(repr(line) for line in timed.untimed[:3]) + (
+            " ..." if len(timed.untimed) > 3 else ""
+        )
+        found.append(f"subtitles{where}: {len(timed.untimed)} line(s) not heard, left out: {shown}")
+    return found
+
+
 def _md5(path: Path) -> dict[str, str]:
     """``audio_md5`` of a FLAC file (the MD5 of its decoded audio, as its encoder wrote it), when it has one."""
     if path.suffix != ".flac":
@@ -503,10 +794,29 @@ def loaded_file(prompt: Any) -> str:
     return names[0]
 
 
+def expand_tags(fields: dict[str, Any], values: dict[str, str]) -> tuple[dict[str, str], list[str]]:
+    """The tag fields with their variables: the tags that are variables themselves (artist, album ...) first,
+    from the song's variables; the others then with those too. Unknown names stay as written (notes)."""
+    expanded: dict[str, str] = {}
+    unknown: set[str] = set()
+    for field in sorted(EXTRA_TAGS, key=lambda f: f not in variables.TAG_VARIABLES):
+        scope = values if field in variables.TAG_VARIABLES else {**values, **expanded}
+        text, missing = variables.expand(str(fields.get(field) or ""), scope)
+        unknown.update(missing)
+        expanded[field] = text.strip()
+    notes = [variables.unknown_message("A connected tag field", sorted(unknown))] if unknown else []
+    return {field: expanded[field] for field in EXTRA_TAGS if expanded[field]}, notes
+
+
 def _metadata(
-    tags: dict[str, Any], title: str | None, cover: Any, prompt: Any = None
+    tags: dict[str, Any],
+    title: str | None,
+    cover: Any,
+    prompt: Any = None,
+    values: dict[str, str] | None = None,
 ) -> tuple[dict[str, str], bytes | None, list[str]]:
-    """Tags, the cover JPEG and notes. Precedence: the title input > copied or typed tags; the cover input > copied cover."""
+    """Tags, the cover JPEG and notes. Precedence: the title input > copied or typed tags; the cover input > copied
+    cover. Typed or connected tags take the variables ``values`` (``{title}`` is the title input's)."""
     mode = str(tags.get("tags", "title only"))
     if mode not in TAG_MODES:
         raise PlenioUserError(f"Unknown tag mode {mode!r}; use one of {list(TAG_MODES)}.")
@@ -514,11 +824,8 @@ def _metadata(
     picture: bytes | None = None
     notes: list[str] = []
     if mode == "tags":
-        metadata = {
-            field: str(tags.get(field, "")).strip()
-            for field in EXTRA_TAGS
-            if str(tags.get(field, "")).strip()
-        }
+        scope = {**(values or {}), "title": (title or "").strip() or "Untitled"}
+        metadata, notes = expand_tags(tags, scope)
     elif mode == "copy from loaded file":
         source = host.input_file(loaded_file(prompt))
         metadata, picture = read_tags(source)

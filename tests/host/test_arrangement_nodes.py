@@ -199,12 +199,20 @@ def test_the_mode_list_holds_the_users_modes(server: ComfyServer) -> None:
     info = server.get("/object_info/PlenioSongBrief")["PlenioSongBrief"]
     options = info["input"]["optional"]["arrangement"][1]["options"]
     assert options[:4] == ["off", "standard", "calm", "sterile"]
-    # the tooltip says what every mode does - the user's too (owner's request 2026-10-12)
-    tooltip = info["input"]["optional"]["arrangement"][1]["tooltip"]
-    lines = tooltip.splitlines()
-    assert "calm" in lines  # a mode file of one's own without a description: its name
-    assert any(line.startswith("hypnotic: A steady repeating pattern") for line in lines)
-    assert any(line.startswith("key change: ") for line in lines)
+    # the brief's panel says what the chosen mode does (owner's request 2026-10-12); the tooltip stays short
+    # and names no modes (owner's report 2026-10-15: the list ran off the window)
+    assert len(info["input"]["optional"]["arrangement"][1]["tooltip"]) <= 220
+
+    def mode(name: str) -> Any:
+        status, answer = server.request(
+            "POST", "/plenio/brief/fields", {"fields": {}, "template": "none", "arrangement": name}
+        )
+        assert status == 200, answer
+        return answer["mode"]
+
+    assert mode("hypnotic")["description"].startswith("A steady repeating pattern")
+    assert mode("calm") is None  # a mode file of one's own without a description
+    assert mode("off") is None and mode("no such mode") is None
 
 
 @pytest.mark.parametrize("name", ["off", "simple"])  # "simple": the pre-release name, still accepted

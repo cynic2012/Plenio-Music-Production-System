@@ -87,10 +87,9 @@ class PlenioSongSheet(io.ComfyNode):
                 "review",
                 options=list(REVIEW_MODES),
                 default=BRIEF_REVIEW,
-                tooltip="as the brief says: stop for review when the brief's mode is 'one song/cover, stop to "
-                "review', continue for 'new song/cover every run'. stop for review: the documents are released "
-                "only after you approve them in the editor - in a series every new song stops, and the run after "
-                "Approve renders that song before the next one is written. continue: never stop for review.",
+                tooltip="as the brief says: stop in the brief's mode 'one song/cover, stop to review'. stop for "
+                "review: the documents go on only after Approve in the editor (in a series: every song). "
+                "continue: never stop.",
             ),
             SheetState.Input(
                 "sheet_state",

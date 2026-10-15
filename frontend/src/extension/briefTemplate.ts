@@ -128,6 +128,12 @@ export function notesLine(answer: BriefFields | null): string | null {
   return answer?.notes.length ? answer.notes.join('; ') : null
 }
 
+/** What the chosen creative mode does (the *arrangement* tooltip names no modes), or ``null`` for *off*. */
+export function modeLine(answer: BriefFields | null): string | null {
+  const mode = answer?.mode
+  return mode?.description ? `Creative mode ${mode.name} (experimental): ${mode.description}` : null
+}
+
 function shorten(text: string, limit = 44): string {
   const flat = text.replace(/\s+/g, ' ').trim()
   return flat.length > limit ? `${flat.slice(0, limit - 1)}…` : flat
@@ -201,9 +207,11 @@ export function addBriefTemplatePanel(node: ComfyNode, fetcher: Fetcher): Templa
   line.className = 'line'
   const hint = document.createElement('div')
   hint.className = 'hint'
+  const mode = document.createElement('div')
+  mode.className = 'mode'
   const buttons = document.createElement('div')
   buttons.className = 'actions'
-  element.append(line, hint, buttons)
+  element.append(line, hint, mode, buttons)
 
   const make = (label: string, title: string, action: () => void) => {
     const button = document.createElement('button')
@@ -243,6 +251,8 @@ export function addBriefTemplatePanel(node: ComfyNode, fetcher: Fetcher): Templa
     const notes = notesLine(current)
     hint.textContent = [suggestions, notes].filter(Boolean).join(' · ')
     hint.style.display = hint.textContent ? '' : 'none'
+    mode.textContent = modeLine(current) ?? ''
+    mode.style.display = mode.textContent ? '' : 'none'
     buttons.style.display = answered && current && current.template !== 'none' ? '' : 'none'
     copy.disabled = !current || !fillPlan(node, current).length
     choices.disabled = !current || !choicePlan(current).length
@@ -256,9 +266,11 @@ export function addBriefTemplatePanel(node: ComfyNode, fetcher: Fetcher): Templa
   // runs again after each change and each answer: a new child widget is wired, a known one is not.
   const wired = new WeakSet<ComfyWidget>()
   const wire = (): void => {
-    for (const name of ['template', ...Object.keys(WIDGET_OF)]) {
+    for (const name of ['template', 'arrangement', ...Object.keys(WIDGET_OF)]) {
       const widget =
-        name === 'template' ? node.widgets?.find((candidate) => candidate.name === 'template') : widgetOf(node, name)
+        name === 'template' || name === 'arrangement'
+          ? node.widgets?.find((candidate) => candidate.name === name)
+          : widgetOf(node, name)
       if (!widget || wired.has(widget)) continue
       wired.add(widget)
       widget.callback = chain(widget.callback, () => {
@@ -272,7 +284,8 @@ export function addBriefTemplatePanel(node: ComfyNode, fetcher: Fetcher): Templa
     wire()
     const template = String(node.widgets?.find((widget) => widget.name === 'template')?.value ?? 'none')
     try {
-      current = await briefFields(fetcher, { fields: briefValues(node), template, kind: briefKind(node) })
+      const arrangement = String(node.widgets?.find((widget) => widget.name === 'arrangement')?.value ?? '')
+      current = await briefFields(fetcher, { fields: briefValues(node), template, kind: briefKind(node), arrangement })
       problem = null
     } catch (error) {
       current = null
@@ -294,7 +307,7 @@ export function addBriefTemplatePanel(node: ComfyNode, fetcher: Fetcher): Templa
     getValue: () => '',
     setValue: () => {},
     getMinHeight: () => 64,
-    getMaxHeight: () => 96
+    getMaxHeight: () => 128
   })
   widget.serialize = false
   clearLegacyPlaceholders(node)

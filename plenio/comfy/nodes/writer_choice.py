@@ -39,10 +39,9 @@ class PlenioWriterChoice(io.ComfyNode):
                 io.Combo.Input(
                     "model",
                     options=_writer_list(),
-                    tooltip="A bare file name (gemma4_e4b_it_fp8_scaled.safetensors): a text model in "
-                    "models/text_encoders, written by ComfyUI's Generate Text. 'models/LLM · ...gguf', "
-                    "'... files · ...', 'HF cache · ...': a GGUF run by llama.cpp for the draft. "
-                    "'LM Studio · ...', 'Ollama · ...': a model of a running app.",
+                    tooltip="A bare file name: a text model in models/text_encoders (ComfyUI's Generate Text). "
+                    "'models/LLM · …', '… files · …', 'HF cache · …': a GGUF file. 'LM Studio · …', 'Ollama · …': "
+                    "a running app's model.",
                 ),
             ],
             outputs=[

@@ -7,8 +7,8 @@ Switch with **Graph / App** at the top left of the canvas (ComfyUI shows a short
 | Template | The app shows | Results |
 |---|---|---|
 | 0 · System Check | detail | the System Check report |
-| 1 · YuE2 · Song | **mode**, template, description, genre, mood, tempo, key, meter, length, vocals, language, voice, theme, **arrangement**, **genre closeness**, **writer model**, take seed, draft seed, **arrangement seed**, the buttons **Song Sheet · Text** and **Song Sheet · Score** | the mastered song (preview) and the export summary |
-| 2 · YuE2 · Cover | the source file, **mode**, template, description, genre, mood, vocals, language, voice, harmony, **arrangement**, **song flow closeness**, **lyrics closeness**, **writer model**, take seed, draft seed, **arrangement seed**, the buttons **Song Sheet · Score** and **Song Sheet · Text** | all takes, the mastered song and the export summary |
+| 1 · YuE2 · Song | **mode**, template, description, genre, mood, tempo, key, meter, length, vocals, language, voice, theme, **arrangement**, **genre closeness**, **writer model**, take seed, draft seed, **arrangement seed** (each with its 🎲/🔒 switch), the buttons **Song Sheet · Text** and **Song Sheet · Score** | the mastered song (preview) and the export summary |
+| 2 · YuE2 · Cover | the source file, **mode**, template, description, genre, mood, vocals, language, voice, harmony, **arrangement**, **song flow closeness**, **lyrics closeness**, **writer model**, take seed, draft seed, **arrangement seed** (each with its 🎲/🔒 switch), the buttons **Song Sheet · Score** and **Song Sheet · Text** | all takes, the mastered song and the export summary |
 | 3 · MiniMax · Song | as 1 · YuE2 · Song without the arrangement seed (MiniMax has no planned score), plus Refine's **preset** (the stage is on in this template), with one button **Song Sheet** | the same |
 | 4 · Enhance & Master | the audio file, EQ, loudness target, compression | the mastered song and the export summary |
 | 5 · YuE2 · DAW | as 1 · YuE2 · Song without the arrangement seed (the score is yours), with the buttons **Song Sheet · Text** and **Song Sheet · DAW** | the mastered song (preview) and the export summary |
@@ -25,7 +25,7 @@ Switch with **Graph / App** at the top left of the canvas (ComfyUI shows a short
 - The **DAW template**'s app is usable for a first run (brief, seeds, both sheets, results), but the score is drawn in the graph's sheet editor: open **App mode** only after the sheet's score exists, or switch back to the graph to compose.
 - The **writer model** (one list for every writing step) and the **creative mode** with its sliders are in the app ([Creative modes](creative-modes.md)); the music model's files, mastering targets and export formats are set in the graph, and the app keeps them.
 - The **arrangement seed** gives another arrangement of the same song - only the arrangement runs again.
-- The draft seed is *fixed* (the same text every run; *randomize* writes a new draft every run - more variety in a series, but in *one song, stop to review* every run then needs a new approval).
-- The take seed is set to *randomize*, so every run is a new take; in the mode *one song, stop to review* the documents stay cached as long as the brief is unchanged.
+- The draft seed is 🔒 *same seed* (the same text every run; 🎲 *new seed* writes a new draft every run - more variety in a series, but in *one song, stop to review* every run then needs a new approval).
+- The take seed is 🎲 *new seed*, so every run is a new take; in the mode *one song, stop to review* the documents stay cached as long as the brief is unchanged. The number shown is the last run's: switch to 🔒 to keep a take ([Seeds](seeds.md)).
 
 *Build an app* (top bar) lets you change which controls the app shows; ComfyUI saves your choice in the workflow.

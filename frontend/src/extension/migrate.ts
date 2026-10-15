@@ -12,6 +12,10 @@
  *
  * Renamed combo values are set to their new name once the node is configured (0.5.0: the briefs'
  * *arrangement* "simple" of the pre-release is "off"; the backend still reads the old name).
+ *
+ * 0.8.1 added the tag field *lyrics* at the end of Export Release's *tags* option: an export saved before
+ * in that mode has one value less there, so an empty lyrics tag goes in after *composer* - otherwise every
+ * value after it would move one widget on (the sheet music option landed in the lyrics).
  */
 import type { ComfyNodeDef } from '../shared/comfy'
 import { TEXT_FIELDS, isLegacyPlaceholder, WIDGET_OF } from './briefTemplate'
@@ -64,11 +68,30 @@ export function renameWidgetValues(type: string, widgets: readonly { name: strin
   return changed
 }
 
-/** ``info`` with the work mode added in front when it was saved without one; otherwise ``info`` itself. */
+/** Export Release's widgets before its *tags* option's fields: folder, naming, collision, flac, mp3, wav. */
+const TAGS_INDEX = 6
+/** The tag fields of the *tags* option before 0.8.1 (artist ... composer). */
+const TAG_FIELDS_BEFORE_0_8_1 = 8
+/** The most values an Export Release saved in *tags* mode before 0.8.1 (0.8.0; the current layout has 20). */
+const EXPORT_VALUES_BEFORE_0_8_1 = 18
+
+/** An Export Release saved in *tags* mode before 0.8.1, with an empty lyrics tag after its composer. */
+export function migrateExportTags(values: unknown[]): unknown[] {
+  if (values[TAGS_INDEX] !== 'tags' || values.length > EXPORT_VALUES_BEFORE_0_8_1) return values
+  const at = TAGS_INDEX + 1 + TAG_FIELDS_BEFORE_0_8_1
+  return [...values.slice(0, at), '', ...values.slice(at)]
+}
+
+/** ``info`` with the work mode added in front when it was saved without one (and an older Export
+ * Release's tags brought to the current fields); otherwise ``info`` itself. */
 export function migrateWidgetValues(
   nodeData: ComfyNodeDef,
   info: Record<string, unknown>
 ): Record<string, unknown> {
+  if (nodeData.name === 'PlenioExportRelease' && info && Array.isArray(info.widgets_values)) {
+    const values = migrateExportTags(info.widgets_values)
+    return values === info.widgets_values ? info : { ...info, widgets_values: values }
+  }
   const legacy = MODE_BEFORE_0_2_2[nodeData.name]
   if (!legacy || !info) return info
   const modes = comboOptions(nodeData, 'mode')

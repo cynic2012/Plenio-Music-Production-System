@@ -31,7 +31,7 @@ Measured on an RTX 5060 Ti 16 GB: about 3 minutes for a 3-minute song, including
 
 **One song, carefully:** in the mode *one song, stop to review*, nothing is rendered before you approved the text and the score. Afterwards, new takes: to get new text, change the **Draft seed**; for a new score, change the *plan seed* in **YuE2 Plan** (both mean reviewing again).
 
-**Draft seed:** the writer's seed is its own node in *2 · WRITE* (and in App mode), like the take seed. *fixed* (default) keeps the draft - and your approval - from run to run; *randomize* lets the writer draw a new draft every run. Use *randomize* in *new song every run* for even more varied series; keep it *fixed* in *one song, stop to review*, otherwise every run brings a new text to approve.
+**Draft seed:** the writer's seed is its own node in *2 · WRITE* (and in App mode), like the take seed. 🔒 *same seed* (default, blue) keeps the draft - and your approval - from run to run; 🎲 *new seed* (amber) lets the writer draw a new draft every run. Use 🎲 in *new song every run* for even more varied series; keep it 🔒 in *one song, stop to review*, otherwise every run brings a new text to approve. The number shown is always the last run's ([Seeds](../concepts/seeds.md)).
 
 ## Inspect and edit what YuE2 receives
 
@@ -82,7 +82,7 @@ The audio itself is not guaranteed free of voice-like sounds. To measure it, add
 ## Finishing: Master, cover art, files
 
 - **Plenio · Master** (group *FINISH*) masters every take before Export: a gentle warm tone match and -14 LUFS with a true peak of at most -1 dBTP. Open the block to change the EQ, the loudness target or the compression style; its *sample rate* is on the block. Details: [Mastering and audio formats](../concepts/mastering.md).
-- **Export Release** writes the mastered song, the unmastered take as `(original).flac`, the release record and the **sheet music** as `<name>.pdf` - the final score with the lyrics under the notes, on A4 (*sheet music* on the node: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; an open ComfyUI page draws it right after the export, whichever workflow it shows). Formats (FLAC, MP3, WAV) and tags are set on the node.
+- **Export Release** writes the mastered song, the unmastered take as `(original).flac`, the release record and the **sheet music** as `<name>.pdf` - the final score with the lyrics under the notes, on A4 (*sheet music* on the node: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; an open ComfyUI page draws it right after the export, whichever workflow it shows). It also writes the lyrics as **subtitles** - `<name> (lines).srt` and `<name> (notes).srt`, timed by listening - and fills the **tags** from the brief (`{genre}`, `{lyrics}` ...; the *Tags & variables* note lists every variable). Formats (FLAC, MP3, WAV) and tags are set on the node; see [Tags, variables and lyrics subtitles](../concepts/tags-and-subtitles.md).
 - **Cover Art (optional)** paints a cover from the sheet's *artwork prompt* with FLUX.2 Klein 4B (4 steps, 1024 x 1024; about 16 GB of extra model files, Apache-2.0). It is bypassed: select *Cover Art* and *Cover preview* and press **Ctrl+B**. Export embeds the cover in the FLAC and MP3 files and saves it next to the song as `.jpg`. The cover seed is fixed, so new takes of one song keep the cover (change the seed for another one); every song of a series gets its own cover, painted from its own artwork prompt.
 
 ## App mode

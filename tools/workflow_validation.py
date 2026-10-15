@@ -287,6 +287,8 @@ def validate_file(
 
 
 ABOUT_TITLE = "About this template"
+EXTRA_NOTES = ("Tags & variables",)
+"""Notes a template may have besides its About note (0.8.1: the tags' variables beside Export Release)."""
 
 
 TITLE_HEIGHT = 30
@@ -347,9 +349,11 @@ def _check_template(
 ) -> None:
     where = path.name
     nodes = data.get("nodes", [])
-    notes = [n for n in nodes if n["type"] in FRONTEND_ONLY_TYPES]
-    if [n.get("title") for n in notes] != [ABOUT_TITLE]:
-        problems.append(f"{where}: exactly one note titled {ABOUT_TITLE!r} (found {len(notes)})")
+    notes = [n.get("title") for n in nodes if n["type"] in FRONTEND_ONLY_TYPES]
+    if notes.count(ABOUT_TITLE) != 1 or any(title not in (ABOUT_TITLE, *EXTRA_NOTES) for title in notes):
+        problems.append(
+            f"{where}: exactly one note titled {ABOUT_TITLE!r}, others only {EXTRA_NOTES} (found {notes})"
+        )
     groups = data.get("groups", [])
     for node in nodes:
         if node["type"] in FRONTEND_ONLY_TYPES:

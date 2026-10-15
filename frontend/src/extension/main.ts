@@ -27,11 +27,13 @@ import {
   sheetState
 } from './runStatus'
 import { type SheetMusicHost, type SheetMusicOutcome, SheetMusicJobs, sheetMusicJobs } from './sheetMusic'
+import { SEED_NODE, installSeedNode } from './seedNode'
 import { SHEET_STATE_TYPE, setFetcher, sheetStateWidget } from './sheetStateWidget'
 import { RELOAD_HINT, codeIsStale, importOrReload, loadFresh } from './staleCode'
 import { addStemMixer } from './stemMixer'
 import { installStyles } from './style'
 import { addSummaryDisplay, setSummaryLine } from './summary'
+import { type CanvasLike, installTooltipPlacement } from './tooltipPlacement'
 
 export const EXTENSION_NAME = 'Plenio.Core'
 
@@ -178,6 +180,10 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
         curves.get(this)?.showExecuted(output)
       })
     }
+    if (nodeData.name === SEED_NODE) {
+      // one switch: a new seed drawn before every run, or the same seed again (seedNode.ts)
+      installSeedNode(nodeType)
+    }
     if (BRIEF_NODES.has(nodeData.name)) {
       // the template panel: what the template fills, and the explicit actions (M3/D6)
       installBriefTemplatePanel(nodeType, comfyApi)
@@ -204,6 +210,8 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
   },
   setup() {
     installStyles()
+    // Plenio nodes' tooltips beside the node, not over its fields (tooltipPlacement.ts)
+    installTooltipPlacement(() => (comfyApp as { canvas?: unknown }).canvas as CanvasLike | undefined)
     // a <name>.plenio.json dropped onto ComfyUI continues its song (instead of loading nothing)
     installRecordDrop(continueHost)
     // Sent by the Song Sheet before it stops with a conflict or validation error.

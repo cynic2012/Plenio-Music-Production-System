@@ -51,7 +51,7 @@ def test_a_series_holds_the_song_under_review(
     assert first != second  # every run a new song
     brief = node.execute(mode=series_mode, **inputs).result[0]
     assert brief.series and brief.variation is not None
-    assert node.execute(mode=series_mode, **inputs).result[-1] == brief.song_seed == brief.variation
+    assert node.execute(mode=series_mode, **inputs).result[4] == brief.song_seed == brief.variation
     SERIES.hold(brief.series, brief.variation)
     held = [node.fingerprint_inputs(mode=series_mode, **inputs) for _ in range(2)]
     assert held[0] == held[1] == second  # kept for review

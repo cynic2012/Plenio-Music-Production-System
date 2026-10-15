@@ -14,6 +14,7 @@ from .loudness import PlenioLoudness
 from .parse import PlenioParseDraft
 from .refine import PlenioRefine
 from .score_tools import PlenioScoreTools
+from .seed import PlenioSeed
 from .sheet import PlenioSongSheet
 from .song_form import PlenioMatchSongForm
 from .stems import PlenioSeparateStems, PlenioStemMixer
@@ -46,6 +47,7 @@ NODES = (
     PlenioLoudness,
     PlenioExportRelease,
     PlenioSystemCheck,
+    PlenioSeed,
     # experimental (next release): audio refinement and stems
     PlenioAudioModelLoader,
     PlenioRefine,

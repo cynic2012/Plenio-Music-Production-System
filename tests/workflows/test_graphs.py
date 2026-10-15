@@ -244,7 +244,7 @@ def test_app_configurations() -> None:
             "PlenioSongBrief",
             "PlenioCoverBrief",
             "PlenioWriterChoice",
-            "SeedNode",
+            "PlenioSeed",
             "PlenioSongSheet",
             "LoadAudio",
             *refine,
@@ -257,8 +257,14 @@ def test_app_configurations() -> None:
             ["song_flow_closeness", "lyrics_closeness"] if name == "2 · YuE2 · Cover" else ["genre_closeness"]
         )
         assert set(closeness) <= set(brief), name
-        seeds = [nodes[i]["title"] for i, widget in apps[name]["inputs"] if nodes[i]["type"] == "SeedNode"]
+        seeds = [nodes[i]["title"] for i, widget in apps[name]["inputs"] if nodes[i]["type"] == "PlenioSeed"]
         assert ("Arrangement seed" in seeds) == (name in ("1 · YuE2 · Song", "2 · YuE2 · Cover")), name
+        # every seed shows its number and its switch (owner's request 2026-10-15)
+        for title in set(seeds):
+            assert sorted(w for i, w in apps[name]["inputs"] if nodes[i].get("title") == title) == [
+                "keep_seed",
+                "seed",
+            ], (name, title)
         if (
             name != "2 · YuE2 · Cover"
         ):  # the song briefs: key and meter too (the DAW's empty score follows them)
@@ -297,9 +303,12 @@ def test_the_sheets_follow_the_brief_mode(name: str, mode: str) -> None:
     ]
     assert "Plenio · Write Song" in targets
     assert ("Plenio · YuE2 Plan" in targets) == (name == "1 · YuE2 · Song")
-    # the writer's seed is its own node (fixed by default; randomize is one click away), linked to Write Song
+    # the writer's seed is its own node (🔒 by default; 🎲 is one click away), linked to Write Song
     draft = next(n for n in nodes if n.get("title") == "Draft seed")
-    assert draft["type"] == "SeedNode" and draft["widgets_values"][1] == "fixed"
+    assert draft["type"] == "PlenioSeed" and draft["widgets_values"] == [0, True]
+    assert draft["properties"]["plenio_part"].startswith("draft")
+    take = next(n for n in nodes if n.get("title") == "Take seed")
+    assert take["type"] == "PlenioSeed" and take["widgets_values"] == [1, False]  # 🎲: a new take every run
     (link,) = [link for link in TEMPLATES[name]["links"] if link[1] == draft["id"]]
     target = next(n for n in nodes if n["id"] == link[3])
     assert target["inputs"][link[4]]["name"] == "sampling_mode.seed"
@@ -578,3 +587,37 @@ def test_every_blueprint_input_and_output_has_a_tooltip() -> None:
         assert set(entry["inputs"]) == {i["name"].replace(".", "_") for i in definition["inputs"]}, path.name
         assert set(entry["outputs"]) == {str(index) for index in range(len(definition["outputs"]))}, path.name
         assert all(v["tooltip"].strip() for v in [*entry["inputs"].values(), *entry["outputs"].values()])
+
+
+@pytest.mark.parametrize(
+    "name", ["1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"]
+)
+def test_export_takes_the_brief_and_writes_tags_with_variables(name: str) -> None:
+    """0.8.1 (owner's request 2026-10-15): the brief goes into Export Release, whose tags use its fields as
+    variables - genre, date, a comment of optional parts, the lyrics - and a note beside it lists them."""
+    from build_graphs import TEMPLATE_TAGS
+
+    template = TEMPLATES[name]
+    nodes = {n["id"]: n for n in template["nodes"]}
+    export = next(n for n in nodes.values() if n["type"] == "PlenioExportRelease")
+    brief = next(n for n in nodes.values() if n["type"] in ("PlenioSongBrief", "PlenioCoverBrief"))
+    slot = next(index for index, s in enumerate(export["inputs"]) if s["name"] == "brief")
+    assert any(
+        link[1] == brief["id"] and link[3] == export["id"] and link[4] == slot for link in template["links"]
+    )
+    values = export["widgets_values"]
+    assert values[values.index("tags") + 1 :][:9] == [
+        "",
+        "",
+        "{date}",
+        "",
+        "{genre}",
+        TEMPLATE_TAGS["tags.comment"],
+        "",
+        "",
+        "{lyrics}",
+    ]
+    assert values[-1] is True  # lyrics subtitles (SRT): on
+    note = next(n for n in nodes.values() if n.get("title") == "Tags & variables")
+    for word in ("{genre}", "{mood}", "{lyrics}", "{take_seed}", "(notes).srt"):
+        assert word in note["widgets_values"][0], word

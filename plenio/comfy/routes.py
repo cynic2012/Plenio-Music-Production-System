@@ -342,8 +342,17 @@ async def brief_fields(request: web.Request) -> web.StreamResponse:
             ],
             "length_default": DEFAULT_LENGTH,
             "notes": notes,
+            # what the chosen creative mode does: the panel says it (the tooltip names no modes)
+            "mode": _mode_answer(str(data.get("arrangement") or "")),
         }
     )
+
+
+def _mode_answer(name: str) -> dict[str, str] | None:
+    from .shared import mode_description
+
+    described = mode_description(name) if name.strip() else ""
+    return {"name": name, "description": described} if described else None
 
 
 async def template_save(request: web.Request) -> web.StreamResponse:
@@ -356,7 +365,7 @@ async def template_save(request: web.Request) -> web.StreamResponse:
 
 
 async def asr_note(request: web.Request) -> web.StreamResponse:
-    from .nodes.transcribe_lyrics import asr_notes
+    from .lyrics_asr import asr_notes
 
     return web.json_response({"note": asr_notes().get(request.match_info["draft_sha256"])})
 

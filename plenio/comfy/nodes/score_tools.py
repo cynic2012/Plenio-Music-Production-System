@@ -101,13 +101,9 @@ class PlenioScoreTools(io.ComfyNode):
                         ),
                     ],
                     tooltip=(
-                        "prepare from brief: what the brief asks for - sung songs unchanged; in a sung cover a rest "
-                        "of 4 bars or more inside a sung section becomes an interlude section (YuE2 would end the "
-                        "section there); instrumentals get a silent Vocal voice (the melody moved to Ins, or "
-                        "accompaniment only). new score from brief: an all-rest score to compose in (the DAW "
-                        "template). strip chords: all chord symbols removed. fit length: close to the given seconds. "
-                        "voices: keep, silence or move the Vocal voice. transpose: by semitones. tempo: a new tempo, "
-                        "the notes stay."
+                        "prepare from brief: what the brief asks for (instrumentals: a silent Vocal). new score "
+                        "from brief: an empty score to compose in. Also: strip chords, fit length, voices, "
+                        "transpose, tempo (the help page explains them)."
                     ),
                 ),
             ],

@@ -1,3 +1,5 @@
+import { TOOLTIP_CSS } from './tooltipPlacement'
+
 /** Styles use ComfyUI's CSS variables so that light and dark themes both work. */
 const CSS = `
 .plenio-sheet-state { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; font: 12px/28px var(--font-family, sans-serif);
@@ -66,6 +68,8 @@ const CSS = `
 .plenio-brief-template .line[data-state="ok"] { color: #8fb6d9; }
 .plenio-brief-template .line[data-state="error"] { color: #d0453b; }
 .plenio-brief-template .hint { color: #c79a3a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plenio-brief-template .mode { color: #b9a3d9; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; }
 .plenio-brief-template .actions { display: flex; flex-wrap: wrap; gap: 4px; }
 .plenio-brief-template button { white-space: nowrap; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--border-color, #555);
   background: var(--comfy-input-bg, #333); color: var(--input-text, #ddd); cursor: pointer; font: inherit; }
@@ -95,7 +99,9 @@ const CSS = `
 .plenio-mix-buses input[type="range"] { width: 84px; accent-color: #4aa3ff; }
 .plenio-mix-advanced { display: flex; align-items: center; gap: 6px; }
 .plenio-mix-info { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-`
+.plenio-seed-hint { font: 11px/1.35 var(--font-family, sans-serif); color: var(--descrip-text, #aaa); padding: 2px 6px; white-space: normal; overflow-wrap: anywhere;
+  overflow: hidden; }
+` + TOOLTIP_CSS
 
 export function installStyles(): void {
   if (document.getElementById('plenio-styles')) return

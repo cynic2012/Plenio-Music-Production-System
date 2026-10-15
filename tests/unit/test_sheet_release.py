@@ -169,7 +169,7 @@ def test_naming_pattern_and_collisions(tmp_path: Path) -> None:
     name = expand_pattern("{date} {title}", {"date": "2026-09-25", "title": "Song"})
     assert name == "2026-09-25 Song"
     with pytest.raises(PlenioUserError):
-        expand_pattern("{album}", {})
+        expand_pattern("{albm}", {})  # a typo: no variable
     first = plan_release(tmp_path, "album/Song", [".flac"])
     first.parent.mkdir(parents=True)
     first.with_name("Song.flac").write_bytes(b"x")

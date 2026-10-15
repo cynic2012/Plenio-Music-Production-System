@@ -1,8 +1,8 @@
 {
  "id": "dac7a916-31bb-521d-b75c-0944f452bb94",
  "revision": 0,
- "last_node_id": 33,
- "last_link_id": 88,
+ "last_node_id": 34,
+ "last_link_id": 89,
  "nodes": [
   {
    "id": 1,
@@ -13,7 +13,7 @@
    ],
    "size": [
     480,
-    1290
+    1440
    ],
    "flags": {},
    "order": 0,
@@ -25,7 +25,7 @@
     "Node name for S&R": "MarkdownNote"
    },
    "widgets_values": [
-    "# 2 · YuE2 · Cover\n\n**Source -> Transcribe Score -> Arrange -> Song Sheet · Score -> lyrics (ASR, writer or section tags) -> Song Sheet · Text -> YuE2 Takes -> Check Vocals -> Master -> Export**\n\n1. Load the **source** recording (upload in *Load Audio*; up to 5:00 - trim longer songs with the optional *Excerpt* node).\n2. In **Cover Brief** choose the **mode** - *one cover, stop to review* (default, steps 4-6) or *new cover every run*: every run writes and renders a **different version** (title, style and - with new lyrics - the lyrics) without stops; the batch count next to **Run** makes a series. Then the target style and what happens to the vocals: *original lyrics* (default; transcribed from the source), *instrumental* (an instrument plays the melody, or accompaniment only) or *new lyrics* (written on the source's melody). *harmony* keeps or replaces the original chords.\n3. Press **Run**: SheetSage2 transcribes the source (once; later runs reuse it).\n4. The run **stops at Song Sheet · Score**. Open it, check the score (fix section names and boundaries), then *Approve*.\n5. Run again: the lyrics are drafted (ASR of the original, the writer's new lyrics, or the section tags) and the run **stops at Song Sheet · Text**. Correct or replace the lyrics - your text always wins - and *Approve*.\n6. Run again to render. Each further run is a new take (the take seed changes).\n\n**New lyrics** are understood only when they fit the melody - about one syllable per note - and the voice fits its range; Song Sheet · Text warns about both.\n\n**Creative modes (experimental):** *arrangement* in the brief. They can give unexpected results and are meant for experimenting - try a mode, listen, keep what you like. *off* (default, the dependable choice): no arrangement - the transcribed score stays as it is. A creative mode - from *standard*, *sterile* and *unplugged* over *call and response*, *signature motif*, *hypnotic* and *breakdown* to *jazz colours* and *fantasy* (the field's tooltip says what each does), *key change* for one lift of the final chorus, or your own file in `user/plenio/arrangement` - adds its hints to the writing and lets the writer model plan every section of the score in **Arrange**: chords, what the instrument line plays, energy. *song flow closeness* sets how close it stays to the original: 100 exactly the original (no plan), 80 chords and key stay, 50 recognisable, 20 a free version, 0 only a hint - the form always remains, below 80 the melody follows the new chords. *lyrics closeness* (new lyrics) sets how close the new words stay to the source's: 0 without them (as before) up to 100, their meaning line by line. The writer answers with a small plan, never notes: Plenio writes every note itself and checks the result, so the score stays valid - a plan it cannot use leaves the score as it was, and Song Sheet · Score says so. A **harmony guard** keeps every chord in the key and the genre and on the melody, and the instrument line plays where the voice rests (*lines under the singing* in the brief lets it sound under the voice, calmly). **Arrangement seed:** another arrangement of the same song. Changing the mode or a slider writes the text again (the brief changed); a Local LLM answers from its cache when the request is the same.\n\n**Writer model:** one list in the *Writer model* node for every writing step (Write Song and Arrange): ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed is answered from Plenio's cache, without asking the model again.\n\n**Where the run stands:** a badge above each Plenio node shows its result - ✓ done, ⚠ warning, ✖ error; every Song Sheet that will stop carries ⏸ *review stop* before the run, ⏸ *waiting for your approval* (and an amber frame) when the run stopped there, ✓ *approved* once you approved it. A new run clears the badges, so they show how far this run got.\n\n**Takes:** *YuE2 Takes* renders *takes* versions (seeds take seed, +1, ...); **Check Vocals** keeps the first instrumental take without vocal notes, the preview plays all takes. N takes cost N renders. **Instrumental adapter:** for instrumental covers YuE2 renders with the instrumental LoRA of the *Instrumental adapter* node (the optional adapter inside the model block stays bypassed here). **Check sung lyrics** (optional, bypassed) measures what a sung take actually sang.\n\n**Finish:** *Plenio · Master* brings the take to -14 LUFS / -1 dBTP with a gentle tone match (open the block to change the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the **sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export).\n\n**Cover art (optional, bypassed):** *Cover Art* paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about 16 GB of extra model files, Apache-2.0). Select it and the cover preview and press **Ctrl+B**; Export then embeds the cover in the FLAC and MP3 files and saves it as `.jpg`.\n\n**Stems (optional, bypassed):** *Separate Stems* splits the take into vocals, drums, bass and other; the *Stem Mixer* balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Select the block and press **Ctrl+B**; the mixer is inside it - open the block with the icon at the top right of the node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it.\n\n**Refine (optional, bypassed):** brings the take to 48 kHz and extends the top octaves with the UniverSR model (229 MB); nothing below the crossover changes. YuE2 renders at 48 kHz already, so this is for experiments. Select the REFINE group, press **Ctrl+B** and expand its two nodes to pick a *preset*. The user guide *Refine (48 kHz)* covers it.\n\n**App mode:** switch *Graph / App* at the top left for a simple form: the source file, the mode, the cover style, the creative mode with both closeness sliders, the writer model, the seeds, the two Song Sheet buttons (the review stops work in the app; their status line says where the run stands) and the results. The other options of *original lyrics* and *new lyrics* are set in the graph.\n\n**Models** (downloaded on first use): YuE2 3B int8, SheetSage2, the instrumental adapter, the Gemma 4 E4B writer; the lyrics ASR (faster-whisper large-v3, 3.1 GB) is fetched by Plenio when first needed. YuE2, SheetSage2 and the adapter are **CC BY-NC 4.0 (non-commercial)**.\n"
+    "# 2 · YuE2 · Cover\n\n**Source -> Transcribe Score -> Arrange -> Song Sheet · Score -> lyrics (ASR, writer or section tags) -> Song Sheet · Text -> YuE2 Takes -> Check Vocals -> Master -> Export**\n\n1. Load the **source** recording (upload in *Load Audio*; up to 5:00 - trim longer songs with the optional *Excerpt* node).\n2. In **Cover Brief** choose the **mode** - *one cover, stop to review* (default, steps 4-6) or *new cover every run*: every run writes and renders a **different version** (title, style and - with new lyrics - the lyrics) without stops; the batch count next to **Run** makes a series. Then the target style and what happens to the vocals: *original lyrics* (default; transcribed from the source), *instrumental* (an instrument plays the melody, or accompaniment only) or *new lyrics* (written on the source's melody). *harmony* keeps or replaces the original chords.\n3. Press **Run**: SheetSage2 transcribes the source (once; later runs reuse it).\n4. The run **stops at Song Sheet · Score**. Open it, check the score (fix section names and boundaries), then *Approve*.\n5. Run again: the lyrics are drafted (ASR of the original, the writer's new lyrics, or the section tags) and the run **stops at Song Sheet · Text**. Correct or replace the lyrics - your text always wins - and *Approve*.\n6. Run again to render. Each further run is a new take (the take seed changes).\n\n**New lyrics** are understood only when they fit the melody - about one syllable per note - and the voice fits its range; Song Sheet · Text warns about both.\n\n**Creative modes (experimental):** *arrangement* in the brief. They can give unexpected results and are meant for experimenting - try a mode, listen, keep what you like. *off* (default, the dependable choice): no arrangement - the transcribed score stays as it is. A creative mode - from *standard*, *sterile* and *unplugged* over *call and response*, *signature motif*, *hypnotic* and *breakdown* to *jazz colours* and *fantasy* (the line under the brief says what the chosen one does), *key change* for one lift of the final chorus, or your own file in `user/plenio/arrangement` - adds its hints to the writing and lets the writer model plan every section of the score in **Arrange**: chords, what the instrument line plays, energy. *song flow closeness* sets how close it stays to the original: 100 exactly the original (no plan), 80 chords and key stay, 50 recognisable, 20 a free version, 0 only a hint - the form always remains, below 80 the melody follows the new chords. *lyrics closeness* (new lyrics) sets how close the new words stay to the source's: 0 without them (as before) up to 100, their meaning line by line. The writer answers with a small plan, never notes: Plenio writes every note itself and checks the result, so the score stays valid - a plan it cannot use leaves the score as it was, and Song Sheet · Score says so. A **harmony guard** keeps every chord in the key and the genre and on the melody, and the instrument line plays where the voice rests (*lines under the singing* in the brief lets it sound under the voice, calmly). **Arrangement seed:** another arrangement of the same song. Changing the mode or a slider writes the text again (the brief changed); a Local LLM answers from its cache when the request is the same.\n\n**Writer model:** one list in the *Writer model* node for every writing step (Write Song and Arrange): ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed is answered from Plenio's cache, without asking the model again.\n\n**Where the run stands:** a badge above each Plenio node shows its result - ✓ done, ⚠ warning, ✖ error; every Song Sheet that will stop carries ⏸ *review stop* before the run, ⏸ *waiting for your approval* (and an amber frame) when the run stopped there, ✓ *approved* once you approved it. A new run clears the badges, so they show how far this run got.\n\n**Seeds:** each seed node has one switch - **🔒 same seed**: the next run keeps that part (the same draft, the same take), so you can change other things; **🎲 new seed**: every run draws a new number - something new each time. The number shown is always the one the last run used: liked a take? Switch its seed to 🔒. Blue nodes keep, amber nodes renew.\n\n**Takes:** *YuE2 Takes* renders *takes* versions (seeds take seed, +1, ...); **Check Vocals** keeps the first instrumental take without vocal notes, the preview plays all takes. N takes cost N renders. **Instrumental adapter:** for instrumental covers YuE2 renders with the instrumental LoRA of the *Instrumental adapter* node (the optional adapter inside the model block stays bypassed here). **Check sung lyrics** (optional, bypassed) measures what a sung take actually sang.\n\n**Finish:** *Plenio · Master* brings the take to -14 LUFS / -1 dBTP with a gentle tone match (open the block to change the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the **sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export), and the lyrics as **subtitles** - `<name> (lines).srt` and `<name> (notes).srt`, timed by listening. The **tags** take the brief's fields as variables (`{genre}`, `{mood}` ...); the *Tags & variables* note beside Export lists them all.\n\n**Cover art (optional, bypassed):** *Cover Art* paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about 16 GB of extra model files, Apache-2.0). Select it and the cover preview and press **Ctrl+B**; Export then embeds the cover in the FLAC and MP3 files and saves it as `.jpg`.\n\n**Stems (optional, bypassed):** *Separate Stems* splits the take into vocals, drums, bass and other; the *Stem Mixer* balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Select the block and press **Ctrl+B**; the mixer is inside it - open the block with the icon at the top right of the node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it.\n\n**Refine (optional, bypassed):** brings the take to 48 kHz and extends the top octaves with the UniverSR model (229 MB); nothing below the crossover changes. YuE2 renders at 48 kHz already, so this is for experiments. Select the REFINE group, press **Ctrl+B** and expand its two nodes to pick a *preset*. The user guide *Refine (48 kHz)* covers it.\n\n**App mode:** switch *Graph / App* at the top left for a simple form: the source file, the mode, the cover style, the creative mode with both closeness sliders, the writer model, the seeds, the two Song Sheet buttons (the review stops work in the app; their status line says where the run stands) and the results. The other options of *original lyrics* and *new lyrics* are set in the graph.\n\n**Models** (downloaded on first use): YuE2 3B int8, SheetSage2, the instrumental adapter, the Gemma 4 E4B writer; the lyrics ASR (faster-whisper large-v3, 3.1 GB) is fetched by Plenio when first needed. YuE2, SheetSage2 and the adapter are **CC BY-NC 4.0 (non-commercial)**.\n"
    ]
   },
   {
@@ -121,8 +121,8 @@
       5,
       17,
       20,
-      85,
-      86
+      86,
+      87
      ]
     }
    ],
@@ -143,8 +143,8 @@
     480
    ],
    "size": [
-    380,
-    740
+    520,
+    980
    ],
    "flags": {},
    "order": 3,
@@ -296,7 +296,8 @@
       23,
       24,
       42,
-      60
+      60,
+      67
      ]
     },
     {
@@ -330,6 +331,78 @@
       12,
       25
      ]
+    },
+    {
+     "localized_name": "template",
+     "name": "template",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "genre",
+     "name": "genre",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "mood",
+     "name": "mood",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "vocals",
+     "name": "vocals",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "language",
+     "name": "language",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "voice",
+     "name": "voice",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "theme",
+     "name": "theme",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "harmony",
+     "name": "harmony",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "arrangement",
+     "name": "arrangement",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "song_flow_closeness",
+     "name": "song_flow_closeness",
+     "type": "INT",
+     "links": null
+    },
+    {
+     "localized_name": "lyrics_closeness",
+     "name": "lyrics_closeness",
+     "type": "INT",
+     "links": null
+    },
+    {
+     "localized_name": "lines_under_singing",
+     "name": "lines_under_singing",
+     "type": "BOOLEAN",
+     "links": null
     }
    ],
    "properties": {
@@ -357,7 +430,7 @@
    "type": "be8d0fd4-8ce7-561b-8778-c59f81c6c6b4",
    "pos": [
     0,
-    1395
+    1635
    ],
    "size": [
     380,
@@ -430,7 +503,7 @@
    "type": "LoraLoader",
    "pos": [
     0,
-    1475
+    1715
    ],
    "size": [
     380,
@@ -517,8 +590,8 @@
    "id": 7,
    "type": "ComfySwitchNode",
    "pos": [
-    420,
-    1475
+    560,
+    1715
    ],
    "size": [
     260,
@@ -574,7 +647,7 @@
    "id": 8,
    "type": "54cc5314-66fa-573b-8998-d1f85431a348",
    "pos": [
-    460,
+    600,
     0
    ],
    "size": [
@@ -616,7 +689,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      77
+      78
      ]
     },
     {
@@ -636,7 +709,7 @@
    "id": 9,
    "type": "PlenioScoreTools",
    "pos": [
-    460,
+    600,
     220
    ],
    "size": [
@@ -704,7 +777,7 @@
    "id": 10,
    "type": "PlenioSongSheet",
    "pos": [
-    880,
+    1020,
     0
    ],
    "size": [
@@ -790,7 +863,7 @@
      "name": "sung_pitch",
      "shape": 7,
      "type": "PLENIO_PITCH",
-     "link": 87
+     "link": 88
     },
     {
      "localized_name": "brief",
@@ -897,7 +970,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      75
+      76
      ]
     },
     {
@@ -928,7 +1001,7 @@
    "id": 11,
    "type": "eecfe9be-e841-57a2-9b80-b30da8f055f0",
    "pos": [
-    460,
+    600,
     650
    ],
    "size": [
@@ -1024,14 +1097,14 @@
   },
   {
    "id": 12,
-   "type": "SeedNode",
+   "type": "PlenioSeed",
    "pos": [
-    460,
+    600,
     960
    ],
    "size": [
-    300,
-    90
+    340,
+    170
    ],
    "flags": {},
    "order": 11,
@@ -1044,6 +1117,15 @@
      "type": "INT",
      "widget": {
       "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "keep_seed",
+     "name": "keep_seed",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "keep_seed"
      },
      "link": null
     }
@@ -1059,19 +1141,22 @@
     }
    ],
    "title": "Arrangement seed",
+   "color": "#1f4e6e",
+   "bgcolor": "#14304a",
    "properties": {
-    "Node name for S&R": "SeedNode"
+    "Node name for S&R": "PlenioSeed",
+    "plenio_part": "arrangement"
    },
    "widgets_values": [
     0,
-    "fixed"
+    true
    ]
   },
   {
    "id": 13,
    "type": "PlenioTranscribeLyrics",
    "pos": [
-    1380,
+    1520,
     0
    ],
    "size": [
@@ -1190,7 +1275,7 @@
    "id": 14,
    "type": "ec9ff305-6d52-5283-8543-6c063df4002b",
    "pos": [
-    1380,
+    1520,
     360
    ],
    "size": [
@@ -1324,14 +1409,14 @@
   },
   {
    "id": 15,
-   "type": "SeedNode",
+   "type": "PlenioSeed",
    "pos": [
-    1380,
+    1520,
     680
    ],
    "size": [
-    300,
-    90
+    340,
+    170
    ],
    "flags": {},
    "order": 14,
@@ -1344,6 +1429,15 @@
      "type": "INT",
      "widget": {
       "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "keep_seed",
+     "name": "keep_seed",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "keep_seed"
      },
      "link": null
     }
@@ -1359,20 +1453,23 @@
     }
    ],
    "title": "Draft seed",
+   "color": "#1f4e6e",
+   "bgcolor": "#14304a",
    "properties": {
-    "Node name for S&R": "SeedNode"
+    "Node name for S&R": "PlenioSeed",
+    "plenio_part": "draft (title, style, lyrics)"
    },
    "widgets_values": [
     0,
-    "fixed"
+    true
    ]
   },
   {
    "id": 16,
    "type": "PlenioWriterChoice",
    "pos": [
-    1380,
-    810
+    1520,
+    890
    ],
    "size": [
     360,
@@ -1441,7 +1538,7 @@
    "id": 17,
    "type": "ComfySwitchNode",
    "pos": [
-    1800,
+    1940,
     0
    ],
    "size": [
@@ -1498,7 +1595,7 @@
    "id": 18,
    "type": "ComfySwitchNode",
    "pos": [
-    1800,
+    1940,
     165
    ],
    "size": [
@@ -1555,7 +1652,7 @@
    "id": 19,
    "type": "PlenioSongSheet",
    "pos": [
-    2135,
+    2275,
     10
    ],
    "size": [
@@ -1634,14 +1731,14 @@
      "name": "reference_audio",
      "shape": 7,
      "type": "AUDIO",
-     "link": 85
+     "link": 86
     },
     {
      "localized_name": "sung_pitch",
      "name": "sung_pitch",
      "shape": 7,
      "type": "PLENIO_PITCH",
-     "link": 88
+     "link": 89
     },
     {
      "localized_name": "brief",
@@ -1697,7 +1794,7 @@
      "name": "title",
      "type": "STRING",
      "links": [
-      71
+      72
      ]
     },
     {
@@ -1728,7 +1825,7 @@
      "name": "artwork_prompt",
      "type": "STRING",
      "links": [
-      72
+      73
      ]
     },
     {
@@ -1748,7 +1845,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      76
+      77
      ]
     },
     {
@@ -1775,14 +1872,14 @@
   },
   {
    "id": 20,
-   "type": "SeedNode",
+   "type": "PlenioSeed",
    "pos": [
-    2620,
+    2760,
     0
    ],
    "size": [
-    300,
-    90
+    340,
+    170
    ],
    "flags": {},
    "order": 19,
@@ -1795,6 +1892,15 @@
      "type": "INT",
      "widget": {
       "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "keep_seed",
+     "name": "keep_seed",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "keep_seed"
      },
      "link": null
     }
@@ -1810,20 +1916,23 @@
     }
    ],
    "title": "Take seed",
+   "color": "#7a5418",
+   "bgcolor": "#3b2a10",
    "properties": {
-    "Node name for S&R": "SeedNode"
+    "Node name for S&R": "PlenioSeed",
+    "plenio_part": "take"
    },
    "widgets_values": [
     1,
-    "randomize"
+    false
    ]
   },
   {
    "id": 21,
    "type": "869d4797-70fa-52d9-b9f6-120b2510d110",
    "pos": [
-    2620,
-    170
+    2760,
+    230
    ],
    "size": [
     320,
@@ -1941,7 +2050,7 @@
    "id": 22,
    "type": "PlenioVocalCheck",
    "pos": [
-    3000,
+    3140,
     0
    ],
    "size": [
@@ -2002,7 +2111,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      78
+      79
      ]
     },
     {
@@ -2026,7 +2135,7 @@
    "id": 23,
    "type": "PreviewAudio",
    "pos": [
-    3000,
+    3140,
     280
    ],
    "size": [
@@ -2062,7 +2171,7 @@
    "id": 24,
    "type": "PlenioTranscribeLyrics",
    "pos": [
-    3015,
+    3155,
     845
    ],
    "size": [
@@ -2159,7 +2268,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      79
+      80
      ]
     }
    ],
@@ -2177,7 +2286,7 @@
    "id": 25,
    "type": "b15b93f5-aa6c-53d1-a081-d23166dcc913",
    "pos": [
-    3420,
+    3560,
     715
    ],
    "size": [
@@ -2211,7 +2320,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      80
+      81
      ]
     },
     {
@@ -2219,7 +2328,7 @@
      "name": "separation_report",
      "type": "PLENIO_REPORT",
      "links": [
-      81
+      82
      ]
     }
    ],
@@ -2231,7 +2340,7 @@
    "id": 26,
    "type": "PlenioAudioModelLoader",
    "pos": [
-    3420,
+    3560,
     905
    ],
    "size": [
@@ -2293,7 +2402,7 @@
    "id": 27,
    "type": "PlenioRefine",
    "pos": [
-    3420,
+    3560,
     955
    ],
    "size": [
@@ -2389,8 +2498,8 @@
      "name": "audio",
      "type": "AUDIO",
      "links": [
-      67,
-      70
+      68,
+      71
      ]
     },
     {
@@ -2398,7 +2507,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      82
+      83
      ]
     }
    ],
@@ -2421,7 +2530,7 @@
    "id": 28,
    "type": "259b88ba-7c57-57fb-b73e-58f691fe4b56",
    "pos": [
-    3880,
+    4020,
     0
    ],
    "size": [
@@ -2436,7 +2545,7 @@
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 67
+     "link": 68
     },
     {
      "localized_name": "reference",
@@ -2461,8 +2570,8 @@
      "name": "audio",
      "type": "AUDIO",
      "links": [
-      68,
-      69
+      69,
+      70
      ]
     },
     {
@@ -2470,7 +2579,7 @@
      "name": "eq_report",
      "type": "PLENIO_REPORT",
      "links": [
-      83
+      84
      ]
     },
     {
@@ -2478,7 +2587,7 @@
      "name": "loudness_report",
      "type": "PLENIO_REPORT",
      "links": [
-      84
+      85
      ]
     }
    ],
@@ -2492,7 +2601,7 @@
    "id": 29,
    "type": "PreviewAudio",
    "pos": [
-    3880,
+    4020,
     230
    ],
    "size": [
@@ -2507,7 +2616,7 @@
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 68
+     "link": 69
     }
    ],
    "outputs": [
@@ -2528,12 +2637,12 @@
    "id": 30,
    "type": "PlenioExportRelease",
    "pos": [
-    4280,
+    4420,
     0
    ],
    "size": [
-    380,
-    684
+    440,
+    944
    ],
    "flags": {},
    "order": 29,
@@ -2543,28 +2652,35 @@
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 69
+     "link": 70
     },
     {
      "localized_name": "title",
      "name": "title",
      "shape": 7,
      "type": "STRING",
-     "link": 71
+     "link": 72
     },
     {
      "localized_name": "original",
      "name": "original",
      "shape": 7,
      "type": "AUDIO",
-     "link": 70
+     "link": 71
     },
     {
      "localized_name": "cover",
      "name": "cover",
      "shape": 7,
      "type": "IMAGE",
-     "link": 73
+     "link": 74
+    },
+    {
+     "localized_name": "brief",
+     "name": "brief",
+     "shape": 7,
+     "type": "PLENIO_BRIEF",
+     "link": 67
     },
     {
      "localized_name": "reports.report_0",
@@ -2572,7 +2688,7 @@
      "label": "report_0",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 75
+     "link": 76
     },
     {
      "localized_name": "reports.report_1",
@@ -2580,7 +2696,7 @@
      "label": "report_1",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 76
+     "link": 77
     },
     {
      "localized_name": "reports.report_2",
@@ -2588,7 +2704,7 @@
      "label": "report_2",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 77
+     "link": 78
     },
     {
      "localized_name": "reports.report_3",
@@ -2596,7 +2712,7 @@
      "label": "report_3",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 78
+     "link": 79
     },
     {
      "localized_name": "reports.report_4",
@@ -2604,7 +2720,7 @@
      "label": "report_4",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 79
+     "link": 80
     },
     {
      "localized_name": "reports.report_5",
@@ -2612,7 +2728,7 @@
      "label": "report_5",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 80
+     "link": 81
     },
     {
      "localized_name": "reports.report_6",
@@ -2620,7 +2736,7 @@
      "label": "report_6",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 81
+     "link": 82
     },
     {
      "localized_name": "reports.report_7",
@@ -2628,7 +2744,7 @@
      "label": "report_7",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 82
+     "link": 83
     },
     {
      "localized_name": "reports.report_8",
@@ -2636,7 +2752,7 @@
      "label": "report_8",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 83
+     "link": 84
     },
     {
      "localized_name": "reports.report_9",
@@ -2644,7 +2760,7 @@
      "label": "report_9",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 84
+     "link": 85
     },
     {
      "localized_name": "reports.report_10",
@@ -2718,6 +2834,87 @@
      "link": null
     },
     {
+     "localized_name": "tags.artist",
+     "name": "tags.artist",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.artist"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.album",
+     "name": "tags.album",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.album"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.date",
+     "name": "tags.date",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.date"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.track",
+     "name": "tags.track",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.track"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.genre",
+     "name": "tags.genre",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.genre"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.comment",
+     "name": "tags.comment",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.comment"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.album_artist",
+     "name": "tags.album_artist",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.album_artist"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.composer",
+     "name": "tags.composer",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.composer"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.lyrics",
+     "name": "tags.lyrics",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.lyrics"
+     },
+     "link": null
+    },
+    {
      "localized_name": "sheet_music",
      "name": "sheet_music",
      "type": "COMBO",
@@ -2741,6 +2938,15 @@
      "type": "BOOLEAN",
      "widget": {
       "name": "project_in_flac"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "lyrics_srt",
+     "name": "lyrics_srt",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "lyrics_srt"
      },
      "link": null
     }
@@ -2769,25 +2975,59 @@
     true,
     false,
     false,
-    "title only",
+    "tags",
+    "",
+    "",
+    "{date}",
+    "",
+    "{genre}",
+    "[Genre: {genre} · ][Mood: {mood} · ][Language: {language} · ]Powered by Plenio Music Production System / ComfyUI",
+    "",
+    "",
+    "{lyrics}",
     "PDF (A4)",
     "standard",
+    true,
     true
    ]
   },
   {
    "id": 31,
+   "type": "MarkdownNote",
+   "pos": [
+    4900,
+    0
+   ],
+   "size": [
+    460,
+    760
+   ],
+   "flags": {},
+   "order": 30,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "title": "Tags & variables",
+   "properties": {
+    "Node name for S&R": "MarkdownNote"
+   },
+   "widgets_values": [
+    "## Tags & variables\n\n**Export Release** writes these tags into the FLAC and MP3 files. Every tag field takes text with\n**variables** - or connect any text output to it (drag a link onto the field), such as a field of the brief.\n\n- `{genre}` - the value of a variable\n- `[Mood: {mood} · ]` - shown only when every variable inside has a value\n- `{{` and `}}` - literal braces\n\n**Song:** `{title}` `{lyrics}` `{style}` `{artwork_prompt}` `{duration}` `{bpm}` `{score_key}`\n\n**Brief:** `{description}` `{template}` `{mode}` `{genre}` `{mood}` `{tempo}` `{length}` `{vocals}` `{language}` `{voice}` `{theme}` `{melody}` `{lead_instrument}` `{key}` `{meter}` `{arrangement}` `{genre_closeness}` `{lines_under_singing}` `{harmony}` `{song_flow_closeness}` `{lyrics_closeness}`\n\n**Run:** `{date}` `{year}` `{time}` `{seed}` `{take_seed}` `{draft_seed}` `{arrangement_seed}`\n\n**Models:** `{model}` `{writer}` · **Plenio:** `{plenio_version}`\n\n**Tags:** `{artist}` `{album}` `{album_artist}` `{composer}` `{track}` (in the file name and the other tags)\n\nExamples - comment: `Genre: {genre}[, mood: {mood}][, sung in {language}]`; album: `{genre} Sessions {year}`;\nfile name: `{artist} - {title}`. A name that is no variable stops the run when you press **Run**, before\nanything renders.\n\n**Subtitles:** *lyrics subtitles (SRT)* (on) writes `<name> (lines).srt` - whole lines - and\n`<name> (notes).srt` - the lines painted on note by note - next to the song, timed by listening (the lyrics\nASR, 3.1 GB, fetched on first use).\n"
+   ]
+  },
+  {
+   "id": 32,
    "type": "9dbb5617-ccf9-5537-b674-405adb29958c",
    "pos": [
-    3880,
-    804
+    4020,
+    1064
    ],
    "size": [
     340,
     170
    ],
    "flags": {},
-   "order": 30,
+   "order": 31,
    "mode": 4,
    "inputs": [
     {
@@ -2798,7 +3038,7 @@
      "widget": {
       "name": "text"
      },
-     "link": 72
+     "link": 73
     },
     {
      "localized_name": "noise_seed",
@@ -2827,8 +3067,8 @@
      "name": "IMAGE",
      "type": "IMAGE",
      "links": [
-      73,
-      74
+      74,
+      75
      ]
     }
    ],
@@ -2841,25 +3081,25 @@
    ]
   },
   {
-   "id": 32,
+   "id": 33,
    "type": "PreviewImage",
    "pos": [
-    4280,
-    804
+    4420,
+    1064
    ],
    "size": [
     300,
     300
    ],
    "flags": {},
-   "order": 31,
+   "order": 32,
    "mode": 4,
    "inputs": [
     {
      "localized_name": "images",
      "name": "images",
      "type": "IMAGE",
-     "link": 74
+     "link": 75
     }
    ],
    "outputs": [
@@ -2877,10 +3117,10 @@
    "widgets_values": []
   },
   {
-   "id": 33,
+   "id": 34,
    "type": "PlenioSungPitch",
    "pos": [
-    460,
+    600,
     480
    ],
    "size": [
@@ -2888,14 +3128,14 @@
     106
    ],
    "flags": {},
-   "order": 32,
+   "order": 33,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 86
+     "link": 87
     },
     {
      "localized_name": "separation",
@@ -2913,8 +3153,8 @@
      "name": "sung_pitch",
      "type": "PLENIO_PITCH",
      "links": [
-      87,
-      88
+      88,
+      89
      ]
     }
    ],
@@ -3465,17 +3705,17 @@
   ],
   [
    67,
-   27,
+   4,
    0,
-   28,
-   0,
-   "AUDIO"
+   30,
+   4,
+   "PLENIO_BRIEF"
   ],
   [
    68,
-   28,
+   27,
    0,
-   29,
+   28,
    0,
    "AUDIO"
   ],
@@ -3483,12 +3723,20 @@
    69,
    28,
    0,
-   30,
+   29,
    0,
    "AUDIO"
   ],
   [
    70,
+   28,
+   0,
+   30,
+   0,
+   "AUDIO"
+  ],
+  [
+   71,
    27,
    0,
    30,
@@ -3496,7 +3744,7 @@
    "AUDIO"
   ],
   [
-   71,
+   72,
    19,
    0,
    30,
@@ -3504,40 +3752,32 @@
    "STRING"
   ],
   [
-   72,
+   73,
    19,
    4,
-   31,
+   32,
    0,
    "STRING"
   ],
   [
-   73,
-   31,
+   74,
+   32,
    0,
    30,
    3,
    "IMAGE"
   ],
   [
-   74,
-   31,
-   0,
+   75,
    32,
+   0,
+   33,
    0,
    "IMAGE"
   ],
   [
-   75,
-   10,
-   7,
-   30,
-   4,
-   "PLENIO_REPORT"
-  ],
-  [
    76,
-   19,
+   10,
    7,
    30,
    5,
@@ -3545,15 +3785,15 @@
   ],
   [
    77,
-   8,
-   2,
+   19,
+   7,
    30,
    6,
    "PLENIO_REPORT"
   ],
   [
    78,
-   22,
+   8,
    2,
    30,
    7,
@@ -3561,16 +3801,16 @@
   ],
   [
    79,
-   24,
-   3,
+   22,
+   2,
    30,
    8,
    "PLENIO_REPORT"
   ],
   [
    80,
-   25,
-   1,
+   24,
+   3,
    30,
    9,
    "PLENIO_REPORT"
@@ -3578,22 +3818,22 @@
   [
    81,
    25,
-   2,
+   1,
    30,
    10,
    "PLENIO_REPORT"
   ],
   [
    82,
-   27,
-   1,
+   25,
+   2,
    30,
    11,
    "PLENIO_REPORT"
   ],
   [
    83,
-   28,
+   27,
    1,
    30,
    12,
@@ -3602,13 +3842,21 @@
   [
    84,
    28,
-   2,
+   1,
    30,
    13,
    "PLENIO_REPORT"
   ],
   [
    85,
+   28,
+   2,
+   30,
+   14,
+   "PLENIO_REPORT"
+  ],
+  [
+   86,
    3,
    0,
    19,
@@ -3616,24 +3864,24 @@
    "AUDIO"
   ],
   [
-   86,
+   87,
    3,
    0,
-   33,
+   34,
    0,
    "AUDIO"
   ],
   [
-   87,
-   33,
+   88,
+   34,
    0,
    10,
    10,
    "PLENIO_PITCH"
   ],
   [
-   88,
-   33,
+   89,
+   34,
    0,
    19,
    10,
@@ -3645,7 +3893,7 @@
    "id": 1,
    "title": "STEMS (optional)",
    "bounding": [
-    3390,
+    3530,
     645,
     320,
     130
@@ -3658,7 +3906,7 @@
    "id": 2,
    "title": "REFINE (optional)",
    "bounding": [
-    3390,
+    3530,
     835,
     320,
     180
@@ -3671,10 +3919,10 @@
    "id": 3,
    "title": "7 · FINISH",
    "bounding": [
-    3850,
+    3990,
     -70,
-    840,
-    784
+    900,
+    1044
    ],
    "color": "#3f789e",
    "font_size": 24,
@@ -3684,8 +3932,8 @@
    "id": 4,
    "title": "COVER ART (optional)",
    "bounding": [
-    3850,
-    734,
+    3990,
+    994,
     760,
     400
    ],
@@ -3712,8 +3960,8 @@
    "bounding": [
     -30,
     410,
-    440,
-    840
+    580,
+    1080
    ],
    "color": "#3f789e",
    "font_size": 24,
@@ -3723,10 +3971,10 @@
    "id": 7,
    "title": "3 · SCORE",
    "bounding": [
-    430,
+    570,
     -70,
     900,
-    1150
+    1230
    ],
    "color": "#3f789e",
    "font_size": 24,
@@ -3736,10 +3984,10 @@
    "id": 8,
    "title": "4 · LYRICS",
    "bounding": [
-    1350,
+    1490,
     -70,
     740,
-    1130
+    1210
    ],
    "color": "#3f789e",
    "font_size": 24,
@@ -3749,7 +3997,7 @@
    "id": 9,
    "title": "5 · TEXT",
    "bounding": [
-    2105,
+    2245,
     -60,
     480,
     560
@@ -3762,10 +4010,10 @@
    "id": 10,
    "title": "6 · RENDER",
    "bounding": [
-    2590,
+    2730,
     -70,
     780,
-    600
+    660
    ],
    "color": "#3f789e",
    "font_size": 24,
@@ -3775,7 +4023,7 @@
    "id": 11,
    "title": "CHECK SUNG LYRICS (optional)",
    "bounding": [
-    2985,
+    3125,
     775,
     400,
     400
@@ -3789,7 +4037,7 @@
    "title": "MUSIC MODEL",
    "bounding": [
     -30,
-    1325,
+    1565,
     740,
     310
    ],
@@ -11674,12 +11922,24 @@
      "seed"
     ],
     [
+     20,
+     "keep_seed"
+    ],
+    [
      15,
      "seed"
     ],
     [
+     15,
+     "keep_seed"
+    ],
+    [
      12,
      "seed"
+    ],
+    [
+     12,
+     "keep_seed"
     ],
     [
      10,

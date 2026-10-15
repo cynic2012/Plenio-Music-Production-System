@@ -65,6 +65,8 @@ Polyphase resampling with a Kaiser low-pass designed from band edges: flat to 20
 
 **Tag copy** (*copy from loaded file*) reads the tags and the embedded cover with PyAV from the file of the workflow's single **Load Audio** node. With two or more Load Audio nodes the export stops and asks you to type the tags.
 
+Export Release also writes the lyrics as subtitles (`<name> (lines).srt`, `<name> (notes).srt`, timed by listening) and fills its tags from the brief with variables - see [Tags, variables and lyrics subtitles](tags-and-subtitles.md).
+
 ## What Plenio does not do (yet)
 
 - **No restoration**: no declipping, de-noising or de-harshing. The Phase 7 measurement found no clipping on the available take; the decision on a conditional repair stage waits for measurements on unprocessed YuE2 and MiniMax takes ([test report](../../test-reports/2026-09-25-phase-7.md) §5).

@@ -94,8 +94,13 @@ def load(path: Path) -> dict[str, Any]:
         "files": files,
         "warnings": warnings,
         "licences": record.get("licences", []),
-        "draft_seed": node(prompt, "SeedNode", "Draft seed").get("seed"),
-        "take_seed": node(prompt, "SeedNode", "Take seed").get("seed"),
+        # ComfyUI's Seed until 0.8.0, Plenio · Seed since 0.8.1
+        "draft_seed": (
+            node(prompt, "PlenioSeed", "Draft seed") or node(prompt, "SeedNode", "Draft seed")
+        ).get("seed"),
+        "take_seed": (node(prompt, "PlenioSeed", "Take seed") or node(prompt, "SeedNode", "Take seed")).get(
+            "seed"
+        ),
         "plan_seed": node(prompt, "YuE2GenerateABC").get("seed"),
         "target": 180.0 if "3:00" in str(brief.get("length", "")) else None,
     }

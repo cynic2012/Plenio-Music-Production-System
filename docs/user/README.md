@@ -23,4 +23,6 @@ Concepts:
 - [Mastering and audio formats](concepts/mastering.md) - metering, EQ, dynamics, resampling, export formats and their limits
 - [App mode](concepts/app-mode.md) - the templates as simple forms, with the mode and the Song Sheet buttons
 - [Local LLMs](concepts/local-llm.md) - GGUF files from models/LLM and the models of LM Studio, Ollama, llama.cpp ... as the song writer or anywhere else
+- [Seeds](concepts/seeds.md) - one switch per seed: 🔒 keep a part (the draft, the take), 🎲 renew it every run
+- [Tags, variables and lyrics subtitles](concepts/tags-and-subtitles.md) - tags filled from the brief (`{genre}`, `{mood}` ...), file names, the lyrics as SRT timed by listening
 - [Creative modes](concepts/creative-modes.md) - no arrangement (*off*) or planned arrangements (standard, varied, fantasy, sterile, many instruments, dramatic), the closeness sliders, which writer model

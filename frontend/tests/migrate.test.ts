@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { comboOptions, migrateWidgetValues, renameWidgetValues } from '../src/extension/migrate'
+import { comboOptions, migrateExportTags, migrateWidgetValues, renameWidgetValues } from '../src/extension/migrate'
 import type { ComfyNodeDef } from '../src/shared/comfy'
 
 const songBrief: ComfyNodeDef = {
@@ -55,5 +55,23 @@ describe('widget values of older workflows', () => {
       mode: 'one cover, stop to review',
       template: 'none'
     })
+  })
+})
+
+describe('Export Release saved before 0.8.1', () => {
+  const old = ['plenio', '{date} {title}', 'number', true, false, false, 'tags', 'A', 'B', '2026', '3', 'pop', 'c', 'AA', 'Comp', 'PDF (A4)', 'standard', true]
+
+  it('gets an empty lyrics tag after the composer, so the values after it stay on their widgets', () => {
+    const migrated = migrateExportTags(old)
+    expect(migrated.slice(14, 19)).toEqual(['Comp', '', 'PDF (A4)', 'standard', true])
+    const info = migrateWidgetValues({ name: 'PlenioExportRelease' } as ComfyNodeDef, { widgets_values: old })
+    expect((info.widgets_values as unknown[]).length).toBe(19)
+  })
+
+  it('leaves the title-only mode and the current layout alone', () => {
+    const titleOnly = ['plenio', '{date} {title}', 'number', true, false, false, 'title only', 'PDF (A4)', 'standard', true]
+    expect(migrateExportTags(titleOnly)).toBe(titleOnly)
+    const current = [...old.slice(0, 15), '{lyrics}', 'PDF (A4)', 'standard', true, true]
+    expect(migrateExportTags(current)).toBe(current)
   })
 })

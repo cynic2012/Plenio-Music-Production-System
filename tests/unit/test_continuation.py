@@ -83,12 +83,31 @@ def test_the_template_of_a_record_is_found_also_when_its_ids_moved() -> None:
         prompt = prompt_of(song, renumber=shift)
         match = c.match_template(prompt, TEMPLATES)
         assert match is not None and match.name == SONG, shift
-        seeds = {pid: tid for pid, tid in match.mapping.items() if prompt[pid]["class_type"] == "SeedNode"}
+        seeds = {pid: tid for pid, tid in match.mapping.items() if prompt[pid]["class_type"] == "PlenioSeed"}
+        assert len(seeds) == 3  # draft, arrangement and take seed
         nodes = c.workflow_nodes(song)
         assert {prompt[p]["_meta"]["title"] for p in seeds} == {nodes[t].title for t in seeds.values()}
         assert all(prompt[p]["_meta"]["title"] == nodes[t].title for p, t in seeds.items())
         sheets = [p for p, n in prompt.items() if n["class_type"] == "PlenioSongSheet"]
         assert all(nodes[match.mapping[p]].title == prompt[p]["_meta"]["title"] for p in sheets)
+
+
+def test_the_seeds_of_a_record_made_before_0_8_1_land_on_the_new_seed_nodes() -> None:
+    """0.8.1 replaced ComfyUI's Seed with Plenio · Seed in the templates: an older record's seeds (a record
+    without its own workflow is matched against today's template) keep their numbers."""
+    song = TEMPLATES[SONG]
+    prompt = prompt_of(song)
+    for entry in prompt.values():
+        if entry["class_type"] == "PlenioSeed":
+            entry["class_type"] = "SeedNode"
+            entry["inputs"] = {"seed": 4242}
+    found = c.continuation(record(prompt), TEMPLATES)
+    assert found["from"] == "template" and found["template"] == SONG
+    nodes = c.workflow_nodes(song)
+    seeds = {i for i, n in nodes.items() if n.type == "PlenioSeed"}
+    assert len(seeds) == 3
+    assert all(found["values"][i]["seed"] == 4242 for i in seeds)
+    assert not any("seed" in name.lower() for name in found["unplaced"])
 
 
 def test_a_workflow_of_ones_own_has_no_template() -> None:

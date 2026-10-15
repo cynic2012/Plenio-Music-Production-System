@@ -87,11 +87,10 @@ class PlenioComposeArrangement(io.ComfyNode):
             display_name="Compose Arrangement",
             category="Plenio/Score",
             description=(
-                "Experimental (creative modes can give unexpected results - try them and listen). "
-                "The arrangement prompt of the brief's creative mode: the score as a table (sections, chords, the "
-                "melody's notes per bar, what the instrument line plays), the mode's rules, the closeness and "
-                "the exact answer format - a small JSON plan, never notes. Connect the prompt to a writer (Generate "
-                "Text or Local LLM; Local LLM also takes the schema) and its answer to Apply Arrangement."
+                "Experimental. The arrangement prompt of the brief's creative mode: the score as a table (sections, "
+                "chords, the melody per bar, the instrument line), the mode's rules, the closeness and the answer "
+                "format - a small JSON plan, never notes. Connect it to a writer (Generate Text or Local LLM, which "
+                "also takes the schema) and the answer to Apply Arrangement."
             ),
             inputs=[
                 io.String.Input(
@@ -260,12 +259,10 @@ class PlenioApplyArrangement(io.ComfyNode):
             display_name="Apply Arrangement",
             category="Plenio/Score",
             description=(
-                "Experimental (creative modes can give unexpected results - try them and listen). "
-                "Writes the writer's section plan into the score: chords that fit the melody, the instrument line "
-                "of every section (written note by note by Plenio), key lifts and the tempo - each step validated. "
-                "The result must pass YuE2's parser, read back unchanged, open in the score editor and fit YuE2's "
-                "context; otherwise the score stays as it was and the report says why. With arrangement off (and "
-                "for a cover kept at its original song flow) the writer is not asked at all."
+                "Experimental. Writes the writer's section plan into the score: chords that fit the melody, every "
+                "section's instrument line (written note by note by Plenio), key lifts and the tempo, each step "
+                "checked. A score YuE2 could not use stays as it was, and the report says why. With arrangement off "
+                "the writer is not asked at all."
             ),
             inputs=[
                 io.String.Input(

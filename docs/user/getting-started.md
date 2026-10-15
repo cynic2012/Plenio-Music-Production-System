@@ -61,7 +61,7 @@ The first field of the **Song Brief** - and of the **Cover Brief** - is the **mo
 - **new song every run** (default of the song templates): every run writes and renders a **different song** from the same brief, without stopping - each with its own draft and plan seeds. To make a series with one click, set the batch count next to **Run** (in App mode: *Number of runs*) - ten runs, ten songs, each exported under its own title (a repeated title gets ` (2)`, ` (3)`, ...). Want to check each song first? Set a Song Sheet to *stop for review*: every new song stops there, and the run after *Approve* renders it before the next song is written ([Song Sheet](concepts/song-sheet.md#every-combination)).
 - **one song, stop to review**: the run stops at each **Song Sheet**. Open it, check or edit the documents, press *Approve*, and run again; YuE2 stops twice (text, then score). Once everything is approved, every further run is a **new take** of the same song.
 
-The writer's **Draft seed** (its own node next to *Write Song*, also in App mode) is *fixed* by default - keep it so: in a series every song gets its own seeds anyway (the brief's *song seed* is added to the draft and plan seeds), and in *one song, stop to review* a fixed seed keeps the approved text. Change it by hand when you want another draft of the same song.
+The writer's **Draft seed** (its own node next to *Write Song*, also in App mode) is 🔒 *same seed* by default - keep it so: in a series every song gets its own seeds anyway (the brief's *song seed* is added to the draft and plan seeds), and in *one song, stop to review* a kept seed keeps the approved text. Switch it to 🎲 *new seed* (or press *🎲 new seed now*) when you want another draft of the same song. Every seed node works the same way - blue keeps, amber renews; see [Seeds](concepts/seeds.md).
 
 The cover template offers *one cover, stop to review* (its default) and *new cover every run* (a new title, style and - for new lyrics - new lyrics on the same transcription every run). The Song Sheets' *review* is set to **as the brief says**; set a single sheet to *continue* or *stop for review* to override the brief.
 
@@ -78,7 +78,7 @@ Export writes into ComfyUI's output folder, `output/plenio/` (Enhance & Master: 
 
 ## App mode
 
-Every template also works as a simple form: switch **Graph / App** at the top left of the canvas. The app shows the mode, the brief (or the file), the take seed, buttons that open the Song Sheets - for review and editing, as in the graph - and the results; see [App mode](concepts/app-mode.md).
+Every template also works as a simple form: switch **Graph / App** at the top left of the canvas. The app shows the mode, the brief (or the file), the seeds with their switches, buttons that open the Song Sheets - for review and editing, as in the graph - and the results; see [App mode](concepts/app-mode.md).
 
 ## Next steps
 

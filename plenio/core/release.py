@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from . import variables
 from .dependencies import require
 from .errors import PlenioUserError
 from .files import atomic_write_bytes
@@ -35,6 +36,7 @@ _SECRET_VALUE = re.compile(
     r"\b(hf_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{30,}|ghp_[A-Za-z0-9]{30,})\b"
 )
 PATTERN_TOKENS = ("title", "date", "time", "seed")
+"""The pattern's first variables; since 0.8.1 every ``core.variables`` name works."""
 
 
 def safe_filename(name: str, fallback: str = "Untitled") -> str:
@@ -50,16 +52,13 @@ def safe_filename(name: str, fallback: str = "Untitled") -> str:
 
 
 def expand_pattern(pattern: str, values: Mapping[str, str]) -> str:
-    """Replace ``{title}``, ``{date}``, ``{time}`` and ``{seed}``; unknown tokens are an error."""
-    unknown = sorted(set(re.findall(r"\{([^{}]*)\}", pattern)) - set(PATTERN_TOKENS))
+    """The file name pattern with its variables (``core.variables``: ``{title}``, ``{date}``, ``{genre}`` ...,
+    ``[optional {parts}]``); a name that is no variable is an error. A value's own slashes make no folders."""
+    unknown = variables.unknown_names(pattern)
     if unknown:
-        raise PlenioUserError(
-            f"Unknown naming tokens {unknown}.", hint=f"Use {['{' + t + '}' for t in PATTERN_TOKENS]}."
-        )
-    result = pattern
-    for token in PATTERN_TOKENS:
-        result = result.replace("{" + token + "}", values.get(token, ""))
-    return result
+        raise PlenioUserError(variables.unknown_message("The file name pattern", unknown))
+    safe = {key: re.sub(r"[\\/\r\n\t]+", "-", str(value)).strip() for key, value in values.items()}
+    return variables.expand(pattern, safe)[0]
 
 
 def naming_values(title: str, seed: int | None, now: time.struct_time | None = None) -> dict[str, str]:
@@ -67,6 +66,7 @@ def naming_values(title: str, seed: int | None, now: time.struct_time | None = N
     return {
         "title": safe_filename(title),
         "date": time.strftime("%Y-%m-%d", moment),
+        "year": time.strftime("%Y", moment),
         "time": time.strftime("%H%M%S", moment),
         "seed": "" if seed is None else str(seed),
     }
@@ -136,8 +136,20 @@ FORMATS: dict[str, dict[str, Any]] = {
 """Export formats: FLAC 24-bit, MP3 VBR V0 (LAME), WAV 32-bit float. MP3 and 24-bit FLAC clip at full scale."""
 MP3_RATES = (8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000)
 """The sample rates MPEG audio (LAME) can encode; other rates are converted for MP3 only (AUD-03)."""
-TAG_FIELDS = ("title", "artist", "album", "date", "track", "genre", "comment", "album_artist", "composer")
-"""Generic tag names; the muxer maps them (FLAC: Vorbis comments, MP3: ID3v2, WAV: RIFF INFO)."""
+TAG_FIELDS = (
+    "title",
+    "artist",
+    "album",
+    "date",
+    "track",
+    "genre",
+    "comment",
+    "album_artist",
+    "composer",
+    "lyrics",
+)
+"""Generic tag names; the muxer maps them (FLAC: Vorbis comments, MP3: ID3v2 - ``lyrics`` as a USLT frame -,
+WAV: RIFF INFO, which has no lyrics)."""
 
 
 def _frames(data: Any, sample_format: str) -> Any:
@@ -578,7 +590,8 @@ def _id3v23_text(text: str) -> bytes:
 
 def _id3v24_frame_to_v23(frame: bytes) -> bytes | None:
     """A 2.4 frame as a 2.3 frame: text in 2.3 encodings (no UTF-8), several values joined with ``/``,
-    TDRC as TYER. Frames with 2.4-only format flags, or of a kind this does not convert, are dropped."""
+    TDRC as TYER, comments and lyrics (COMM, USLT) kept. Frames with 2.4-only format flags, or of a kind this
+    does not convert, are dropped."""
     frame_id, flags, data = frame[:4], frame[8:10], frame[10:]
     if flags[1] or not data:  # compression, encryption, unsynchronisation, data length indicator
         return None
@@ -586,7 +599,7 @@ def _id3v24_frame_to_v23(frame: bytes) -> bytes | None:
     if frame_id == b"TXXX":
         description, value = _split_encoded(data[0], data[1:])
         body = _id3v23_pair(description, value)
-    elif frame_id == b"COMM" and len(data) >= 4:
+    elif frame_id in (b"COMM", b"USLT") and len(data) >= 4:  # the same layout: language, description, text
         description, value = _split_encoded(data[0], data[4:])
         encoded = _id3v23_pair(description, value)
         body = encoded[:1] + data[1:4] + encoded[1:]

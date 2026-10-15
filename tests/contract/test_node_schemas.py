@@ -51,6 +51,34 @@ def test_every_input_and_output_is_documented(nodes: list[Any]) -> None:
             assert item.tooltip, f"{schema.node_id} output {item.display_name} has no tooltip"
 
 
+TOOLTIP_LIMIT = 220
+DESCRIPTION_LIMIT = 400
+
+
+def _items(inputs: list[Any]) -> list[Any]:
+    """Every input, the options' inputs of a DynamicCombo included."""
+    found = []
+    for item in inputs:
+        found.append(item)
+        for option in getattr(item, "options", None) or []:
+            found += _items(list(getattr(option, "inputs", None) or []))
+    return found
+
+
+def test_tooltips_are_short(nodes: list[Any]) -> None:
+    """A tooltip says what the field does in a few lines; the rest is in the help page (owner's report
+    2026-10-15: some were very long, the creative modes' list ran off the window)."""
+    long = []
+    for node in nodes:
+        schema = node.GET_SCHEMA()
+        for item in [*_items(list(schema.inputs)), *schema.outputs]:
+            if len(item.tooltip or "") > TOOLTIP_LIMIT:
+                long.append(f"{schema.node_id}.{getattr(item, 'id', item.display_name)}: {len(item.tooltip)}")
+        if len(schema.description) > DESCRIPTION_LIMIT:
+            long.append(f"{schema.node_id} description: {len(schema.description)}")
+    assert not long, long
+
+
 def test_schemas_serialise_like_comfyui_does(nodes: list[Any]) -> None:
     for node in nodes:
         info = node.GET_NODE_INFO_V1()

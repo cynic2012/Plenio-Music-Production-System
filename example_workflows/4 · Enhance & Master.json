@@ -512,7 +512,7 @@
    ],
    "size": [
     380,
-    548
+    590
    ],
    "flags": {},
    "order": 8,
@@ -543,6 +543,13 @@
      "name": "cover",
      "shape": 7,
      "type": "IMAGE",
+     "link": null
+    },
+    {
+     "localized_name": "brief",
+     "name": "brief",
+     "shape": 7,
+     "type": "PLENIO_BRIEF",
      "link": null
     },
     {
@@ -682,6 +689,15 @@
       "name": "project_in_flac"
      },
      "link": null
+    },
+    {
+     "localized_name": "lyrics_srt",
+     "name": "lyrics_srt",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "lyrics_srt"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -711,6 +727,7 @@
     "copy from loaded file",
     "off",
     "standard",
+    true,
     true
    ]
   }
@@ -785,7 +802,7 @@
    3,
    1,
    9,
-   4,
+   5,
    "PLENIO_REPORT"
   ],
   [
@@ -793,7 +810,7 @@
    3,
    2,
    9,
-   5,
+   6,
    "PLENIO_REPORT"
   ],
   [
@@ -801,7 +818,7 @@
    5,
    1,
    9,
-   6,
+   7,
    "PLENIO_REPORT"
   ],
   [
@@ -809,7 +826,7 @@
    6,
    1,
    9,
-   7,
+   8,
    "PLENIO_REPORT"
   ],
   [
@@ -817,7 +834,7 @@
    7,
    1,
    9,
-   8,
+   9,
    "PLENIO_REPORT"
   ]
  ],
@@ -881,7 +898,7 @@
     2460,
     -70,
     440,
-    828
+    870
    ],
    "color": "#3f789e",
    "font_size": 24,

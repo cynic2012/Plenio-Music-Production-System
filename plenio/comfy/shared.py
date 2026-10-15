@@ -16,6 +16,7 @@ from ..core.assets import Asset, load_catalogue
 from ..core.audio.presets import Library
 from ..core.brief import TemplateLibrary
 from ..core.config import PlenioConfig
+from ..core.errors import PlenioError
 from ..core.models import ModelFile
 from ..core.models import load_catalogue as load_model_catalogue
 from ..core.reports import Report
@@ -84,8 +85,19 @@ def mode_names() -> list[str]:
         return library.names()
 
 
+def mode_description(name: str) -> str:
+    """What the creative mode ``name`` does (its file's description; empty for ``off``, a mode without one or an
+    unknown name) - the brief's summary and its panel say it for the chosen mode."""
+    try:
+        mode = mode_library().by_name(name)
+    except PlenioError:
+        return ""
+    found = mode_library().modes().get(mode.id)
+    return found.description.strip() if mode.arranges and found is not None else ""
+
+
 def mode_guide() -> str:
-    """Every creative mode in a line - its name and what it does (the briefs' *arrangement* tooltip)."""
+    """Every creative mode in a line - its name and what it does (the help page's list)."""
     library = mode_library()
     names = mode_names()
     modes = library.modes()

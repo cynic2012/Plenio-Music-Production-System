@@ -124,11 +124,8 @@ class PlenioStemMixer(io.ComfyNode):
             has_intermediate_output=True,
             description=(
                 "Mixes the stems back into one song: gain, mute/solo, compression and muted time ranges per stem "
-                "(and the residual 'rest'). Empty settings mix neutrally and return the input. No normalisation; "
-                "Master sets the loudness. The widget shows one strip per stem before the first run too, and a "
-                "strip marked *save* becomes its own file: Export Release writes it next to the song, into the "
-                "folder '<name>-stems' (without an Export Release that takes this report: output/plenio/stems). "
-                "Experimental."
+                "(and the residual 'rest'); empty settings return the input. A strip marked *save* becomes its own "
+                "file: Export Release writes it into '<name>-stems' next to the song. Experimental."
             ),
             inputs=[
                 StemsType.Input("stems", tooltip="The stems and the residual 'rest' from Separate Stems."),

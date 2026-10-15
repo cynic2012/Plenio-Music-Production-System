@@ -216,12 +216,14 @@ export interface BriefFields {
   choices: BriefChoice[]
   length_default: string
   notes: string[]
+  /** What the chosen creative mode does (``null``: off, or a mode without a description). */
+  mode?: { name: string; description: string } | null
 }
 
 /** Ask the backend what the template would fill (the rule lives in `core.brief`, not in the frontend). */
 export function briefFields(
   fetcher: Fetcher,
-  request: { fields: Record<string, string>; template: string; kind?: 'song' | 'cover' }
+  request: { fields: Record<string, string>; template: string; kind?: 'song' | 'cover'; arrangement?: string }
 ): Promise<BriefFields> {
   return post(fetcher, '/plenio/brief/fields', request)
 }

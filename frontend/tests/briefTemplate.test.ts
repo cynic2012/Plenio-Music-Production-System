@@ -18,6 +18,7 @@ import {
   fillsLine,
   choicesLine,
   isLegacyPlaceholder,
+  modeLine,
   notesLine,
   resetPlan,
   widgetOf,
@@ -208,5 +209,14 @@ describe('briefKind', () => {
     expect(briefKind({ comfyClass: 'PlenioCoverBrief' } as unknown as ComfyNode)).toBe('cover')
     expect(briefKind({ type: 'PlenioCoverBrief' } as unknown as ComfyNode)).toBe('cover')
     expect(briefKind({ comfyClass: 'PlenioSongBrief' } as unknown as ComfyNode)).toBe('song')
+  })
+})
+
+describe('modeLine', () => {
+  it('says what the chosen creative mode does, nothing for off (the tooltip names no modes)', () => {
+    const answer = { mode: { name: 'hypnotic', description: 'A steady repeating pattern.' } } as unknown as BriefFields
+    expect(modeLine(answer)).toBe('Creative mode hypnotic (experimental): A steady repeating pattern.')
+    expect(modeLine({ mode: null } as unknown as BriefFields)).toBeNull()
+    expect(modeLine(null)).toBeNull()
   })
 })

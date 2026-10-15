@@ -28,7 +28,7 @@ Export Release's **project in FLAC** (on by default) writes the release record i
 
 | You want | Do |
 | --- | --- |
-| new takes of the same song | change the **take seed** (or set it to *randomize*) and run |
+| new takes of the same song | set the **take seed** to 🎲 *new seed* (or type another number) and run |
 | a changed melody, chords or form | open **Edit Song Sheet…** - the score editor - and run |
 | new lyrics, or a new score from the writer or the plan | press **Back to auto** for that document in the Song Sheet and run (change the draft or plan seed for a different one) |
 | the same song mastered or split anew, without a new render | *4 · Enhance & Master* with the song's `(original).flac` |

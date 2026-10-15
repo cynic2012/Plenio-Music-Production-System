@@ -1,8 +1,8 @@
 {
  "id": "b96be7a0-0f56-5627-8df4-99ad092a11ce",
  "revision": 0,
- "last_node_id": 17,
- "last_link_id": 35,
+ "last_node_id": 18,
+ "last_link_id": 36,
  "nodes": [
   {
    "id": 1,
@@ -13,7 +13,7 @@
    ],
    "size": [
     480,
-    940
+    1080
    ],
    "flags": {},
    "order": 0,
@@ -25,7 +25,7 @@
     "Node name for S&R": "MarkdownNote"
    },
    "widgets_values": [
-    "# 3 · MiniMax · Song\n\n**Brief -> Write Song -> Song Sheet -> MiniMax Render -> Refine (48 kHz) -> Master -> Export**\n\n1. Choose the **mode** in **Song Brief**:\n   - *new song every run* - every run writes and renders a **different song** from the brief, without stops (set the **Draft seed** to *randomize* for even more variety). For a series, set the batch count next to **Run** (App mode: *Number of runs*) - one click, many songs.\n   - *one song, stop to review* - the run **stops at the Song Sheet**: open it, check or edit the documents, *Approve*, run again. Once approved, every further run is a **new take** of the same song (the documents stay cached).\n2. Describe the song (or pick a template). *vocals* switches between a sung song and an instrumental; *length* runs from 1:00 to 6:00.\n3. Press **Run**. The writer model drafts title, a structured **caption** (Global Metadata, Vocal Details, Arrangement), lyrics and an artwork prompt; MiniMax Music 3 renders the song.\n\n**Where the run stands:** a badge above each Plenio node shows its result - ✓ done, ⚠ warning, ✖ error; every Song Sheet that will stop carries ⏸ *review stop* before the run, ⏸ *waiting for your approval* (and an amber frame) when the run stopped there, ✓ *approved* once you approved it. A new run clears the badges, so they show how far this run got.\n\n**Inspect and edit:** open the **Song Sheet** to see exactly what MiniMax receives; its *review* follows the brief's mode (*as the brief says*). Caption and lyrics together must stay under **5 000 tokens** (the sheet counts them exactly with the loaded text encoder and stops before rendering if they do not fit). The render ceiling follows the brief's length, at most 6:00; the model can end earlier.\n\n**Instrumentals:** the lyrics are a map of section tags ([Intro], [Instrumental], [Solo], ...), about twice as long as a sung song's, and the caption's Vocal Details are *n/a*.\n\n**Creative modes:** *arrangement* in the brief adds the mode's hints to the caption (for example *many instruments*: a large ensemble) and, with *genre closeness*, says how typical it stays. MiniMax Music 3 has no score, so there is no section plan here; *off* writes as before.\n\n**Writer model:** one list in the *Writer model* node for every writing step (Write Song and Arrange): ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed is answered from Plenio's cache, without asking the model again.\n\n**Finish:** *Plenio · Master* brings the take to -14 LUFS / -1 dBTP with a gentle tone match (open the block to change the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the **sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export).\n\n**Refine (48 kHz, on):** extends the top octaves of the render with the UniverSR model (229 MB) and keeps everything below the crossover. The *preset* is *3 - MiniMax* (pre 10 kHz, crossover 9.5 kHz, post 19 kHz); pick another preset (also in App mode), or *custom* for the three number fields. For the plain render select the REFINE group and press **Ctrl+B**. Experimental: the settings are provisional until the listening study.\n\n**Cover art (optional, bypassed):** *Cover Art* paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about 16 GB of extra model files, Apache-2.0). Select it and the cover preview and press **Ctrl+B**; Export then embeds the cover in the FLAC and MP3 files and saves it as `.jpg`.\n\n**Stems (optional, bypassed):** *Separate Stems* splits the take into vocals, drums, bass and other; the *Stem Mixer* balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Select the block and press **Ctrl+B**; the mixer is inside it - open the block with the icon at the top right of the node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it.\n\n**App mode:** switch *Graph / App* at the top left for a simple form: the mode, the brief with its creative mode and closeness, the writer model, the seeds, the Song Sheet buttons (review and edit, also in the app - their status line says where the run stands: *stops here for review*, *waiting for your approval*, *approved*) and the results. *Number of runs* next to Run renders a series.\n\n**Models** (ComfyUI offers the downloads when you open the template): MiniMax Music 3 (diffusion model 4.9 GB, int8 text encoder 9.2 GB, VAE), the Gemma 4 E4B writer. MiniMax Music 3 weights: **MiniMax-Music3 Community License**. If decoding runs out of memory, turn on *tiled decode* in MiniMax Render.\n"
+    "# 3 · MiniMax · Song\n\n**Brief -> Write Song -> Song Sheet -> MiniMax Render -> Refine (48 kHz) -> Master -> Export**\n\n1. Choose the **mode** in **Song Brief**:\n   - *new song every run* - every run writes and renders a **different song** from the brief, without stops (set the **Draft seed** to 🎲 *new seed* for even more variety). For a series, set the batch count next to **Run** (App mode: *Number of runs*) - one click, many songs.\n   - *one song, stop to review* - the run **stops at the Song Sheet**: open it, check or edit the documents, *Approve*, run again. Once approved, every further run is a **new take** of the same song (the documents stay cached).\n2. Describe the song (or pick a template). *vocals* switches between a sung song and an instrumental; *length* runs from 1:00 to 6:00.\n3. Press **Run**. The writer model drafts title, a structured **caption** (Global Metadata, Vocal Details, Arrangement), lyrics and an artwork prompt; MiniMax Music 3 renders the song.\n\n**Where the run stands:** a badge above each Plenio node shows its result - ✓ done, ⚠ warning, ✖ error; every Song Sheet that will stop carries ⏸ *review stop* before the run, ⏸ *waiting for your approval* (and an amber frame) when the run stopped there, ✓ *approved* once you approved it. A new run clears the badges, so they show how far this run got.\n\n**Seeds:** each seed node has one switch - **🔒 same seed**: the next run keeps that part (the same draft, the same take), so you can change other things; **🎲 new seed**: every run draws a new number - something new each time. The number shown is always the one the last run used: liked a take? Switch its seed to 🔒. Blue nodes keep, amber nodes renew.\n\n**Inspect and edit:** open the **Song Sheet** to see exactly what MiniMax receives; its *review* follows the brief's mode (*as the brief says*). Caption and lyrics together must stay under **5 000 tokens** (the sheet counts them exactly with the loaded text encoder and stops before rendering if they do not fit). The render ceiling follows the brief's length, at most 6:00; the model can end earlier.\n\n**Instrumentals:** the lyrics are a map of section tags ([Intro], [Instrumental], [Solo], ...), about twice as long as a sung song's, and the caption's Vocal Details are *n/a*.\n\n**Creative modes:** *arrangement* in the brief adds the mode's hints to the caption (for example *many instruments*: a large ensemble) and, with *genre closeness*, says how typical it stays. MiniMax Music 3 has no score, so there is no section plan here; *off* writes as before.\n\n**Writer model:** one list in the *Writer model* node for every writing step (Write Song and Arrange): ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed is answered from Plenio's cache, without asking the model again.\n\n**Finish:** *Plenio · Master* brings the take to -14 LUFS / -1 dBTP with a gentle tone match (open the block to change the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the **sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export), and the lyrics as **subtitles** - `<name> (lines).srt` and `<name> (notes).srt`, timed by listening. The **tags** take the brief's fields as variables (`{genre}`, `{mood}` ...); the *Tags & variables* note beside Export lists them all.\n\n**Refine (48 kHz, on):** extends the top octaves of the render with the UniverSR model (229 MB) and keeps everything below the crossover. The *preset* is *3 - MiniMax* (pre 10 kHz, crossover 9.5 kHz, post 19 kHz); pick another preset (also in App mode), or *custom* for the three number fields. For the plain render select the REFINE group and press **Ctrl+B**. Experimental: the settings are provisional until the listening study.\n\n**Cover art (optional, bypassed):** *Cover Art* paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about 16 GB of extra model files, Apache-2.0). Select it and the cover preview and press **Ctrl+B**; Export then embeds the cover in the FLAC and MP3 files and saves it as `.jpg`.\n\n**Stems (optional, bypassed):** *Separate Stems* splits the take into vocals, drums, bass and other; the *Stem Mixer* balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Select the block and press **Ctrl+B**; the mixer is inside it - open the block with the icon at the top right of the node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it.\n\n**App mode:** switch *Graph / App* at the top left for a simple form: the mode, the brief with its creative mode and closeness, the writer model, the seeds, the Song Sheet buttons (review and edit, also in the app - their status line says where the run stands: *stops here for review*, *waiting for your approval*, *approved*) and the results. *Number of runs* next to Run renders a series.\n\n**Models** (ComfyUI offers the downloads when you open the template): MiniMax Music 3 (diffusion model 4.9 GB, int8 text encoder 9.2 GB, VAE), the Gemma 4 E4B writer. MiniMax Music 3 weights: **MiniMax-Music3 Community License**. If decoding runs out of memory, turn on *tiled decode* in MiniMax Render.\n"
    ]
   },
   {
@@ -36,8 +36,8 @@
     0
    ],
    "size": [
-    380,
-    790
+    520,
+    1070
    ],
    "flags": {},
    "order": 1,
@@ -195,7 +195,8 @@
      "type": "PLENIO_BRIEF",
      "links": [
       2,
-      10
+      10,
+      22
      ]
     },
     {
@@ -223,6 +224,90 @@
      "links": [
       3
      ]
+    },
+    {
+     "localized_name": "template",
+     "name": "template",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "genre",
+     "name": "genre",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "mood",
+     "name": "mood",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "tempo",
+     "name": "tempo",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "length",
+     "name": "length",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "vocals",
+     "name": "vocals",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "language",
+     "name": "language",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "voice",
+     "name": "voice",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "theme",
+     "name": "theme",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "key",
+     "name": "key",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "meter",
+     "name": "meter",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "arrangement",
+     "name": "arrangement",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "genre_closeness",
+     "name": "genre_closeness",
+     "type": "INT",
+     "links": null
+    },
+    {
+     "localized_name": "lines_under_singing",
+     "name": "lines_under_singing",
+     "type": "BOOLEAN",
+     "links": null
     }
    ],
    "properties": {
@@ -252,7 +337,7 @@
    "type": "a469aeef-bca2-5738-b40d-1130a141291b",
    "pos": [
     0,
-    940
+    1220
    ],
    "size": [
     380,
@@ -342,7 +427,7 @@
    "id": 4,
    "type": "ec9ff305-6d52-5283-8543-6c063df4002b",
    "pos": [
-    460,
+    600,
     0
    ],
    "size": [
@@ -476,14 +561,14 @@
   },
   {
    "id": 5,
-   "type": "SeedNode",
+   "type": "PlenioSeed",
    "pos": [
-    460,
+    600,
     280
    ],
    "size": [
-    300,
-    90
+    340,
+    170
    ],
    "flags": {},
    "order": 4,
@@ -496,6 +581,15 @@
      "type": "INT",
      "widget": {
       "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "keep_seed",
+     "name": "keep_seed",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "keep_seed"
      },
      "link": null
     }
@@ -511,20 +605,23 @@
     }
    ],
    "title": "Draft seed",
+   "color": "#1f4e6e",
+   "bgcolor": "#14304a",
    "properties": {
-    "Node name for S&R": "SeedNode"
+    "Node name for S&R": "PlenioSeed",
+    "plenio_part": "draft (title, style, lyrics)"
    },
    "widgets_values": [
     0,
-    "fixed"
+    true
    ]
   },
   {
    "id": 6,
    "type": "PlenioWriterChoice",
    "pos": [
-    460,
-    410
+    600,
+    490
    ],
    "size": [
     360,
@@ -592,7 +689,7 @@
    "id": 7,
    "type": "PlenioSongSheet",
    "pos": [
-    900,
+    1040,
     0
    ],
    "size": [
@@ -734,7 +831,7 @@
      "name": "title",
      "type": "STRING",
      "links": [
-      26
+      27
      ]
     },
     {
@@ -764,7 +861,7 @@
      "name": "artwork_prompt",
      "type": "STRING",
      "links": [
-      27
+      28
      ]
     },
     {
@@ -786,7 +883,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      30
+      31
      ]
     },
     {
@@ -813,14 +910,14 @@
   },
   {
    "id": 8,
-   "type": "SeedNode",
+   "type": "PlenioSeed",
    "pos": [
-    1400,
+    1540,
     0
    ],
    "size": [
-    300,
-    90
+    340,
+    170
    ],
    "flags": {},
    "order": 7,
@@ -833,6 +930,15 @@
      "type": "INT",
      "widget": {
       "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "keep_seed",
+     "name": "keep_seed",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "keep_seed"
      },
      "link": null
     }
@@ -848,20 +954,23 @@
     }
    ],
    "title": "Take seed",
+   "color": "#7a5418",
+   "bgcolor": "#3b2a10",
    "properties": {
-    "Node name for S&R": "SeedNode"
+    "Node name for S&R": "PlenioSeed",
+    "plenio_part": "take"
    },
    "widgets_values": [
     1,
-    "randomize"
+    false
    ]
   },
   {
    "id": 9,
    "type": "3e8cc93d-dba7-57fc-9584-25d46a862896",
    "pos": [
-    1400,
-    150
+    1540,
+    230
    ],
    "size": [
     320,
@@ -968,7 +1077,7 @@
    "id": 10,
    "type": "b15b93f5-aa6c-53d1-a081-d23166dcc913",
    "pos": [
-    1800,
+    1940,
     430
    ],
    "size": [
@@ -1002,7 +1111,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      31
+      32
      ]
     },
     {
@@ -1010,7 +1119,7 @@
      "name": "separation_report",
      "type": "PLENIO_REPORT",
      "links": [
-      32
+      33
      ]
     }
    ],
@@ -1022,7 +1131,7 @@
    "id": 11,
    "type": "PlenioAudioModelLoader",
    "pos": [
-    1800,
+    1940,
     620
    ],
    "size": [
@@ -1082,7 +1191,7 @@
    "id": 12,
    "type": "PlenioRefine",
    "pos": [
-    1800,
+    1940,
     780
    ],
    "size": [
@@ -1176,8 +1285,8 @@
      "name": "audio",
      "type": "AUDIO",
      "links": [
-      22,
-      25
+      23,
+      26
      ]
     },
     {
@@ -1185,7 +1294,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      33
+      34
      ]
     }
    ],
@@ -1208,7 +1317,7 @@
    "id": 13,
    "type": "259b88ba-7c57-57fb-b73e-58f691fe4b56",
    "pos": [
-    2320,
+    2460,
     0
    ],
    "size": [
@@ -1223,7 +1332,7 @@
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 22
+     "link": 23
     },
     {
      "localized_name": "reference",
@@ -1248,8 +1357,8 @@
      "name": "audio",
      "type": "AUDIO",
      "links": [
-      23,
-      24
+      24,
+      25
      ]
     },
     {
@@ -1257,7 +1366,7 @@
      "name": "eq_report",
      "type": "PLENIO_REPORT",
      "links": [
-      34
+      35
      ]
     },
     {
@@ -1265,7 +1374,7 @@
      "name": "loudness_report",
      "type": "PLENIO_REPORT",
      "links": [
-      35
+      36
      ]
     }
    ],
@@ -1279,7 +1388,7 @@
    "id": 14,
    "type": "PreviewAudio",
    "pos": [
-    2320,
+    2460,
     230
    ],
    "size": [
@@ -1294,7 +1403,7 @@
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 23
+     "link": 24
     }
    ],
    "outputs": [
@@ -1315,12 +1424,12 @@
    "id": 15,
    "type": "PlenioExportRelease",
    "pos": [
-    2720,
+    2860,
     0
    ],
    "size": [
-    380,
-    594
+    440,
+    854
    ],
    "flags": {},
    "order": 14,
@@ -1330,28 +1439,35 @@
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 24
+     "link": 25
     },
     {
      "localized_name": "title",
      "name": "title",
      "shape": 7,
      "type": "STRING",
-     "link": 26
+     "link": 27
     },
     {
      "localized_name": "original",
      "name": "original",
      "shape": 7,
      "type": "AUDIO",
-     "link": 25
+     "link": 26
     },
     {
      "localized_name": "cover",
      "name": "cover",
      "shape": 7,
      "type": "IMAGE",
-     "link": 28
+     "link": 29
+    },
+    {
+     "localized_name": "brief",
+     "name": "brief",
+     "shape": 7,
+     "type": "PLENIO_BRIEF",
+     "link": 22
     },
     {
      "localized_name": "reports.report_0",
@@ -1359,7 +1475,7 @@
      "label": "report_0",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 30
+     "link": 31
     },
     {
      "localized_name": "reports.report_1",
@@ -1367,7 +1483,7 @@
      "label": "report_1",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 31
+     "link": 32
     },
     {
      "localized_name": "reports.report_2",
@@ -1375,7 +1491,7 @@
      "label": "report_2",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 32
+     "link": 33
     },
     {
      "localized_name": "reports.report_3",
@@ -1383,7 +1499,7 @@
      "label": "report_3",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 33
+     "link": 34
     },
     {
      "localized_name": "reports.report_4",
@@ -1391,7 +1507,7 @@
      "label": "report_4",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 34
+     "link": 35
     },
     {
      "localized_name": "reports.report_5",
@@ -1399,7 +1515,7 @@
      "label": "report_5",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 35
+     "link": 36
     },
     {
      "localized_name": "reports.report_6",
@@ -1473,6 +1589,87 @@
      "link": null
     },
     {
+     "localized_name": "tags.artist",
+     "name": "tags.artist",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.artist"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.album",
+     "name": "tags.album",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.album"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.date",
+     "name": "tags.date",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.date"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.track",
+     "name": "tags.track",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.track"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.genre",
+     "name": "tags.genre",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.genre"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.comment",
+     "name": "tags.comment",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.comment"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.album_artist",
+     "name": "tags.album_artist",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.album_artist"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.composer",
+     "name": "tags.composer",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.composer"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags.lyrics",
+     "name": "tags.lyrics",
+     "type": "STRING",
+     "widget": {
+      "name": "tags.lyrics"
+     },
+     "link": null
+    },
+    {
      "localized_name": "sheet_music",
      "name": "sheet_music",
      "type": "COMBO",
@@ -1496,6 +1693,15 @@
      "type": "BOOLEAN",
      "widget": {
       "name": "project_in_flac"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "lyrics_srt",
+     "name": "lyrics_srt",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "lyrics_srt"
      },
      "link": null
     }
@@ -1524,25 +1730,59 @@
     true,
     false,
     false,
-    "title only",
+    "tags",
+    "",
+    "",
+    "{date}",
+    "",
+    "{genre}",
+    "[Genre: {genre} · ][Mood: {mood} · ][Language: {language} · ]Powered by Plenio Music Production System / ComfyUI",
+    "",
+    "",
+    "{lyrics}",
     "off",
     "standard",
+    true,
     true
    ]
   },
   {
    "id": 16,
+   "type": "MarkdownNote",
+   "pos": [
+    3340,
+    0
+   ],
+   "size": [
+    460,
+    760
+   ],
+   "flags": {},
+   "order": 15,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "title": "Tags & variables",
+   "properties": {
+    "Node name for S&R": "MarkdownNote"
+   },
+   "widgets_values": [
+    "## Tags & variables\n\n**Export Release** writes these tags into the FLAC and MP3 files. Every tag field takes text with\n**variables** - or connect any text output to it (drag a link onto the field), such as a field of the brief.\n\n- `{genre}` - the value of a variable\n- `[Mood: {mood} · ]` - shown only when every variable inside has a value\n- `{{` and `}}` - literal braces\n\n**Song:** `{title}` `{lyrics}` `{style}` `{artwork_prompt}` `{duration}` `{bpm}` `{score_key}`\n\n**Brief:** `{description}` `{template}` `{mode}` `{genre}` `{mood}` `{tempo}` `{length}` `{vocals}` `{language}` `{voice}` `{theme}` `{melody}` `{lead_instrument}` `{key}` `{meter}` `{arrangement}` `{genre_closeness}` `{lines_under_singing}` `{harmony}` `{song_flow_closeness}` `{lyrics_closeness}`\n\n**Run:** `{date}` `{year}` `{time}` `{seed}` `{take_seed}` `{draft_seed}` `{arrangement_seed}`\n\n**Models:** `{model}` `{writer}` · **Plenio:** `{plenio_version}`\n\n**Tags:** `{artist}` `{album}` `{album_artist}` `{composer}` `{track}` (in the file name and the other tags)\n\nExamples - comment: `Genre: {genre}[, mood: {mood}][, sung in {language}]`; album: `{genre} Sessions {year}`;\nfile name: `{artist} - {title}`. A name that is no variable stops the run when you press **Run**, before\nanything renders.\n\n**Subtitles:** *lyrics subtitles (SRT)* (on) writes `<name> (lines).srt` - whole lines - and\n`<name> (notes).srt` - the lines painted on note by note - next to the song, timed by listening (the lyrics\nASR, 3.1 GB, fetched on first use).\n"
+   ]
+  },
+  {
+   "id": 17,
    "type": "9dbb5617-ccf9-5537-b674-405adb29958c",
    "pos": [
-    2320,
-    700
+    2460,
+    974
    ],
    "size": [
     340,
     170
    ],
    "flags": {},
-   "order": 15,
+   "order": 16,
    "mode": 4,
    "inputs": [
     {
@@ -1553,7 +1793,7 @@
      "widget": {
       "name": "text"
      },
-     "link": 27
+     "link": 28
     },
     {
      "localized_name": "noise_seed",
@@ -1582,8 +1822,8 @@
      "name": "IMAGE",
      "type": "IMAGE",
      "links": [
-      28,
-      29
+      29,
+      30
      ]
     }
    ],
@@ -1596,25 +1836,25 @@
    ]
   },
   {
-   "id": 17,
+   "id": 18,
    "type": "PreviewImage",
    "pos": [
-    2720,
-    700
+    2860,
+    974
    ],
    "size": [
     300,
     300
    ],
    "flags": {},
-   "order": 16,
+   "order": 17,
    "mode": 4,
    "inputs": [
     {
      "localized_name": "images",
      "name": "images",
      "type": "IMAGE",
-     "link": 29
+     "link": 30
     }
    ],
    "outputs": [
@@ -1803,17 +2043,17 @@
   ],
   [
    22,
-   12,
+   2,
    0,
-   13,
-   0,
-   "AUDIO"
+   15,
+   4,
+   "PLENIO_BRIEF"
   ],
   [
    23,
-   13,
+   12,
    0,
-   14,
+   13,
    0,
    "AUDIO"
   ],
@@ -1821,12 +2061,20 @@
    24,
    13,
    0,
-   15,
+   14,
    0,
    "AUDIO"
   ],
   [
    25,
+   13,
+   0,
+   15,
+   0,
+   "AUDIO"
+  ],
+  [
+   26,
    12,
    0,
    15,
@@ -1834,7 +2082,7 @@
    "AUDIO"
   ],
   [
-   26,
+   27,
    7,
    0,
    15,
@@ -1842,41 +2090,33 @@
    "STRING"
   ],
   [
-   27,
+   28,
    7,
    4,
-   16,
+   17,
    0,
    "STRING"
   ],
   [
-   28,
-   16,
+   29,
+   17,
    0,
    15,
    3,
    "IMAGE"
   ],
   [
-   29,
-   16,
-   0,
+   30,
    17,
+   0,
+   18,
    0,
    "IMAGE"
   ],
   [
-   30,
-   7,
-   7,
-   15,
-   4,
-   "PLENIO_REPORT"
-  ],
-  [
    31,
-   10,
-   1,
+   7,
+   7,
    15,
    5,
    "PLENIO_REPORT"
@@ -1884,22 +2124,22 @@
   [
    32,
    10,
-   2,
+   1,
    15,
    6,
    "PLENIO_REPORT"
   ],
   [
    33,
-   12,
-   1,
+   10,
+   2,
    15,
    7,
    "PLENIO_REPORT"
   ],
   [
    34,
-   13,
+   12,
    1,
    15,
    8,
@@ -1908,9 +2148,17 @@
   [
    35,
    13,
-   2,
+   1,
    15,
    9,
+   "PLENIO_REPORT"
+  ],
+  [
+   36,
+   13,
+   2,
+   15,
+   10,
    "PLENIO_REPORT"
   ]
  ],
@@ -1919,7 +2167,7 @@
    "id": 1,
    "title": "STEMS (optional)",
    "bounding": [
-    1770,
+    1910,
     360,
     320,
     130
@@ -1932,7 +2180,7 @@
    "id": 2,
    "title": "REFINE (48 kHz)",
    "bounding": [
-    1770,
+    1910,
     550,
     420,
     640
@@ -1945,10 +2193,10 @@
    "id": 3,
    "title": "5 · FINISH",
    "bounding": [
-    2290,
+    2430,
     -70,
-    840,
-    694
+    900,
+    954
    ],
    "color": "#3f789e",
    "font_size": 24,
@@ -1958,8 +2206,8 @@
    "id": 4,
    "title": "COVER ART (optional)",
    "bounding": [
-    2290,
-    630,
+    2430,
+    904,
     760,
     400
    ],
@@ -1973,8 +2221,8 @@
    "bounding": [
     -30,
     -70,
-    440,
-    890
+    580,
+    1170
    ],
    "color": "#3f789e",
    "font_size": 24,
@@ -1984,10 +2232,10 @@
    "id": 6,
    "title": "2 · WRITE",
    "bounding": [
-    430,
+    570,
     -70,
     420,
-    730
+    810
    ],
    "color": "#3f789e",
    "font_size": 24,
@@ -1997,7 +2245,7 @@
    "id": 7,
    "title": "3 · SHEET",
    "bounding": [
-    870,
+    1010,
     -70,
     480,
     560
@@ -2010,10 +2258,10 @@
    "id": 8,
    "title": "4 · RENDER",
    "bounding": [
-    1370,
+    1510,
     -70,
-    380,
-    500
+    400,
+    580
    ],
    "color": "#3f789e",
    "font_size": 24,
@@ -2024,7 +2272,7 @@
    "title": "MUSIC MODEL",
    "bounding": [
     -30,
-    870,
+    1150,
     320,
     130
    ],
@@ -7606,8 +7854,16 @@
      "seed"
     ],
     [
+     8,
+     "keep_seed"
+    ],
+    [
      5,
      "seed"
+    ],
+    [
+     5,
+     "keep_seed"
     ],
     [
      12,

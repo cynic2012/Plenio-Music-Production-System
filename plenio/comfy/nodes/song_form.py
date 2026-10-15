@@ -48,11 +48,9 @@ class PlenioMatchSongForm(io.ComfyNode):
             display_name="Match Song Form",
             category="Plenio/Score",
             description=(
-                "Makes the planned score fit the lyrics' song form: sections of the same kind put in the lyrics' "
-                "order (chorus words on the chorus melody), or named after the lyrics when the kinds differ. When "
-                "neither works, a second plan (the alternative, planned only then) is tried and the better one "
-                "wins; a section kind the plans do not have takes a related section's melody (a bridge a verse's). "
-                "Only the sections move - YuE2's notes stay. Instrumentals pass through."
+                "Makes the planned score fit the lyrics' song form: sections put in the lyrics' order (chorus words on "
+                "the chorus melody) or named after the lyrics. When neither works, a second plan is tried and the "
+                "better one wins. Only the sections move - YuE2's notes stay. Instrumentals pass through."
             ),
             inputs=[
                 io.String.Input(

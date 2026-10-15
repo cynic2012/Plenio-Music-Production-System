@@ -120,17 +120,15 @@ class PlenioLocalLLM(io.ComfyNode):
                     default=True,
                     optional=True,
                     advanced=True,
-                    tooltip="On: a request answered before (same model file or app model, prompt, seed and "
-                    "settings) is answered from Plenio's answer cache (user/plenio/cache/llm) - no call, also "
-                    "after a restart or when an earlier node ran again. Off: always ask the model.",
+                    tooltip="On: a request answered before (same model, prompt, seed and settings) is answered from "
+                    "Plenio's cache (user/plenio/cache/llm), also after a restart. Off: always ask the model.",
                 ),
                 io.String.Input(
                     "schema",
                     optional=True,
                     force_input=True,
                     tooltip="Optional JSON schema of the answer (Compose Arrangement provides one): GGUF files, "
-                    "LM Studio, Ollama and vLLM are held to it while they write, so the answer always has that "
-                    "format. Apps without this feature answer freely.",
+                    "LM Studio, Ollama and vLLM keep to it while they write; other apps answer freely.",
                 ),
             ],
             outputs=[

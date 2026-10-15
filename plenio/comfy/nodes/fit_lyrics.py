@@ -78,10 +78,9 @@ class PlenioFitLyrics(io.ComfyNode):
             category="Plenio/Writing",
             description=(
                 "New cover lyrics against the melody: every line against the notes of its phrase (about one "
-                "syllable per note; one or two fewer are sung as a melisma). Lines that do not fit go back to the "
-                "writer with their targets - only those lines, at most twice: chain three of these nodes (the "
-                "Write Song block does), a writer between them. The last shortens a line still one or two "
-                "syllables too long (I am -> I'm). Songs, original lyrics and instrumentals pass through."
+                "syllable per note). Lines that do not fit go back to the writer with their targets, at most twice "
+                "(the Write Song block chains three of these nodes); the last shortens a line still a syllable or "
+                "two too long. Songs, original lyrics and instrumentals pass through."
             ),
             inputs=[
                 io.String.Input(

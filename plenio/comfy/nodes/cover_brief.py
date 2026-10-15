@@ -26,45 +26,51 @@ from .. import host
 from ..shared import mode_library, mode_names, template_library
 from ..types import Brief
 from .brief import (
-    EXPERIMENTAL,
     SONG_SEED_TOOLTIP,
     UNDER_SINGING_TOOLTIP,
     arrangement_line,
-    arrangement_tooltip,
     check_arrangement,
+    field_outputs,
+    field_values,
     mode_line,
     series_song,
 )
 
 MODE_TOOLTIP = (
-    "one cover, stop to review: Song Sheet · Score and Song Sheet · Text stop so you can check the transcription "
-    "and the lyrics; later runs keep them and render new takes. new cover every run: each run writes a different "
-    "version (title, style and - for new lyrics - the lyrics, with its own draft seed) and renders it; the "
-    "transcription of the source is reused. A Song Sheet set to 'stop for review' stops each new version; after "
-    "Approve the next run renders it, the run after it writes the next one."
+    "one cover, stop to review: the Song Sheets stop so you can check the transcription and the lyrics; later "
+    "runs render new takes. new cover every run: each run writes and renders another version."
 )
 COVER_INPUTS = ("mode", "template", "description", "genre", "mood", "vocals", "harmony", "title")
 ARRANGEMENT_TOOLTIP = (
-    "off: no arrangement - the transcribed score stays as it is. A creative mode (above, or your own file in "
-    "user/plenio/arrangement) adds its hints to the writing prompt and lets the writer model re-arrange the "
-    "score's sections within the song flow closeness: chords, what the instrument line plays, energy. The form "
-    "always stays; below song flow closeness 80 the melody follows the new chords. Plenio writes the "
-    "notes itself and checks the result; a plan it cannot use leaves the transcription as it was (the score's "
-    "Song Sheet says so). " + EXPERIMENTAL
+    "off (default): the transcribed score stays as it is. A creative mode (experimental) re-arranges the "
+    "sections within the song flow closeness; the line under the brief says what the chosen mode does."
 )
 SONG_FLOW_TOOLTIP = (
-    "Creative modes only (off ignores it; experimental): how close the cover's song flow stays to the "
-    "original - 100 exactly the original (nothing is planned), 80 chords, key and tempo stay (only silent sections "
-    "get a line), 50 recognisable (chords recoloured, lines changed, a small key lift; melody notes that clash "
-    "move onto the new chords), 20 a free version (new chords and lines, another tempo, the melody written anew "
-    "over the chords in its old rhythm), 0 only a hint of the original. The form always remains."
+    "Creative modes only (experimental): how close the cover stays to the original - 100 exactly, 80 chords "
+    "and key stay, 50 recognisable, 20 a free version, 0 only a hint. The form always stays."
 )
 LYRICS_CLOSENESS_TOOLTIP = (
-    "New lyrics only (experimental): how close they stay to the source's lyrics - 0 written without the source's text "
-    "(default), 1-29 only a hint of it, 30-59 its theme and mood, 60-89 its story in new words, 90-100 its meaning "
-    "line by line (a singable translation when the language differs). Above 0 the source's lyrics are "
-    "transcribed for the writer (lyrics ASR); the source must have clear singing."
+    "New lyrics only (experimental): how close they stay to the source's lyrics - 0 without its text "
+    "(default), 30 its theme, 60 its story, 90-100 its meaning line by line."
 )
+
+COVER_FIELD_OUTPUTS: tuple[tuple[str, str, str], ...] = (
+    ("template", "STRING", "The brief template ('' for none)."),
+    ("genre", "STRING", "The genre (the template's when the field is empty)."),
+    ("mood", "STRING", "The mood."),
+    ("vocals", "STRING", "original lyrics, new lyrics or instrumental."),
+    ("language", "STRING", "The language of the lyrics ('' for an instrumental)."),
+    ("voice", "STRING", "The vocal character."),
+    ("theme", "STRING", "What new lyrics are about."),
+    ("harmony", "STRING", "new accompaniment or keep original chords."),
+    ("arrangement", "STRING", "The creative mode."),
+    ("song_flow_closeness", "INT", "The song flow closeness (0-100)."),
+    ("lyrics_closeness", "INT", "The lyrics closeness of new lyrics (0-100)."),
+    ("lines_under_singing", "BOOLEAN", "Whether instrument lines also sound under the singing."),
+)
+"""The brief's fields as outputs, as the Song Brief has them (owner's request 2026-10-15)."""
+VOCAL_LABELS = {value: label for label, value in COVER_VOCALS.items()}
+HARMONY_LABELS = {value: label for label, value in HARMONY_OPTIONS.items()}
 
 
 SOURCE_TOOLTIP = (
@@ -207,9 +213,8 @@ class PlenioCoverBrief(io.ComfyNode):
                             ],
                         ),
                     ],
-                    tooltip="instrumental (the node's default): an instrument plays the vocal melody, or "
-                    "accompaniment only. original lyrics: the source's words, transcribed (the 2 · YuE2 · Cover "
-                    "template starts with these). new lyrics: new words on the source's melody.",
+                    tooltip="original lyrics: the source's words, transcribed. new lyrics: new words on the source's "
+                    "melody. instrumental: an instrument plays the vocal melody, or accompaniment only.",
                 ),
                 io.Combo.Input(
                     "harmony",
@@ -224,8 +229,7 @@ class PlenioCoverBrief(io.ComfyNode):
                     default="",
                     advanced=True,
                     tooltip="Optional fixed title, e.g. 'Original Title (Jazz Cover)'. Empty: the source recording's "
-                    "title with '-cover' (its title tag, else its file name) when 'source' is connected, as in the "
-                    "template; without it the writer proposes one.",
+                    "title with '-cover' when 'source' is connected; else the writer proposes one.",
                 ),
                 # appended: a saved workflow's values are assigned by position, new widgets go last
                 io.Combo.Input(
@@ -234,7 +238,7 @@ class PlenioCoverBrief(io.ComfyNode):
                     options=mode_names(),
                     default=ARRANGEMENT_DEFAULT,
                     optional=True,  # an API prompt of an older version runs as before (off)
-                    tooltip=arrangement_tooltip(ARRANGEMENT_TOOLTIP),
+                    tooltip=ARRANGEMENT_TOOLTIP,
                 ),
                 io.Int.Input(
                     "song_flow_closeness",
@@ -279,6 +283,8 @@ class PlenioCoverBrief(io.ComfyNode):
                 io.Int.Output(
                     display_name="song_seed", tooltip=SONG_SEED_TOOLTIP.replace("and plan seeds", "seed")
                 ),
+                # appended: saved links keep their slots
+                *field_outputs(COVER_FIELD_OUTPUTS),
             ],
             hidden=[io.Hidden.prompt, io.Hidden.unique_id],
         )
@@ -359,5 +365,9 @@ class PlenioCoverBrief(io.ComfyNode):
             brief.use_source_lyrics,
             brief.instrumental,
             brief.song_seed,
+            *field_values(
+                replace(brief, vocals=VOCAL_LABELS[brief.vocals], harmony=HARMONY_LABELS[brief.harmony]),
+                COVER_FIELD_OUTPUTS,
+            ),
             ui={"plenio_summary": [{"status": status, "markdown": _summary(brief, title_from)}]},
         )

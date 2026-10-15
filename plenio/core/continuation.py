@@ -120,16 +120,19 @@ def workflow_nodes(workflow: Mapping[str, Any]) -> dict[str, WorkflowNode]:
     return nodes
 
 
+ROLES = {"SeedNode": "PlenioSeed"}
+"""Classes that took another's place in the templates: 0.8.1 replaced ComfyUI's *Seed* with *Plenio · Seed*
+(same input ``seed``, same titles), so an older record's seeds land on the new nodes."""
+
+
 def _prompt_nodes(prompt: Mapping[str, Any]) -> dict[str, tuple[str, str | None]]:
-    """Execution id -> (class, title) of the prompt's nodes."""
+    """Execution id -> (class, title) of the prompt's nodes (a class in ``ROLES`` as its successor)."""
     nodes: dict[str, tuple[str, str | None]] = {}
     for node_id, node in prompt.items():
         if isinstance(node, Mapping) and _EXECUTION_ID.match(str(node_id)):
             title = (node.get("_meta") or {}).get("title")
-            nodes[str(node_id)] = (
-                str(node.get("class_type", "")),
-                str(title) if isinstance(title, str) else None,
-            )
+            kind = str(node.get("class_type", ""))
+            nodes[str(node_id)] = (ROLES.get(kind, kind), str(title) if isinstance(title, str) else None)
     return nodes
 
 
