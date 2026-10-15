@@ -1611,7 +1611,7 @@ def song_sheet(g: Graph, pos: tuple[float, float], title: str) -> Node:
     )
 
 
-SEED_SIZE = (340, 170)
+SEED_SIZE = (340, 190)
 """A Plenio · Seed: the number, the switch, the 🎲 button and the line that says what the switch means."""
 
 
@@ -1930,7 +1930,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     model_node = g.add_subgraph(bp["yue2_model"], (0, 940), size=(380, 140), collapsed=True)
     write = g.add_subgraph(bp["write"], (460, 0), size=(360, 220))
     draft = draft_seed(g, write, (460, 280))
-    writer = writer_model(g, (460, 490))
+    writer = writer_model(g, (460, 520))
     text_sheet = song_sheet(g, (900, 0), "Song Sheet · Text")
     plan = g.add_subgraph(bp["yue2_plan"], (1400, 0), size=(340, 220))
     tools = g.add(
@@ -2148,7 +2148,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     )
     write = g.add_subgraph(bp["write"], (1380, 360), size=(360, 260))
     draft = draft_seed(g, write, (1380, 680))
-    writer = writer_model(g, (1380, 890))
+    writer = writer_model(g, (1380, 920))
     source_switch = g.add("ComfySwitchNode", (1800, 0), size=(260, 90), title="Original or new lyrics")
     tags_switch = g.add("ComfySwitchNode", (1800, 165), size=(260, 90), title="Instrumental: section tags")
     text_sheet = song_sheet(g, (2135, 10), "Song Sheet · Text")
@@ -2338,7 +2338,7 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     model_node = g.add_subgraph(bp["minimax_model"], (0, 940), size=(380, 160), collapsed=True)
     write = g.add_subgraph(bp["write"], (460, 0), size=(360, 220))
     draft = draft_seed(g, write, (460, 280))
-    writer = writer_model(g, (460, 490))
+    writer = writer_model(g, (460, 520))
     sheet = song_sheet(g, (900, 0), "Song Sheet")
     seed = take_seed(g, (1400, 0))
     render = g.add_subgraph(bp["minimax_render"], (1400, 230), size=(320, 250))
@@ -2461,7 +2461,7 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     model_node = g.add_subgraph(bp["yue2_model"], (0, 940), size=(380, 140), collapsed=True)
     write = g.add_subgraph(bp["write"], (460, 0), size=(360, 220))
     draft = draft_seed(g, write, (460, 280))
-    writer = writer_model(g, (460, 490))
+    writer = writer_model(g, (460, 520))
     text_sheet = song_sheet(g, (900, 0), "Song Sheet · Text")
     tools = g.add(
         "PlenioScoreTools",

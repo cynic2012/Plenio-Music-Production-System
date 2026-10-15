@@ -19,6 +19,7 @@ export const SEED_NODE = 'PlenioSeed'
 export const SEED_LIMIT = 2 ** 32
 export const PART_PROPERTY = 'plenio_part'
 const HINT_WIDGET = 'plenio_seed_hint'
+const HINT_HEIGHT = 56
 
 export const LOOKS = {
   fresh: { color: '#7a5418', bgcolor: '#3b2a10' },
@@ -97,8 +98,9 @@ export function setUpSeed(node: ComfyNode, random: () => number = Math.random): 
       serialize: false,
       getValue: () => '',
       setValue: () => {},
-      getMinHeight: () => 40,
-      getMaxHeight: () => 40
+      // two lines of text and the frontend's margin of 10 px above and below a DOM widget
+      getMinHeight: () => HINT_HEIGHT,
+      getMaxHeight: () => HINT_HEIGHT
     })
     hint.serialize = false
   }

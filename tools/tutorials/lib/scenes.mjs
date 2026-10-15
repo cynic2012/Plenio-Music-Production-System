@@ -577,6 +577,17 @@ export async function exportExtras(s, node = 'PlenioExportRelease', { lyrics = t
       (key) => window.__tut.node(key).widgets?.find((w) => w.name === 'plenio_summary')?.element?.getBoundingClientRect().toJSON(),
       node
     )
+  // a long summary is clipped by the node: let it show all (as sheetMusicSaved does)
+  await s.page.evaluate((key) => {
+    const n = window.__tut.node(key)
+    const el = n.widgets?.find((w) => w.name === 'plenio_summary')?.element
+    const extra = el ? el.scrollHeight - el.clientHeight : 0
+    if (extra > 0) {
+      n.setSize([n.size[0], n.size[1] + extra + 12])
+      window.app.canvas.setDirty(true, true)
+    }
+  }, node)
+  await s.wait(400)
   await s.flyNodes([node], 1100, 0.9)
   const subtitles = lyrics
     ? 'Export also wrote the lyrics as subtitles: whole lines, and the lines painted on note by note - timed by listening to the song.'
