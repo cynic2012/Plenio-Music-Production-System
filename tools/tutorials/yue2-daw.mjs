@@ -6,7 +6,7 @@
 // assets/Open Window Sketch.abc is its score), or $PLENIO_TUTORIAL_MIDI.
 
 import path from 'node:path'
-import { barsDemo, cursorDemo, editorTour, filesDemo, recordDemo, sheetMusicSaved, showApproved, simulateKeyboard, soundsDemo } from './lib/scenes.mjs'
+import { barsDemo, cursorDemo, editorTour, exportExtras, filesDemo, recordDemo, sheetMusicSaved, showApproved, simulateKeyboard, soundsDemo } from './lib/scenes.mjs'
 import { DIALOG, approve, fixSections, maximize, openSheet, scrollToVoice, tab, trimSections } from './lib/sheet.mjs'
 import { FOOT } from './lib/studio.mjs'
 
@@ -203,6 +203,7 @@ export default async function daw(s, { project }) {
   await s.follow({ stages: { [RENDER]: STAGES[RENDER], [MASTER]: STAGES[MASTER] }, groups: GROUPS })
   await afterRun(s, 'Done: your melody, your chords - sung by YuE2.')
   await sheetMusicSaved(s, EXPORT, 'Export also saved your score as sheet music - both voices, the chords and the lyrics, as a PDF next to the song.')
+  await exportExtras(s, EXPORT)
   s.caption('Every further Run renders a new take of the same score.')
   await s.flyGroups(all, 1600)
   await s.read('Every further Run renders a new take of the same score.', 3800)

@@ -54,6 +54,15 @@ MiniMax takes no score, so a creative mode only shapes the writing. Off is fine.
 @ The Writer model writes caption and lyrics
 The writer model writes caption and lyrics: Gemma 4, or a local LLM.
 
+@ The Draft seed is blue
+The seeds decide what changes on the next run. The Draft seed is blue: it keeps its number, so the caption and the lyrics stay the same on every run.
+
+@ The Take seed is amber
+The Take seed is amber: before every run, it draws a new number, so every run is a new take.
+
+@ The number shown is always
+The number you see is always the one that made what you hear. Like a take? One click on the switch, and it stays.
+
 @ Press Run.
 And press Run.
 
@@ -71,6 +80,15 @@ and Master and Export finish it.
 
 @ Done: the finished song | +6
 Done! Let's listen.
+
+@ Export also wrote the lyrics as subtitles
+Export also wrote the lyrics as subtitles: whole lines, and lines that build up note by note, timed by listening to the song. Ready for a lyric video.
+
+@ The tags come from the brief
+And the tags come from the brief: genre, mood, even the lyrics, written as variables in curly braces.
+
+@ The note beside Export lists every variable
+The note right next to Export lists every variable you can use.
 
 @ Run again for another song
 Run again for another song, or set a number next to Run for a whole series.

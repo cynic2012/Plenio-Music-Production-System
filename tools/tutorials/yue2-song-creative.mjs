@@ -92,6 +92,14 @@ export default async function songCreative(s) {
   s.caption('We take “dramatic”: one long arc, from a quiet start to a big last chorus.')
   await s.click(page.locator('.litecontextmenu .litemenu-entry', { hasText: 'dramatic' }).first(), { pause: 400 })
   await s.read('We take “dramatic”: one long arc, from a quiet start to a big last chorus.', 4600)
+  // 0.8.1: the brief's panel says what the chosen mode does
+  const modeLine = page.locator('.plenio-brief-template .mode').first()
+  await modeLine.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+  if (await modeLine.isVisible().catch(() => false)) {
+    s.caption('The line under the brief says what the chosen mode does.')
+    await s.spotlight(modeLine, { ms: 3200, pad: 6 })
+    await s.read('The line under the brief says what the chosen mode does.', 4200)
+  }
   s.caption('genre closeness: how typical the song stays - 100 strictly typical, 70 with personal touches, 40 free within the genre, 0 any style.')
   await s.slide(BRIEF, 'genre_closeness', 55)
   await s.read('genre closeness: how typical the song stays - 100 strictly typical, 70 with personal touches, 40 free within the genre, 0 any style.', 7000)
@@ -106,9 +114,9 @@ export default async function songCreative(s) {
   await s.read('In SCORE, the block Arrange: after YuE2’s plan it asks the writer for a section plan - the chords, what the instrument line plays, the energy.', 7400)
   s.caption('The writer never writes notes: Plenio writes every note itself and checks the score. A plan it cannot use leaves the score as it was.')
   await s.read('The writer never writes notes: Plenio writes every note itself and checks the score. A plan it cannot use leaves the score as it was.', 7200)
-  s.caption('Arrangement seed: another arrangement of the same song.')
+  s.caption('The Arrangement seed is blue: 🔒 it keeps the arrangement - another number gives another arrangement of the same song.')
   await s.spotlight(await s.widgetBox(SEED, 'seed'), { ms: 2400 })
-  await s.read('Arrangement seed: another arrangement of the same song.', 3600)
+  await s.read('The Arrangement seed is blue: 🔒 it keeps the arrangement - another number gives another arrangement of the same song.', 5600)
 
   // --- part 1: one song, stop to review -------------------------------------------------------------
   s.card('chapter', {

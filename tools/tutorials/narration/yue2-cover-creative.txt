@@ -28,6 +28,9 @@ In the Cover Brief: arrangement. Off, the default, keeps the transcription as it
 @ A creative mode lets the writer model re-arrange
 A creative mode lets the writer model re-arrange every section. We take many instruments: a full ensemble.
 
+@ The line under the brief says | optional
+The line under the brief tells you what the chosen mode does.
+
 @ song flow closeness: how close the music stays
 Song flow closeness: a hundred is the original exactly, eighty keeps chords, key and melody, fifty stays recognisable, twenty is a free version.
 

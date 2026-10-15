@@ -70,7 +70,7 @@ Measured, not guessed: minus fourteen LUFS. Target reached.
 Let's listen to the master.
 
 @ Export: FLAC and MP3
-Export wrote a FLAC and an MP3 with the source's tags, the original, and a release record, which the FLAC carries, too. No sheet music: a recording has no score.
+Export wrote a FLAC and an MP3 with the source's tags, the original, and a release record, which the FLAC carries, too. And subtitles of the words it heard. No sheet music, though: a recording has no score.
 
 @ card Your own sound
 Part two: make it your own sound.

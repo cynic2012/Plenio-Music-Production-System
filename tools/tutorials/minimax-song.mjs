@@ -2,7 +2,7 @@
 // song with its review stop - the Song Sheet (the caption in three parts, the lyrics, the exact token
 // budget, Approve) - and the finished song. MiniMax Music 3 takes no score, so there is one sheet.
 
-import { showApproved } from './lib/scenes.mjs'
+import { exportExtras, seedsDemo, showApproved } from './lib/scenes.mjs'
 import { approve, maximize, openSheet, tab } from './lib/sheet.mjs'
 import { FOOT } from './lib/studio.mjs'
 
@@ -101,12 +101,14 @@ export default async function minimax(s) {
   await s.flyNodes([WRITER], 1000, 0.9)
   await s.spotlight(await s.widgetBox(WRITER, 'model'), { ms: 2400 })
   await s.read('The Writer model writes caption and lyrics: Gemma 4 by default - or a local LLM from your machine.', 4800)
+  await seedsDemo(s, { what: 'caption and lyrics' })
 
   s.caption('Press Run.')
   await s.resetRunState()
   await s.run()
   await s.follow({ stages: STAGES, groups: GROUPS })
   await afterRun(s, 'Done: the finished song is in Preview (mastered).')
+  await exportExtras(s, EXPORT)
   s.caption('Run again for another song - or set a number next to Run for a whole series.')
   await s.hover(page.locator('button', { hasText: /^\s*Run\s*$/ }).first())
   await s.wait(3800)

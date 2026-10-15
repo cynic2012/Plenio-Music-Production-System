@@ -2,8 +2,9 @@
 
 Scripts that drive the real ComfyUI frontend with Plenio and the real models in Chromium, record the
 screen and cut a finished 1920 x 1080 video with an English voice-over and an effects track (all
-re-recorded for 0.8.0: arrangement *off* by default, the thirteen creative modes, a cover's melody that
-follows the new chords, continuing a song from its record or its FLAC):
+re-recorded for 0.8.1: arrangement *off* by default, the thirteen creative modes, a cover's melody that
+follows the new chords, continuing a song from its record or its FLAC, the seeds' 🎲/🔒 switch, the export's
+lyrics subtitles and tags with variables, the brief's line for the chosen creative mode):
 
 | Script | Video |
 |---|---|
@@ -135,5 +136,7 @@ output also goes to a recorder) and cut like the picture into `audio/editor.wav`
 plays at normal speed, and the picture never plays faster while it sounds. `lib/voice.mjs` reads the narration and the lexicon and makes
 the speech.
 
-The writer, plan and draft seeds of the templates are fixed, so a second recording with the same brief
-gets the same lyrics and score; the take seed is random, so each recording renders a new take.
+The writer, plan and draft seeds of the templates keep their number (🔒), so a second recording with the
+same brief gets the same lyrics and score; the take seed draws a new one before every run (🎲), so each
+recording renders a new take. `seedsDemo` (lib/scenes.mjs) shows the switch, `exportExtras` the export's
+subtitles, its tags and the *Tags & variables* note.

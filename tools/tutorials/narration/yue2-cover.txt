@@ -303,6 +303,15 @@ And there it is: the approved cover, finished and exported. [pause:0.5s] Enjoy!
 @ Export also saved the sheet music
 Export saved the sheet music as well, with the original words under the notes.
 
+@ Export also wrote the lyrics as subtitles
+Export also wrote the lyrics as subtitles: whole lines, and lines that build up note by note, timed by listening to the song. Ready for a lyric video.
+
+@ The tags come from the brief
+And the tags come from the brief: genre, mood, even the lyrics, written as variables in curly braces.
+
+@ The note beside Export lists every variable
+The note right next to Export lists every variable you can use.
+
 @ Every further Run
 Every further run renders a new take of the same cover.
 

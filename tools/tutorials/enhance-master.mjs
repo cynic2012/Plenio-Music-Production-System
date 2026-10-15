@@ -128,11 +128,11 @@ export default async function enhance(s, { project }) {
   await s.wait(5600)
 
   await afterRun(s, 'Listen in the preview.')
-  s.caption('Export: FLAC and MP3 with the source’s tags, the unmastered source as (original), and a release record - the FLAC carries it too. Sheet music stays off: a recording has no score.')
+  s.caption('Export: FLAC and MP3 with the source’s tags, the unmastered source as (original), a release record - the FLAC carries it too - and subtitles of the words it heard. A recording has no score, so no sheet music.')
   await s.flyNodes([EXPORT], 1000, 0.9)
   const files = await summaryBox(s, EXPORT).catch(() => null)
   if (files) await s.spotlight(files, { ms: 3000, pad: 4 })
-  await s.read('Export: FLAC and MP3 with the source’s tags, the unmastered source as (original), and a release record - the FLAC carries it too. Sheet music stays off: a recording has no score.', 6000)
+  await s.read('Export: FLAC and MP3 with the source’s tags, the unmastered source as (original), a release record - the FLAC carries it too - and subtitles of the words it heard. A recording has no score, so no sheet music.', 6000)
 
   // --- part 2: your own sound ---------------------------------------------------------------------
   s.card('chapter', {

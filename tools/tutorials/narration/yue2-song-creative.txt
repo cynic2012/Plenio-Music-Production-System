@@ -31,6 +31,9 @@ Only key change changes the key. Every other mode keeps it.
 @ We take “dramatic”
 We take dramatic: one long arc, from a quiet start to a big last chorus.
 
+@ The line under the brief says | optional
+The line under the brief tells you what the chosen mode does.
+
 @ genre closeness: how typical
 Genre closeness sets how typical the song stays. A hundred is strictly by the book, seventy adds personal touches, forty is free within the genre, and zero borrows from any style.
 
@@ -43,8 +46,8 @@ Third, the Arrange block: after YuE2's plan, the writer plans each section's cho
 @ The writer never writes notes
 The writer never writes notes: Plenio does, and checks them. A plan it can't use changes nothing.
 
-@ Arrangement seed: another arrangement
-The arrangement seed gives another arrangement.
+@ The Arrangement seed is blue
+The arrangement seed is blue: it keeps the arrangement. Give it another number, and you get another arrangement of the same song.
 
 @ card A dramatic song
 Part one: a dramatic song, with stops to review the text and the arranged score.

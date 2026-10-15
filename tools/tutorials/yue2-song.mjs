@@ -11,9 +11,11 @@ import {
   continueDemo,
   cursorDemo,
   editorTour,
+  exportExtras,
   filesDemo,
   lyricsDemo,
   recordDemo,
+  seedsDemo,
   sheetMusicSaved,
   showApproved,
   simulateKeyboard,
@@ -128,6 +130,7 @@ export default async function song(s) {
   await s.flyNodes([WRITER], 1000, 0.9)
   await s.spotlight(await s.widgetBox(WRITER, 'model'), { ms: 2400 })
   await s.read('The Writer model writes the text: Gemma 4 by default - or a local LLM from your machine.', 4800)
+  await seedsDemo(s)
 
   s.caption('Press Run.')
   await s.resetRunState()
@@ -135,6 +138,7 @@ export default async function song(s) {
   await s.follow({ stages: STAGES, groups: GROUPS })
   await afterRun(s, 'Done: the finished song is in Preview (mastered).')
   await sheetMusicSaved(s, EXPORT, 'Export wrote the mastered FLAC - it carries the whole project - the unmastered take, a release record and the sheet music with the lyrics as a PDF.')
+  await exportExtras(s, EXPORT)
   s.caption('Press Run again for another, different song - or set a number next to Run for a whole series.')
   const batch = page.locator('.actionbar input, .queue-button-group input, [data-testid="batch-count-edit"] input').first()
   if (await batch.count()) await s.spotlight(batch, { ms: 2600, pad: 10 })
@@ -232,9 +236,9 @@ export default async function song(s) {
     groups: GROUPS,
   })
   await afterRun(s, 'The approved song is finished and exported.')
-  s.caption('Every further Run renders a new take of the same approved song.')
+  s.caption('Every further Run renders a new take of the same approved song - the amber Take seed draws a new number each time.')
   await s.flyGroups(['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · SCORE', '5 · RENDER', '6 · FINISH'], 1600)
-  await s.read('Every further Run renders a new take of the same approved song.', 3800)
+  await s.read('Every further Run renders a new take of the same approved song - the amber Take seed draws a new number each time.', 5200)
   await continueDemo(s)
   s.card('end', {
     title: 'Next: 2 · YuE2 · Cover',

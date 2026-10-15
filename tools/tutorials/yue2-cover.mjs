@@ -5,7 +5,7 @@
 // score still editable there) - and the finished cover. The source is the repository's sample song.
 
 import path from 'node:path'
-import { arrangeDemo, cursorDemo, editorTour, filesDemo, sheetMusicSaved, showApproved, soundsDemo } from './lib/scenes.mjs'
+import { arrangeDemo, cursorDemo, editorTour, exportExtras, filesDemo, sheetMusicSaved, showApproved, soundsDemo } from './lib/scenes.mjs'
 import { DIALOG, approve, maximize, noteEditing, openSheet, scrollToVoice, tab } from './lib/sheet.mjs'
 import { FOOT } from './lib/studio.mjs'
 
@@ -225,6 +225,7 @@ export default async function cover(s, { project }) {
   await s.follow({ stages: { [TAKES]: STAGES[TAKES], [CHECK]: STAGES[CHECK], [MASTER]: STAGES[MASTER] }, groups: GROUPS })
   await afterRun(s, 'The approved cover is finished and exported.')
   await sheetMusicSaved(s, EXPORT, 'Export also saved the sheet music: your score with the original words under the notes, as a PDF next to the cover.')
+  await exportExtras(s, EXPORT)
   s.caption('Every further Run renders a new take of the same approved cover.')
   await s.flyGroups(all, 1600)
   await s.read('Every further Run renders a new take of the same approved cover.', 3800)

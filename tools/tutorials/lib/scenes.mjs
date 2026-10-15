@@ -546,6 +546,56 @@ export async function sheetMusicSaved(s, node, text) {
   await s.read(text, 6000)
 }
 
+// Plenio · Seed (0.8.1): one switch per seed - the draft seed blue (🔒 the same draft), the take seed amber
+// (🎲 a new seed before every run). The take seed's switch is flipped to 🔒 and back, so the run that follows
+// still renders a new take.
+export async function seedsDemo(s, { draft = 'Draft seed', take = 'Take seed', what = 'lyrics' } = {}) {
+  const keep = `The Draft seed is blue: 🔒 same seed - the same ${what} on every run.`
+  s.caption(keep)
+  await s.flyNodes([draft], 1000, 0.9)
+  await s.spotlight(await s.widgetBox(draft, 'keep_seed'), { ms: 2600, pad: 6 })
+  await s.read(keep, 4400)
+  const fresh = 'The Take seed is amber: 🎲 new seed - every run draws a new number before it starts, so every run is a new take.'
+  s.caption(fresh)
+  await s.flyNodes([take], 1000, 0.9)
+  const toggle = await s.widgetBox(take, 'keep_seed')
+  await s.spotlight(toggle, { ms: 2600, pad: 6 })
+  await s.read(fresh, 5600)
+  const flip = 'The number shown is always the one that made what you hear: liked a take? One click on the switch keeps it.'
+  s.caption(flip)
+  await s.click(toggle, { fx: 0.92, pause: 900 })
+  await s.wait(1600)
+  await s.click(toggle, { fx: 0.92, pause: 600 })
+  await s.read(flip, 5200)
+}
+
+// Export Release (0.8.1): the lyrics as subtitles next to the song, timed by listening, and the tags filled
+// from the brief with variables - the note beside the node lists them.
+export async function exportExtras(s, node = 'PlenioExportRelease', { lyrics = true } = {}) {
+  const box = async () =>
+    s.page.evaluate(
+      (key) => window.__tut.node(key).widgets?.find((w) => w.name === 'plenio_summary')?.element?.getBoundingClientRect().toJSON(),
+      node
+    )
+  await s.flyNodes([node], 1100, 0.9)
+  const subtitles = lyrics
+    ? 'Export also wrote the lyrics as subtitles: whole lines, and the lines painted on note by note - timed by listening to the song.'
+    : 'A song with lyrics also gets them as subtitles, timed by listening: whole lines, and the lines note by note.'
+  s.caption(subtitles)
+  const summary = await box()
+  if (summary?.width) await s.spotlight(summary, { ms: 3600, pad: 4 })
+  await s.read(subtitles, 6400)
+  const tags = 'The tags come from the brief: {genre}, {mood}, {lyrics} - variables in curly braces, or any connected text.'
+  s.caption(tags)
+  const comment = await s.widgetBox(node, 'tags.comment').catch(() => null)
+  if (comment) await s.spotlight(comment, { ms: 3200, pad: 6 })
+  await s.read(tags, 6000)
+  const note = 'The note beside Export lists every variable: the song, the brief, the run, the models.'
+  s.caption(note)
+  await s.flyNodes([node, 'Tags & variables'], 1100, 0.9)
+  await s.read(note, 5200)
+}
+
 // Continue a song (0.6.0; from the song's FLAC since 0.8.0): File > Continue a Plenio song… lists the songs
 // of the output folder, Continue opens the newest in the workflow it was made with.
 export async function continueDemo(s) {
