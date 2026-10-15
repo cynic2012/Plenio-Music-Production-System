@@ -32,7 +32,7 @@ A creative mode lets the writer model re-arrange every section. We take many ins
 The line under the brief tells you what the chosen mode does.
 
 @ song flow closeness: how close the music stays
-Song flow closeness: a hundred is the original exactly, eighty keeps chords, key and melody, fifty stays recognisable, twenty is a free version.
+Song flow closeness: a hundred is the original, eighty keeps chords and melody, fifty stays recognisable, twenty is free.
 
 @ Below 80 the melody follows the new chords
 Below eighty, the melody follows the new chords: from fifty, only clashing notes move; below fifty, Plenio writes it anew.

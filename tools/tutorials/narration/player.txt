@@ -7,7 +7,7 @@ Your songs deserve a proper stage. This is the Plenio Player.
 The Plenio Player plays the songs you made with Plenio, right in your browser. ComfyUI doesn't even need to run.
 
 @ Start it with ComfyUI’s Python
-Start it with ComfyUI's own Python: python, plenio underscore player dot py.
+Start it with ComfyUI's Python: python, plenio underscore player dot py.
 
 @ It finds every song Export Release wrote
 It finds every song Export Release wrote, and it never writes into their folder.
@@ -37,7 +37,7 @@ The waveform is the seek bar. It marks the sections, and under the mouse, it sho
 A click on the title opens the song's page.
 
 @ Its lyrics light up
-Its lyrics light up as they're sung. The times were measured by listening, when the song was exported.
+Its lyrics light up while they are sung. The times were measured by listening, when the song was exported.
 
 @ A click on a line plays | optional
 Click a line, and the song plays from there.

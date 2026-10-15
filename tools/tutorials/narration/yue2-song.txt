@@ -59,13 +59,13 @@ The length goes from about one minute up to six. We'll keep this one short.
 Vocals: a sung song, or an instrumental.
 
 @ arrangement: “off”
-Arrangement stays off: YuE2 plans everything itself. The creative modes have their own video, tutorial six.
+Arrangement stays off: YuE2 plans it all. Creative modes are tutorial six.
 
 @ The Writer model writes the text
 The writer model writes the text: Gemma 4 by default, or a local LLM.
 
 @ The Draft seed is blue
-The seeds decide what changes on the next run. The Draft seed is blue: it keeps its number, so the lyrics stay the same on every run.
+The Draft seed is blue: it keeps its number, so the lyrics stay the same.
 
 @ The Take seed is amber
 The Take seed is amber: before every run, it draws a new number, so every run is a new take.
@@ -95,7 +95,7 @@ Done! The finished song is right here, in the mastered preview. [pause:0.5s] Hav
 Export saved the mastered FLAC, with the whole project inside, the original take, and the sheet music as a PDF.
 
 @ Export also wrote the lyrics as subtitles
-Export also wrote the lyrics as subtitles: whole lines, and lines that build up note by note, timed by listening to the song. Ready for a lyric video.
+Export also wrote the lyrics as subtitles, timed by listening. Ready for a lyric video.
 
 @ The tags come from the brief
 And the tags come from the brief: genre, mood, even the lyrics, written as variables in curly braces.

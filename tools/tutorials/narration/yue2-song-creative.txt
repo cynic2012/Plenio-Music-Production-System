@@ -47,7 +47,7 @@ Third, the Arrange block: after YuE2's plan, the writer plans each section's cho
 The writer never writes notes: Plenio does, and checks them. A plan it can't use changes nothing.
 
 @ The Arrangement seed is blue
-The arrangement seed is blue: it keeps the arrangement. Give it another number, and you get another arrangement of the same song.
+The arrangement seed is blue: it keeps the arrangement until you change it.
 
 @ card A dramatic song
 Part one: a dramatic song, with stops to review the text and the arranged score.

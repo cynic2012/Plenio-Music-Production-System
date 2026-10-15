@@ -247,7 +247,7 @@ Done! Your melody, your chords, sung by YuE2. [pause:0.4s] Let's listen.
 Export also saved your score as sheet music, a PDF next to the song.
 
 @ Export also wrote the lyrics as subtitles
-Export also wrote the lyrics as subtitles: whole lines, and lines that build up note by note, timed by listening to the song. Ready for a lyric video.
+Export also wrote the lyrics as subtitles, timed by listening. Ready for a lyric video.
 
 @ The tags come from the brief
 And the tags come from the brief: genre, mood, even the lyrics, written as variables in curly braces.

@@ -24,7 +24,7 @@ What changed in each version is in the [changelog](CHANGELOG.md).
   <a href="https://youtu.be/q_dMH834E1o"><img src="assets/branding/0.4.5/promo.jpg" alt="Plenio - Music production in ComfyUI: the promo video on YouTube" width="70%" /></a>
 </p>
 
-**▶ [All tutorials as a YouTube playlist](https://www.youtube.com/playlist?list=PLAFqTtP59fgE)** - one narrated video for every template and two for the creative modes (English, 2 to 15 minutes, with chapters), recorded in ComfyUI with the real models: every song you hear in them was made right there. Watch them in order, or jump to the template you need.
+**▶ [All tutorials as a YouTube playlist](https://www.youtube.com/playlist?list=PLAFqTtP59fgE)** - one narrated video for every template, two for the creative modes and one for the Plenio Player (English, 2 to 15 minutes, with chapters), recorded in ComfyUI with the real models: every song you hear in them was made right there. Watch them in order, or jump to the template you need.
 
 | | Tutorial | What you will see |
 |:---:|---|---|
@@ -36,6 +36,7 @@ What changed in each version is in the [changelog](CHANGELOG.md).
 | <img src="assets/branding/0.4.5/tutorial-5-yue2-daw.jpg" alt="Tutorial 5 · YuE2 · DAW" width="180" /> | **5 · YuE2 · DAW** | Compose it yourself: the words first, then the music - draw the notes, import a MIDI sketch or play it in with a MIDI keyboard - and YuE2 sings your melody. |
 | <img src="assets/branding/0.4.5/tutorial-6-yue2-song-creative.jpg" alt="Tutorial 6 · YuE2 · Song · Creative modes" width="180" /> | **6 · YuE2 · Song · Creative modes** *(experimental)* | The writer model plans the arrangement, Plenio writes the notes: a *dramatic* song, its arranged score in the Song Sheet, the rendered song - and another arrangement from the arrangement seed. |
 | <img src="assets/branding/0.4.5/tutorial-7-yue2-cover-creative.jpg" alt="Tutorial 7 · YuE2 · Cover · Creative modes" width="180" /> | **7 · YuE2 · Cover · Creative modes** *(experimental)* | A recording re-arranged for a full ensemble, with new lyrics that keep its story - *song flow closeness* and *lyrics closeness*, A/B against the original, the cover and its sheet music. |
+| <img src="assets/branding/0.8.1/tutorial-8-player.jpg" alt="Tutorial 8 · Plenio Player" width="180" /> | **8 · Plenio Player** | Your songs in the browser, without ComfyUI: search, a page per song, the lyrics lit up as they are sung and the sheet music following the music, playlists, and Winamp-style visuals that move with the music. |
 
 ## Listen first
 

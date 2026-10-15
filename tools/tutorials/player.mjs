@@ -17,7 +17,7 @@ export const meta = {
 }
 
 // the music under the voice: the player's own volume (the edit ducks it a little more under the voice)
-const BED = 0.4, LOUD = 0.75
+const BED = 0.3, LOUD = 0.7
 
 // The music plays all through the video, and a hold in the edit would cut it: every caption waits as long
 // as its narration line will take to speak (about 68 ms a character, as the voice reads).
@@ -56,7 +56,7 @@ export async function prepare(s) {
     fetch('/api/state', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playlists: [], favorites: [], plays: {}, last_played: {}, settings: { volume: 0.4, crossfade: 3 } }),
+      body: JSON.stringify({ playlists: [], favorites: [], plays: {}, last_played: {}, settings: { volume: 0.3, crossfade: 3 } }),
     })
   )
   await s.page.evaluate(() => localStorage.setItem('plenio.view', 'stage'))
@@ -188,8 +188,9 @@ export default async function player(s) {
   await talk(s, 'A song can have a visual of its own, and so can a playlist: the song’s wins, then the playlist’s, then the mode.')
   await s.click(page.locator('.vpanel header .icon-btn'))
   await s.rest(400)
-  await setVolume(s, LOUD)
   await talk(s, 'N shows the next one.', 2400)
+  // no voice for a while: the music comes up
+  await setVolume(s, LOUD)
   for (let i = 0; i < 7; i++) {
     await s.keys('n')
     await s.wait(2600)
