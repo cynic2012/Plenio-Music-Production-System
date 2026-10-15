@@ -180,9 +180,9 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
     <p v-if="error" class="error">{{ error }}</p>
 
     <section v-if="tab === 'lyrics'" class="pane lyrics">
-      <template v-if="isCurrent && lyricsLines.length">
+      <div v-if="isCurrent && lyricsLines.length" class="karaoke-box">
         <Karaoke :lines="lyricsLines" :time="time" :plain="song.lyrics" />
-      </template>
+      </div>
       <ol v-else-if="lyricsLines.length" class="timed">
         <li v-for="(line, i) in lyricsLines" :key="i" :class="{ now: isCurrent && lineIndex === i }" @click="playFrom(line.start)">
           <span class="at">{{ formatTime(line.start) }}</span><span>{{ line.text }}</span>
@@ -371,6 +371,9 @@ h1 {
 }
 .lyrics {
   max-width: 900px;
+}
+.karaoke-box {
+  height: min(60vh, 600px);
 }
 .timed {
   list-style: none;

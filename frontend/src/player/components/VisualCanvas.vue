@@ -44,15 +44,18 @@ function use(id: string): void {
   if (!props.mini) emit('change', preset.id)
 }
 
-function pick(newTurn = false): void {
+/** The visual by the rules (``newTurn``: the song's next change); ``asked``: N or *next* - another one now,
+ * even where the song, the playlist or *fixed* keep one (the rules take over again at the next change). */
+function pick(newTurn = false, asked = false): void {
   if (props.mini) return use('bars')
   if (props.force) return use(props.force)
   if (newTurn) turn += 1
+  const v = settings.visuals
   use(
     chooseVisual({
-      settings: settings.visuals,
+      settings: asked ? { ...v, songs: {}, mode: v.mode === 'fixed' ? 'cycle' : v.mode } : v,
       song: current.value,
-      playlist: props.playlistVisual,
+      playlist: asked ? '' : props.playlistVisual,
       previous: presetId.value || null,
       turn,
     })
@@ -119,7 +122,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => cancelAnimationFrame(raf))
 
-defineExpose({ presetId, next: () => pick(true) })
+defineExpose({ presetId, next: () => pick(true, true) })
 </script>
 
 <template>

@@ -4,6 +4,7 @@
 import { computed, ref } from 'vue'
 
 import type { SongSummary } from '../api'
+import { vFocus } from '../focus'
 import { similarSongs } from '../similar'
 import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, playSongs, state, toggleFavorite } from '../store'
 
@@ -40,7 +41,7 @@ function create(): void {
         <i class="dot" :style="{ background: `hsl(${p.hue ?? 260} 80% 60%)` }" />{{ p.name }}
       </button>
       <form v-if="naming" class="new" @submit.prevent="create">
-        <input v-model="name" placeholder="Name of the playlist" autofocus />
+        <input v-model="name" v-focus placeholder="Name of the playlist" />
         <button type="submit">Create</button>
       </form>
       <button v-else class="plus" @click="naming = true">+ New playlist…</button>

@@ -58,10 +58,12 @@ const MOODS: [RegExp, string][] = [
   [/dark|doom|gothic|horror|industrial|sinister|brooding|haunting|noir/i, 'dark'],
 ]
 
-/** What the song is like, for *auto*: energetic, calm, acoustic, electronic, dark. */
+/** What the song is like, for *auto*: energetic, calm, acoustic, electronic, dark - from its genre and mood;
+ * the style only when they say nothing (a style's "warm female voice" made a dance song calm). */
 export function songMoods(song: Pick<SongSummary, 'genre' | 'mood' | 'style' | 'bpm'>): string[] {
-  const text = `${song.genre} ${song.mood} ${song.style}`
-  const found = new Set(MOODS.filter(([pattern]) => pattern.test(text)).map(([, mood]) => mood))
+  const read = (text: string): Set<string> => new Set(MOODS.filter(([pattern]) => pattern.test(text)).map(([, mood]) => mood))
+  let found = read(`${song.genre} ${song.mood}`)
+  if (!found.size) found = read(song.style)
   if (song.bpm && song.bpm >= 125) found.add('energetic')
   if (song.bpm && song.bpm <= 80) found.add('calm')
   return [...found]

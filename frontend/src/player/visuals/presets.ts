@@ -196,25 +196,39 @@ const vector: Preset = {
   blurb: 'Left against right: the stereo picture of the music, drawn in light with a long afterglow.',
   suits: ['acoustic', 'calm', 'dark'],
   create() {
+    // the loudest recent sample: the figure fills the screen however loud the song is
+    let peak = 0.3
     return {
       draw(ctx, f, w, h, c) {
-        fade(ctx, w, h, 0.12)
+        fade(ctx, w, h, 0.1)
         const cx = w / 2
         const cy = h / 2
-        const r = Math.min(w, h) * 0.46 * (0.8 + f.pulse * 0.25)
+        let loudest = 0
+        for (let i = 0; i < f.left.length; i += 4) loudest = Math.max(loudest, Math.abs(f.left[i] - 128), Math.abs(f.right[i] - 128))
+        peak = Math.max(0.08, loudest / 128 > peak ? loudest / 128 : peak * (1 - f.dt * 0.6))
+        const r = (Math.min(w, h) * 0.44 * (0.9 + f.pulse * 0.2)) / peak
+        // the figure turns slowly: a mono line sweeps round like a radar, stereo opens it into a cloud
+        const turn = f.time * 0.12
+        const cos = Math.cos(turn)
+        const sin = Math.sin(turn)
         ctx.globalCompositeOperation = 'lighter'
-        ctx.lineWidth = 1.6
         ctx.beginPath()
         for (let i = 0; i < f.left.length; i += 2) {
           const l = (f.left[i] - 128) / 128
           const rr = (f.right[i] - 128) / 128
           // mid/side: a mono sound is a vertical line, wide stereo spreads sideways
-          const x = cx + ((l - rr) / Math.SQRT2) * r
-          const y = cy - ((l + rr) / Math.SQRT2) * r
+          const sx = ((l - rr) / Math.SQRT2) * r
+          const sy = ((l + rr) / Math.SQRT2) * r
+          const x = cx + sx * cos - sy * sin
+          const y = cy - (sx * sin + sy * cos)
           if (i === 0) ctx.moveTo(x, y)
           else ctx.lineTo(x, y)
         }
-        ctx.strokeStyle = c.at(0.35 + f.treble, 0.55)
+        ctx.lineWidth = 6
+        ctx.strokeStyle = c.at(0.2 + f.mid, 0.12)
+        ctx.stroke()
+        ctx.lineWidth = 1.8
+        ctx.strokeStyle = c.at(0.35 + f.treble, 0.6)
         ctx.stroke()
         ctx.globalCompositeOperation = 'source-over'
       },

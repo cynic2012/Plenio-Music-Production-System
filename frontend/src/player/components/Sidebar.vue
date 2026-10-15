@@ -2,6 +2,7 @@
 /** The sidebar: the library and its smart lists, the playlists (a new one in place), the folder, a rescan. */
 import { computed, ref } from 'vue'
 
+import { vFocus } from '../focus'
 import { folders, go, library, newPlaylist, rescan, route, state } from '../store'
 import Icon from './Icon.vue'
 
@@ -52,7 +53,7 @@ async function scan(): Promise<void> {
 
     <h4>Playlists <button class="icon-btn" title="New playlist" @click="naming = !naming"><Icon name="plus" :size="16" /></button></h4>
     <form v-if="naming" class="new" @submit.prevent="create">
-      <input v-model="name" placeholder="Name" autofocus @keydown.esc="naming = false" />
+      <input v-model="name" v-focus placeholder="Name" @keydown.esc="naming = false" />
     </form>
     <div class="lists">
       <a v-for="p in state.playlists" :key="p.id" class="link pl" :class="{ on: route === `/playlist/${p.id}` }" @click="go(`/playlist/${p.id}`)">

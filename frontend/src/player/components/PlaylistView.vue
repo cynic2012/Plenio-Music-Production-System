@@ -6,6 +6,7 @@
 import { computed, ref } from 'vue'
 
 import type { SongSummary } from '../api'
+import { vFocus } from '../focus'
 import { byId, current, deletePlaylist, go, library, playSongs, playing, state } from '../store'
 import { countOf, formatTime } from '../timing'
 import { lyricsSnippet, parseQuery, score } from '../search'
@@ -79,7 +80,7 @@ function removeAll(): void {
       </div>
       <div class="text">
         <small>Playlist</small>
-        <input v-if="renaming" class="name-input" :value="playlist.name" autofocus @blur="rename" @keydown.enter="rename" @keydown.esc="renaming = false" />
+        <input v-if="renaming" v-focus class="name-input" :value="playlist.name" @blur="rename" @keydown.enter="rename" @keydown.esc="renaming = false" />
         <h1 v-else title="Click to rename" @click="renaming = true">{{ playlist.name }}</h1>
         <p class="meta">{{ countOf(songs.length, 'song') }} · {{ formatTime(total) }}<span v-if="missing"> · {{ missing }} not in this library</span></p>
         <div class="actions">
@@ -101,7 +102,7 @@ function removeAll(): void {
     </section>
 
     <section v-if="adding" class="adder">
-      <label class="search"><Icon name="search" /><input v-model="find" placeholder="Find songs to add …" autofocus /></label>
+      <label class="search"><Icon name="search" /><input v-model="find" v-focus placeholder="Find songs to add …" /></label>
       <div class="cands">
         <button v-for="{ song, snippet } in candidates" :key="song.id" class="cand" @click="add(song.id)">
           <CoverArt :song="song" rounded />

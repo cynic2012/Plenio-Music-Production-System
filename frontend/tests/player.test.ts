@@ -153,6 +153,9 @@ describe('the visual chooser', () => {
   it('reads what a song is like', () => {
     expect(songMoods(calm)).toContain('calm')
     expect(songMoods(song({ id: 's', genre: 'techno', bpm: 132 }))).toEqual(expect.arrayContaining(['electronic', 'energetic']))
+    // genre and mood first: a dance song with a "warm female voice" in its style is not calm
+    expect(songMoods(song({ id: 's', genre: 'dance-pop', mood: 'celebration & party', style: 'warm female voice' }))).not.toContain('calm')
+    expect(songMoods(song({ id: 's', style: 'soft piano ballad' }))).toEqual(expect.arrayContaining(['acoustic', 'calm']))
   })
 
   it('lets the song win over the playlist and the playlist over the mode', () => {

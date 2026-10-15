@@ -80,7 +80,8 @@ function onKey(event: KeyboardEvent): void {
   const target = event.target as HTMLElement
   const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable
   if (event.key === 'Escape') {
-    if (typing) (target as HTMLInputElement).blur()
+    // Esc leaves a text field first; a list (select) that was chosen from does not hold it back
+    if (typing && target.tagName !== 'SELECT') (target as HTMLInputElement).blur()
     else if (help.value) help.value = false
     else if (queueOpen.value) queueOpen.value = false
     else if (nowPlayingOpen.value) nowPlayingOpen.value = false
