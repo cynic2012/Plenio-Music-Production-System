@@ -73,12 +73,27 @@ describe('the run summary', () => {
     const node = create([340, 600])
     const long = ['**Export**', ...Array.from({ length: 8 }, (_unused, i) => `- note: file ${i} was written`)].join('\n')
     node.onExecuted?.({ plenio_summary: [{ markdown: long }] })
-    expect(node.options?.getMaxHeight?.()).toBe(estimatedHeight(long))
+    // with the frontend's margin above and below the element (10 px each): the whole text shows
+    expect(node.options?.getMaxHeight?.()).toBe(estimatedHeight(long) + 20)
     expect(estimatedHeight(long)).toBeGreaterThan(SUMMARY_MIN_HEIGHT)
     // the next run's shorter text is what the widget measures then
     node.onExecuted?.({ plenio_summary: [{ markdown: 'short' }] })
     expect(node.options?.getMaxHeight?.()).toBe(SUMMARY_MIN_HEIGHT)
     expect(estimatedHeight('x'.repeat(120))).toBe(estimatedHeight('a\nb\nc')) // wrapped: three lines
+  })
+
+  it('counts the margin the frontend gives the widget', () => {
+    // the frontend lays the element out at the widget's height minus its margin above and below: a
+    // maximum of only the text's height hid the last line (the System Check report in tutorial 0)
+    const { create } = nodeType([300, 200])
+    const node = create([340, 600])
+    const long = ['**Report**', ...Array.from({ length: 10 }, (_unused, i) => `- line ${i}`)].join('\n')
+    node.addDOMWidget = ((add) => (name: string, type: string, element: HTMLElement, options?: DOMWidgetOptions) => {
+      const widget = add(name, type, element, options)
+      return Object.assign(widget, { margin: 6 })
+    })(node.addDOMWidget.bind(node))
+    node.onExecuted?.({ plenio_summary: [{ markdown: long }] })
+    expect(node.options?.getMaxHeight?.()).toBe(estimatedHeight(long) + 12)
   })
 
   it('grows a node that is too small for its widgets and the summary, and never shrinks one', () => {

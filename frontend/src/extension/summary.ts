@@ -12,6 +12,8 @@ export const SUMMARY_MIN_HEIGHT = 84
 const LINE_HEIGHT = 18
 const CHARS_PER_LINE = 55
 const PADDING = 16
+/** The frontend's room above and below a DOM widget (its ``margin``): the element gets the widget's height minus both. */
+const DOM_WIDGET_MARGIN = 10
 
 interface Summary {
   markdown?: string
@@ -36,15 +38,18 @@ function summaryElement(node: ComfyNode, text: { markdown: string }): HTMLElemen
   if (existing?.element) return existing.element
   const element = document.createElement('div')
   element.className = 'plenio-summary'
+  let margin = DOM_WIDGET_MARGIN
   const widget = node.addDOMWidget(WIDGET_NAME, 'plenio_summary', element, {
     serialize: false,
     getValue: () => '',
     setValue: () => {},
     getMinHeight: () => SUMMARY_MIN_HEIGHT,
-    // as tall as its text: a short summary leaves the rest of the node to the other widgets
+    // as tall as its text: a short summary leaves the rest of the node to the other widgets. The margins
+    // count too - without them the element stayed 20 px short of its text and hid the last line
     getMaxHeight: () =>
-      Math.max(SUMMARY_MIN_HEIGHT, element.scrollHeight ? element.scrollHeight + 2 : estimatedHeight(text.markdown))
+      Math.max(SUMMARY_MIN_HEIGHT, (element.scrollHeight ? element.scrollHeight + 2 : estimatedHeight(text.markdown)) + 2 * margin)
   })
+  margin = (widget as { margin?: number }).margin ?? DOM_WIDGET_MARGIN
   widget.serialize = false // display only: not part of the saved widget values
   return element
 }

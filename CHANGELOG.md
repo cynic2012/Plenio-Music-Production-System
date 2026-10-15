@@ -2,6 +2,12 @@
 
 All notable changes of the current version and the one before. Versions follow semantic versioning; published Registry versions are immutable. Earlier versions (0.2.0 to 0.6.1): the [changelog of 0.7.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.7.0/CHANGELOG.md) (0.6.1), the [changelog of 0.6.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.6.0/CHANGELOG.md) (0.5.0 and 0.6.0), the [changelog of 0.4.4](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.4.4/CHANGELOG.md) (0.2.0 to 0.4.4) and the [GitHub releases](https://github.com/jplenio/Plenio-Music-Production-System/releases).
 
+## Unreleased
+
+### Fixed
+
+- **The last line of a node's summary was hidden**: the run summary under a Plenio node (the System Check report, Export Release's files, Apply Arrangement's harmony check ...) asked the frontend for the height of its text only, but the frontend lays a DOM widget out with a margin of 10 px above and below - so a summary sized to its text stayed 20 px short and cut off its last line, however tall the node was made (found while recording the tutorials again). The summary now counts the margin too.
+
 ## 0.8.0 - 2026-10-15
 
 The song's FLAC carries its whole project: drop it onto ComfyUI - or open it in *Continue a Plenio song* - and you are back in the workflow it was made with. A free cover gets a new melody over the writer's chords: below *song flow closeness* 80 the melody follows the new harmony - from 50 the notes that clash move, below 50 Plenio writes the melody anew in its old rhythm. The writer sees every note of a bar, the harmony guard knows more clashes, and motifs move along the key's scale.
