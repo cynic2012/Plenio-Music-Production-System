@@ -94,7 +94,7 @@ Run it again.
 The new settings are applied,
 
 @ Export writes the files
-and exported.
+and Export writes the new files.
 
 @ -16 LUFS, measured
 Minus sixteen, measured. If a target needs too much limiting, the node stops short, and says so.
