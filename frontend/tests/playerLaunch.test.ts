@@ -17,13 +17,15 @@ describe('the Plenio Player from ComfyUI', () => {
   })
 
   it('opens the named tab inside the click and sends it to the player when the server answers', async () => {
-    const tab = { location: { href: 'about:blank' }, document: { title: '', body: { innerHTML: '' } }, focus: vi.fn(), close: vi.fn() }
+    const tab = { location: { href: 'about:blank' }, document: { title: '', body: { textContent: '', style: { cssText: '' } } }, focus: vi.fn(), close: vi.fn() }
     const opener = { open: vi.fn(() => tab as unknown as Window) }
     const toast = vi.fn()
     const host = { app: { registerExtension() {}, extensionManager: { toast: { add: toast } } }, fetcher: fetcher({ url: 'http://127.0.0.1:8765/', started: true, version: '0.8.1' }) }
     await openPlayer(host, '/out/x.plenio.json', opener)
     expect(opener.open).toHaveBeenCalledWith('', PLAYER_TAB)
     expect(host.fetcher.fetchApi).toHaveBeenCalledWith('/plenio/player/open', expect.objectContaining({ method: 'POST' }))
+    expect(tab.document.body.textContent).toContain('Starting the Plenio Player')
+    expect(tab.document.body.style.cssText).toContain('background:#0a0910')
     expect(tab.location.href).toBe('http://127.0.0.1:8765/#/record/%2Fout%2Fx.plenio.json')
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ summary: 'Plenio Player started' }))
   })
@@ -39,7 +41,7 @@ describe('the Plenio Player from ComfyUI', () => {
     await openPlayer(host, null, { open: () => shown as unknown as Window })
     expect(shown.focus).toHaveBeenCalled()
 
-    const blank = { location: { href: 'about:blank' }, document: { title: '', body: { innerHTML: '' } }, focus: vi.fn(), close: vi.fn() }
+    const blank = { location: { href: 'about:blank' }, document: { title: '', body: { textContent: '', style: { cssText: '' } } }, focus: vi.fn(), close: vi.fn() }
     const toast = vi.fn()
     const failing = { app: { registerExtension() {}, extensionManager: { toast: { add: toast } } }, fetcher: fetcher({ error: { message: 'did not start', hint: 'look at the log' } }, false) }
     await openPlayer(failing, null, { open: () => blank as unknown as Window })

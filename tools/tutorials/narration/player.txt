@@ -4,13 +4,22 @@
 Your songs deserve a proper stage. This is the Plenio Player.
 
 @ The Plenio Player plays the songs
-The Plenio Player plays the songs you made with Plenio, right in your browser. ComfyUI doesn't even need to run.
+The Plenio Player plays the songs you made with Plenio, right in your browser.
 
-@ Start it with ComfyUI’s Python
-Start it with ComfyUI's Python: python, plenio underscore player dot py.
+@ In ComfyUI it is one click away
+In ComfyUI, it's one click away: the Plenio Player button, right next to Run.
+
+@ Export Release has a button too
+Export Release has a button too. It opens the song you just exported.
+
+@ If the player is not running yet
+If the player isn't running yet, ComfyUI starts it, and opens it in a tab of its own.
+
+@ The player is a program of its own
+The player is a program of its own, so it keeps running when you close ComfyUI. And without ComfyUI, just double-click Plenio Player dot bat.
 
 @ It finds every song Export Release wrote
-It finds every song Export Release wrote, and it never writes into their folder.
+It finds every song Export Release wrote into ComfyUI's output folder.
 
 @ Search looks through titles
 Search looks through titles, lyrics, genres, moods and briefs.
@@ -25,7 +34,7 @@ The chips filter by your most common genres, moods, models and creative modes.
 A grid or a list, sorted by date, title, length, tempo or loudness.
 
 @ Press play on a cover
-Press play on a cover, or double-click a song.
+Press play on a cover. A click on the card itself opens the song's page.
 
 @ The bar shows the song’s section
 The bar always shows the section, and the line that's sung right now.
@@ -33,8 +42,8 @@ The bar always shows the section, and the line that's sung right now.
 @ The waveform is the seek bar
 The waveform is the seek bar. It marks the sections, and under the mouse, it shows the line sung there.
 
-@ A click on the title opens
-A click on the title opens the song's page.
+@ ⓘ beside the song opens its page
+The little i beside the song opens its page, too.
 
 @ Its lyrics light up
 Its lyrics light up while they are sung. The times were measured by listening, when the song was exported.
@@ -112,7 +121,7 @@ The queue shows what comes next. Reorder it, or save it as a playlist.
 Songs crossfade into each other, and the sleep timer fades the music out.
 
 @ A right-click on a song
-Right-click a song to play it next, add it to a playlist, or start a radio of songs that are alike.
+Right-click a song to play it next, add it to a playlist, start a radio of songs that are alike, or remove it.
 
 @ A/B: the unmastered take | optional
 A, B: the unmastered take, at exactly the same moment, without a gap.
@@ -123,8 +132,23 @@ Speed goes from three quarters to one and a quarter, and the pitch stays the sam
 @ Every key is listed
 Every keyboard shortcut is listed under the question mark.
 
+@ Everything you set is kept
+Everything you set is kept on this computer, by the player itself, not by the browser.
+
+@ A backup to download
+There's a backup to download, and to restore, here or on another computer.
+
+@ Started from ComfyUI, the player has no window
+Started from ComfyUI, the player has no window. Stop the player ends it.
+
+@ And Open in ComfyUI takes the song back
+One more click sends the song back to ComfyUI.
+
+@ Its workflow opens
+Its workflow opens, with the brief, the lyrics, the score and the settings, ready for another take.
+
 @ Make songs in ComfyUI
-Make your songs in ComfyUI, and listen to them here.
+Make your songs in ComfyUI, and listen to them in the player.
 
 @ card Plenio Player
 That's the Plenio Player. Enjoy your music!

@@ -1,10 +1,13 @@
-// Tutorial 8 · Plenio Player: the songs made with Plenio in the browser, without ComfyUI - the library and
-// its search, playing a song, a song's page (lyrics, notation, details, takes), Now playing in its four
-// views, the visuals and their modes, playlists, the queue with the sleep timer, A/B and speed, the keys.
+// Tutorial 8 · Plenio Player: the songs made with Plenio in the browser. It starts in ComfyUI - the Plenio
+// Player button beside Run (and the one on Export Release) starts the player, a program of its own, and
+// opens it - then the library and its search, playing a song, a song's page (lyrics, notation, details,
+// takes), Now playing in its four views, the visuals and their modes, playlists, the queue with the sleep
+// timer, A/B and speed, the keys, the settings that are kept, and Open in ComfyUI back to the workflow.
 //
-// Recorded against a running player (`python plenio_player.py --folder <songs> --no-browser`, its state in
-// a fresh PLENIO_PLAYER_STATE folder): node tools/tutorials/record.mjs player --url http://127.0.0.1:8765
+// Recorded against a ComfyUI dev server whose output folder holds the songs, with PLENIO_PLAYER_STATE set to
+// a fresh folder (the player ComfyUI starts inherits it): node tools/tutorials/record.mjs player --url <it>
 
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { FOOT } from './lib/studio.mjs'
@@ -12,9 +15,11 @@ import { parseNarration } from './lib/voice.mjs'
 
 export const meta = {
   name: 'Plenio tutorial 8 - Plenio Player',
-  // not ComfyUI: record.mjs opens --url as it is
-  page: true,
 }
+
+const TEMPLATE = '1 · YuE2 · Song'
+const EXPORT = 'PlenioExportRelease'
+const NODE_BUTTON = '▶ Open in the Plenio Player'
 
 // the music under the voice: the player's own volume (the edit ducks it a little more under the voice)
 const BED = 0.3, LOUD = 0.7
@@ -50,24 +55,14 @@ async function setVolume(s, value) {
   }, value)
 }
 
-export async function prepare(s) {
-  // a fresh listener: no playlists, favourites or plays yet; the visuals match the music
-  await s.page.evaluate(() =>
-    fetch('/api/state', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playlists: [], favorites: [], plays: {}, last_played: {}, settings: { volume: 0.3, crossfade: 3 } }),
-    })
-  )
-  await s.page.evaluate(() => localStorage.setItem('plenio.view', 'stage'))
-  await s.page.reload({ waitUntil: 'load' })
-  await s.page.waitForSelector('.card', { timeout: 20000 })
-  await s.wait(1200)
+export async function prepare(s, { project }) {
+  // ComfyUI with the YuE2 Song template open: its Export Release node has the player's button
+  const graph = JSON.parse(fs.readFileSync(path.join(project, 'example_workflows', `${TEMPLATE}.json`), 'utf8'))
+  await s.page.evaluate(async ([g, name]) => window.app.loadGraphData(g, true, true, name), [graph, TEMPLATE])
+  await s.wait(2500)
 }
 
 export default async function player(s) {
-  const page = s.page
-  const song = await pickSong(s)
   s.card('title', {
     kicker: 'Plenio tutorial',
     title: '<span class="num">8 ·</span> Plenio Player',
@@ -75,12 +70,28 @@ export default async function player(s) {
     foot: FOOT,
   }, 5)
 
-  s.chapter('The player')
+  // --- in ComfyUI: one click ---
+  s.chapter('Open the player')
   await s.rest(600)
-  await talk(s, 'The Plenio Player plays the songs you made with Plenio - in the browser, without ComfyUI.')
-  await talk(s, 'Start it with ComfyUI’s Python:  python plenio_player.py')
+  await talk(s, 'The Plenio Player plays the songs you made with Plenio - in the browser.')
+  const button = s.page.locator('button', { hasText: 'Plenio Player' }).first()
+  await s.hover(button)
+  await s.spotlight(button, { ms: 2600 })
+  await talk(s, 'In ComfyUI it is one click away: Plenio Player, beside Run.')
+  await s.flyNodes([EXPORT], 1300, 0.9)
+  await s.hover(await s.widgetBox(EXPORT, NODE_BUTTON), { fx: 0.5 })
+  await talk(s, 'Export Release has a button too: it opens the song you just exported.')
+  const [opened] = await Promise.all([s.context.waitForEvent('page'), s.click(button)])
+  await s.switchTo(opened)
+  await talk(s, 'If the player is not running yet, ComfyUI starts it, and opens it in a tab of its own.')
+  await s.page.waitForSelector('.card', { timeout: 60000 })
+  await s.wait(1200)
+  let page = s.page
+  const song = await pickSong(s)
+  await s.rest(500)
+  await talk(s, 'The player is a program of its own: it keeps running when ComfyUI closes. Without ComfyUI: double-click Plenio Player.bat.')
   await s.hover(page.locator('.hero h1'))
-  await talk(s, 'It finds every song Export Release wrote, and never writes into their folder.')
+  await talk(s, 'It finds every song Export Release wrote into ComfyUI’s output folder.')
 
   s.chapter('Find a song')
   await s.click(page.locator('.search input'))
@@ -109,7 +120,7 @@ export default async function player(s) {
   await s.wait(400)
   await s.click(card.locator('.play'))
   await s.wait(1500)
-  await talk(s, 'Press play on a cover, or double-click a song.')
+  await talk(s, 'Press play on a cover. A click on the card opens the song’s page.')
   await s.hover(page.locator('.bar .meta .sub'))
   await talk(s, 'The bar shows the song’s section and the line sung right now.')
   const wave = page.locator('.bar .progress .wave')
@@ -120,9 +131,9 @@ export default async function player(s) {
   await s.wait(1200)
 
   s.chapter('The song’s page')
-  await s.click(page.locator('.bar .meta .title'))
+  await s.click(page.locator('.bar .song .icon-btn').first())
   await s.wait(1200)
-  await talk(s, 'A click on the title opens the song’s page.')
+  await talk(s, 'ⓘ beside the song opens its page, too.')
   await talk(s, 'Its lyrics light up as they are sung - the times were measured when the song was exported.')
   const later = page.locator('.karaoke .line').nth(6)
   if (await later.count()) {
@@ -148,6 +159,7 @@ export default async function player(s) {
       await talk(s, name === 'Takes' ? 'The song’s other takes, to compare them …' : '… and songs alike.', 2600)
     }
   }
+  await s.click(tab('Lyrics'))
 
   s.chapter('Now playing')
   await s.keys('f')
@@ -169,7 +181,7 @@ export default async function player(s) {
   await talk(s, 'And the visual, full screen, with the lyrics as subtitles. The controls fade out while the mouse rests.', 8000)
 
   s.chapter('Visuals')
-  await s.click(page.locator('.np .top .tools .icon-btn').first())
+  await s.click(page.locator('.np .top .tools .icon-btn').nth(1))
   await s.wait(700)
   await talk(s, 'The visuals’ settings.', 2400)
   await s.hover(page.locator('.vpanel .mode').nth(0))
@@ -238,7 +250,7 @@ export default async function player(s) {
   const other = page.locator('.card').nth(2)
   await s.hover(other)
   await s.click(other, { button: 'right' })
-  await talk(s, 'A right-click on a song: play it next, add it to a playlist - or start a radio of songs alike.')
+  await talk(s, 'A right-click on a song: play it next, add it to a playlist, start a radio of songs alike - or remove it.')
   // a click beside the menu closes it
   await s.click({ x: 1180, y: 150, width: 0, height: 0 })
   await s.wait(500)
@@ -258,11 +270,35 @@ export default async function player(s) {
   await s.wait(700)
   await talk(s, 'Every key is listed under the question mark.', 3600)
   await s.keys('Escape')
+
+  s.chapter('Settings')
+  await s.click(page.locator('.side a.link', { hasText: 'Settings' }))
+  await s.wait(1200)
+  await talk(s, 'Everything you set is kept on this computer, by the player - not in the browser.')
+  await s.hover(page.locator('.settings button', { hasText: 'Download a backup' }))
+  await talk(s, 'A backup to download, and to restore here or on another computer.')
+  const stop = page.locator('.settings button', { hasText: 'Stop the player' })
+  await stop.scrollIntoViewIfNeeded()
+  await s.hover(stop)
+  await talk(s, 'Started from ComfyUI, the player has no window: Stop the player ends it.')
+
+  s.chapter('Back to ComfyUI')
+  await s.click(page.locator('.bar .song .icon-btn').first())
+  await s.wait(1200)
+  const back = page.locator('.song-page .actions button', { hasText: 'Open in ComfyUI' })
+  await s.hover(back)
+  await talk(s, 'And Open in ComfyUI takes the song back to work on it.')
+  const [comfy] = await Promise.all([s.context.waitForEvent('page'), s.click(back)])
+  await s.switchTo(comfy)
+  page = s.page
+  await page.waitForFunction(() => window.app?.graph?.nodes?.some((n) => String(n.type).startsWith('Plenio')), null, { timeout: 120000 })
+  await s.wait(2500)
   await s.rest()
-  await talk(s, 'Make songs in ComfyUI - and listen to them here.', 3000)
+  await talk(s, 'Its workflow opens: the brief, the lyrics, the score and the settings - ready for another take.', 6000)
+  await talk(s, 'Make songs in ComfyUI - and listen to them in the player.', 3000)
 
   s.card('end', {
     title: 'Plenio Player',
-    lines: ['Start: <b>python plenio_player.py</b> with ComfyUI’s Python', 'Guide and source: <b>github.com/jplenio/Plenio-Music-Production-System</b>'],
+    lines: ['In ComfyUI: <b>Plenio Player</b> beside Run', 'Without ComfyUI: double-click <b>Plenio Player.bat</b>', 'Guide and source: <b>github.com/jplenio/Plenio-Music-Production-System</b>'],
   }, 5)
 }

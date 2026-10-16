@@ -66,8 +66,10 @@ export async function openPlayer(host: PlayerHost, record: string | null = null,
   }
   if (tab && fresh) {
     try {
+      // dark like the player, so the tab does not flash white while the player starts
       tab.document.title = 'Plenio Player'
-      tab.document.body.innerHTML = '<p style="font:16px system-ui,sans-serif;padding:2em;color:#888">Starting the Plenio Player …</p>'
+      tab.document.body.style.cssText = 'margin:0;height:100vh;display:grid;place-items:center;background:#0a0910;color:#a99fc0;font:600 18px system-ui,sans-serif'
+      tab.document.body.textContent = 'Starting the Plenio Player …'
     } catch {
       /* nothing to show then */
     }

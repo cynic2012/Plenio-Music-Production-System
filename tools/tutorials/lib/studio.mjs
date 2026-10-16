@@ -229,7 +229,10 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale, locale: 'en-US', colorScheme: 'dark' })
   await context.addInitScript(OVERLAY)
   await context.addInitScript(TAP)
-  const page = await context.newPage()
+  // the page that is recorded; switchTo() follows a tab it opens (ComfyUI's Plenio Player button, the
+  // player's Open in ComfyUI)
+  let page = await context.newPage()
+  context.on('page', (p) => p.on('pageerror', (e) => log('page error:', String(e).slice(0, 300))))
   page.on('pageerror', (e) => log('page error:', String(e).slice(0, 300)))
 
   const W = Math.round(width * scale), H = Math.round(height * scale)
@@ -242,14 +245,33 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
   // --- capture: screencast frames -> ffmpeg at a constant frame rate (the latest frame repeats) ---
   let ffmpeg = null, latest = null, written = 0, timer = null, cdp = null, frames = 0
   const rawPath = path.join(out, 'raw.mp4')
-  async function startCapture() {
-    cdp = await context.newCDPSession(page)
-    cdp.on('Page.screencastFrame', async ({ data, sessionId }) => {
-      latest = Buffer.from(data, 'base64')
-      frames++
-      try { await cdp.send('Page.screencastFrameAck', { sessionId }) } catch {}
+  async function screencast(target) {
+    const session = await context.newCDPSession(target)
+    cdp = session
+    session.on('Page.screencastFrame', async ({ data, sessionId }) => {
+      if (session === cdp) {
+        latest = Buffer.from(data, 'base64')
+        frames++
+      }
+      try { await session.send('Page.screencastFrameAck', { sessionId }) } catch {}
     })
-    await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 94, maxWidth: W, maxHeight: H, everyNthFrame: 1 })
+    await session.send('Page.startScreencast', { format: 'jpeg', quality: 94, maxWidth: W, maxHeight: H, everyNthFrame: 1 })
+  }
+  // Go on in another tab: the recording, the pointer and every helper follow it (the last frame of the old
+  // tab stays until the new one draws).
+  async function switchTo(next) {
+    const old = cdp
+    page = next
+    await next.bringToFront()
+    await next.waitForLoadState('load').catch(() => {})
+    if (old) {
+      await screencast(next)
+      try { await old.send('Page.stopScreencast') } catch {}
+      try { await old.detach() } catch {}
+    }
+  }
+  async function startCapture() {
+    await screencast(page)
     while (!latest) await page.waitForTimeout(50)
     ffmpeg = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-',
       '-vf', `scale=${W}:${H}:flags=lanczos,format=yuv420p`, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '10', '-r', String(fps), rawPath], { stdio: ['pipe', 'inherit', 'inherit'] })
@@ -270,8 +292,12 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     await new Promise((resolve) => { ffmpeg.on('close', resolve); ffmpeg.stdin.end() })
     markers.duration = written / fps
     markers.screencastFrames = frames
-    // what the page played (the score editor's playback): one recording per audio context, placed by its start
-    const taps = await page.evaluate(() => window.__tutTap?.collect() ?? []).catch((e) => { log('audio tap:', String(e).slice(0, 200)); return [] })
+    // what the pages played (the score editor's playback, the player's music): one recording per audio
+    // context of every tab, placed by its start
+    const taps = []
+    for (const tab of context.pages()) {
+      taps.push(...(await tab.evaluate(() => window.__tutTap?.collect() ?? []).catch((e) => { log('audio tap:', String(e).slice(0, 200)); return [] })))
+    }
     for (const tap of taps) {
       const bytes = Buffer.from(tap.data, 'base64')
       if (bytes.length < 2000) continue
@@ -500,7 +526,8 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
   }
 
   return {
-    page, browser, context, markers, now, W, H,
+    get page() { return page },
+    browser, context, markers, now, W, H, switchTo,
     startCapture, stopCapture, saveMarkers,
     moveTo, rest, hover, click, drag, type, keys, spotlight, boxOf, centre,
     caption, say, read, chapter, card, fast, wait, sfx,
