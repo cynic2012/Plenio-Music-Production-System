@@ -7,12 +7,13 @@ import { computed, ref } from 'vue'
 
 import type { SongSummary } from '../api'
 import { vFocus } from '../focus'
-import { byId, current, deletePlaylist, go, library, playSongs, playing, state } from '../store'
+import { byId, current, deletePlaylist, go, library, playSongs, playing, state, shareFor } from '../store'
 import { countOf, formatTime } from '../timing'
 import { lyricsSnippet, parseQuery, score } from '../search'
 import { allPresets } from '../visuals/presets'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
+import { isPortable } from '../portable'
 
 const props = defineProps<{ id: string }>()
 
@@ -87,6 +88,7 @@ function removeAll(): void {
           <button class="primary" :disabled="!songs.length" @click="play()"><Icon name="play" /> Play</button>
           <button class="ghost" :disabled="!songs.length" @click="play(0, true)"><Icon name="shuffle" /> Shuffle</button>
           <button class="ghost" :class="{ on: adding }" @click="adding = !adding"><Icon name="plus" /> Add songs</button>
+          <button v-if="!isPortable" class="ghost" :disabled="!songs.length" title="This playlist as one HTML file that plays by itself - to send to others" @click="shareFor = { songs: playlist.songs, title: playlist.name }"><Icon name="download" /> Share…</button>
           <label class="visual" title="The visual for this playlist (a song’s own visual still wins)">
             <Icon name="sparkles" :size="16" />
             <select :value="playlist.visual ?? ''" @change="playlist.visual = ($event.target as HTMLSelectElement).value">

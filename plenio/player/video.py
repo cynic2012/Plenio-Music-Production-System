@@ -34,7 +34,7 @@ def videos_dir(state_dir: Path) -> Path:
 
 def file_name(title: str, width: int, height: int, folder: Path) -> Path:
     """``<title> (1920x1080).mp4``, unique in the folder."""
-    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', " ", title).strip().rstrip(".")[:80] or "song"
+    stem = re.sub(r'[\s<>:"/\\|?*\x00-\x1f]+', " ", title).strip().rstrip(".")[:80] or "song"
     base = f"{stem} ({width}x{height})"
     target = folder / f"{base}.mp4"
     count = 1

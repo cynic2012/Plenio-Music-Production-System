@@ -6,7 +6,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import type { SongSummary } from '../api'
-import { current, library, playSongs, settings, state, toggleCurrent } from '../store'
+import { isPortable } from '../portable'
+import { current, library, playSongs, settings, shareFor, state, toggleCurrent } from '../store'
 import { countOf, formatTime } from '../timing'
 import { compareVersions, lyricsSnippet, parseQuery, score, sortSongs, topValues, versionOf, words, type SortKey } from '../search'
 import CoverArt from './CoverArt.vue'
@@ -171,6 +172,7 @@ defineExpose({ focus: () => input.value?.focus() })
         <button class="icon-btn" :class="{ on: settings.view === 'list' }" title="List" @click="settings.view = 'list'"><Icon name="list" /></button>
       </div>
       <button class="ghost" :disabled="!songs.length" @click="playAll()"><Icon name="play" :size="16" /> Play {{ songs.length }}</button>
+      <button v-if="!isPortable" class="ghost" :disabled="!songs.length" title="These songs as one HTML file that plays by itself - to send to others" @click="shareFor = { songs: songs.map((s) => s.id), title: '' }"><Icon name="download" :size="16" /> Share…</button>
       <button v-if="filtered" class="ghost reset" title="Clear the search and every filter" @click="resetFilters"><Icon name="close" :size="16" /> Reset filters</button>
     </div>
 

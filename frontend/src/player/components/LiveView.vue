@@ -14,6 +14,7 @@ import { byId, current, duration, index, library, liveWaiting, newPlaylist, play
 import { formatTime } from '../timing'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
+import { isPortable } from '../portable'
 
 const live = settings.live
 const dragging = ref(-1)
@@ -118,7 +119,8 @@ const ago = (at: number): string => {
       </div>
     </section>
 
-    <section class="rules">
+    <p v-if="isPortable" class="hint shared">In a shared player Live Play is a playlist you change while it plays. Songs made in ComfyUI join it in the Plenio Player.</p>
+    <section v-if="!isPortable" class="rules">
       <label class="switch"><input v-model="live.auto" type="checkbox" /> New songs from ComfyUI join by themselves</label>
       <div class="choice">
         <span>A new song goes</span>

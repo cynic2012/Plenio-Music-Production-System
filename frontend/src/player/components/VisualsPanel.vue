@@ -12,6 +12,7 @@ import { CLASSIC, PRESETS, allPresets, presetById, type Preset, type Scheme } fr
 import type { SwitchOn, VisualMode } from '../visuals/chooser'
 import { copyToMyPresets, myPresetErrors, myPresetFile, myPresetFolder, myPresets, openMyPresetFolder, playingFile } from '../visuals/drop'
 import Icon from './Icon.vue'
+import { isPortable } from '../portable'
 
 const props = defineProps<{ active: string }>()
 const emit = defineEmits<{ close: []; next: []; fullscreen: [] }>()
@@ -155,7 +156,7 @@ async function editCopy(): Promise<void> {
       </select>
     </label>
     <p class="note">MilkDrop-style visuals, drawn by Plenio itself. Write your own: a preset is a short JSON file - <a :href="GUIDE" target="_blank" rel="noopener">the guide</a>.</p>
-    <div class="drop-tools">
+    <div v-if="!isPortable" class="drop-tools">
       <button class="chip" :disabled="!activePreset?.file || copying" :title="activePreset?.file ? `A copy of ${activePreset.name} in your visuals folder, to change` : 'Play a Plenio Drop visual to copy it'" @click="editCopy">
         <Icon name="edit" :size="14" /> Edit a copy
       </button>

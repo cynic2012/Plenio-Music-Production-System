@@ -1,4 +1,6 @@
-/** The Plenio Player's server (plenio/player/server.py): the library, one song, the files and the state. */
+/** The Plenio Player's server (plenio/player/server.py): the library, one song, the files and the state - or,
+ * in a shared player (one HTML file, portable.ts), the songs inside the page and the listener's browser. */
+import { ensureMedia, isPortable, notInShared, portable, portableMedia, portableState, savePortableState } from './portable'
 
 export interface Loudness {
   lufs: number | null
@@ -193,7 +195,27 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return data as T
 }
 
-export const api = {
+export interface PackageOptions {
+  songs: string[]
+  title: string
+  bitrate: number
+  pdf: boolean
+  settings?: Record<string, unknown>
+  presets?: { name: string; text: string }[]
+  playlists?: { name: string; songs: string[] }[]
+}
+
+export interface PackageStatus {
+  state: 'working' | 'done' | 'error'
+  done: number
+  total: number
+  file?: string
+  size?: number
+  folder?: string
+  error?: string
+}
+
+const serverApi = {
   library: () => json<LibraryAnswer>('/api/library'),
   song: (id: string) => json<SongDetail>(`/api/song/${id}`),
   state: () => json<PlayerState>('/api/state'),
@@ -242,6 +264,64 @@ export const api = {
     return data as FoldersAnswer
   },
   dirs: (path: string | null) => json<DirsAnswer>(`/api/dirs${path ? `?path=${encodeURIComponent(path)}` : ''}`, { headers: { 'X-Plenio-Player': '1' } }),
+  /** A shared player of chosen songs (one HTML file), made by the server; its progress, the ones made. */
+  packageStart: (options: PackageOptions) => post<{ job: string }>('/api/package', options),
+  packageStatus: (job: string) => json<PackageStatus>(`/api/package/${job}`),
+  packages: () => json<{ folder: string; files: { name: string; size: number; mtime: number }[] }>('/api/packages'),
+  openPackages: () => post<{ folder: string }>('/api/packages/open', {}),
 }
 
-export const media = (id: string, kind: string): string => `/media/${id}/${kind}`
+/** In a shared player: the songs inside the page, the listener's state in their browser; the rest is the
+ * Plenio Player's only. */
+function sharedApi(): typeof serverApi {
+  const data = portable as NonNullable<typeof portable>
+  const none = async () => notInShared()
+  return {
+    ...serverApi,
+    library: async () => ({ songs: data.songs, folders: [], errors: [], version: data.plenio }),
+    song: async (id: string) => {
+      const detail = data.details[id]
+      if (!detail) throw new Error('no such song')
+      return detail
+    },
+    state: async () => portableState(),
+    saveState: async (state: PlayerState) => {
+      savePortableState(state)
+      return { ok: true }
+    },
+    info: async () => ({ app: 'plenio-shared', version: data.plenio, folders: [], state: 'this browser', retired: '', comfyui: '', pid: 0 }),
+    find: none,
+    comfyui: async () => ({ found: null }),
+    quit: none,
+    rescan: async () => ({ songs: data.songs.length }),
+    removeSong: none,
+    peaks: async (id: string) => {
+      const levels = data.peaks[id]
+      if (!levels) throw new Error('no waveform')
+      return { peaks: levels }
+    },
+    folders: none,
+    setFolders: none,
+    dirs: none,
+    newSongs: async () => ({ now: 0, songs: [] }),
+    videoStart: none,
+    videoData: none,
+    videoFinish: none,
+    videoCancel: none,
+    videos: async () => ({ folder: '', files: [] }),
+    openVideos: none,
+    packageStart: none,
+    packageStatus: none,
+    packages: async () => ({ folder: '', files: [] }),
+    openPackages: none,
+  }
+}
+
+export const api: typeof serverApi = isPortable ? sharedApi() : serverApi
+
+/** A song's file by kind (``audio``, ``cover``, ``pdf`` ...): its URL (in a shared player ``''`` until it is
+ * made from the page, then the page shows it by itself). */
+export const media = (id: string, kind: string): string => (isPortable ? portableMedia(id, kind) : `/media/${id}/${kind}`)
+
+/** The file's URL once it can be used (a shared player makes it from the page first). */
+export const mediaReady = (id: string, kind: string): Promise<string> => (isPortable ? ensureMedia(id, kind) : Promise.resolve(`/media/${id}/${kind}`))

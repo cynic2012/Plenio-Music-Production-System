@@ -7,6 +7,7 @@ import type { SongSummary } from '../api'
 import { vFocus } from '../focus'
 import { similarSongs } from '../similar'
 import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, openInComfyUI, playSongs, removing, say, state, toggleFavorite, videoFor } from '../store'
+import { isPortable } from '../portable'
 
 const props = defineProps<{ song: SongSummary; x: number; y: number }>()
 const emit = defineEmits<{ close: [] }>()
@@ -43,9 +44,9 @@ function create(): void {
       <button @click="radio">Start a radio of songs alike</button>
       <button @click="toggleFavorite(song.id); done()">{{ isFavorite(song.id) ? 'Remove from favourites' : 'Add to favourites' }}</button>
       <button @click="go(`/song/${song.id}`); done()">Open the song’s page</button>
-      <button v-if="!song.other" @click="comfy">Open in ComfyUI</button>
-      <button @click="videoFor = song; done()">Save as a video…</button>
-      <button class="remove" @click="removing = song; done()">Remove from the library…</button>
+      <button v-if="!song.other && !isPortable" @click="comfy">Open in ComfyUI</button>
+      <button v-if="!isPortable" @click="videoFor = song; done()">Save as a video…</button>
+      <button v-if="!isPortable" class="remove" @click="removing = song; done()">Remove from the library…</button>
       <p class="head small">Add to a playlist</p>
       <button v-for="p in state.playlists" :key="p.id" @click="addToPlaylist(p, [song.id]); done()">
         <i class="dot" :style="{ background: `hsl(${p.hue ?? 260} 80% 60%)` }" />{{ p.name }}

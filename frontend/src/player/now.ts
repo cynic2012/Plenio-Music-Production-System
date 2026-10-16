@@ -1,7 +1,7 @@
 /** What plays now, in song time: its lines, sections, the current line and section, its colours. */
 import { computed, ref, watch } from 'vue'
 
-import { media } from './api'
+import { mediaReady } from './api'
 import { coverHue, paletteFrom, songHue } from './colors'
 import { fontOf, litColor } from './lyricsStyle'
 import { current, detail, duration, queueSource, settings, state, time } from './store'
@@ -26,7 +26,7 @@ watch(
     if (!song) return
     hue.value = songHue(song.id, song.genre)
     if (song.has.cover) {
-      if (!coverHues.has(song.id)) coverHues.set(song.id, await coverHue(media(song.id, 'cover')))
+      if (!coverHues.has(song.id)) coverHues.set(song.id, await coverHue(await mediaReady(song.id, 'cover')))
       const found = coverHues.get(song.id)
       if (found !== null && found !== undefined && current.value?.id === song.id) hue.value = found
     }

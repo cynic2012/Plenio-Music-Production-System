@@ -23,6 +23,8 @@ from .. import __version__
 from . import folders as folder_choice
 from . import other as other_music
 from .library import RETIRED_DIR, Library, song_detail
+from .package import PackageJobs, package_file, packages_dir
+from .package import listing as package_listing
 from .peaks import peaks
 from .video import VideoJobs, videos_dir
 from .visuals import list_presets, open_folder, save_copy, visuals_dir
@@ -46,7 +48,7 @@ VIDEO_FPS = (24, 25, 30, 50, 60)
 VIDEO_MAX_SIDE = 3840
 """Live Play asks every few seconds for new songs: the folders are read again at most this often."""
 CHUNK = 256 * 1024
-TYPES = {".mp4": "video/mp4", ".flac": "audio/flac", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".srt": "text/plain; charset=utf-8",
+TYPES = {".mp4": "video/mp4", ".htm": "text/html; charset=utf-8", ".flac": "audio/flac", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".srt": "text/plain; charset=utf-8",
          ".json": "application/json", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".js": "text/javascript",
          ".mjs": "text/javascript", ".css": "text/css", ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
          ".png": "image/png", ".woff2": "font/woff2"}  # fmt: skip
@@ -126,6 +128,7 @@ def make_handler(
     the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding)."""
 
     jobs = VideoJobs(videos_dir(state.path.parent))
+    packages = PackageJobs()
 
     def folders_answer() -> dict[str, Any]:
         counts = library.counts()
@@ -274,6 +277,20 @@ def make_handler(
                 return self._json(state.read())
             if route == "/api/folders":
                 return self._json(folders_answer())
+            if route == "/api/packages":
+                directory = state.path.parent
+                return self._json(
+                    {"folder": str(packages_dir(directory)), "files": package_listing(directory)}
+                )
+            job = re.fullmatch(r"/api/package/([0-9a-f]{16})", route)
+            if job:
+                status = packages.status(job.group(1))
+                return self._json(status) if status else self._error(404, "no such package")
+            if route.startswith("/packages/"):
+                made = package_file(state.path.parent, route.removeprefix("/packages/"))
+                if made is None:
+                    return self._error(404, "no such package")
+                return self._file(made, download=made.name if query.get("download") else "")
             if route == "/api/videos":
                 return self._json({"folder": str(jobs.folder), "files": jobs.listing()})
             if route.startswith("/videos/"):
@@ -402,6 +419,29 @@ def make_handler(
             library.set_folders([f.path for f in chosen], [f.path for f in chosen if f.other])
             return self._json(folders_answer())
 
+        def _package(self, route: str, raw: bytes | None) -> None:
+            """A portable player of chosen songs (one HTML file: plenio.player.package), or its folder shown."""
+            if not self._from_this_page():
+                return self._error(403, "only from the player's page")
+            if route == "/api/packages/open":
+                folder = packages_dir(state.path.parent)
+                try:
+                    open_folder(folder)
+                except OSError as error:
+                    return self._error(500, str(error))
+                return self._json({"folder": str(folder)})
+            try:
+                body = json.loads(raw.decode("utf-8")) if raw else None
+            except ValueError:
+                body = None
+            if not isinstance(body, dict) or not isinstance(body.get("songs"), list) or not body["songs"]:
+                return self._error(400, "the songs to pack")
+            ids = [str(i) for i in body["songs"]][:500]
+            if int(body.get("bitrate") or 192) not in (128, 160, 192):
+                return self._error(400, "MP3 at 128, 160 or 192 kbit/s")
+            job = packages.start(library, ids, body, state.path.parent)
+            return self._json({"job": job})
+
         def _video(self, route: str, raw: bytes | None) -> None:
             """A song made into a video: start (the song, the part, the size), the H.264 stream in pieces,
             finish (the MP4 put together with the song's sound), cancel; and the videos folder shown."""
@@ -483,6 +523,8 @@ def make_handler(
             if route == "/api/rescan":
                 library.scan(force=True)
                 return self._json({"songs": len(library.songs())})
+            if route in ("/api/package", "/api/packages/open"):
+                return self._package(route, raw)
             if route == "/api/video" or route.startswith("/api/video/") or route == "/api/videos/open":
                 return self._video(route, raw)
             if route in ("/api/visuals/copy", "/api/visuals/open"):

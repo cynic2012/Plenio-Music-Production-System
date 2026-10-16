@@ -9,6 +9,7 @@ import type { Preset, Scene, SceneOptions } from '../presets'
 import { BUILTIN, randomPreset } from './builtin'
 import { FormulaError, compilePreset, slug, type PresetFile } from './format'
 import { dropRenderer, type DropDef } from './renderer'
+import { isPortable, portable } from '../../portable'
 
 /** The preset file of the Drop visual on screen (for *Edit a copy*; *Random* makes a new one each time). */
 export const playingFile = shallowRef<PresetFile | null>(null)
@@ -76,16 +77,25 @@ export const myPresetErrors = shallowRef<{ file: string; error: string }[]>([])
 export const myPresetFolder = shallowRef('')
 let stamp = ''
 
-/** Read the visuals folder again; ``true`` when something changed. */
+/** The listener's preset files as read (for a shared player: they go with it). */
+export const myPresetTexts = shallowRef<{ name: string; text: string }[]>([])
+
+/** Read the visuals folder again; ``true`` when something changed. A shared player has the presets it was
+ * shared with. */
 export async function loadMyPresets(): Promise<boolean> {
   let answer: { folder: string; files: MyPresetFile[] }
-  try {
-    const response = await fetch('/api/visuals')
-    if (!response.ok) return false
-    answer = await response.json()
-  } catch {
-    return false
+  if (isPortable) {
+    answer = { folder: '', files: portable?.presets ?? [] }
+  } else {
+    try {
+      const response = await fetch('/api/visuals')
+      if (!response.ok) return false
+      answer = await response.json()
+    } catch {
+      return false
+    }
   }
+  myPresetTexts.value = answer.files.map((f) => ({ name: f.name, text: f.text }))
   myPresetFolder.value = answer.folder
   const next = answer.files.map((f) => `${f.name}:${f.mtime}`).join('|')
   if (next === stamp) return false

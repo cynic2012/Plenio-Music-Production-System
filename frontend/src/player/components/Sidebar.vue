@@ -3,8 +3,9 @@
 import { computed, ref } from 'vue'
 
 import { vFocus } from '../focus'
-import { folders, go, lastSaved, library, newPlaylist, rescan, route, saveError, settings, state } from '../store'
+import { folders, go, lastSaved, library, newPlaylist, rescan, route, saveError, settings, shareFor, state } from '../store'
 import Icon from './Icon.vue'
+import { isPortable, portable } from '../portable'
 
 const naming = ref(false)
 const name = ref('')
@@ -64,8 +65,12 @@ async function scan(): Promise<void> {
     </div>
 
     <div class="foot">
+      <template v-if="isPortable">
+        <p class="shared">“{{ portable?.title }}” - shared with the Plenio Player</p>
+      </template>
       <p v-for="f in folders" :key="f" class="folder" :title="f"><Icon name="folder" :size="14" /> {{ f }}</p>
-      <button class="ghost small" :disabled="scanning" @click="scan"><Icon name="refresh" :size="14" :class="{ spin: scanning }" /> {{ scanning ? 'Looking …' : 'Look for new songs' }}</button>
+      <button v-if="!isPortable" class="ghost small" :class="{ wide: true }" @click="shareFor = { songs: [], title: '' }"><Icon name="download" :size="14" /> Share as a player…</button>
+      <button v-if="!isPortable" class="ghost small" :disabled="scanning" @click="scan"><Icon name="refresh" :size="14" :class="{ spin: scanning }" /> {{ scanning ? 'Looking …' : 'Look for new songs' }}</button>
       <a class="link small-link" :class="{ on: route === '/settings' }" @click="go('/settings')">
         <Icon name="gear" :size="16" /> Settings
         <small :class="{ bad: saveError }" :title="saveError || 'Playlists, favourites and every setting are kept on this computer'">{{ saveError ? 'not saved' : lastSaved ? 'saved ✓' : 'kept ✓' }}</small>
@@ -158,6 +163,11 @@ async function scan(): Promise<void> {
   50% {
     opacity: 0.55;
   }
+}
+.shared {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 11px;
 }
 .link small {
   margin-left: auto;

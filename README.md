@@ -242,6 +242,7 @@ It finds every song Export Release wrote into ComfyUI's output folder. **Open in
 - **Playlists**: smart lists, your own lists, a radio of songs alike, crossfades, repeat (the playlist or the song), A/B with the unmastered take and a sleep timer.
 - **Live Play**: a playlist for a party that you change while it plays - and the songs you make in ComfyUI join it as soon as they are exported: next, at the end or anywhere.
 - **A song as a video**: an MP4 of the song's visual with its lyrics (subtitles or karaoke), its notation following the music and a title card - Full HD, 4K, square or upright for Shorts.
+- **Share your songs as a player**: one HTML file with the player and the songs you choose (as MP3) - send it, and anyone can double-click it and listen, with the lyrics, the notation and the visuals, no install.
 - **Your folders, and other music**: choose the folders in Settings; other music in them plays too, clearly marked, with its tags, cover and `.lrc` lyrics.
 
 <p align="center">

@@ -13,6 +13,7 @@ import { api, type SongSummary } from './api'
 import { engine } from './engine'
 import { insertAt, type Insert } from './liveSettings'
 import { byId, index, library, liveWaiting, playAt, playSongs, queue, queueSource, say, settings } from './store'
+import { isPortable } from './portable'
 
 /** When each new song arrived (for its *new* mark), and what arrived lately, newest first. */
 export const arrived = reactive(new Map<string, number>())
@@ -78,7 +79,7 @@ function announce(song: SongSummary): void {
 }
 
 function startPolling(): void {
-  if (timer !== undefined) return
+  if (timer !== undefined || isPortable) return
   since = null
   void poll()
   timer = window.setInterval(() => void poll(), 4000)

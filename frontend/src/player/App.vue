@@ -14,6 +14,7 @@ import PlaylistsView from './components/PlaylistsView.vue'
 import SettingsView from './components/SettingsView.vue'
 import LiveView from './components/LiveView.vue'
 import VideoDialog from './components/VideoDialog.vue'
+import ShareDialog from './components/ShareDialog.vue'
 import QueuePanel from './components/QueuePanel.vue'
 import RemoveDialog from './components/RemoveDialog.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -40,10 +41,12 @@ import {
   toggleAB,
   toggleFavorite,
   videoFor,
+  shareFor,
   toggleMute,
 } from './store'
 import { loadMyPresets } from './visuals/drop'
 import './live'
+import { isPortable } from './portable'
 
 const queueOpen = ref(false)
 const help = ref(false)
@@ -207,7 +210,7 @@ let presetTimer: number | undefined
 onMounted(() => {
   window.addEventListener('keydown', onKey)
   void loadMyPresets()
-  presetTimer = window.setInterval(() => {
+  if (!isPortable) presetTimer = window.setInterval(() => {
     if (document.visibilityState === 'visible') void loadMyPresets()
   }, 3000)
 })
@@ -241,6 +244,7 @@ onBeforeUnmount(() => {
     </main>
     <PlayerBar class="playerbar" @queue="queueOpen = !queueOpen" @visual="visualFullscreen" />
     <VideoDialog v-if="videoFor" :song="videoFor" @close="videoFor = null" />
+    <ShareDialog v-if="shareFor" :songs="shareFor.songs" :title="shareFor.title" @close="shareFor = null" />
     <Transition name="slide"><QueuePanel v-if="queueOpen" class="queue" @close="queueOpen = false" /></Transition>
     <Transition name="np"><NowPlaying v-if="nowPlayingOpen" ref="nowPlaying" /></Transition>
     <Transition name="fade">

@@ -4,7 +4,7 @@
  */
 import { computed, reactive, ref, shallowRef, watch } from 'vue'
 
-import { api, media, type Playlist, type PlayerInfo, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary } from './api'
+import { api, media, mediaReady, type Playlist, type PlayerInfo, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary } from './api'
 import { engine } from './engine'
 import { type LiveSettings, liveWithDefaults } from './liveSettings'
 import { type LyricsStyle, lyricsWithDefaults } from './lyricsStyle'
@@ -336,6 +336,8 @@ export function toggleCurrent(): void {
 export const liveWaiting = ref(false)
 /** The song *Save as a video* is open for. */
 export const videoFor = shallowRef<SongSummary | null>(null)
+/** *Share as a player* open: the songs chosen at first, the name. */
+export const shareFor = shallowRef<{ songs: string[]; title: string } | null>(null)
 
 /** A short message at the top of the page (App.vue shows it). */
 export const toast = ref('')
@@ -377,6 +379,8 @@ export async function playAt(i: number, { crossfade = 0, at = 0, autoplay = true
     ab.value = false
     engine.setAB(false)
   }
+  // a shared player makes the song's sound from the page first
+  await mediaReady(song.id, 'audio')
   await engine.load(
     { id: song.id, url: audioUrl(song), original: song.has.original ? media(song.id, 'original') : null },
     { crossfade, at, autoplay }

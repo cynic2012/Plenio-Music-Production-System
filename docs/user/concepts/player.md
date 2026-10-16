@@ -307,6 +307,31 @@ this song.
 
 A song counts as played after 30 seconds.
 
+## Share your songs as a player
+
+Give your music to others in one file: **Share…** in a view of the library or on a playlist's page, or
+**Share as a player…** at the bottom of the sidebar, packs the player and the songs you choose into **one HTML
+file that plays by itself**. Send it (by mail, a cloud folder, a USB stick); the other one double-clicks it and
+has the Plenio Player with your songs - in any current browser, on Windows, macOS, Linux or a tablet, without
+installing anything, without Plenio or ComfyUI.
+
+- **Choose the songs**: tick them, or take all of the view, your favourites or a playlist at once; search to
+  find some. The dialog shows how long and how large the file gets.
+- **Sound**: MP3 at 128, 160 or 192 kbit/s (about 1-1.5 MB a minute). Never the FLAC or WAV.
+- **Also**: the sheet music (PDF), your look (the visuals' and the lyrics' settings), your own Plenio Drop
+  visuals, your playlists of these songs.
+
+In the shared player everything that needs no Plenio plays as here: the library with its search and filters,
+a page per song with the lyrics and the notation following the music, Now playing with its four views, every
+visual, the lyrics' look, playlists, the queue, Live Play, repeat, the sleep timer, the keys. The listener's
+playlists, favourites and settings are kept in their browser. What it does not have: opening songs in
+ComfyUI, folders and other music, new songs from ComfyUI, removing songs, videos, the unmastered take.
+
+What stays out of the file: the FLAC and WAV files, the unmastered takes, the release records with their
+workflows, and every path of your computer. The songs' details (style, brief, seeds) go in, as their pages
+show them. The files are kept in the player's `packages` folder (`~/.plenio/player/packages`), listed under
+*Shared players* in Settings, with *Download* and *Try it*.
+
 ## Save a song as a video
 
 **Video…** on a song's page (or *Save as a video…* in its menu) makes an **MP4 video** of the song: a visual

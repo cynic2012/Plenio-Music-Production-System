@@ -37,6 +37,7 @@ import Karaoke from './Karaoke.vue'
 import Notation from './Notation.vue'
 import SongCard from './SongCard.vue'
 import SongMenu from './SongMenu.vue'
+import { isPortable } from '../portable'
 
 const props = defineProps<{ id: string }>()
 
@@ -139,6 +140,7 @@ const seedNames: Record<string, string> = { take: 'Take seed', draft: 'Draft see
 const downloads = computed(() => {
   const files = detail.value?.files ?? {}
   const names: [string, string][] = [
+    ['audio', 'MP3'],
     ['audio_flac', 'FLAC'],
     ['audio_mp3', 'MP3'],
     ['audio_wav', 'WAV'],
@@ -149,7 +151,10 @@ const downloads = computed(() => {
     ['cover', 'Cover'],
     ['record', 'Plenio record (JSON)'],
   ]
-  return names.filter(([kind]) => files[kind]).map(([kind, label]) => ({ kind, label, name: files[kind], url: media(props.id, kind) }))
+  // the Plenio Player lists the files by format; a shared player has the MP3 (and the sheet music)
+  return names
+    .filter(([kind]) => files[kind] && (kind !== 'audio' || isPortable))
+    .map(([kind, label]) => ({ kind, label, name: files[kind], url: media(props.id, kind) }))
 })
 
 async function toComfyUI(): Promise<void> {
@@ -206,9 +211,9 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
           <button class="primary" @click="play"><Icon :name="isCurrent && playing ? 'pause' : 'play'" /> {{ isCurrent && playing ? 'Pause' : 'Play' }}</button>
           <button class="ghost" :class="{ on: isFavorite(song.id) }" @click="toggleFavorite(song.id)"><Icon name="heart" :filled="isFavorite(song.id)" /> {{ isFavorite(song.id) ? 'Favourite' : 'Add to favourites' }}</button>
           <button class="ghost" @click="menu = { x: $event.clientX, y: $event.clientY }"><Icon name="plus" /> Playlist, queue …</button>
-          <button v-if="!song.other" class="ghost" :disabled="opening" title="Open the song's workflow in ComfyUI - with its lyrics, score and settings - to work on it" @click="toComfyUI"><Icon name="external" /> {{ opening ? 'Opening ComfyUI …' : 'Open in ComfyUI' }}</button>
-          <button class="ghost" title="Save the song as an MP4 video: a visual, its lyrics, its notation …" @click="videoFor = song"><Icon name="layers" /> Video…</button>
-          <button class="ghost down" title="Remove the song from the library: to the retired songs, or deleted" @click="removing = song"><Icon name="thumbdown" /> Remove…</button>
+          <button v-if="!song.other && !isPortable" class="ghost" :disabled="opening" title="Open the song's workflow in ComfyUI - with its lyrics, score and settings - to work on it" @click="toComfyUI"><Icon name="external" /> {{ opening ? 'Opening ComfyUI …' : 'Open in ComfyUI' }}</button>
+          <button v-if="!isPortable" class="ghost" title="Save the song as an MP4 video: a visual, its lyrics, its notation …" @click="videoFor = song"><Icon name="layers" /> Video…</button>
+          <button v-if="!isPortable" class="ghost down" title="Remove the song from the library: to the retired songs, or deleted" @click="removing = song"><Icon name="thumbdown" /> Remove…</button>
         </div>
         <p class="meta">
           <span>{{ formatTime(song.seconds) }}</span>

@@ -14,6 +14,7 @@ import { countOf } from '../timing'
 import FolderBrowser from './FolderBrowser.vue'
 import Icon from './Icon.vue'
 import LyricsPanel from './LyricsPanel.vue'
+import { isPortable, portable } from '../portable'
 
 const shelf = ref<FoldersAnswer | null>(null)
 const browsing = ref(false)
@@ -61,6 +62,11 @@ onMounted(async () => {
   videos.value = await api.videos().catch(() => null)
 })
 const megabytes = (bytes: number): string => `${Math.max(1, Math.round(bytes / 2 ** 20))} MB`
+// the players made to share
+const shared = ref<{ folder: string; files: { name: string; size: number; mtime: number }[] } | null>(null)
+onMounted(async () => {
+  shared.value = await api.packages().catch(() => null)
+})
 
 const found = ref<ComfyFound | null>(null)
 const looking = ref(false)
@@ -133,8 +139,14 @@ async function stop(): Promise<void> {
       <p>Start it again with the <b>Plenio Player</b> button in ComfyUI, with <code>Plenio Player.bat</code> in the Plenio folder, or with <code>python plenio_player.py</code>.</p>
     </div>
 
+    <section v-if="isPortable" class="block">
+      <h3><Icon name="music" /> This shared player</h3>
+      <p class="lead">“{{ portable?.title }}” - {{ countOf(library.length, 'song') }}, shared {{ portable?.created.slice(0, 10) }} with the Plenio Player {{ portable?.plenio }}. It plays by itself in this browser, without installing anything; your playlists, favourites and settings are kept in this browser.</p>
+      <p class="hint">Making songs, opening them in ComfyUI, Live Play's new songs from ComfyUI and saving videos are the Plenio Player's: <a href="https://github.com/jplenio/Plenio-Music-Production-System" target="_blank" rel="noopener">Plenio</a>.</p>
+    </section>
+
     <section class="block">
-      <h3><Icon name="check" /> Kept on this computer</h3>
+      <h3><Icon name="check" /> {{ isPortable ? 'Kept in this browser' : 'Kept on this computer' }}</h3>
       <p class="lead">
         Everything you set here - and everything below - is saved by the player itself, half a second after each change and when the page closes. It stays when you
         close the browser, restart the computer, start the player from ComfyUI or by hand, or open it in another browser.
@@ -158,7 +170,7 @@ async function stop(): Promise<void> {
       <p class="hint">The songs themselves are not in the backup: they stay in their folders.</p>
     </section>
 
-    <section class="block">
+    <section v-if="!isPortable" class="block">
       <h3><Icon name="external" /> Open in ComfyUI</h3>
       <p class="lead">A song's page opens the song's workflow in ComfyUI, with its lyrics, score and settings, to work on it.</p>
       <p class="status" :class="{ ok: found }">
@@ -170,7 +182,7 @@ async function stop(): Promise<void> {
       <button class="ghost small" :disabled="looking" @click="look"><Icon name="refresh" :size="14" /> Look again</button>
     </section>
 
-    <section class="block">
+    <section v-if="!isPortable" class="block">
       <h3><Icon name="folder" /> Songs</h3>
       <p class="lead">The player reads every release record (<code>.plenio.json</code>) below these folders: {{ countOf(library.length, 'song') }}.</p>
       <ul class="shelf">
@@ -204,7 +216,20 @@ async function stop(): Promise<void> {
       <LyricsPanel />
     </section>
 
-    <section class="block">
+    <section v-if="!isPortable" class="block">
+      <h3><Icon name="download" /> Shared players</h3>
+      <p class="lead">Songs to give away: one HTML file with the player and the songs, which plays by itself - <b>Share…</b> in a view or a playlist, or <b>Share as a player…</b> at the bottom of the sidebar. {{ shared?.files.length ? countOf(shared.files.length, 'player') + ' so far:' : 'None yet.' }}</p>
+      <ul v-if="shared?.files.length" class="videos">
+        <li v-for="f in shared.files.slice(0, 12)" :key="f.name">
+          <span>{{ f.name }} <small>{{ megabytes(f.size) }} · {{ new Date(f.mtime * 1000).toLocaleString() }}</small></span>
+          <a class="icon-btn" :href="`/packages/${encodeURIComponent(f.name)}`" target="_blank" rel="noopener" title="Try it"><Icon name="play" :size="16" /></a>
+          <a class="icon-btn" :href="`/packages/${encodeURIComponent(f.name)}?download=1`" :download="f.name" title="Download"><Icon name="download" :size="16" /></a>
+        </li>
+      </ul>
+      <button class="ghost small" @click="api.openPackages()"><Icon name="folder" :size="14" /> Open the folder</button>
+    </section>
+
+    <section v-if="!isPortable" class="block">
       <h3><Icon name="layers" /> Videos</h3>
       <p class="lead">A song as an MP4 video - its visual, lyrics and notation: <b>Video…</b> on a song's page. {{ videos?.files.length ? countOf(videos.files.length, 'video') + ' so far:' : 'None yet.' }}</p>
       <ul v-if="videos?.files.length" class="videos">
@@ -218,7 +243,7 @@ async function stop(): Promise<void> {
       <p v-if="videos" class="hint"><code>{{ videos.folder }}</code></p>
     </section>
 
-    <section class="block">
+    <section v-if="!isPortable" class="block">
       <h3><Icon name="info" /> The player</h3>
       <p class="lead">Plenio Player {{ info?.version }} - a program of its own, which runs without ComfyUI. Started from ComfyUI it has no window: stop it here.</p>
       <button class="ghost danger" @click="stop">Stop the player</button>
