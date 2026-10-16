@@ -226,7 +226,7 @@ async function stop(): Promise<void> {
           <a class="icon-btn" :href="`/packages/${encodeURIComponent(f.name)}?download=1`" :download="f.name" title="Download"><Icon name="download" :size="16" /></a>
         </li>
       </ul>
-      <button class="ghost small" @click="api.openPackages()"><Icon name="folder" :size="14" /> Open the folder</button>
+      <button class="ghost small" @click="api.openPackages().catch((e) => say(e.message, 5000))"><Icon name="folder" :size="14" /> Open the folder</button>
     </section>
 
     <section v-if="!isPortable" class="block">
@@ -239,7 +239,7 @@ async function stop(): Promise<void> {
           <a class="icon-btn" :href="`/videos/${encodeURIComponent(v.name)}?download=1`" :download="v.name" title="Download"><Icon name="download" :size="16" /></a>
         </li>
       </ul>
-      <button class="ghost small" @click="api.openVideos()"><Icon name="folder" :size="14" /> Open the videos folder</button>
+      <button class="ghost small" @click="api.openVideos().catch((e) => say(e.message, 5000))"><Icon name="folder" :size="14" /> Open the videos folder</button>
       <p v-if="videos" class="hint"><code>{{ videos.folder }}</code></p>
     </section>
 

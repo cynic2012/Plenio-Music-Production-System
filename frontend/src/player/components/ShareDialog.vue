@@ -83,6 +83,14 @@ async function make(): Promise<void> {
     error.value = e instanceof Error ? e.message : String(e)
   }
 }
+/** The folder in the file manager, the player made chosen; a failure is said, not swallowed. */
+async function showFolder(file: string): Promise<void> {
+  try {
+    await api.openPackages(file)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  }
+}
 const sizeText = (bytes: number): string => (bytes > 2 ** 30 ? `${(bytes / 2 ** 30).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / 2 ** 20))} MB`)
 onBeforeUnmount(() => window.clearTimeout(timer))
 </script>
@@ -136,7 +144,7 @@ onBeforeUnmount(() => window.clearTimeout(timer))
             <div class="buttons">
               <a class="ghost small" :href="`/packages/${encodeURIComponent(status.file ?? '')}?download=1`" :download="status.file"><Icon name="download" :size="14" /> Download</a>
               <a class="ghost small" :href="`/packages/${encodeURIComponent(status.file ?? '')}`" target="_blank" rel="noopener"><Icon name="play" :size="14" /> Try it</a>
-              <button type="button" class="ghost small" @click="api.openPackages()"><Icon name="folder" :size="14" /> Open the folder</button>
+              <button type="button" class="ghost small" @click="showFolder(status.file ?? '')"><Icon name="folder" :size="14" /> Open the folder</button>
             </div>
             <p class="hint path">{{ status.folder }}</p>
           </div>

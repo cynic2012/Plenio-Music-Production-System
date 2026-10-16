@@ -249,7 +249,8 @@ const serverApi = {
   videoFinish: (job: string, frames: number) => post<{ file: string; size: number; folder: string }>(`/api/video/${job}/finish`, { frames }),
   videoCancel: (job: string) => post<{ ok: boolean }>(`/api/video/${job}/cancel`, {}),
   videos: () => json<{ folder: string; files: { name: string; size: number; mtime: number }[] }>('/api/videos'),
-  openVideos: () => post<{ folder: string }>('/api/videos/open', {}),
+  /** The videos folder in the file manager (``file``: that video chosen). */
+  openVideos: (file = '') => post<{ folder: string }>('/api/videos/open', file ? { file } : {}),
   /** The songs that appeared since ``since`` (the last answer's ``now``; ``null``: only the ``now``). */
   newSongs: (since: number | null) => json<{ now: number; songs: SongSummary[] }>(`/api/new${since !== null ? `?since=${since}` : ''}`),
   /** Save the folders (or ``null``: back to the ones it started with); errors carry the server's words. */
@@ -268,7 +269,7 @@ const serverApi = {
   packageStart: (options: PackageOptions) => post<{ job: string }>('/api/package', options),
   packageStatus: (job: string) => json<PackageStatus>(`/api/package/${job}`),
   packages: () => json<{ folder: string; files: { name: string; size: number; mtime: number }[] }>('/api/packages'),
-  openPackages: () => post<{ folder: string }>('/api/packages/open', {}),
+  openPackages: (file = '') => post<{ folder: string }>('/api/packages/open', file ? { file } : {}),
 }
 
 /** In a shared player: the songs inside the page, the listener's state in their browser; the rest is the

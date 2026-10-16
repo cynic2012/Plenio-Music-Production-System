@@ -114,6 +114,14 @@ async function make(): Promise<void> {
     stop = null
   }
 }
+/** The videos folder in the file manager, the video chosen; a failure is said, not swallowed. */
+async function showFolder(file: string): Promise<void> {
+  try {
+    await api.openVideos(file)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  }
+}
 function cancel(): void {
   stop?.abort()
 }
@@ -163,7 +171,7 @@ onBeforeUnmount(cancel)
             <div class="row">
               <a class="ghost small" :href="`/videos/${encodeURIComponent(result.file)}?download=1`" :download="result.file"><Icon name="download" :size="14" /> Download</a>
               <a class="ghost small" :href="`/videos/${encodeURIComponent(result.file)}`" target="_blank" rel="noopener"><Icon name="play" :size="14" /> Watch</a>
-              <button class="ghost small" @click="api.openVideos()"><Icon name="folder" :size="14" /> Open the folder</button>
+              <button class="ghost small" @click="showFolder(result.file)"><Icon name="folder" :size="14" /> Open the folder</button>
             </div>
             <p class="hint path">{{ result.folder }}</p>
           </div>

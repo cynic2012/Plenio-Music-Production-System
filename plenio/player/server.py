@@ -27,7 +27,7 @@ from .package import PackageJobs, package_file, packages_dir
 from .package import listing as package_listing
 from .peaks import peaks
 from .video import VideoJobs, videos_dir
-from .visuals import list_presets, open_folder, save_copy, visuals_dir
+from .visuals import list_presets, open_folder, save_copy, show_folder, visuals_dir
 
 STATIC = Path(__file__).resolve().parent / "static"
 MEDIA_KINDS = {
@@ -426,9 +426,11 @@ def make_handler(
             if route == "/api/packages/open":
                 folder = packages_dir(state.path.parent)
                 try:
-                    open_folder(folder)
-                except OSError as error:
-                    return self._error(500, str(error))
+                    chosen = json.loads(raw.decode("utf-8")).get("file") if raw else None
+                    made = package_file(state.path.parent, str(chosen)) if chosen else None
+                    show_folder(folder, made)
+                except (OSError, ValueError, AttributeError) as error:
+                    return self._error(500, f"could not show the folder: {error}")
                 return self._json({"folder": str(folder)})
             try:
                 body = json.loads(raw.decode("utf-8")) if raw else None
@@ -467,9 +469,11 @@ def make_handler(
                 return self._error(400, "not JSON")
             if route == "/api/videos/open":
                 try:
-                    open_folder(jobs.folder)
+                    show_folder(
+                        jobs.folder, jobs.file(str(body.get("file") or "")) if body.get("file") else None
+                    )
                 except OSError as error:
-                    return self._error(500, str(error))
+                    return self._error(500, f"could not show the folder: {error}")
                 return self._json({"folder": str(jobs.folder)})
             if route == "/api/video":
                 song = library.song(str(body.get("song", "")))

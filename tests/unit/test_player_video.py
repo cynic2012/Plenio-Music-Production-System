@@ -175,3 +175,24 @@ def test_only_the_players_page_makes_videos_and_nothing_else_is_served(
     (server[3].parent / "secret.mp4").write_bytes(b"not for the page")
     assert call(server, "GET", "/videos/..%2Fsecret.mp4")[0] == 404
     assert call(server, "GET", "/videos/../state.json")[0] == 404
+
+
+def test_the_folder_is_shown_by_explorer_with_the_video_chosen(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # owner's report 2026-10-16: "Open the folder" did nothing in a player started from ComfyUI
+    from plenio.player import visuals
+
+    started: list[object] = []
+    monkeypatch.setattr(visuals.subprocess, "Popen", lambda command, *a, **k: started.append(command))
+    monkeypatch.setattr(visuals.sys, "platform", "win32")
+    folder = tmp_path / "my videos"
+    folder.mkdir()
+    (folder / "Song (1920x1080).mp4").write_bytes(b"x")
+    visuals.show_folder(folder, folder / "Song (1920x1080).mp4")
+    visuals.show_folder(folder)
+    visuals.show_folder(folder, tmp_path / "elsewhere.mp4")  # a file outside: the folder only
+    assert started[0].endswith(f' /select,"{(folder / "Song (1920x1080).mp4").resolve()}"')
+    assert started[0].lower().startswith('"') and "explorer.exe" in started[0].lower()
+    assert started[1].endswith(f' "{folder.resolve()}"') and started[2] == started[1]
+    assert not (folder / "README.txt").exists()  # the visuals' README belongs to the visuals folder only

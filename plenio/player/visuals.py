@@ -79,14 +79,36 @@ def save_copy(folder: Path, name: str, text: str) -> Path:
 
 
 def open_folder(folder: Path) -> None:
-    """Show the folder in the system's file manager (made when it is not there yet)."""
+    """Show the visuals folder in the system's file manager, with a README on what goes there."""
     folder.mkdir(parents=True, exist_ok=True)
     readme = folder / "README.txt"
     if not readme.exists():
         readme.write_text(README, encoding="utf-8")
+    show_folder(folder)
+
+
+def show_folder(folder: Path, select: Path | None = None) -> None:
+    """Show a folder of the player's in the system's file manager (made when it is not there yet), with
+    ``select`` - a file in it - chosen where the file manager can.
+
+    On Windows Explorer is started as a program of its own: ``os.startfile`` asks the shell to open the
+    folder, and in a player started from ComfyUI (a background process without a window) that did nothing at
+    all (owner's report 2026-10-16)."""
+    folder.mkdir(parents=True, exist_ok=True)
+    chosen = (
+        select
+        if select is not None and select.parent.resolve() == folder.resolve() and select.is_file()
+        else None
+    )
     if sys.platform == "win32":
-        os.startfile(folder)  # noqa: S606 - our own folder
+        windir = Path(os.environ.get("WINDIR") or os.environ.get("SystemRoot") or "C:\\Windows")
+        explorer = windir / "explorer.exe"
+        program = str(explorer) if explorer.is_file() else "explorer.exe"
+        # Explorer reads /select,"path" - the quotes round the path only (a list of arguments would quote
+        # the whole "/select,path", and Explorer then opens Documents instead)
+        target = f'/select,"{chosen.resolve()}"' if chosen else f'"{folder.resolve()}"'
+        subprocess.Popen(f'"{program}" {target}')  # noqa: S603 - Explorer with our own folder
     elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(folder)])  # noqa: S603, S607
+        subprocess.Popen(["open", "-R", str(chosen)] if chosen else ["open", str(folder)])  # noqa: S603, S607
     else:
         subprocess.Popen(["xdg-open", str(folder)])  # noqa: S603, S607
