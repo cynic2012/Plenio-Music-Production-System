@@ -29,6 +29,25 @@ a {
 button {
   font-family: var(--font);
 }
+/* The open list of a select draws its entries on the select's own background - a see-through one in the
+   player, so on Windows the entries not chosen were white on white and only the one under the mouse showed.
+   Every entry gets a solid dark background of its own. */
+select option,
+select optgroup {
+  background-color: #1b1726;
+  color: #f2f0f8;
+}
+select optgroup {
+  color: rgba(242, 240, 248, 0.6);
+  font-style: normal;
+}
+select option:checked {
+  background-color: color-mix(in srgb, var(--accent) 40%, #1b1726);
+  color: #fff;
+}
+select option:disabled {
+  color: rgba(242, 240, 248, 0.35);
+}
 button:disabled {
   opacity: 0.4;
   cursor: default;
