@@ -24,7 +24,7 @@ const kept = computed(() => [
   ['Play counts', countOf(Object.keys(state.plays).length, 'song')],
   ['Visuals', `${settings.visuals.mode}, ${countOf(settings.visuals.pool.length, 'visual')} ticked, ${countOf(Object.keys(settings.visuals.songs).length, 'song')} with its own`],
   ['Sound', `volume ${Math.round(settings.volume * 100)} %, crossfade ${settings.crossfade} s, speed ${settings.rate}×`],
-  ['Library', `sorted by ${settings.sort}, ${settings.view} view`],
+  ['Library', `sorted by ${settings.sort}, ${settings.view} view, ${countOf(Object.values(settings.filters).filter((f) => f.query.trim() || f.chips.length).length, 'view')} filtered`],
   ['Views', `Now playing opens on ${settings.npView}, a song's page on ${settings.songTab}`],
   ['Where you stopped', settings.resume ? 'the queue and the moment in the song' : '-'],
 ])

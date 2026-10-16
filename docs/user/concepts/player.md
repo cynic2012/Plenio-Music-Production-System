@@ -106,6 +106,11 @@ The **chips** under the search are your most common genres, moods, models, langu
 click filters, a second click removes the filter. You can sort by newest, oldest, title, length, tempo,
 loudness, most played or recently played, and switch between a grid and a list.
 
+**Your search and filters stay** - when you open a song's page, go to another view or another window and
+come back, or reload the page; the library also keeps its place in the list. Each view (*Songs*,
+*Favourites*, *Most played*, *Recently played*) has its own. While a search or filter is on, a **Filtered**
+row shows each of them (× removes one) and how many songs are left, and **Reset filters** clears them all.
+
 ## A song's page
 
 Open it with a click on the song's card or title, with ⓘ beside the song in the bar at the bottom and at the
@@ -229,7 +234,7 @@ Everything you set in the player is kept - not in the browser, but by the player
 
 - your playlists, their order, colours and visuals, your favourites and play counts
 - every setting: the visuals (mode, the ticked ones, a song's own visual), the colours, volume, crossfade and
-  speed, the library's sort and view
+  speed, the library's sort and view, and its search and filters (per view)
 - the view Now playing opens in and the tab a song's page opens on
 - where you stopped: the queue and the moment in the song (the player starts there next time)
 

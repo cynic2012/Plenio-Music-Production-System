@@ -16,9 +16,18 @@ import SongMenu from './SongMenu.vue'
 
 const props = defineProps<{ collection: 'all' | 'favorites' | 'top' | 'recent' }>()
 
-const query = ref('')
+// the search and the chips are kept with the settings, one set per view: they are still there after a song's
+// page, another window, or a reload - until Reset filters
+if (!settings.filters[props.collection]) settings.filters[props.collection] = { query: '', chips: [] }
+const filter = computed(() => settings.filters[props.collection] ?? { query: '', chips: [] })
+const query = computed({ get: () => filter.value.query, set: (v: string) => (filter.value.query = v) })
+const chips = computed(() => filter.value.chips)
+const filtered = computed(() => !!query.value.trim() || chips.value.length > 0)
+function resetFilters(): void {
+  filter.value.query = ''
+  filter.value.chips.splice(0)
+}
 const input = ref<HTMLInputElement | null>(null)
-const chips = ref<string[]>([])
 const menu = ref<{ song: SongSummary; x: number; y: number } | null>(null)
 const limit = ref(120)
 
@@ -64,6 +73,13 @@ const facets = computed(() => {
   ].filter((f) => f.values.length > 1 || f.key === 'model')
 })
 const chipValue = (key: string, value: string): string => `${key}:"${value}"`
+/** ``genre:"dance-pop"`` -> ``Genre: dance-pop`` (the active filters' row). */
+function chipLabel(chip: string): string {
+  const match = /^(\w+):"(.*)"$/.exec(chip)
+  if (!match) return chip
+  const facet = facets.value.find((f) => f.key === match[1])
+  return `${facet?.label ?? match[1]}: ${match[2]}`
+}
 function toggleChip(key: string, value: string): void {
   const chip = chipValue(key, value)
   const at = chips.value.indexOf(chip)
@@ -137,6 +153,16 @@ defineExpose({ focus: () => input.value?.focus() })
         <button class="icon-btn" :class="{ on: settings.view === 'list' }" title="List" @click="settings.view = 'list'"><Icon name="list" /></button>
       </div>
       <button class="ghost" :disabled="!songs.length" @click="playAll()"><Icon name="play" :size="16" /> Play {{ songs.length }}</button>
+      <button v-if="filtered" class="ghost reset" title="Clear the search and every filter" @click="resetFilters"><Icon name="close" :size="16" /> Reset filters</button>
+    </div>
+
+    <div v-if="filtered" class="active">
+      <span class="label">Filtered</span>
+      <button v-if="query.trim()" class="chip on" title="Clear the search" @click="query = ''">“{{ query.trim() }}” <Icon name="close" :size="12" /></button>
+      <button v-for="chip in chips" :key="chip" class="chip on" title="Remove this filter" @click="chips.splice(chips.indexOf(chip), 1)">
+        {{ chipLabel(chip) }} <Icon name="close" :size="12" />
+      </button>
+      <small>{{ songs.length }} of {{ countOf(base.length, 'song') }}</small>
     </div>
 
     <div class="facets">
@@ -146,11 +172,11 @@ defineExpose({ focus: () => input.value?.focus() })
           {{ value }} <small>{{ count }}</small>
         </button>
       </div>
-      <button v-if="chips.length" class="chip clear" @click="chips = []">Clear filters</button>
     </div>
 
     <p v-if="!songs.length" class="empty">
       {{ library.length ? 'No song matches - try fewer words or filters.' : 'No Plenio songs in this folder yet. Export one with Export Release, or start the player with --folder.' }}
+      <button v-if="library.length && filtered" class="ghost reset-empty" @click="resetFilters">Reset filters</button>
     </p>
     <TransitionGroup tag="div" :class="settings.view === 'grid' ? 'grid' : 'rows'" name="cards">
       <SongCard
@@ -289,8 +315,31 @@ select {
   opacity: 0.55;
   margin-left: 2px;
 }
-.clear {
-  align-self: flex-start;
+.active {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: -4px 0 12px;
+}
+.active .label {
+  width: 96px;
+  font: 600 11px var(--font);
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.active small {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 4px;
+}
+.reset {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.reset-empty {
+  margin: 14px auto 0;
+  display: flex;
 }
 .grid {
   display: grid;

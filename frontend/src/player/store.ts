@@ -25,6 +25,13 @@ export interface Settings {
   songTab: string
   /** Where *Open in ComfyUI* goes (``''``: the ComfyUI that started the player, else the one found). */
   comfyui: string
+  /** The library's search and filter chips, per view (``all``, ``favorites``, ``top``, ``recent``). */
+  filters: Record<string, LibraryFilter>
+}
+
+export interface LibraryFilter {
+  query: string
+  chips: string[]
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +48,21 @@ const DEFAULT_SETTINGS: Settings = {
   npView: 'stage',
   songTab: 'lyrics',
   comfyui: '',
+  filters: {},
+}
+
+/** Saved filters, checked (a file edited by hand or an older version may hold anything). */
+function filtersOf(raw: unknown): Record<string, LibraryFilter> {
+  const out: Record<string, LibraryFilter> = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const [view, value] of Object.entries(raw as Record<string, unknown>)) {
+    const f = value as Partial<LibraryFilter> | null
+    out[view] = {
+      query: typeof f?.query === 'string' ? f.query : '',
+      chips: Array.isArray(f?.chips) ? f.chips.filter((c): c is string => typeof c === 'string') : [],
+    }
+  }
+  return out
 }
 
 export const library = shallowRef<SongSummary[]>([])
@@ -110,7 +132,7 @@ export async function replaceState(data: Partial<PlayerState> | null): Promise<v
   state.plays = fresh.plays && typeof fresh.plays === 'object' ? fresh.plays : {}
   state.last_played = fresh.last_played && typeof fresh.last_played === 'object' ? fresh.last_played : {}
   const stored = (fresh.settings ?? {}) as Partial<Settings>
-  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals) })
+  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters) })
   engine.setVolume(settings.volume)
   engine.setRate(settings.rate)
   await saveNow()
@@ -125,7 +147,7 @@ export async function load(): Promise<void> {
     info.value = about
     Object.assign(state, saved)
     const stored = (saved.settings ?? {}) as Partial<Settings>
-    Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals) })
+    Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters) })
     engine.setVolume(settings.volume)
     engine.setRate(settings.rate)
     loadError.value = ''

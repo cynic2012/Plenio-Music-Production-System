@@ -55,7 +55,13 @@ const page = computed(() => {
   if (first === 'favorites' || first === 'top' || first === 'recent') return { kind: 'library' as const, collection: first as 'favorites' | 'top' | 'recent' }
   return { kind: 'library' as const, collection: 'all' as const }
 })
-watch(route, () => nextTick(() => main.value?.scrollTo({ top: 0 })))
+// a page opens at its top - except a library page you come back to, which is where you left it
+const scrolls = new Map<string, number>()
+watch(route, (now, before) => {
+  if (before !== undefined && main.value) scrolls.set(before, main.value.scrollTop)
+  const keep = !now.startsWith('/song/') && !now.startsWith('/record/')
+  void nextTick(() => main.value?.scrollTo({ top: keep ? (scrolls.get(now) ?? 0) : 0, behavior: 'instant' as ScrollBehavior }))
+})
 
 // ComfyUI's Export Release opens the player at a song by its record file: #/record/<path> -> its page
 watch(
