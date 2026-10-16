@@ -8,7 +8,7 @@ import { api, media, type SongDetail, type SongSummary } from '../api'
 import { paletteFrom, songHue } from '../colors'
 import { fontOf, litColor, lyricsWithDefaults, type LyricsStyle } from '../lyricsStyle'
 import { settings } from '../store'
-import { anchorsOf, sectionAt, sectionsInSong, type TimedSection } from '../timing'
+import { sectionAt, sectionsInSong, songAnchors, type TimedSection } from '../timing'
 import { chooseVisual } from '../visuals/chooser'
 import { DropRenderer } from '../visuals/drop/renderer'
 import { allPresets, makeColors, presetById, type Preset, type Scene, type Scheme } from '../visuals/presets'
@@ -160,7 +160,7 @@ export class Composer {
     this.canvas.height = height
     this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D
     this.analysis = new OfflineAnalysis(sound, options.fps, settings.visuals.sensitivity)
-    this.sections = sectionsInSong(detail.notation.sections, anchorsOf(detail.lines), detail.notation.warp, sound.duration)
+    this.sections = sectionsInSong(detail.notation.sections, songAnchors(detail.lines, detail.notation), detail.notation.warp, sound.duration)
     this.hue = songHue(song.id, song.genre)
     this.accent = paletteFrom(this.hue).accent
     const font = fontOf(options.lyricsStyle)
@@ -254,7 +254,7 @@ export class Composer {
     const upright = h > w * 1.2
     const stripH = Math.round(h * (upright ? 0.16 : 0.25))
     const stripY = h - stripH - Math.round(h * 0.045)
-    if (this.strip) this.strip.draw(ctx, t, Math.round(w * 0.03), stripY, Math.round(w * 0.94), stripH, this.accent)
+    if (this.strip) this.strip.draw(ctx, t, Math.round(w * 0.03), stripY, Math.round(w * 0.94), stripH, this.accent, settings.notationShift[this.song.id] ?? 0)
     const lines = this.detail.lines
     // the lyrics come in as the title card goes
     const lyricsAlpha = this.options.title ? Math.min(1, Math.max(0, (elapsed - 3.4) / 0.8)) : 1

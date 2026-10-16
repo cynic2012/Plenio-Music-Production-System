@@ -346,8 +346,10 @@ def other_detail(song: Song) -> dict[str, Any]:
     }
 
 
-def song_detail(song: Song) -> dict[str, Any]:
-    """Everything the song's page needs: the documents, the notation, the times, the files."""
+def song_detail(song: Song, cache: Path | None = None) -> dict[str, Any]:
+    """Everything the song's page needs: the documents, the notation, the times, the files. With ``cache``,
+    a song without measured times gets the score's place in its recording estimated (``plenio.player.align``),
+    so that its notation follows the music."""
     if song.other:
         return other_detail(song)
     record = json.loads(song.record.read_text(encoding="utf-8"))
@@ -395,6 +397,14 @@ def song_detail(song: Song) -> dict[str, Any]:
         )
         lines = [_line_from_cues(cue, notes) for cue in cues]
         source = "subtitles"
+    if not timing and notation.get("abc") and cache is not None and "audio" in song.files:
+        from .align import cached_estimate
+
+        found = cached_estimate(song.files["audio"], score, cache)
+        if found:
+            notation["warp"] = found["warp"]
+            notation["anchors"] = found["anchors"]
+            notation["estimated"] = True
     return {
         **song.summary,
         "documents": {kind: doc(kind) for kind in ("title", "style", "lyrics", "artwork_prompt")},

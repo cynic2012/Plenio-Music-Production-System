@@ -6,7 +6,7 @@
 import abcjs from 'abcjs'
 
 import type { Notation, TimedLine } from '../api'
-import { anchorsOf, audioToScore } from '../timing'
+import { audioToScore, songAnchors } from '../timing'
 
 interface Box {
   x: number
@@ -35,7 +35,7 @@ export class NotationStrip {
     private readonly notation: Notation,
     lines: TimedLine[]
   ) {
-    this.anchors = anchorsOf(lines)
+    this.anchors = songAnchors(lines, notation)
     this.warp = notation.warp
   }
 
@@ -124,10 +124,11 @@ export class NotationStrip {
     }
   }
 
-  /** The strip at ``t`` seconds into the song, into the rectangle (a dark glass panel behind it). */
-  draw(ctx: CanvasRenderingContext2D, t: number, x: number, y: number, w: number, h: number, accent: string): void {
+  /** The strip at ``t`` seconds into the song, into the rectangle (a dark glass panel behind it); ``shift``:
+   * seconds the listener moved the notes for this song. */
+  draw(ctx: CanvasRenderingContext2D, t: number, x: number, y: number, w: number, h: number, accent: string, shift = 0): void {
     if (!this.image) return
-    const ms = audioToScore(t, this.anchors, this.warp) * 1000
+    const ms = (audioToScore(t, this.anchors, this.warp) + shift) * 1000
     let low = 0
     let high = this.moments.length - 1
     let found = -1

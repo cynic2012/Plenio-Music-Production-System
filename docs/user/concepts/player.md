@@ -208,8 +208,9 @@ also has:
   *1* on the button) to **no repeat** (the music stops after the last song). **R** does the same. A song's
   end is caught also while the player's tab is in the background.
 
-Songs fade into each other (**crossfade**, 3 seconds by default; set 0-12 s in the queue). The player
-remembers where you stopped and picks up there next time. The media keys on your keyboard and the operating
+Songs fade into each other (**crossfade**, 3 seconds by default; set 0-12 s in the queue). A song you start
+always plays from its beginning. The player remembers where you stopped: the next time, ▶ in the bar (or
+Space) picks up there; starting the song from its page or its card plays it from the beginning. The media keys on your keyboard and the operating
 system's media controls work too.
 
 ## Visuals
@@ -441,6 +442,13 @@ elsewhere.
 | / | search |
 | Esc | close |
 | ? | all keys |
+
+**Songs without measured times** (exported before 0.8.1): the player finds where the score sits in the
+recording by comparing their harmonies, once per song (a moment on its first notation), and the cursor
+follows the music - *The cursor follows the music as the player heard it*. A YuE2 render is shifted against
+its score, often by about a bar, and the shift wanders over the song; on the songs measured at export the
+estimate lands within a few tenths of a second. If a song's cursor still runs ahead or behind, move it with
+the buttons above the sheet (a quarter second or a bar at a time); the player keeps it for that song.
 
 ## Where the times come from
 

@@ -5,10 +5,10 @@ import { media } from './api'
 import { coverHue, paletteFrom, songHue } from './colors'
 import { fontOf, litColor } from './lyricsStyle'
 import { current, detail, duration, queueSource, settings, state, time } from './store'
-import { anchorsOf, lineAt, sectionAt, sectionsInSong } from './timing'
+import { lineAt, sectionAt, sectionsInSong, songAnchors } from './timing'
 
 export const lines = computed(() => detail.value?.lines ?? [])
-export const anchors = computed(() => anchorsOf(lines.value))
+export const anchors = computed(() => songAnchors(lines.value, detail.value?.notation))
 export const sections = computed(() =>
   sectionsInSong(detail.value?.notation.sections, anchors.value, detail.value?.notation.warp, duration.value || Infinity)
 )

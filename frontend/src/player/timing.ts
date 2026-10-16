@@ -77,6 +77,19 @@ export function anchorsOf(lines: TimedLine[]): [number, number][] {
   return pairs
 }
 
+/** The song's ``(audio, score)`` pairs: its measured syllables - or, for a song without them, the pairs the
+ * player estimated from the music (plenio/player/align.py), both rising. */
+export function songAnchors(lines: TimedLine[], notation?: { anchors?: [number, number][] } | null): [number, number][] {
+  const measured = anchorsOf(lines)
+  if (measured.length || !notation?.anchors?.length) return measured
+  const pairs: [number, number][] = []
+  for (const [t, s] of notation.anchors) {
+    const last = pairs[pairs.length - 1]
+    if (!last || (t > last[0] && s > last[1])) pairs.push([t, s])
+  }
+  return pairs
+}
+
 /**
  * Song time -> score time: between two sung syllables by interpolation, outside them along the warp
  * (``t_audio = a * t_score + b``, measured for the whole song) - or 1:1 when nothing is known.

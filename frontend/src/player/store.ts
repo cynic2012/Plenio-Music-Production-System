@@ -35,6 +35,8 @@ export interface Settings {
   video: Record<string, unknown>
   /** How the lyrics look: font, size, colour, effect. */
   lyrics: LyricsStyle
+  /** Seconds the listener moved a song's notation cursor (song id -> seconds of score). */
+  notationShift: Record<string, number>
 }
 
 export interface LibraryFilter {
@@ -60,6 +62,17 @@ const DEFAULT_SETTINGS: Settings = {
   live: liveWithDefaults(null),
   video: {},
   lyrics: lyricsWithDefaults(null),
+  notationShift: {},
+}
+
+/** Saved notation shifts, checked: numbers of at most a minute. */
+function shiftsOf(raw: unknown): Record<string, number> {
+  const out: Record<string, number> = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 60 && value !== 0) out[id] = value
+  }
+  return out
 }
 
 /** Saved filters, checked (a file edited by hand or an older version may hold anything). */
@@ -143,7 +156,7 @@ export async function replaceState(data: Partial<PlayerState> | null): Promise<v
   state.plays = fresh.plays && typeof fresh.plays === 'object' ? fresh.plays : {}
   state.last_played = fresh.last_played && typeof fresh.last_played === 'object' ? fresh.last_played : {}
   const stored = (fresh.settings ?? {}) as Partial<Settings>
-  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics) })
+  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), notationShift: shiftsOf(stored.notationShift) })
   engine.setVolume(settings.volume)
   engine.setRate(settings.rate)
   await saveNow()
@@ -158,7 +171,7 @@ export async function load(): Promise<void> {
     info.value = about
     Object.assign(state, saved)
     const stored = (saved.settings ?? {}) as Partial<Settings>
-    Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics) })
+    Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), notationShift: shiftsOf(stored.notationShift) })
     engine.setVolume(settings.volume)
     engine.setRate(settings.rate)
     loadError.value = ''
@@ -301,6 +314,24 @@ export const playing = ref(false)
 export const time = ref(0)
 export const duration = ref(0)
 export const nowPlayingOpen = ref(false)
+/** The song put back where it stopped when the page opened, and not played since: the bar's ▶ (and Space)
+ * goes on from there; its page or its card starts it from the beginning (owner's report 2026-10-16: songs
+ * started in the middle). */
+export const resumedOnly = ref(false)
+watch(playing, (now) => now && (resumedOnly.value = false))
+
+/** Play or pause the song that plays - from its page or its card: one only put back from the last time
+ * starts from the beginning. */
+export function toggleCurrent(): void {
+  if (resumedOnly.value) {
+    resumedOnly.value = false
+    engine.seek(0)
+    void engine.play()
+    return
+  }
+  void engine.toggle()
+}
+
 /** Live Play ran out with *wait for the next new song*: the next one plays as soon as it comes. */
 export const liveWaiting = ref(false)
 /** The song *Save as a video* is open for. */
@@ -339,6 +370,7 @@ export async function playAt(i: number, { crossfade = 0, at = 0, autoplay = true
   const id = queue.value[i]
   const song = id ? byId.value.get(id) : undefined
   if (!song) return
+  resumedOnly.value = false
   index.value = i
   counted = ''
   if (ab.value && !song.has.original) {
@@ -570,4 +602,5 @@ function restore(): void {
   queue.value = ids
   const i = Math.max(0, Math.min(ids.length - 1, resume.index))
   void playAt(i, { at: resume.time, autoplay: false })
+  resumedOnly.value = true
 }

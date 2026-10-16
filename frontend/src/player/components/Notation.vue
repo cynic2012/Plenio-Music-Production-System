@@ -13,9 +13,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { Notation, TimedLine } from '../api'
 import { engine } from '../engine'
-import { anchorsOf, audioToScore, scoreToAudio } from '../timing'
+import { settings } from '../store'
+import { audioToScore, scoreToAudio, songAnchors } from '../timing'
 
-const props = defineProps<{ notation: Notation; lines: TimedLine[]; time: number; following: boolean }>()
+const props = defineProps<{ notation: Notation; lines: TimedLine[]; time: number; following: boolean; songId?: string }>()
 
 const host = ref<HTMLElement | null>(null)
 const scroller = ref<HTMLElement | null>(null)
@@ -38,8 +39,25 @@ let litIndex = -1
 let observer: ResizeObserver | null = null
 let width = 0
 
-const anchors = computed(() => anchorsOf(props.lines))
+const anchors = computed(() => songAnchors(props.lines, props.notation))
 const approximate = computed(() => !anchors.value.length)
+const estimated = computed(() => !!props.notation.estimated && !props.lines.some((l) => l.units.some((u) => u.length >= 3)))
+
+// the listener's own correction for this song, in seconds of score (kept with the settings)
+const shift = computed(() => (props.songId ? settings.notationShift[props.songId] ?? 0 : 0))
+const barSeconds = computed(() => {
+  const meter = /^M:\s*(\d+)\/(\d+)/m.exec(props.notation.abc ?? '')
+  const beats = meter ? Number(meter[1]) * (4 / Number(meter[2])) : 4
+  return (beats * 60) / (props.notation.tempo ?? 100)
+})
+function nudge(seconds: number | null): void {
+  if (!props.songId) return
+  const next = seconds === null ? 0 : Math.round((shift.value + seconds) * 100) / 100
+  if (next) settings.notationShift[props.songId] = next
+  else delete settings.notationShift[props.songId]
+  litIndex = -1
+  follow()
+}
 
 function render(): void {
   const el = host.value
@@ -56,7 +74,7 @@ function render(): void {
       clickListener: (abcElem) => {
         const start = (abcElem as unknown as { startChar?: number }).startChar
         const hit = events.find((e) => e.start === start)
-        if (hit) engine.seek(Math.max(0, scoreToAudio(hit.ms / 1000, anchors.value, props.notation.warp)))
+        if (hit) engine.seek(Math.max(0, scoreToAudio(hit.ms / 1000 - shift.value, anchors.value, props.notation.warp)))
       },
     })
     const timer = new abcjs.TimingCallbacks(tunes[0], { qpm: props.notation.tempo ?? 100 })
@@ -90,7 +108,7 @@ function render(): void {
 
 function follow(): void {
   if (!props.following || !events.length || !host.value) return
-  const ms = audioToScore(props.time, anchors.value, props.notation.warp) * 1000
+  const ms = (audioToScore(props.time, anchors.value, props.notation.warp) + shift.value) * 1000
   let low = 0
   let high = events.length - 1
   let found = -1
@@ -219,6 +237,15 @@ onBeforeUnmount(() => observer?.disconnect())
   <div ref="scroller" class="notation">
     <p v-if="!notation.abc" class="hint">{{ notation.error ? `The notation could not be read: ${notation.error}` : 'This song has no score (MiniMax Music 3, or a recording).' }}</p>
     <p v-else-if="approximate && following" class="hint badge">The cursor follows the score’s tempo - no measured times for this song.</p>
+    <p v-else-if="estimated && following" class="hint badge">The cursor follows the music as the player heard it - no measured times for this song.</p>
+    <div v-if="notation.abc && following && songId" class="nudge" :title="`The cursor runs ahead or behind? Move it - kept for this song (a bar is ${barSeconds.toFixed(1)} s)`">
+      <button type="button" @click="nudge(-barSeconds)">‹‹ bar</button>
+      <button type="button" @click="nudge(-0.25)">‹ ¼ s</button>
+      <span>{{ shift ? `${shift > 0 ? '+' : ''}${shift.toFixed(2)} s` : 'in step' }}</span>
+      <button type="button" @click="nudge(0.25)">¼ s ›</button>
+      <button type="button" @click="nudge(barSeconds)">bar ››</button>
+      <button v-if="shift" type="button" class="reset" @click="nudge(null)">reset</button>
+    </div>
     <p v-if="failed" class="hint">{{ failed }}</p>
     <div class="sheet-wrap">
       <div ref="host" class="sheet" />
@@ -236,6 +263,46 @@ onBeforeUnmount(() => observer?.disconnect())
 }
 .sheet-wrap {
   position: relative;
+}
+.nudge {
+  position: sticky;
+  top: 6px;
+  z-index: 3;
+  float: right;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin: 4px 6px 0 0;
+  padding: 3px 6px;
+  border-radius: 10px;
+  background: rgba(10, 8, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font: 11px var(--font);
+  color: var(--muted);
+  opacity: 0.45;
+  transition: opacity 0.2s;
+}
+.nudge:hover {
+  opacity: 1;
+}
+.nudge button {
+  background: none;
+  border: 0;
+  color: #eee;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 6px;
+  font: 11px var(--font);
+}
+.nudge button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.nudge span {
+  min-width: 58px;
+  text-align: center;
+}
+.nudge .reset {
+  color: var(--accent);
 }
 .sheet {
   background: rgba(10, 10, 18, 0.82);

@@ -40,6 +40,9 @@ export class Engine {
   private lastFrame = performance.now()
   private listeners = new Set<Listener>()
   private endListeners = new Set<Listener>()
+  /** A jump waiting for a song's length to be known (a song started at a moment): one per player, dropped
+   * when the next song is loaded before it came - else that song would start at the old moment. */
+  private pendingSeek = new Map<HTMLAudioElement, () => void>()
   private fading: number | null = null
   ab = false
   rate = 1
@@ -145,6 +148,9 @@ export class Engine {
     const fade = crossfade > 0 && !previous.main.paused && previous.id !== null
     if (fade) this.current = 1 - this.current
     const deck = this.deckNow as Deck
+    const waiting = this.pendingSeek.get(deck.main)
+    if (waiting) deck.main.removeEventListener('loadedmetadata', waiting)
+    this.pendingSeek.delete(deck.main)
     deck.id = source.id
     deck.main.src = source.url
     deck.main.playbackRate = this.rate
@@ -153,7 +159,14 @@ export class Engine {
     deck.altGain.gain.value = 0
     deck.mainGain.gain.value = 1
     if (this.ab && source.original) this.prepareAlt(deck)
-    if (at > 0) deck.main.addEventListener('loadedmetadata', () => (deck.main.currentTime = at), { once: true })
+    if (at > 0) {
+      const jump = () => {
+        this.pendingSeek.delete(deck.main)
+        deck.main.currentTime = at
+      }
+      this.pendingSeek.set(deck.main, jump)
+      deck.main.addEventListener('loadedmetadata', jump, { once: true })
+    }
     const now = ctx.currentTime
     if (fade) {
       deck.gain.gain.setValueAtTime(0, now)

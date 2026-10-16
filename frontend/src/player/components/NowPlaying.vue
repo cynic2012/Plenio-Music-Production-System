@@ -132,7 +132,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
         <Karaoke :lines="lines" :time="time" :plain="detail?.lyrics_raw ? current.lyrics : ''" />
       </section>
       <section v-if="view === 'notation'" class="notation-col">
-        <Notation v-if="detail" :notation="detail.notation" :lines="lines" :time="time" :following="true" />
+        <Notation v-if="detail" :notation="detail.notation" :lines="lines" :time="time" :following="true" :song-id="detail.id" />
       </section>
       <section v-if="view === 'notation'" class="side-lyrics">
         <Karaoke :lines="lines" :time="time" :plain="current.lyrics" compact />

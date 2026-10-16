@@ -84,6 +84,9 @@ export interface Notation {
   sections?: Section[]
   seconds?: number
   warp?: [number, number] | null
+  /** For a song without measured times: ``(audio, score)`` time pairs estimated from the music. */
+  anchors?: [number, number][]
+  estimated?: boolean
   error?: string
 }
 

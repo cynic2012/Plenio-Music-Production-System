@@ -6,7 +6,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import type { SongSummary } from '../api'
-import { library, playSongs, settings, state } from '../store'
+import { current, library, playSongs, settings, state, toggleCurrent } from '../store'
 import { countOf, formatTime } from '../timing'
 import { compareVersions, lyricsSnippet, parseQuery, score, sortSongs, topValues, versionOf, words, type SortKey } from '../search'
 import CoverArt from './CoverArt.vue'
@@ -120,6 +120,8 @@ const totals = computed(() => ({
 
 const titles: Record<string, string> = { all: 'Your songs', favorites: 'Favourites', top: 'Most played', recent: 'Recently played' }
 function play(song: SongSummary): void {
+  // the song that plays: its card's button pauses and plays it (it showed pause, and started it anew)
+  if (current.value?.id === song.id) return toggleCurrent()
   void playSongs(songs.value.map((s) => s.id), songs.value.indexOf(song))
 }
 function playAll(shuffle = false): void {

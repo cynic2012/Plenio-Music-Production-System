@@ -25,6 +25,7 @@ import {
   songDetail,
   state,
   time,
+  toggleCurrent,
   toggleFavorite,
   videoFor,
 } from '../store'
@@ -169,7 +170,7 @@ function back(): void {
 }
 function play(): void {
   if (isCurrent.value) {
-    engine.toggle()
+    toggleCurrent()
     return
   }
   const ids = [props.id, ...takes.value.map((s) => s.id), ...similar.value.map((s) => s.id)]
@@ -248,7 +249,7 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
 
     <section v-if="tab === 'notation' && detail" class="pane">
       <div class="notation-box">
-        <Notation :notation="detail.notation" :lines="lyricsLines" :time="Math.max(0, songTime)" :following="isCurrent" />
+        <Notation :notation="detail.notation" :lines="lyricsLines" :time="Math.max(0, songTime)" :following="isCurrent" :song-id="detail.id" />
       </div>
       <p v-if="!isCurrent" class="hint">Play the song and the notes light up as they sound; click a note to jump there.</p>
     </section>

@@ -267,7 +267,7 @@ def make_handler(
                 if song is None:
                     return self._error(404, "no such song")
                 try:
-                    return self._json(song_detail(song))
+                    return self._json(song_detail(song, cache=state.path.parent / "cache"))
                 except (OSError, ValueError) as error:
                     return self._error(500, str(error))
             if route == "/api/state":
