@@ -8,7 +8,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { TimedLine } from '../api'
 import { engine } from '../engine'
-import { chunksAt, lineAt, lineOn } from '../timing'
+import { settings } from '../store'
+import { lineAt, lineOn } from '../timing'
+import LyricLine from './LyricLine.vue'
 
 const props = defineProps<{ lines: TimedLine[]; time: number; plain?: string; compact?: boolean }>()
 
@@ -61,9 +63,7 @@ const stanzas = computed(() => (props.plain ?? '').split(/\n\s*\n/).map((s) => s
         :class="{ now: i === active && on, past: i < active || (i === active && !on), soon: i === active + 1 }"
         @click="engine.seek(Math.max(0, line.start - 0.15))"
       >
-        <template v-if="i === active">
-          <span v-for="(chunk, k) in chunksAt(line, time)" :key="k" class="chunk" :style="{ '--fill': `${chunk.fill * 100}%` }">{{ chunk.text }}</span>
-        </template>
+        <LyricLine v-if="i === active" :line="line" :time="time" :effect="settings.lyrics.effect" />
         <template v-else>{{ line.text }}</template>
       </p>
       <div class="pad" />
@@ -93,7 +93,10 @@ const stanzas = computed(() => (props.plain ?? '').split(/\n\s*\n/).map((s) => s
   height: 40%;
 }
 .line {
-  font: 700 clamp(20px, 2.4vw, 34px) / 1.3 var(--font);
+  font-family: var(--lyrics-font, var(--font));
+  font-weight: var(--lyrics-weight, 700);
+  font-size: calc(clamp(20px, 2.4vw, 34px) * var(--lyrics-scale, 1));
+  line-height: 1.3;
   color: rgba(255, 255, 255, 0.28);
   margin: 0 0 0.55em;
   cursor: pointer;
@@ -102,7 +105,7 @@ const stanzas = computed(() => (props.plain ?? '').split(/\n\s*\n/).map((s) => s
   filter: blur(0.3px);
 }
 .compact .line {
-  font-size: clamp(16px, 1.6vw, 22px);
+  font-size: calc(clamp(16px, 1.6vw, 22px) * var(--lyrics-scale, 1));
 }
 .line:hover {
   color: rgba(255, 255, 255, 0.6);
@@ -118,13 +121,6 @@ const stanzas = computed(() => (props.plain ?? '').split(/\n\s*\n/).map((s) => s
   transform: scale(1.06);
   filter: none;
   color: rgba(255, 255, 255, 0.35);
-}
-.chunk {
-  background: linear-gradient(90deg, #fff var(--fill), rgba(255, 255, 255, 0.35) var(--fill));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 0 calc(var(--fill) * 0.18) var(--glow, rgba(255, 255, 255, 0.4));
 }
 .plain {
   padding: 8% 0;

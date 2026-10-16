@@ -7,6 +7,7 @@ import { computed, reactive, ref, shallowRef, watch } from 'vue'
 import { api, media, type Playlist, type PlayerInfo, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary } from './api'
 import { engine } from './engine'
 import { type LiveSettings, liveWithDefaults } from './liveSettings'
+import { type LyricsStyle, lyricsWithDefaults } from './lyricsStyle'
 import { type VisualSettings, withDefaults } from './visuals/chooser'
 
 export interface Settings {
@@ -32,6 +33,8 @@ export interface Settings {
   live: LiveSettings
   /** The last settings of *Save as a video* (size, visual, lyrics ...). */
   video: Record<string, unknown>
+  /** How the lyrics look: font, size, colour, effect. */
+  lyrics: LyricsStyle
 }
 
 export interface LibraryFilter {
@@ -56,6 +59,7 @@ const DEFAULT_SETTINGS: Settings = {
   filters: {},
   live: liveWithDefaults(null),
   video: {},
+  lyrics: lyricsWithDefaults(null),
 }
 
 /** Saved filters, checked (a file edited by hand or an older version may hold anything). */
@@ -139,7 +143,7 @@ export async function replaceState(data: Partial<PlayerState> | null): Promise<v
   state.plays = fresh.plays && typeof fresh.plays === 'object' ? fresh.plays : {}
   state.last_played = fresh.last_played && typeof fresh.last_played === 'object' ? fresh.last_played : {}
   const stored = (fresh.settings ?? {}) as Partial<Settings>
-  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live) })
+  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics) })
   engine.setVolume(settings.volume)
   engine.setRate(settings.rate)
   await saveNow()
@@ -154,7 +158,7 @@ export async function load(): Promise<void> {
     info.value = about
     Object.assign(state, saved)
     const stored = (saved.settings ?? {}) as Partial<Settings>
-    Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live) })
+    Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics) })
     engine.setVolume(settings.volume)
     engine.setRate(settings.rate)
     loadError.value = ''

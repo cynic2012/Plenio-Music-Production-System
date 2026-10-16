@@ -13,6 +13,7 @@ import { comfyuiAddress, info, lastSaved, library, reloadLibrary, replaceState, 
 import { countOf } from '../timing'
 import FolderBrowser from './FolderBrowser.vue'
 import Icon from './Icon.vue'
+import LyricsPanel from './LyricsPanel.vue'
 
 const shelf = ref<FoldersAnswer | null>(null)
 const browsing = ref(false)
@@ -195,6 +196,12 @@ async function stop(): Promise<void> {
         The folders are kept with the player (<code>library.json</code>), also when ComfyUI starts it. Removed songs go to <code>{{ info?.retired ?? '_retired' }}</code> in their folder, which the player does not read.
       </p>
       <FolderBrowser v-if="browsing" @choose="addFolder" @close="browsing = false" />
+    </section>
+
+    <section class="block">
+      <h3><Icon name="mic" /> Lyrics</h3>
+      <p class="lead">How the lyrics look while a song plays: the font, the size, the colour - and how each syllable comes in as it is sung.</p>
+      <LyricsPanel />
     </section>
 
     <section class="block">

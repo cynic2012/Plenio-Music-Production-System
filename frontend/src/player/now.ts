@@ -3,7 +3,8 @@ import { computed, ref, watch } from 'vue'
 
 import { media } from './api'
 import { coverHue, paletteFrom, songHue } from './colors'
-import { current, detail, duration, queueSource, state, time } from './store'
+import { fontOf, litColor } from './lyricsStyle'
+import { current, detail, duration, queueSource, settings, state, time } from './store'
 import { anchorsOf, lineAt, sectionAt, sectionsInSong } from './timing'
 
 export const lines = computed(() => detail.value?.lines ?? [])
@@ -34,12 +35,19 @@ watch(
 )
 export const palette = computed(() => paletteFrom(hue.value))
 
-/** The CSS custom properties of the song's colours. */
-export const paletteStyle = computed(() => ({
-  '--accent': palette.value.accent,
-  '--accent2': palette.value.accent2,
-  '--deep': palette.value.deep,
-  '--glow': palette.value.glow,
-}))
+/** The CSS custom properties of the song's colours - and of the lyrics' font, size and colour. */
+export const paletteStyle = computed(() => {
+  const font = fontOf(settings.lyrics)
+  return {
+    '--accent': palette.value.accent,
+    '--accent2': palette.value.accent2,
+    '--deep': palette.value.deep,
+    '--glow': palette.value.glow,
+    '--lyrics-font': font.stack,
+    '--lyrics-weight': String(font.weight),
+    '--lyrics-scale': String(settings.lyrics.size),
+    '--lit': litColor(settings.lyrics, palette.value.accent),
+  }
+})
 
 export const playCount = computed(() => (current.value ? state.plays[current.value.id] ?? 0 : 0))

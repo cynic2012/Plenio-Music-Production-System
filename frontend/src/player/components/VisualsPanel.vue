@@ -41,7 +41,7 @@ const MODES: [VisualMode, string, string][] = [
 const SWITCHES: [SwitchOn, string][] = [
   ['song', 'With every song'],
   ['section', 'At every section (verse, chorus …)'],
-  ['interval', 'Every few seconds'],
+  ['interval', 'Every few seconds - also within a song'],
   ['drop', 'When the music drops in'],
 ]
 const SCHEMES: [Scheme, string][] = [
@@ -126,7 +126,10 @@ async function editCopy(): Promise<void> {
       <select v-model="v.switchOn">
         <option v-for="[id, label] in SWITCHES" :key="id" :value="id">{{ label }}</option>
       </select>
-      <label v-if="v.switchOn === 'interval'" class="row">every <input v-model.number="v.interval" type="number" min="5" max="600" /> seconds</label>
+      <div v-if="v.switchOn === 'interval'" class="row">
+        every <input v-model.number="v.interval" type="number" min="5" max="600" /> seconds
+        <button v-for="s in [10, 20, 30, 60]" :key="s" class="chip" :class="{ on: v.interval === s }" @click="v.interval = s">{{ s }} s</button>
+      </div>
     </template>
 
     <h4>{{ v.mode === 'auto' ? 'Choose from' : v.mode === 'fixed' ? 'All visuals' : 'Ticked visuals' }}</h4>

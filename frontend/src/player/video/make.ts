@@ -6,6 +6,7 @@
  */
 import { api, media, type SongDetail, type SongSummary } from '../api'
 import { paletteFrom, songHue } from '../colors'
+import { fontOf, litColor, lyricsWithDefaults, type LyricsStyle } from '../lyricsStyle'
 import { settings } from '../store'
 import { anchorsOf, sectionAt, sectionsInSong, type TimedSection } from '../timing'
 import { chooseVisual } from '../visuals/chooser'
@@ -13,7 +14,7 @@ import { DropRenderer } from '../visuals/drop/renderer'
 import { allPresets, makeColors, presetById, type Preset, type Scene, type Scheme } from '../visuals/presets'
 import { NotationStrip } from './notationStrip'
 import { OfflineAnalysis } from './offline'
-import { drawCorner, drawCredit, drawKaraoke, drawProgress, drawSubtitles, drawTitleCard, type TitleInfo } from './overlay'
+import { drawCorner, drawCredit, drawKaraoke, drawProgress, drawSubtitles, drawTitleCard, type LyricsLook, type TitleInfo } from './overlay'
 
 export interface VideoOptions {
   width: number
@@ -25,10 +26,13 @@ export interface VideoOptions {
   take: 'master' | 'original'
   /** A visual (its id), or ``''``: as the visuals' settings choose for this song. */
   visual: string
-  /** Another visual at every section of the song. */
-  eachSection: boolean
+  /** Another visual: never, at every section of the song, or every ``interval`` seconds. */
+  change: 'never' | 'section' | 'interval'
+  interval: number
   scheme: Scheme
   lyrics: 'off' | 'subtitles' | 'karaoke'
+  /** The lyrics' font, colour, size and effect (at first the player's own). */
+  lyricsStyle: LyricsStyle
   notation: boolean
   title: boolean
   corner: boolean
@@ -53,9 +57,11 @@ export const DEFAULT_VIDEO: VideoOptions = {
   length: 0,
   take: 'master',
   visual: '',
-  eachSection: false,
+  change: 'never',
+  interval: 20,
   scheme: 'song',
   lyrics: 'subtitles',
+  lyricsStyle: lyricsWithDefaults(null),
   notation: false,
   title: true,
   corner: true,
@@ -65,9 +71,15 @@ export const DEFAULT_VIDEO: VideoOptions = {
 }
 
 /** Saved video settings, checked. */
-export function videoWithDefaults(raw: unknown): VideoOptions {
-  const given = (raw && typeof raw === 'object' ? raw : {}) as Partial<VideoOptions>
+export function videoWithDefaults(raw: unknown, lyrics?: unknown): VideoOptions {
+  const given = (raw && typeof raw === 'object' ? raw : {}) as Partial<VideoOptions> & { eachSection?: boolean }
   const out = { ...DEFAULT_VIDEO, ...given, start: 0, length: 0 }
+  // settings of before: a new visual at every section
+  if (given.change === undefined && given.eachSection) out.change = 'section'
+  delete (out as { eachSection?: boolean }).eachSection
+  if (!['never', 'section', 'interval'].includes(out.change)) out.change = 'never'
+  out.interval = Math.min(600, Math.max(3, Number(out.interval) || 20))
+  out.lyricsStyle = lyricsWithDefaults(given.lyricsStyle ?? lyrics)
   if (!SIZES.some((s) => s.width === out.width && s.height === out.height)) Object.assign(out, { width: 1920, height: 1080 })
   if (![24, 25, 30, 50, 60].includes(out.fps)) out.fps = 30
   if (!['off', 'subtitles', 'karaoke'].includes(out.lyrics)) out.lyrics = 'subtitles'
@@ -125,7 +137,9 @@ export class Composer {
   private snapshot: HTMLCanvasElement | null = null
   private blend = 0
   private turn = 0
+  private lastChange = 0
   private section: TimedSection | null = null
+  private readonly look: { stack: string; weight: number; lit: string }
   private readonly sections: TimedSection[]
   private readonly hue: number
   private readonly accent: string
@@ -149,6 +163,8 @@ export class Composer {
     this.sections = sectionsInSong(detail.notation.sections, anchorsOf(detail.lines), detail.notation.warp, sound.duration)
     this.hue = songHue(song.id, song.genre)
     this.accent = paletteFrom(this.hue).accent
+    const font = fontOf(options.lyricsStyle)
+    this.look = { ...font, lit: litColor(options.lyricsStyle, this.accent) }
     const rest = Math.max(0, sound.duration - options.start)
     this.length = options.length > 0 ? Math.min(options.length, rest) : rest
   }
@@ -183,15 +199,20 @@ export class Composer {
   }
 
   /** The visual for this moment: the one chosen, or as the visuals' settings choose; another at a new
-   * section when asked. */
-  private pick(t: number): void {
-    const section = this.options.eachSection ? sectionAt(this.sections, t) : null
-    const changed = this.scene === null || (this.options.eachSection && section !== this.section && this.scene !== null)
-    if (!changed) return
+   * section, or every few seconds, when asked. */
+  private pick(t: number, elapsed: number): void {
+    const { change, interval } = this.options
+    const section = change === 'section' ? sectionAt(this.sections, t) : null
+    const due =
+      this.scene === null ||
+      (change === 'section' && section !== this.section) ||
+      (change === 'interval' && elapsed - this.lastChange >= Math.max(3, interval))
+    if (!due) return
     if (this.scene) this.turn += 1
     this.section = section
+    this.lastChange = elapsed
     let id = this.options.visual
-    if (!id || (this.options.eachSection && this.turn > 0)) {
+    if (!id || (change !== 'never' && this.turn > 0)) {
       const pool = { ...settings.visuals, songs: this.turn > 0 ? {} : settings.visuals.songs }
       if (this.options.visual && this.turn > 0) Object.assign(pool, { mode: 'cycle' as const })
       id = chooseVisual({ settings: pool, song: this.song, previous: this.preset?.id ?? (this.options.visual || null), turn: this.turn })
@@ -218,7 +239,7 @@ export class Composer {
     const h = this.canvas.height
     const ctx = this.ctx
     const frame = this.analysis.frame(t, 1 / fps, elapsed)
-    this.pick(t)
+    this.pick(t, elapsed)
     const colors = makeColors(this.hue, this.options.scheme, elapsed)
     ctx.save()
     this.scene?.draw(ctx, frame, w, h, colors)
@@ -237,8 +258,10 @@ export class Composer {
     const lines = this.detail.lines
     // the lyrics come in as the title card goes
     const lyricsAlpha = this.options.title ? Math.min(1, Math.max(0, (elapsed - 3.4) / 0.8)) : 1
-    if (this.options.lyrics === 'subtitles' && lines.length) drawSubtitles(ctx, lines, t, w, h, this.strip ? stripY - h * 0.02 : h * 0.9, lyricsAlpha)
-    if (this.options.lyrics === 'karaoke' && lines.length) drawKaraoke(ctx, lines, t, w, h, this.strip ? (stripY - h * 0.02) / 2 : h / 2, lyricsAlpha)
+    const look: LyricsLook = { ...this.look, effect: this.options.lyricsStyle.effect, clock: elapsed, pulse: frame.pulse }
+    const size = this.options.lyricsStyle.size
+    if (this.options.lyrics === 'subtitles' && lines.length) drawSubtitles(ctx, lines, t, w, h, this.strip ? stripY - h * 0.02 : h * 0.9, lyricsAlpha, look, size)
+    if (this.options.lyrics === 'karaoke' && lines.length) drawKaraoke(ctx, lines, t, w, h, this.strip ? (stripY - h * 0.02) / 2 : h / 2, lyricsAlpha, look, size)
     if (this.options.corner) drawCorner(ctx, this.info, w, h, this.options.title ? Math.min(1, Math.max(0, (elapsed - 4) / 0.8)) : 1)
     if (this.options.credit) drawCredit(ctx, w, h)
     if (this.options.progress) drawProgress(ctx, t, this.sound.duration, this.sections, this.accent, w, h)

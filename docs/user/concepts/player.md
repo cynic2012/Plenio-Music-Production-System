@@ -176,6 +176,19 @@ Click the cover in the bar at the bottom (or press **F**) for the full screen. I
 - **Notation**: the sheet following the music, with the lyrics at the side.
 - **Visual**: only the visual, with the lyrics as subtitles. The controls fade out while the mouse rests.
 
+**How the lyrics look** - in the Lyrics and Stage views, on a song's page and in the subtitles over the
+visual: 🎤 in Now playing, or *Lyrics* in Settings.
+
+- **Font**: Clean, Condensed, Poster, Rounded, Elegant serif, Classic serif, Handwritten, Script, Typewriter,
+  Code, Blackletter - each shown in itself - or **your own font**: the name of any font installed on this
+  computer. (The player uses the computer's fonts and downloads none; each choice names fonts that Windows,
+  macOS and Linux have, the first one found is used.)
+- **Effect** - how each syllable comes in as it is sung: *Sweep* (the colour runs through it), *Glow*,
+  *Bounce* (it hops), *Pop* (it swells and settles), *Wave* (the letters ripple), *Typewriter* (the line types
+  itself), *Rise* (syllables float up and in), *Focus* (blurred until sung), *Neon* (outlines that flick on),
+  *Rainbow*, *On the beat* (the line pulses with the music). A line at the top sings itself as a preview.
+- **Colour** of what is sung (white, the song's colour, gold, ice, pink, lime) and the **size**.
+
 **The visual on the whole screen:** press **Shift + F**, double-click the visual, click *full screen* in the
 visuals' settings, or click ⛶ on the small visual in the bar at the bottom. Again (or Esc) to go back.
 
@@ -260,8 +273,8 @@ Open the visuals' settings with ✦ in Now playing (or press **V**):
   - *Random*: a random pick from the visuals you tick, never the same twice in a row.
   - *Cycle*: the ticked visuals in turn.
   - *Fixed*: always the same visual.
-- **Change**: with every song, at every section (verse, chorus …), every few seconds, or *when the music
-  drops in* after a quiet passage.
+- **Change**: with every song, at every section (verse, chorus …), **every few seconds - also within a song**
+  (10, 20, 30, 60 s or any number from 5), or *when the music drops in* after a quiet passage.
 - **This song**: a visual of its own for the song that plays. It is kept for that song.
 - **The playlist**: a visual for the whole playlist that plays. You can also choose it on the playlist's page.
 - **Look**: the song's colours, Winamp classic, neon, sunset or monochrome. **Sensitivity** makes the visuals
@@ -303,9 +316,10 @@ moving with the music, and over it what you choose.
 - **The part**: the whole song, or from - to (in seconds; the section chips set a section). A part cut out
   of the song fades in and out.
 - **The visual**: any visual - classic, Plenio Drop or your own presets - or *as the visuals' settings
-  choose for this song*; **a new visual at every section** if you like; the colours.
+  choose for this song*; **a new visual** never, at every section, or **every few seconds**; the colours.
 - **Over the visual**: the **lyrics** as subtitles or as **karaoke** (large in the middle, the line before
-  and after it), lit up as they are sung; **the notation**, the line of music sounding with a cursor at the
+  and after it), lit up as they are sung - in the player's font, colour and effect, or another for the video
+  (*as in the player* brings the player's back); **the notation**, the line of music sounding with a cursor at the
   notes and the notes aglow; a **title card** at the start with the cover; the song in the **corner**; a
   **progress bar** with the sections; *made with Plenio*.
 - **Sound**: the master, or the unmastered take.

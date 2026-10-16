@@ -43,5 +43,12 @@ describe('the video', () => {
     const kept = videoWithDefaults({ width: 1080, height: 1920, fps: 60, lyrics: 'karaoke', start: 30, length: 10 })
     expect(kept).toMatchObject({ width: 1080, height: 1920, fps: 60, lyrics: 'karaoke', start: 0, length: 0 })
     expect(videoWithDefaults({ width: 1234, height: 77, fps: 13, lyrics: 'loud', quality: 'max' })).toMatchObject({ width: 1920, height: 1080, fps: 30, lyrics: 'subtitles', quality: 'standard' })
+    // a new visual every few seconds; settings of before (a new visual at every section) carry over
+    expect(videoWithDefaults({ eachSection: true })).toMatchObject({ change: 'section' })
+    expect(videoWithDefaults({ change: 'interval', interval: 1 })).toMatchObject({ change: 'interval', interval: 3 })
+    expect(videoWithDefaults({ change: 'sometimes' }).change).toBe('never')
+    // the lyrics' look: the video's own, else the player's
+    expect(videoWithDefaults({}, { effect: 'neon', font: 'poster' }).lyricsStyle).toMatchObject({ effect: 'neon', font: 'poster' })
+    expect(videoWithDefaults({ lyricsStyle: { effect: 'wave' } }, { effect: 'neon' }).lyricsStyle.effect).toBe('wave')
   })
 })

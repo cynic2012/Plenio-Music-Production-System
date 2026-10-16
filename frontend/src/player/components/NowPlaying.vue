@@ -10,10 +10,12 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { engine } from '../engine'
 import { lineIndex, lines, paletteStyle, playlistVisual, section, sections } from '../now'
 import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, openCurrentPage, playing, previous, settings, time, toggleFavorite } from '../store'
-import { chunksAt, formatTime, sectionName } from '../timing'
+import { formatTime, sectionName } from '../timing'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 import Karaoke from './Karaoke.vue'
+import LyricLine from './LyricLine.vue'
+import LyricsPanel from './LyricsPanel.vue'
 import Notation from './Notation.vue'
 import VisualCanvas from './VisualCanvas.vue'
 import VisualsPanel from './VisualsPanel.vue'
@@ -23,6 +25,9 @@ type View = 'stage' | 'lyrics' | 'notation' | 'visual'
 // the view it opens in is kept with the other settings (on the player's server)
 const view = computed<View>({ get: () => settings.npView, set: (v) => (settings.npView = v) })
 const panel = ref(false)
+const lyricsPanel = ref(false)
+watch(panel, (open) => open && (lyricsPanel.value = false))
+watch(lyricsPanel, (open) => open && (panel.value = false))
 const visual = ref<InstanceType<typeof VisualCanvas> | null>(null)
 const activeVisual = ref('')
 const idle = ref(false)
@@ -99,12 +104,19 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
       </nav>
       <div class="tools">
         <button class="icon-btn" title="The song's page: lyrics, notation, details (I)" @click="openCurrentPage"><Icon name="info" /></button>
+        <button class="icon-btn" :class="{ on: lyricsPanel }" title="How the lyrics look: font, colour, effect" @click="lyricsPanel = !lyricsPanel"><Icon name="mic" /></button>
         <button class="icon-btn" :class="{ on: panel }" title="Visuals (V)" @click="panel = !panel"><Icon name="sparkles" /></button>
         <button class="icon-btn" title="Full screen (Shift+F: only the visual)" @click="fullscreen"><Icon name="expand" /></button>
       </div>
     </header>
 
     <Transition name="panel"><VisualsPanel v-if="panel" class="vpanel" :active="activeVisual" @close="panel = false" @next="visual?.next()" @fullscreen="visualFullscreen" /></Transition>
+    <Transition name="panel">
+      <aside v-if="lyricsPanel" class="vpanel lpanel">
+        <header><h3><Icon name="mic" /> Lyrics</h3><button class="icon-btn" title="Close" @click="lyricsPanel = false"><Icon name="close" /></button></header>
+        <LyricsPanel compact />
+      </aside>
+    </Transition>
 
     <main v-if="current" class="stage" title="" @dblclick.self="visualFullscreen">
       <section v-if="view === 'stage'" class="cover-col">
@@ -128,7 +140,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
     </main>
 
     <div v-if="view === 'visual' && settings.visuals.lyrics && subtitle" class="subtitle">
-      <span v-for="(chunk, k) in chunksAt(subtitle, time)" :key="k" class="chunk" :style="{ '--fill': `${chunk.fill * 100}%` }">{{ chunk.text }}</span>
+      <LyricLine :line="subtitle" :time="time" :effect="settings.lyrics.effect" />
     </div>
 
     <Transition name="card">
@@ -199,6 +211,30 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
 }
 .view-notation .visual.dim {
   opacity: 0.12;
+}
+.lpanel {
+  width: 360px;
+  max-height: calc(100% - 40px);
+  overflow-y: auto;
+  padding: 16px 18px 20px;
+  border-radius: 18px;
+  background: rgba(14, 12, 22, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+}
+.lpanel header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.lpanel h3 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font: 600 16px var(--font);
 }
 .repeat {
   position: relative;
@@ -329,15 +365,12 @@ h1 {
   right: 0;
   bottom: 190px;
   text-align: center;
-  font: 800 clamp(24px, 3vw, 46px) / 1.2 var(--font);
+  font-family: var(--lyrics-font, var(--font));
+  font-weight: var(--lyrics-weight, 800);
+  font-size: calc(clamp(24px, 3vw, 46px) * var(--lyrics-scale, 1));
+  line-height: 1.2;
   padding: 0 8vw;
   text-shadow: 0 4px 30px rgba(0, 0, 0, 0.8);
-}
-.chunk {
-  background: linear-gradient(90deg, #fff var(--fill), rgba(255, 255, 255, 0.4) var(--fill));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 .title-card {
   position: absolute;

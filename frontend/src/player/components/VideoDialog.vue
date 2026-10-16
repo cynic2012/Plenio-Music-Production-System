@@ -8,6 +8,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 import { api, type SongDetail, type SongSummary } from '../api'
+import { COLORS, EFFECTS, FONTS, lyricsWithDefaults } from '../lyricsStyle'
 import { say, settings } from '../store'
 import { formatTime, sectionName } from '../timing'
 import { CLASSIC, PRESETS, type Scheme } from '../visuals/presets'
@@ -18,7 +19,7 @@ import Icon from './Icon.vue'
 const props = defineProps<{ song: SongSummary }>()
 const emit = defineEmits<{ close: [] }>()
 
-const options = reactive<VideoOptions>(videoWithDefaults(settings.video))
+const options = reactive<VideoOptions>(videoWithDefaults(settings.video, settings.lyrics))
 const detail = ref<SongDetail | null>(null)
 const shot = ref<HTMLDivElement | null>(null)
 const busy = ref(false)
@@ -195,7 +196,14 @@ onBeforeUnmount(cancel)
                 <option v-for="p in list" :key="p.id" :value="p.id">{{ p.name }}</option>
               </optgroup>
             </select>
-            <label class="check"><input v-model="options.eachSection" type="checkbox" :disabled="busy || !sections.length" /> a new visual at every section</label>
+            <label>A new visual
+              <select v-model="options.change" :disabled="busy">
+                <option value="never">never - the same one throughout</option>
+                <option value="section" :disabled="!sections.length">at every section (verse, chorus …)</option>
+                <option value="interval">every few seconds</option>
+              </select>
+            </label>
+            <label v-if="options.change === 'interval'" class="inline">every <input v-model.number="options.interval" type="number" min="3" max="600" :disabled="busy" /> seconds</label>
             <label>Colours <select v-model="options.scheme" :disabled="busy"><option v-for="[id, label] in SCHEMES" :key="id" :value="id">{{ label }}</option></select></label>
           </fieldset>
 
@@ -209,6 +217,29 @@ onBeforeUnmount(cancel)
               </select>
             </label>
             <p v-if="detail && !hasLines" class="hint">This song has no timed lyrics.</p>
+            <template v-if="options.lyrics !== 'off' && hasLines">
+              <div class="row look">
+                <label>Font
+                  <select v-model="options.lyricsStyle.font" :disabled="busy">
+                    <option v-for="f in FONTS" :key="f.id" :value="f.id" :style="{ fontFamily: f.stack }">{{ f.label }}</option>
+                    <option value="own">Your own font…</option>
+                  </select>
+                </label>
+                <label>Effect
+                  <select v-model="options.lyricsStyle.effect" :disabled="busy">
+                    <option v-for="e in EFFECTS" :key="e.id" :value="e.id" :title="e.blurb">{{ e.label }}</option>
+                  </select>
+                </label>
+                <label>Colour
+                  <select v-model="options.lyricsStyle.color" :disabled="busy">
+                    <option v-for="c in COLORS" :key="c.id" :value="c.id">{{ c.label }}</option>
+                  </select>
+                </label>
+              </div>
+              <label v-if="options.lyricsStyle.font === 'own'" class="inline">Font name <input v-model.lazy="options.lyricsStyle.own" class="text" :disabled="busy" placeholder="an installed font" /></label>
+              <label class="inline">Size <input v-model.number="options.lyricsStyle.size" type="range" min="0.7" max="1.6" step="0.05" :disabled="busy" /> {{ Math.round(options.lyricsStyle.size * 100) }} %</label>
+              <button class="link" type="button" :disabled="busy" @click="options.lyricsStyle = lyricsWithDefaults(settings.lyrics)">as in the player</button>
+            </template>
             <label class="check"><input v-model="options.notation" type="checkbox" :disabled="busy || !hasNotation" /> the notation, following the music</label>
             <label class="check"><input v-model="options.title" type="checkbox" :disabled="busy" /> a title card at the start (with the cover)</label>
             <label class="check"><input v-model="options.corner" type="checkbox" :disabled="busy" /> the song in the corner</label>
@@ -340,6 +371,24 @@ input[type='number'] {
 }
 input[type='number'] {
   width: 80px;
+}
+input.text {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: 13px var(--font);
+}
+.look {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
 }
 input[type='checkbox'] {
   accent-color: var(--accent);
