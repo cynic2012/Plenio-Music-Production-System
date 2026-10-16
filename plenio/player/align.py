@@ -80,9 +80,10 @@ def _score_chroma(score: Any, count: int) -> Any:
     active = chroma.sum(axis=1) > 0
     chroma -= chroma.mean(axis=1, keepdims=True)
     norm = np.linalg.norm(chroma, axis=1, keepdims=True)
-    chroma = chroma / np.where(norm > 0, norm, 1)
-    chroma[~active] = 0
-    return chroma
+    # a new array: the division is float64 (numpy 2.5's stubs refuse it in the float32 one)
+    normed = chroma / np.where(norm > 0, norm, 1)
+    normed[~active] = 0
+    return normed
 
 
 def _match(

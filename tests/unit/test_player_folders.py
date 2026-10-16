@@ -7,17 +7,19 @@ from __future__ import annotations
 import http.client
 import io
 import json
+import sys
 import threading
 from collections.abc import Iterator
 from fractions import Fraction
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from plenio.player import folders as folder_choice
 from plenio.player.__main__ import make_library
 from plenio.player.library import RETIRED_DIR, Library, song_detail
-from plenio.player.other import is_plenio_file, parse_lrc, plenio_owned
+from plenio.player.other import embedded_cover, is_plenio_file, parse_lrc, plenio_owned, probe, tag_text
 from plenio.player.server import State, serve
 
 av = pytest.importorskip("av")
@@ -139,6 +141,27 @@ def test_a_song_of_other_music_has_its_timed_lyrics_cover_and_files(music: Path,
     assert (music / "albums" / "Jazz" / "cover.jpg").is_file()
     assert (music / RETIRED_DIR / "albums" / "Jazz" / "Blue.flac").is_file()
     assert "Blue Hour" not in [s["title"] for s in library.songs()]
+
+
+def test_other_music_is_read_with_pyav_19_too(
+    music: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # CI's PyAV 19 removed av.open's metadata_errors: passing it raised, and the files showed no tags
+    def open_19(path: str, *args: object, **options: object) -> object:
+        if "metadata_errors" in options:
+            raise TypeError("open() got an unexpected keyword argument 'metadata_errors'")
+        return av.open(path, *args, **options)
+
+    monkeypatch.setitem(sys.modules, "av", SimpleNamespace(__version__="19.0.1", open=open_19))
+    found = probe(music / "albums" / "Jazz" / "Blue.flac")
+    assert found["tags"]["title"] == "Blue Hour" and found["tags"]["artist"] == "Someone"
+    assert found["seconds"] == pytest.approx(1.0, abs=0.05)
+    cover = embedded_cover(music / "albums" / "Pictured.flac", "abc", tmp_path / "cache")
+    assert cover is not None and cover.read_bytes()[:2] == b"\xff\xd8"
+    # PyAV 19 hands tags that are not UTF-8 over as surrogates: they are dropped, so the page's JSON holds
+    assert tag_text("caf\udce9 au lait") == "caf au lait"
+    assert tag_text("Café \ud800x") == "Café x"
+    assert tag_text(2019) == "2019"
 
 
 def test_lrc_lines_and_word_times() -> None:

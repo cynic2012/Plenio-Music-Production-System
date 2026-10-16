@@ -50,6 +50,26 @@ def is_plenio_file(path: Path, owned: set[Path], stems: Mapping[Path, set[str]])
     return parent.name.endswith("-stems") and parent.name[: -len("-stems")] in stems.get(parent.parent, set())
 
 
+def open_media(av: Any, path: Path) -> Any:
+    """Open an audio file with PyAV for its tags and pictures. Before PyAV 19 the tags are read with
+    ``metadata_errors="ignore"`` (else a tag that is not UTF-8 raised); PyAV 19 removed that argument - passing
+    it raised, and a file showed no tags at all - and always reads them as UTF-8 with ``surrogateescape``,
+    which :func:`tag_text` cleans."""
+    if int(str(av.__version__).split(".")[0]) < 19:
+        return av.open(str(path), metadata_errors="ignore")
+    return av.open(str(path))
+
+
+def tag_text(value: object) -> str:
+    """A tag's text as valid UTF-8: bytes that are not UTF-8 (PyAV 19 hands them over as surrogates) are
+    dropped, as ``metadata_errors="ignore"`` did - a surrogate would break the page's JSON."""
+    text = str(value)
+    try:
+        return text.encode("utf-8", "surrogateescape").decode("utf-8", "ignore")
+    except UnicodeEncodeError:
+        return text.encode("utf-8", "ignore").decode("utf-8")
+
+
 def probe(path: Path) -> dict[str, Any]:
     """The file's tags (lower-case names), its length in seconds, and whether it carries a picture."""
     try:
@@ -57,17 +77,17 @@ def probe(path: Path) -> dict[str, Any]:
     except ImportError:
         return {}
     try:
-        with av.open(str(path), metadata_errors="ignore") as container:
+        with open_media(av, path) as container:
             tags: dict[str, str] = {}
             for key, value in (container.metadata or {}).items():
-                tags.setdefault(str(key).lower(), str(value))
+                tags.setdefault(tag_text(key).lower(), tag_text(value))
             picture = False
             seconds = container.duration / 1_000_000 if container.duration else 0.0
             for stream in container.streams:
                 if stream.type == "audio":
                     # Ogg and Opus keep their tags on the stream
                     for key, value in (stream.metadata or {}).items():
-                        tags.setdefault(str(key).lower(), str(value))
+                        tags.setdefault(tag_text(key).lower(), tag_text(value))
                     if not seconds and stream.duration and stream.time_base:
                         seconds = float(stream.duration * stream.time_base)
                 elif stream.type == "video":
@@ -265,7 +285,7 @@ def embedded_cover(path: Path, song_id: str, cache: Path) -> Path | None:
         if done.is_file():
             return done
     try:
-        with av.open(str(path), metadata_errors="ignore") as container:
+        with open_media(av, path) as container:
             for stream in container.streams:
                 if stream.type != "video":
                     continue
