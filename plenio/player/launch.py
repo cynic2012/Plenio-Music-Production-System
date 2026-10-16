@@ -59,7 +59,7 @@ def start_player(folder: Path, comfyui: str, port: int, state: Path) -> subproce
     state.mkdir(parents=True, exist_ok=True)
     log = (state / "player.log").open("ab")
     flags: dict[str, Any] = {}
-    if os.name == "nt":
+    if sys.platform == "win32":
         flags["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
     else:
         flags["start_new_session"] = True
