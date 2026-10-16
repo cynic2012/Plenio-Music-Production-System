@@ -52,4 +52,6 @@ With *sheet music* on the record also says which PDF belongs to the export, its 
 
 **Continue the song later**: *File > Continue a Plenio song…* lists the records of the output folder and opens a record or a song's FLAC from anywhere; dropping a record onto ComfyUI, or the song's FLAC onto the empty canvas, works too. The song opens in the workflow it was made with, its title, style, lyrics and score kept in the Song Sheets (*manual*) - new takes with another take seed, or edits from there.
 
+**▶ Open in the Plenio Player** - the button on the node opens the song it exported last in the Plenio Player: its page, with the lyrics that light up as they are sung and the sheet music following the music. The player is a program of its own; when none runs, ComfyUI starts it (it keeps running when ComfyUI stops; stop it on its Settings page). *Plenio Player* beside *Run* and the *Plenio* menu open it too. From a song's page in the player, *Open in ComfyUI* brings the song back here.
+
 Samples above full scale are clipped in FLAC and MP3; the node warns. MP3 holds at most 48 kHz: hi-res audio (88.2/96/192 kHz) is converted for the MP3 only (to 44.1 or 48 kHz); FLAC and WAV keep the rate, and the node notes the conversion. Audio with NaN or infinite samples is refused. Put **Loudness & Dynamics** before the export.

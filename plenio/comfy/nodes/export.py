@@ -691,6 +691,8 @@ class PlenioExportRelease(io.ComfyNode):
             ui={
                 "plenio_summary": [{"status": summary.status.value, "markdown": markdown}],
                 "plenio_notation": notation,
+                # the record, for the node's "Open in the Plenio Player" button
+                "plenio_player": [{"record": str(record_path)}],
                 "audio": [
                     {
                         "filename": Path(p).name,

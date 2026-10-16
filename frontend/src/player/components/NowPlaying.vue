@@ -9,7 +9,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { engine } from '../engine'
 import { lineIndex, lines, paletteStyle, playlistVisual, section, sections } from '../now'
-import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, playing, previous, settings, time, toggleFavorite } from '../store'
+import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, openCurrentPage, playing, previous, settings, time, toggleFavorite } from '../store'
 import { chunksAt, formatTime, sectionName } from '../timing'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
@@ -20,8 +20,8 @@ import VisualsPanel from './VisualsPanel.vue'
 import Waveform from './Waveform.vue'
 
 type View = 'stage' | 'lyrics' | 'notation' | 'visual'
-const view = ref<View>((localStorage.getItem('plenio.view') as View) || 'stage')
-watch(view, (v) => localStorage.setItem('plenio.view', v))
+// the view it opens in is kept with the other settings (on the player's server)
+const view = computed<View>({ get: () => settings.npView, set: (v) => (settings.npView = v) })
 const panel = ref(false)
 const visual = ref<InstanceType<typeof VisualCanvas> | null>(null)
 const activeVisual = ref('')
@@ -87,6 +87,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
         </button>
       </nav>
       <div class="tools">
+        <button class="icon-btn" title="The song's page: lyrics, notation, details (I)" @click="openCurrentPage"><Icon name="info" /></button>
         <button class="icon-btn" :class="{ on: panel }" title="Visuals (V)" @click="panel = !panel"><Icon name="sparkles" /></button>
         <button class="icon-btn" title="Full screen" @click="fullscreen"><Icon name="expand" /></button>
       </div>

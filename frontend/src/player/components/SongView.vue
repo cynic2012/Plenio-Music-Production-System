@@ -9,7 +9,24 @@ import { computed, ref, watch } from 'vue'
 import { media, type SongDetail } from '../api'
 import { engine } from '../engine'
 import { lineIndex, sections } from '../now'
-import { byId, current, go, isFavorite, library, playSongAt, playSongs, playing, removing, songDetail, state, time, toggleFavorite } from '../store'
+import {
+  byId,
+  current,
+  go,
+  isFavorite,
+  library,
+  openInComfyUI,
+  playSongAt,
+  playSongs,
+  playing,
+  removing,
+  say,
+  settings,
+  songDetail,
+  state,
+  time,
+  toggleFavorite,
+} from '../store'
 import { formatTime, sectionName } from '../timing'
 import { similarSongs, takesOf } from '../similar'
 import CoverArt from './CoverArt.vue'
@@ -22,7 +39,13 @@ import SongMenu from './SongMenu.vue'
 const props = defineProps<{ id: string }>()
 
 type Tab = 'lyrics' | 'notation' | 'sheet' | 'details' | 'takes' | 'similar'
-const tab = ref<Tab>('lyrics')
+// the tab it opens on is kept with the other settings (on the player's server); a song without that tab
+// (an instrumental has no lyrics) shows its first, and the setting stays for the next song
+const tab = computed<Tab>({
+  get: () => (tabs.value.some(([id]) => id === settings.songTab) ? settings.songTab : (tabs.value[0]?.[0] ?? 'details')) as Tab,
+  set: (t) => (settings.songTab = t),
+})
+const opening = ref(false)
 const detail = ref<SongDetail | null>(null)
 const error = ref('')
 const menu = ref<{ x: number; y: number } | null>(null)
@@ -42,7 +65,6 @@ watch(
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
     }
-    if (tab.value === 'sheet' && !song.value?.has.pdf) tab.value = 'lyrics'
   },
   { immediate: true }
 )
@@ -73,9 +95,6 @@ const tabs = computed(() =>
     ] as [Tab, string, boolean][]
   ).filter(([, , shown]) => shown)
 )
-watch(tabs, (list) => {
-  if (!list.some(([id]) => id === tab.value)) tab.value = list[0]?.[0] ?? 'details'
-})
 
 const facts = computed(() => {
   const s = song.value
@@ -128,6 +147,18 @@ const downloads = computed(() => {
   return names.filter(([kind]) => files[kind]).map(([kind, label]) => ({ kind, label, name: files[kind], url: media(props.id, kind) }))
 })
 
+async function toComfyUI(): Promise<void> {
+  if (!song.value) return
+  opening.value = true
+  try {
+    await openInComfyUI(song.value)
+    say('The song opened in ComfyUI', 2600)
+  } catch (error) {
+    say(error instanceof Error ? error.message : String(error), 6000)
+  } finally {
+    opening.value = false
+  }
+}
 function back(): void {
   if (window.history.length > 1) window.history.back()
   else go('/')
@@ -168,6 +199,7 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
           <button class="primary" @click="play"><Icon :name="isCurrent && playing ? 'pause' : 'play'" /> {{ isCurrent && playing ? 'Pause' : 'Play' }}</button>
           <button class="ghost" :class="{ on: isFavorite(song.id) }" @click="toggleFavorite(song.id)"><Icon name="heart" :filled="isFavorite(song.id)" /> {{ isFavorite(song.id) ? 'Favourite' : 'Add to favourites' }}</button>
           <button class="ghost" @click="menu = { x: $event.clientX, y: $event.clientY }"><Icon name="plus" /> Playlist, queue …</button>
+          <button class="ghost" :disabled="opening" title="Open the song's workflow in ComfyUI - with its lyrics, score and settings - to work on it" @click="toComfyUI"><Icon name="external" /> {{ opening ? 'Opening ComfyUI …' : 'Open in ComfyUI' }}</button>
           <button class="ghost down" title="Remove the song from the library: to the retired songs, or deleted" @click="removing = song"><Icon name="thumbdown" /> Remove…</button>
         </div>
         <p class="meta">

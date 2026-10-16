@@ -18,6 +18,7 @@ import { dynamicComboNames, restoreWidgetValues, savedWidgetValues } from './dyn
 import { addEqCurve } from './eqWidget'
 import { MODE_BEFORE_0_2_2, migrateWidgetValues, renameWidgetValues } from './migrate'
 import { setAsrNote, setPayload } from './payloads'
+import { PLAYER_COMMAND, installContinueFromPlayer, installPlayerButton, openPlayer } from './player'
 import {
   type StatusHost,
   clearRunStates,
@@ -45,6 +46,7 @@ const comfyApi = api as ComfyApi
 setFetcher(comfyApi)
 const comfyApp = app as ComfyApp
 const continueHost: ContinueHost = { app: comfyApp, fetcher: comfyApi }
+const playerHost = { app: comfyApp, fetcher: comfyApi }
 
 interface GraphNodes {
   nodes?: ComfyNode[]
@@ -139,9 +141,22 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
             life: 15000
           })
         })
+    },
+    { id: PLAYER_COMMAND, label: 'Plenio Player', icon: 'pi pi-play-circle', function: () => openPlayer(playerHost) }
+  ],
+  menuCommands: [
+    { path: ['File'], commands: [CONTINUE_COMMAND] },
+    { path: ['Plenio'], commands: [PLAYER_COMMAND, CONTINUE_COMMAND] }
+  ],
+  // the Plenio Player, one click away beside Run (player.ts): started as a program of its own when none runs
+  actionBarButtons: [
+    {
+      icon: 'pi pi-play-circle',
+      label: 'Plenio Player',
+      tooltip: 'Open the Plenio Player: your songs with live lyrics, sheet music and visuals (starts it if needed)',
+      onClick: () => void openPlayer(playerHost)
     }
   ],
-  menuCommands: [{ path: ['File'], commands: [CONTINUE_COMMAND] }],
   // the sheets' review stops depend on the linked brief's mode: known once the links are in place
   afterConfigureGraph: () => refreshRunStatus(),
   beforeRegisterNodeDef(nodeType, nodeData) {
@@ -180,6 +195,10 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
         curves.get(this)?.showExecuted(output)
       })
     }
+    if (nodeData.name === 'PlenioExportRelease') {
+      // a button that opens the Plenio Player at the song just exported (player.ts)
+      installPlayerButton(nodeType, playerHost)
+    }
     if (nodeData.name === SEED_NODE) {
       // one switch: a new seed drawn before every run, or the same seed again (seedNode.ts)
       installSeedNode(nodeType)
@@ -214,6 +233,8 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
     installTooltipPlacement(() => (comfyApp as { canvas?: unknown }).canvas as CanvasLike | undefined)
     // a <name>.plenio.json dropped onto ComfyUI continues its song (instead of loading nothing)
     installRecordDrop(continueHost)
+    // opened by the Plenio Player's "Open in ComfyUI": the song it sends continues here (player.ts)
+    installContinueFromPlayer(continueHost)
     // Sent by the Song Sheet before it stops with a conflict or validation error.
     comfyApi.addEventListener('plenio.sheet', (event: CustomEvent) => {
       const payload = event.detail as SheetPayload

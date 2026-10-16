@@ -228,13 +228,12 @@ Details and limits: [Mastering and audio formats](docs/user/concepts/mastering.m
 
 ## Listen in the Plenio Player
 
-New in 0.8.1: your songs in the browser, without ComfyUI. Start it with ComfyUI's Python - it opens at `http://127.0.0.1:8765/`:
+New in 0.8.1: your songs in the browser - a program of its own, which runs without ComfyUI and opens at `http://127.0.0.1:8765/`.
 
-```bash
-python custom_nodes/Plenio-Music-Production-System/plenio_player.py
-```
+- **From ComfyUI, one click:** **Plenio Player** beside *Run*, the **Plenio** menu, or **▶ Open in the Plenio Player** on Export Release (right at the song just exported). ComfyUI starts the player if it is not running yet.
+- **Without ComfyUI:** double-click **`Plenio Player.bat`** in the Plenio folder (`./plenio_player.sh` on macOS and Linux), or `python plenio_player.py`.
 
-It finds every song Export Release wrote into ComfyUI's output folder - and a song you no longer want goes to the retired songs, or is deleted.
+It finds every song Export Release wrote into ComfyUI's output folder. **Open in ComfyUI** on a song's page opens its workflow in ComfyUI again, to work on it. Your playlists and every setting are kept on this computer (with a backup on the Settings page); a song you no longer want goes to the retired songs, or is deleted.
 
 - **Find songs**: search titles, lyrics and briefs, or narrow it with fields like `genre:jazz`, `bpm:>110`, `key:Am` or `is:fav`; filter chips; eight sorts.
 - **A page per song**: the lyrics (click a line to hear it), the notation, the sheet music PDF, the brief and the seeds, every file, the other takes and songs alike.

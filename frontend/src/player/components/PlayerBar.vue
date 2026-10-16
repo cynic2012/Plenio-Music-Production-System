@@ -13,6 +13,7 @@ import {
   muted,
   next,
   nowPlayingOpen,
+  openCurrentPage,
   playing,
   previous,
   setVolume,
@@ -62,11 +63,12 @@ function volume(event: Event): void {
           <Transition name="lyric" mode="out-in"><span :key="line" class="line">{{ line || current.genre }}</span></Transition>
         </div>
       </div>
+      <button class="icon-btn" title="The song's page: lyrics, notation, details (I)" @click="openCurrentPage"><Icon name="info" /></button>
       <button class="icon-btn" :class="{ on: isFavorite(current.id) }" title="Favourite" @click="toggleFavorite(current.id)">
         <Icon name="heart" :filled="isFavorite(current.id)" />
       </button>
     </div>
-    <div v-else class="song empty">Choose a song - double-click, or press ▶ on a cover.</div>
+    <div v-else class="song empty">Choose a song: ▶ on its cover plays it, a click on it opens its page.</div>
 
     <div class="centre">
       <div class="controls">

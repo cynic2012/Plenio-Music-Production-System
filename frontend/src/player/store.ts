@@ -4,7 +4,7 @@
  */
 import { computed, reactive, ref, shallowRef, watch } from 'vue'
 
-import { api, media, type Playlist, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary } from './api'
+import { api, media, type Playlist, type PlayerInfo, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary } from './api'
 import { engine } from './engine'
 import { type VisualSettings, withDefaults } from './visuals/chooser'
 
@@ -19,6 +19,12 @@ export interface Settings {
   visuals: VisualSettings
   resume: { queue: string[]; index: number; time: number } | null
   sidebar: boolean
+  /** The view Now playing opens in. */
+  npView: 'stage' | 'lyrics' | 'notation' | 'visual'
+  /** The tab a song's page opens on. */
+  songTab: string
+  /** Where *Open in ComfyUI* goes (``''``: the ComfyUI that started the player, else the one found). */
+  comfyui: string
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -32,6 +38,9 @@ const DEFAULT_SETTINGS: Settings = {
   visuals: withDefaults(null),
   resume: null,
   sidebar: true,
+  npView: 'stage',
+  songTab: 'lyrics',
+  comfyui: '',
 }
 
 export const library = shallowRef<SongSummary[]>([])
@@ -62,21 +71,58 @@ export function go(path: string, replace = false): void {
 
 // --- loading and saving -------------------------------------------------------------------------------
 
+// Everything the page remembers is saved on the player's server (its state file), half a second after a
+// change and once more when the page closes - nothing lives only in this browser.
+export const info = shallowRef<PlayerInfo | null>(null)
+export const lastSaved = ref<Date | null>(null)
+export const saveError = ref('')
 let saving: number | undefined
+let pending = false
+function snapshot(): PlayerState {
+  state.settings = JSON.parse(JSON.stringify(settings))
+  return JSON.parse(JSON.stringify(state)) as PlayerState
+}
+async function saveNow(keepalive = false): Promise<void> {
+  clearTimeout(saving)
+  pending = false
+  try {
+    await api.saveState(snapshot(), keepalive)
+    lastSaved.value = new Date()
+    saveError.value = ''
+  } catch (error) {
+    saveError.value = error instanceof Error ? error.message : String(error)
+  }
+}
 function save(): void {
   clearTimeout(saving)
-  saving = window.setTimeout(() => {
-    state.settings = JSON.parse(JSON.stringify(settings))
-    void api.saveState(JSON.parse(JSON.stringify(state)) as PlayerState).catch(() => {})
-  }, 600)
+  pending = true
+  saving = window.setTimeout(() => void saveNow(), 600)
+}
+window.addEventListener('pagehide', () => {
+  if (pending) void saveNow(true)
+})
+
+/** Replace everything the player keeps (a backup read back, or ``null``: start afresh). */
+export async function replaceState(data: Partial<PlayerState> | null): Promise<void> {
+  const fresh = data ?? {}
+  state.playlists = Array.isArray(fresh.playlists) ? fresh.playlists : []
+  state.favorites = Array.isArray(fresh.favorites) ? fresh.favorites : []
+  state.plays = fresh.plays && typeof fresh.plays === 'object' ? fresh.plays : {}
+  state.last_played = fresh.last_played && typeof fresh.last_played === 'object' ? fresh.last_played : {}
+  const stored = (fresh.settings ?? {}) as Partial<Settings>
+  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals) })
+  engine.setVolume(settings.volume)
+  engine.setRate(settings.rate)
+  await saveNow()
 }
 
 export async function load(): Promise<void> {
   loading.value = true
   try {
-    const [answer, saved] = await Promise.all([api.library(), api.state()])
+    const [answer, saved, about] = await Promise.all([api.library(), api.state(), api.info().catch(() => null)])
     library.value = answer.songs
     folders.value = answer.folders
+    info.value = about
     Object.assign(state, saved)
     const stored = (saved.settings ?? {}) as Partial<Settings>
     Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals) })
@@ -90,6 +136,54 @@ export async function load(): Promise<void> {
     loading.value = false
   }
   watch([settings, () => state.playlists, () => state.favorites], save, { deep: true })
+  lastSaved.value = null
+}
+
+// --- the way back to ComfyUI ------------------------------------------------------------------------
+
+/** The ComfyUI that *Open in ComfyUI* goes to: the address in the settings, else the one that started the
+ * player, else one the player's server finds on this computer (``null``: none runs). */
+export async function comfyuiAddress(): Promise<string | null> {
+  const wanted = settings.comfyui.trim() || info.value?.comfyui || ''
+  const answer = await api.comfyui(wanted)
+  return answer.found?.url ?? (settings.comfyui.trim() || null)
+}
+
+/** Open a song's workflow in ComfyUI to work on it: ComfyUI opens in a tab (inside the click, so no pop-up
+ * blocker stops it), the Plenio extension there says when it is ready, and gets the song's record - the
+ * same that continuing a song from its FLAC or record restores. */
+export async function openInComfyUI(song: SongSummary): Promise<void> {
+  const tab = window.open('about:blank', 'plenio-comfyui')
+  try {
+    const [target, record] = await Promise.all([comfyuiAddress(), fetch(media(song.id, 'record')).then((r) => r.json())])
+    if (!target) throw new Error('ComfyUI is not running on this computer - start it, or set its address in Settings.')
+    if (!tab) throw new Error('The browser did not open a tab for ComfyUI (a pop-up blocker?).')
+    const origin = new URL(target).origin
+    tab.location.href = `${target.replace(/\/?$/, '/')}?plenio=continue`
+    await new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(() => {
+        window.removeEventListener('message', onMessage)
+        reject(new Error('ComfyUI did not answer - is Plenio installed there, in version 0.8.1 or newer?'))
+      }, 90_000)
+      function onMessage(event: MessageEvent): void {
+        if (event.source !== tab || event.origin !== origin || (event.data as { type?: string } | null)?.type !== 'plenio-ready') return
+        window.clearTimeout(timer)
+        window.removeEventListener('message', onMessage)
+        tab?.postMessage({ type: 'plenio-continue', record, name: song.title }, origin)
+        resolve()
+      }
+      window.addEventListener('message', onMessage)
+    })
+  } catch (error) {
+    if (tab && !tab.closed) {
+      try {
+        if (tab.location.href === 'about:blank') tab.close()
+      } catch {
+        /* ComfyUI's page: leave it */
+      }
+    }
+    throw error
+  }
 }
 
 export async function rescan(): Promise<void> {
@@ -168,6 +262,22 @@ export const playing = ref(false)
 export const time = ref(0)
 export const duration = ref(0)
 export const nowPlayingOpen = ref(false)
+
+/** A short message at the top of the page (App.vue shows it). */
+export const toast = ref('')
+let toastTimer: number | undefined
+export function say(text: string, ms = 1800): void {
+  toast.value = text
+  clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => (toast.value = ''), ms)
+}
+
+/** Open the page of the song that plays (the ⓘ buttons, the key I). */
+export function openCurrentPage(): void {
+  if (!current.value) return
+  nowPlayingOpen.value = false
+  go(`/song/${current.value.id}`)
+}
 
 export async function songDetail(id: string): Promise<SongDetail> {
   const cached = details.get(id)

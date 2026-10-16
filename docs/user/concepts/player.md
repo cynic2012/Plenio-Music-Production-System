@@ -1,16 +1,40 @@
 # Plenio Player
 
-A page in your browser that plays the songs you made with Plenio. It runs **without ComfyUI**: you can make
-songs in ComfyUI and listen in the player at the same time, or just listen.
+A page in your browser that plays the songs you made with Plenio. It is a program of its own: it runs
+**without ComfyUI**, and ComfyUI can start it with one click. Make songs in ComfyUI and listen in the player
+at the same time, or just listen.
 
 It finds every song that Export Release wrote (each export writes a `.plenio.json` release record next to
 the audio). It shows them as a library you can search. While a song plays, the lyrics light up word by word,
-a cursor follows the notes on the sheet music, and Winamp-style visuals move with the music.
+a cursor follows the notes on the sheet music, and Winamp-style visuals move with the music. Every song can
+go back into ComfyUI to work on it.
 
-## Start it
+## Open the player
 
-Use the Python that runs your ComfyUI. It already has everything the player needs (any Python 3.10 or newer
-works; the waveform needs PyAV and numpy):
+### From ComfyUI: one click
+
+- **Plenio Player** (▶) in ComfyUI's action bar, beside **Run**.
+- The menu **Plenio › Plenio Player** (also in the command palette).
+- **▶ Open in the Plenio Player** on **Export Release**: after a run it opens the player right at the song the
+  node just exported.
+
+The player opens in a browser tab of its own; the next click brings that tab back. If no player runs yet,
+ComfyUI starts one first (a few seconds): it plays ComfyUI's output folder and finds ComfyUI again for
+*Open in ComfyUI*. A player started this way keeps running when you close ComfyUI, and it has no window -
+stop it on its **Settings** page (*Stop the player*). Its messages go to `player.log` in the player's state
+folder (`~/.plenio/player`).
+
+### Without ComfyUI: a double click
+
+In the Plenio folder (`ComfyUI/custom_nodes/Plenio-Music-Production-System`):
+
+- **Windows:** double-click **`Plenio Player.bat`**. It finds the Python of your ComfyUI - the portable
+  build's `python_embeded`, or the `.venv` of a manual or Desktop install.
+- **macOS and Linux:** run **`./plenio_player.sh`**.
+
+The browser opens at `http://127.0.0.1:8765/`. Stop the player with Ctrl+C in its window, or on its
+Settings page. The same by hand, with the Python that runs your ComfyUI (any Python 3.10 or newer works;
+the waveform needs PyAV and numpy):
 
 ```bash
 # from the ComfyUI folder (a venv install)
@@ -23,38 +47,41 @@ python_embeded\python.exe ComfyUI\custom_nodes\Plenio-Music-Production-System\pl
 python -m plenio.player
 ```
 
-The browser opens at `http://127.0.0.1:8765/`. Stop the player with Ctrl+C.
+However you start it, it is the same player with the same playlists and settings.
 
 | Option | What it does |
 |---|---|
 | `--folder <folder>` | The folder to read songs from, with all its subfolders (repeatable). The default is ComfyUI's `output` folder when Plenio sits in `ComfyUI/custom_nodes`, else the current folder |
 | `--port 8765` | Another port, if 8765 is taken |
 | `--no-browser` | Do not open the browser |
+| `--comfyui http://127.0.0.1:8188` | The ComfyUI that *Open in ComfyUI* goes to (the button in ComfyUI sets it) |
 | `--host 127.0.0.1` | Only this computer can open the player. `--host 0.0.0.0` opens it to your network. There is no login, so only do this on a network you trust |
 
 Instead of `--folder` you can set `PLENIO_PLAYER_FOLDER` (several folders separated by `;` on Windows, `:`
 elsewhere).
 
-**What it writes:** your playlists, favourites, play counts, settings and the waveforms it has worked out
-are saved in `~/.plenio/player` (or the folder in `PLENIO_PLAYER_STATE`); copy that folder to take them to
-another computer. In your song folders it changes something only when you remove a song
-([see below](#remove-a-song)).
+**What it writes:** your playlists, favourites, play counts and settings ([see below](#your-settings-are-kept))
+and the waveforms it has worked out go to `~/.plenio/player` (or the folder in `PLENIO_PLAYER_STATE`). In your
+song folders it changes something only when you remove a song ([see below](#remove-a-song)).
 
 If the port is taken - the player is already running, or another program uses 8765 - it says so and does
-not start; open the running one, or start it with `--port 8766`.
+not start; open the running one, or start it with `--port 8766`. (ComfyUI's button finds a running player on
+8765-8769, and else starts one on the first free port.)
 
 New songs show up when you click **Look for new songs** in the sidebar, or reload the page.
 
 ## The library
 
 The library shows a featured song at the top, then every song as a card with its cover. Songs without a
-cover get artwork drawn from their colours and genre. Double-click a card to play it, or click ▶ on its
-cover. A right-click or ⋯ opens the song's menu:
+cover get artwork drawn from their colours and genre. **Click a card to open the song's page; ▶ on its cover
+plays it.** In the list view, a double click plays a song and ⓘ opens its page. A right-click or ⋯ opens the
+song's menu:
 
 - **Play next** or **Add to the queue**
 - **Start a radio of songs alike**: the song, then up to 40 songs like it
 - **Add to favourites**, or add it to a playlist
 - **Open the song's page**
+- **Open in ComfyUI** ([see below](#continue-a-song-in-comfyui))
 - **Remove from the library…** ([see below](#remove-a-song))
 
 **Search** looks through titles, lyrics, genres, moods, styles and briefs; every word you type must match.
@@ -81,8 +108,10 @@ loudness, most played or recently played, and switch between a grid and a list.
 
 ## A song's page
 
-Click a title to open its page: the cover, the style, how often you played it, and these tabs. The page of
-the song that plays follows the music: when the next song starts, the page shows that one, on the same tab
+Open it with a click on the song's card or title, with ⓘ beside the song in the bar at the bottom and at the
+top of Now playing, or with the key **I** (the song that plays). It shows the cover, the style, how often you
+played it, the buttons *Play*, *Add to favourites*, *Playlist, queue …*, **Open in ComfyUI** and **Remove…**,
+and these tabs (it opens on the tab you used last). The page of the song that plays follows the music: when the next song starts, the page shows that one, on the same tab
 (on *Lyrics*, its live lyrics), and Back still leads to where you came from.
 
 - **Lyrics**: every line with the time it is sung. Click a line to hear the song from there. While the song
@@ -182,6 +211,42 @@ this song.
 
 A song counts as played after 30 seconds.
 
+## Continue a song in ComfyUI
+
+**Open in ComfyUI** on a song's page (or in its menu) opens ComfyUI in a browser tab with the song's
+workflow - its brief, its lyrics, its score and its settings, as the song was made - ready for another take, a
+new arrangement or an edit of the lyrics or the notes. It is the same as *File › Continue a Plenio song…*
+in ComfyUI, or dropping the song's FLAC onto ComfyUI: the song's record travels from the player to the
+ComfyUI tab.
+
+It needs a ComfyUI with Plenio 0.8.1 or newer running on this computer. Which one: the ComfyUI that started
+the player; else the address under **Settings › Open in ComfyUI**; else the player looks for one at
+`127.0.0.1:8188` and `127.0.0.1:8000` (ComfyUI Desktop). The Settings page says which ComfyUI it found.
+
+## Your settings are kept
+
+Everything you set in the player is kept - not in the browser, but by the player itself, on this computer:
+
+- your playlists, their order, colours and visuals, your favourites and play counts
+- every setting: the visuals (mode, the ticked ones, a song's own visual), the colours, volume, crossfade and
+  speed, the library's sort and view
+- the view Now playing opens in and the tab a song's page opens on
+- where you stopped: the queue and the moment in the song (the player starts there next time)
+
+It is saved half a second after each change, and once more when you close the page. So it is all still
+there after closing the browser or restarting the computer, in another browser, and whether you started
+the player from ComfyUI or by hand. *Settings* in the sidebar says **kept ✓** (or *saved ✓* after a change).
+
+The **Settings** page shows what is kept, the file it is kept in (`~/.plenio/player/state.json`), and when it
+was last saved, and it has:
+
+- **Download a backup** - a `.json` file with everything above (the songs stay in their folders)
+- **Restore a backup…** - read such a file back, on this or another computer
+- **Start afresh…** - forget playlists, favourites, play counts and settings (asks once more)
+
+It also shows where *Open in ComfyUI* goes, the folders the player reads, the player's version, and
+**Stop the player**.
+
 ## Remove a song
 
 A song you do not want any more: **Remove…** (👎) on its page, or *Remove from the library…* in its menu.
@@ -208,6 +273,7 @@ elsewhere.
 | Shift + ← → | previous / next song |
 | ↑ ↓ | louder / quieter |
 | F | Now playing |
+| I | the page of the song that plays |
 | 1 2 3 4 | Stage, Lyrics, Notation, Visual |
 | V | the visuals' settings |
 | N | another visual |

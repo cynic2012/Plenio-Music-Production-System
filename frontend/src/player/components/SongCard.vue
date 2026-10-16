@@ -1,5 +1,6 @@
 <script setup lang="ts">
-/** A song in the library: its cover with a play button, the title, genre and length; playing, it moves. */
+/** A song in the library: its cover with a play button, the title, genre and length; playing, it moves. A click
+ * opens the song's page (▶ plays, and so does a double click in the list). */
 import type { SongSummary } from '../api'
 import { current, go, isFavorite, playing } from '../store'
 import { formatTime } from '../timing'
@@ -15,8 +16,10 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
     class="card"
     :class="{ list, now: current?.id === song.id, playing: current?.id === song.id && playing }"
     tabindex="0"
-    @dblclick="emit('play')"
-    @keydown.enter="emit('play')"
+    :title="list ? undefined : `${song.title} - open its page`"
+    @click="!list && go(`/song/${song.id}`)"
+    @dblclick="list && emit('play')"
+    @keydown.enter="go(`/song/${song.id}`)"
     @contextmenu.prevent="emit('menu', $event)"
   >
     <div class="art">
@@ -25,7 +28,7 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
       <span v-if="current?.id === song.id && playing" class="eq"><i /><i /><i /><i /></span>
     </div>
     <div class="text">
-      <a class="title" @click="go(`/song/${song.id}`)">{{ song.title }}</a>
+      <a class="title" @click.stop="go(`/song/${song.id}`)">{{ song.title }}</a>
       <p class="sub">
         <span>{{ song.genre || song.style.split(',')[0] || '—' }}</span>
         <span class="dot">·</span>
@@ -44,6 +47,7 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
     <span v-if="list" class="len">{{ song.bpm ? `${song.bpm} BPM` : '' }}</span>
     <span v-if="list" class="len">{{ song.created.slice(0, 10) }}</span>
     <Icon v-if="isFavorite(song.id)" class="fav" name="heart" filled :size="16" />
+    <button v-if="list" class="icon-btn info" title="The song's page" @click.stop="go(`/song/${song.id}`)"><Icon name="info" /></button>
     <button class="more icon-btn" title="More" @click.stop="emit('menu', $event)"><Icon name="more" /></button>
   </article>
 </template>
@@ -61,6 +65,9 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.25s, box-shadow 0.25s;
   outline: none;
   animation: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.card:not(.list) {
+  cursor: pointer;
 }
 .card:hover,
 .card:focus-visible {

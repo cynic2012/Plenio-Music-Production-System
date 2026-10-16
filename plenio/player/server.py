@@ -12,14 +12,15 @@ import mimetypes
 import os
 import re
 import threading
+import urllib.request
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from .. import __version__
-from .library import Library, song_detail
+from .library import RETIRED_DIR, Library, song_detail
 from .peaks import peaks
 
 STATIC = Path(__file__).resolve().parent / "static"
@@ -41,6 +42,9 @@ TYPES = {".flac": "audio/flac", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".srt
          ".json": "application/json", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".js": "text/javascript",
          ".mjs": "text/javascript", ".css": "text/css", ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
          ".png": "image/png", ".woff2": "font/woff2"}  # fmt: skip
+APP = "plenio-player"
+COMFYUI_PORTS = (8188, 8000)  # ComfyUI, ComfyUI Desktop
+LOOPBACK_URL = re.compile(r"https?://(127\.0\.0\.1|localhost|\[::1\]):\d{2,5}/?")
 EMPTY_STATE: dict[str, Any] = {
     "playlists": [],
     "favorites": [],
@@ -73,12 +77,42 @@ class State:
             temp.replace(self.path)
 
 
+def comfyui_at(url: str, timeout: float = 0.8) -> dict[str, Any] | None:
+    """The ComfyUI answering at ``url`` (a loopback address only: the player asks no other computer)."""
+    if not LOOPBACK_URL.fullmatch(url):
+        return None
+    try:
+        with urllib.request.urlopen(f"{url.rstrip('/')}/system_stats", timeout=timeout) as answer:  # noqa: S310
+            stats = json.loads(answer.read().decode("utf-8"))
+    except (OSError, ValueError):
+        return None
+    system = stats.get("system") if isinstance(stats, dict) else None
+    if not isinstance(system, dict):
+        return None
+    return {"url": url.rstrip("/") + "/", "version": str(system.get("comfyui_version") or "")}
+
+
+def find_comfyui(preferred: str = "") -> dict[str, Any] | None:
+    """ComfyUI on this computer: ``preferred`` (the one that started the player, or the address in the
+    settings), else the usual loopback ports."""
+    for url in [preferred] if preferred else []:
+        found = comfyui_at(url)
+        if found:
+            return found
+    for port in COMFYUI_PORTS:
+        found = comfyui_at(f"http://127.0.0.1:{port}")
+        if found:
+            return found
+    return None
+
+
 def make_handler(
     library: Library,
     state: State,
     static: Path = STATIC,
     cache: Path | None = None,
     hosts: frozenset[str] = frozenset(),
+    comfyui: str = "",
 ) -> type[BaseHTTPRequestHandler]:
     """The requests' handler; with ``hosts`` it answers only requests addressed to one of them (a player on
     the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding)."""
@@ -163,7 +197,33 @@ def make_handler(
             self.do_GET()
 
         def do_GET(self) -> None:  # noqa: N802
-            route = unquote(urlparse(self.path).path)
+            parsed = urlparse(self.path)
+            route = unquote(parsed.path)
+            query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+            if route == "/api/info":
+                # who answers here (ComfyUI's launcher looks for this), where the state is kept, which ComfyUI
+                return self._json(
+                    {
+                        "app": APP,
+                        "version": __version__,
+                        "folders": [str(f) for f in library.folders],
+                        "state": str(state.path),
+                        "retired": RETIRED_DIR,
+                        "comfyui": comfyui,
+                        "pid": os.getpid(),
+                    }
+                )
+            if route == "/api/comfyui":
+                found = find_comfyui(query.get("url", "") or comfyui)
+                return self._json({"found": found})
+            if route == "/api/find":
+                # the song of a record file (Export Release's button in ComfyUI opens the player at it)
+                wanted = Path(query.get("record", ""))
+                for summary in library.songs():
+                    song = library.song(summary["id"])
+                    if song and wanted.name == song.record.name and song.record.resolve() == wanted.resolve():
+                        return self._json({"id": song.id})
+                return self._error(404, "no such song")
             if route == "/api/library":
                 return self._json(
                     {
@@ -247,6 +307,13 @@ def make_handler(
             if route == "/api/rescan":
                 library.scan(force=True)
                 return self._json({"songs": len(library.songs())})
+            if route == "/api/quit":
+                # Stop the player (its Settings page): a player started from ComfyUI has no window to close
+                if not self._from_this_page():
+                    return self._error(403, "only from the player's page")
+                self._json({"ok": True})
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
+                return None
             match = re.fullmatch(r"/api/song/([0-9a-f]+)/remove", route)
             if not match:
                 return self._error(404, "not found")
@@ -274,8 +341,11 @@ def make_handler(
 LOOPBACK = {"127.0.0.1", "localhost", "::1"}
 
 
-def serve(library: Library, state: State, host: str = "127.0.0.1", port: int = 8765) -> ThreadingHTTPServer:
-    """The player's server; on the loopback address only for requests addressed to it."""
+def serve(
+    library: Library, state: State, host: str = "127.0.0.1", port: int = 8765, comfyui: str = ""
+) -> ThreadingHTTPServer:
+    """The player's server; on the loopback address only for requests addressed to it. ``comfyui``: the
+    ComfyUI that started it (where *Open in ComfyUI* goes)."""
 
     class Server(ThreadingHTTPServer):
         daemon_threads = True
@@ -294,6 +364,9 @@ def serve(library: Library, state: State, host: str = "127.0.0.1", port: int = 8
                     state,
                     cache=state.path.parent / "peaks",
                     hosts=frozenset(f"{name}:{bound}" for name in names),
+                    comfyui=comfyui,
                 )
 
-    return Server((host, port), make_handler(library, state, cache=state.path.parent / "peaks"))
+    return Server(
+        (host, port), make_handler(library, state, cache=state.path.parent / "peaks", comfyui=comfyui)
+    )

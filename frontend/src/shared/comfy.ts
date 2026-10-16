@@ -89,6 +89,8 @@ export interface ComfyExtension {
   commands?: { id: string; label: string; icon?: string; function: () => void | Promise<void> }[]
   /** Menu entries: the commands under a path of the top menu (``['Workflow']``). */
   menuCommands?: { path: string[]; commands: string[] }[]
+  /** Buttons in the action bar beside Run (frontend 1.2x+; an older frontend leaves them out). */
+  actionBarButtons?: { icon: string; label?: string; tooltip?: string; onClick: () => void }[]
 }
 
 export interface ComfyApp {

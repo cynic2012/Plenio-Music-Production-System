@@ -6,7 +6,7 @@ import { computed, ref } from 'vue'
 import type { SongSummary } from '../api'
 import { vFocus } from '../focus'
 import { similarSongs } from '../similar'
-import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, playSongs, removing, state, toggleFavorite } from '../store'
+import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, openInComfyUI, playSongs, removing, say, state, toggleFavorite } from '../store'
 
 const props = defineProps<{ song: SongSummary; x: number; y: number }>()
 const emit = defineEmits<{ close: [] }>()
@@ -16,6 +16,13 @@ const name = ref('')
 
 function done(): void {
   emit('close')
+}
+function comfy(): void {
+  done()
+  openInComfyUI(props.song).then(
+    () => say('The song opened in ComfyUI', 2600),
+    (error: unknown) => say(error instanceof Error ? error.message : String(error), 6000)
+  )
 }
 function radio(): void {
   void playSongs([props.song.id, ...similarSongs(props.song, library.value, 40).map((s) => s.id)])
@@ -36,6 +43,7 @@ function create(): void {
       <button @click="radio">Start a radio of songs alike</button>
       <button @click="toggleFavorite(song.id); done()">{{ isFavorite(song.id) ? 'Remove from favourites' : 'Add to favourites' }}</button>
       <button @click="go(`/song/${song.id}`); done()">Open the song’s page</button>
+      <button @click="comfy">Open in ComfyUI</button>
       <button class="remove" @click="removing = song; done()">Remove from the library…</button>
       <p class="head small">Add to a playlist</p>
       <button v-for="p in state.playlists" :key="p.id" @click="addToPlaylist(p, [song.id]); done()">

@@ -6,12 +6,16 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
 import threading
+import urllib.parse
+import urllib.request
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
+from plenio.player import launch
 from plenio.player.library import (
     RETIRED_DIR,
     Library,
@@ -22,7 +26,7 @@ from plenio.player.library import (
     score_facts,
     song_detail,
 )
-from plenio.player.server import State, serve
+from plenio.player.server import State, comfyui_at, serve
 
 SCORE = """X:1
 T:
@@ -348,3 +352,67 @@ def test_a_second_player_on_a_taken_port_does_not_start(
 ) -> None:
     with pytest.raises(OSError):
         serve(server[2], State(tmp_path / "other.json"), "127.0.0.1", server[1])
+
+
+def test_the_player_says_who_it_is_and_finds_a_song_by_its_record(
+    server: tuple[str, int, Library], songs: Path
+) -> None:
+    info = json.loads(request(server, "GET", "/api/info")[2])
+    assert (
+        info["app"] == "plenio-player"
+        and info["state"].endswith("state.json")
+        and info["retired"] == RETIRED_DIR
+    )
+    record = songs / "plenio" / "River.plenio.json"
+    status, _, body = request(server, "GET", f"/api/find?record={urllib.parse.quote(str(record))}")
+    assert status == 200 and json.loads(body)["id"] == song_id_of(server, "River")
+    other = urllib.parse.quote(str(songs / "plenio" / "Nope.plenio.json"))
+    assert request(server, "GET", f"/api/find?record={other}")[0] == 404
+
+
+def test_the_player_asks_only_this_computer_for_comfyui() -> None:
+    assert comfyui_at("http://example.com:8188") is None
+    assert comfyui_at("http://192.168.1.20:8188/") is None
+    assert comfyui_at("file:///etc/passwd") is None
+
+
+def test_stop_the_player_from_its_page(songs: Path, tmp_path: Path) -> None:
+    library = Library([songs])
+    running = serve(library, State(tmp_path / "state.json"), "127.0.0.1", 0)
+    thread = threading.Thread(target=running.serve_forever, daemon=True)
+    thread.start()
+    address = ("127.0.0.1", running.server_address[1], library)
+    assert request(address, "POST", "/api/quit", b"{}")[0] == 403  # not from the page
+    assert request(address, "POST", "/api/quit", b"{}", **{"Content-Type": "application/json"})[0] == 200
+    thread.join(timeout=5)
+    assert not thread.is_alive()
+    running.server_close()
+
+
+def test_comfyui_starts_a_player_of_its_own_and_finds_it_again(
+    songs: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import socket
+
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    monkeypatch.setattr(launch, "PORTS", range(port, port + 1))
+    state = tmp_path / "state"
+    started = launch.ensure_player(songs, "http://127.0.0.1:8188", state, wait=40)
+    try:
+        assert started["started"] is True and started["url"] == f"http://127.0.0.1:{port}/"
+        info = launch.player_at(port)
+        assert info is not None and info["comfyui"] == "http://127.0.0.1:8188"
+        assert info["folders"] == [str(songs.resolve())] and info["pid"] != os.getpid()
+        again = launch.ensure_player(songs, "", state)
+        assert again["started"] is False and again["url"] == started["url"]
+    finally:
+        quit_request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/quit",
+            data=b"{}",
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(quit_request, timeout=5).read()
+    assert (state / "player.log").exists()

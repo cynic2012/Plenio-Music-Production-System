@@ -11,10 +11,12 @@ import NowPlaying from './components/NowPlaying.vue'
 import PlayerBar from './components/PlayerBar.vue'
 import PlaylistView from './components/PlaylistView.vue'
 import PlaylistsView from './components/PlaylistsView.vue'
+import SettingsView from './components/SettingsView.vue'
 import QueuePanel from './components/QueuePanel.vue'
 import RemoveDialog from './components/RemoveDialog.vue'
 import Sidebar from './components/Sidebar.vue'
 import SongView from './components/SongView.vue'
+import { api } from './api'
 import { engine } from './engine'
 import { paletteStyle } from './now'
 import {
@@ -24,11 +26,14 @@ import {
   loadError,
   loading,
   next,
+  openCurrentPage,
   nowPlayingOpen,
   previous,
   removing,
   route,
+  say,
   setVolume,
+  toast,
   settings,
   toggleAB,
   toggleFavorite,
@@ -40,24 +45,34 @@ const help = ref(false)
 const main = ref<HTMLElement | null>(null)
 const libraryView = ref<InstanceType<typeof LibraryView> | null>(null)
 const nowPlaying = ref<InstanceType<typeof NowPlaying> | null>(null)
-const toast = ref('')
-let toastTimer: number | undefined
 
 const page = computed(() => {
   const [, first = '', second = ''] = route.value.split('/')
   if (first === 'song' && second) return { kind: 'song' as const, id: decodeURIComponent(second) }
   if (first === 'playlist' && second) return { kind: 'playlist' as const, id: decodeURIComponent(second) }
   if (first === 'playlists') return { kind: 'playlists' as const }
+  if (first === 'settings') return { kind: 'settings' as const }
   if (first === 'favorites' || first === 'top' || first === 'recent') return { kind: 'library' as const, collection: first as 'favorites' | 'top' | 'recent' }
   return { kind: 'library' as const, collection: 'all' as const }
 })
 watch(route, () => nextTick(() => main.value?.scrollTo({ top: 0 })))
 
-function say(text: string): void {
-  toast.value = text
-  clearTimeout(toastTimer)
-  toastTimer = window.setTimeout(() => (toast.value = ''), 1400)
-}
+// ComfyUI's Export Release opens the player at a song by its record file: #/record/<path> -> its page
+watch(
+  [route, library],
+  async ([path]) => {
+    if (!path.startsWith('/record/') || !library.value.length) return
+    const record = decodeURIComponent(path.slice('/record/'.length))
+    try {
+      const { id } = await api.find(record)
+      go(`/song/${id}`, true)
+    } catch {
+      go('/', true)
+      say('That song is not in the library (yet) - Look for new songs, or check the folders in Settings.', 5000)
+    }
+  },
+  { immediate: true }
+)
 
 const KEYS: [string, string][] = [
   ['Space', 'Play / pause'],
@@ -65,6 +80,7 @@ const KEYS: [string, string][] = [
   ['Shift ← →', 'Previous / next song'],
   ['↑ ↓', 'Louder / quieter'],
   ['F', 'Now playing'],
+  ['I', 'The page of the song that plays'],
   ['1 – 4', 'Stage, lyrics, notation, visual'],
   ['V', 'The visuals’ settings'],
   ['N', 'Another visual'],
@@ -130,6 +146,9 @@ function onKey(event: KeyboardEvent): void {
       nowPlayingOpen.value = true
       void nextTick(() => nowPlaying.value?.setView((['stage', 'lyrics', 'notation', 'visual'] as const)[Number(key) - 1]))
       break
+    case 'i':
+      openCurrentPage()
+      break
     case 'l':
       if (current.value) {
         toggleFavorite(current.value.id)
@@ -185,6 +204,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <SongView v-if="page.kind === 'song'" :id="page.id" />
         <PlaylistView v-else-if="page.kind === 'playlist'" :id="page.id" />
         <PlaylistsView v-else-if="page.kind === 'playlists'" />
+        <SettingsView v-else-if="page.kind === 'settings'" />
         <LibraryView v-else ref="libraryView" :key="page.collection" :collection="page.collection" />
       </template>
     </main>

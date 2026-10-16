@@ -123,6 +123,22 @@ export interface RemoveAnswer {
   folder: string | null
 }
 
+/** Who answers (``/api/info``): the player, where it keeps the state, which ComfyUI started it. */
+export interface PlayerInfo {
+  app: string
+  version: string
+  folders: string[]
+  state: string
+  retired: string
+  comfyui: string
+  pid: number
+}
+
+export interface ComfyFound {
+  url: string
+  version: string
+}
+
 export interface LibraryAnswer {
   songs: SongSummary[]
   folders: string[]
@@ -140,8 +156,18 @@ export const api = {
   library: () => json<LibraryAnswer>('/api/library'),
   song: (id: string) => json<SongDetail>(`/api/song/${id}`),
   state: () => json<PlayerState>('/api/state'),
-  saveState: (state: PlayerState) =>
-    json<{ ok: boolean }>('/api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state) }),
+  /** ``keepalive``: also when the page is closing (the last change is not lost). */
+  saveState: (state: PlayerState, keepalive = false) =>
+    json<{ ok: boolean }>('/api/state', {
+      method: 'PUT',
+      keepalive,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state),
+    }),
+  info: () => json<PlayerInfo>('/api/info'),
+  find: (record: string) => json<{ id: string }>(`/api/find?record=${encodeURIComponent(record)}`),
+  comfyui: (url = '') => json<{ found: ComfyFound | null }>(`/api/comfyui${url ? `?url=${encodeURIComponent(url)}` : ''}`),
+  quit: () => json<{ ok: boolean }>('/api/quit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }),
   rescan: () => json<{ songs: number }>('/api/rescan', { method: 'POST' }),
   removeSong: (id: string, action: 'retire' | 'delete') =>
     json<RemoveAnswer>(`/api/song/${id}/remove`, {

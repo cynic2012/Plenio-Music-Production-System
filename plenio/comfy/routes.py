@@ -8,6 +8,7 @@ errors) or 500 (bugs).
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 from collections.abc import Awaitable, Callable
@@ -21,6 +22,8 @@ from ..core import score as score_rules
 from ..core.engines import rules_for
 from ..core.errors import PlenioError, PlenioUserError
 from ..core.sheet import DOCUMENT_KINDS, REVIEW_MODES, evaluate_sheet, parse_sheet_state
+from ..player.launch import ensure_player
+from ..player.paths import state_dir
 from . import host
 from .shared import preset_library, system_report, template_library, template_workflows
 from .sheet_music import JOBS, MAX_BYTES
@@ -440,6 +443,21 @@ async def records_continue(request: web.Request) -> web.StreamResponse:
     return web.json_response(continuation.continuation(record, template_workflows(), source=source))
 
 
+async def player_open(request: web.Request) -> web.StreamResponse:
+    """The *Plenio Player* button (owner's request 2026-10-16): the address of the Plenio Player running on
+    this computer - started now when none runs, as a program of its own that plays ComfyUI's output folder
+    and keeps running when ComfyUI stops (``plenio.player.launch``). ComfyUI never serves the player."""
+    comfyui = f"{request.scheme}://{request.host}"
+    try:
+        found = await asyncio.to_thread(ensure_player, host.output_directory(), comfyui, state_dir())
+    except RuntimeError as error:
+        raise PlenioUserError(
+            str(error),
+            hint=f"Start it by hand to see why: python plenio_player.py (its log: {state_dir() / 'player.log'}).",
+        ) from error
+    return web.json_response(found)
+
+
 ROUTES: tuple[tuple[str, str, Handler], ...] = (
     ("GET", "/plenio/system", system),
     ("POST", "/plenio/score/analyze", score_analyze),
@@ -460,6 +478,7 @@ ROUTES: tuple[tuple[str, str, Handler], ...] = (
     ("GET", "/plenio/export/sheet-music/pending", export_sheet_music_pending),
     ("GET", "/plenio/records", records_list),
     ("POST", "/plenio/records/continue", records_continue),
+    ("POST", "/plenio/player/open", player_open),
 )
 
 

@@ -3,7 +3,7 @@
 import { computed, ref } from 'vue'
 
 import { vFocus } from '../focus'
-import { folders, go, library, newPlaylist, rescan, route, state } from '../store'
+import { folders, go, lastSaved, library, newPlaylist, rescan, route, saveError, state } from '../store'
 import Icon from './Icon.vue'
 
 const naming = ref(false)
@@ -65,7 +65,11 @@ async function scan(): Promise<void> {
     <div class="foot">
       <p v-for="f in folders" :key="f" class="folder" :title="f"><Icon name="folder" :size="14" /> {{ f }}</p>
       <button class="ghost small" :disabled="scanning" @click="scan"><Icon name="refresh" :size="14" :class="{ spin: scanning }" /> {{ scanning ? 'Looking …' : 'Look for new songs' }}</button>
-      <p class="keys">Space play · ←→ seek · F now playing · ? keys</p>
+      <a class="link small-link" :class="{ on: route === '/settings' }" @click="go('/settings')">
+        <Icon name="gear" :size="16" /> Settings
+        <small :class="{ bad: saveError }" :title="saveError || 'Playlists, favourites and every setting are kept on this computer'">{{ saveError ? 'not saved' : lastSaved ? 'saved ✓' : 'kept ✓' }}</small>
+      </a>
+      <p class="keys">Space play · ←→ seek · F now playing · I song page · ? keys</p>
     </div>
   </nav>
 </template>
@@ -209,6 +213,12 @@ h4 {
 .small {
   font-size: 12px;
   padding: 6px 10px;
+}
+.small-link small {
+  color: #7fe0a0;
+}
+.small-link small.bad {
+  color: #ff8f8f;
 }
 .keys {
   margin: 4px 0 0;

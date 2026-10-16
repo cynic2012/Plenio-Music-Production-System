@@ -86,3 +86,20 @@ The pages and views were checked in Chromium with 33 songs (console clean).
 - No transcoding, no streaming outside the local network, no accounts.
 - No PDF renderer of its own (pdf.js would be a new dependency): the browser's viewer shows the PDF.
 - No editing of songs; removing one moves or deletes its files, nothing else.
+
+## 9. One click from ComfyUI, settings kept, back to ComfyUI (owner's request 2026-10-16)
+
+The owner: the player must be easy to find and start with one click, also from the workflows - but it stays
+a program of its own that runs without ComfyUI (not built into ComfyUI); a song should go back into a
+ComfyUI workflow for more work; every setting made in the browser must last, and say so; the song's page
+must be easier to find.
+
+| Question | Decision |
+|---|---|
+| How does a click in ComfyUI start the player? | ComfyUI only launches it. `POST /plenio/player/open` (in `plenio.comfy.routes`, the work in `plenio.player.launch`) looks for a Plenio Player on 127.0.0.1 (ports 8765-8769, `GET /api/info` says `"app": "plenio-player"`); if none answers it starts one - ComfyUI's own Python, `-m plenio.player --no-browser --folder <ComfyUI's output folder> --comfyui <this ComfyUI>`, a fixed argument list without a shell, detached, so it keeps running when ComfyUI stops; its output goes to `player.log` in its state folder - and waits until it answers. The page opens a named tab (`plenio-player`) at once (so no pop-up blocker stops it) and sends it to the player's address when the route answers. |
+| Where is the click? | A **Plenio Player** button in ComfyUI's action bar (beside Run), the command in a **Plenio** menu (with *Continue a Plenio song…*) and the command palette, and on **Export Release** a button that opens the player at the song just exported (`#/record/<path>` → the song's page). |
+| Without ComfyUI? | `Plenio Player.bat` in the package folder (Windows, a double click: it finds the portable build's or the venv's Python), `plenio_player.sh`, or `python plenio_player.py`. Started either way, it shares one state folder, so playlists are the same. |
+| Stopping a player without a window | The Settings page has **Stop the player** (`POST /api/quit`, from the page only): a player started from ComfyUI has no console to press Ctrl+C in. |
+| Back to ComfyUI | *Open in ComfyUI* on a song's page and in its menu: the page fetches the song's record, opens ComfyUI in a tab (`?plenio=continue`), and when the Plenio extension there says it is ready (`postMessage` to its opener) hands it the record; the extension continues the song as a dropped record does (`/plenio/records/continue`). It takes records only from its own origin or a loopback one. Which ComfyUI: the one that started the player (`--comfyui`), else the address in the settings, else the player's server probes loopback (8188, then 8000 for ComfyUI Desktop). |
+| Settings that last | Everything the page remembers lives in the server's state file (`~/.plenio/player/state.json`, or `PLENIO_PLAYER_STATE`): playlists, favourites, plays, every setting, the last view of Now playing and the last tab of a song's page (they were in the browser's local storage before). Saved half a second after a change and once more when the page closes (`fetch` with `keepalive`). A **Settings** page says what is kept and where, shows when it was last saved, and offers a backup (download), a restore (upload) and a reset. |
+| The song's page | A click on a card opens it (double-click and ▶ still play), an ⓘ button in the bar and in Now playing, the key **I**. |
