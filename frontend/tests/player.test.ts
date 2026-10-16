@@ -189,7 +189,7 @@ describe('the visual chooser', () => {
   })
 
   it('keeps unknown visuals out of saved settings', () => {
-    expect(withDefaults({ pool: ['gone', 'bars'] }).pool).toEqual(['bars'])
+    expect(withDefaults({ pool: ['gone', 'bars'], dropsOffered: true }).pool).toEqual(['bars'])
     expect(withDefaults({ pool: ['gone'] }).pool).toHaveLength(PRESETS.length)
   })
 })

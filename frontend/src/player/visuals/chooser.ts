@@ -6,7 +6,7 @@
  */
 import type { SongSummary } from '../api'
 import { hashOf } from '../colors'
-import { PRESETS, type Scheme } from './presets'
+import { PRESETS, allPresets, type Scheme } from './presets'
 
 export type VisualMode = 'auto' | 'random' | 'cycle' | 'fixed'
 export type SwitchOn = 'song' | 'section' | 'interval' | 'drop'
@@ -26,6 +26,10 @@ export interface VisualSettings {
   lyrics: boolean
   /** Short title card when a song starts. */
   titles: boolean
+  /** Plenio Drop's quality: the feedback's size against the screen (0.5, 0.75, 1). */
+  dropScale: number
+  /** Plenio Drop's presets were offered in the pool once (settings saved before them had only the classics). */
+  dropsOffered: boolean
 }
 
 export const DEFAULT_VISUALS: VisualSettings = {
@@ -40,13 +44,22 @@ export const DEFAULT_VISUALS: VisualSettings = {
   songs: {},
   lyrics: true,
   titles: true,
+  dropScale: 0.75,
+  dropsOffered: true,
 }
 
 export function withDefaults(raw: unknown): VisualSettings {
   const given = (raw && typeof raw === 'object' ? raw : {}) as Partial<VisualSettings>
   const merged = { ...DEFAULT_VISUALS, ...given }
-  merged.pool = (merged.pool ?? []).filter((id) => PRESETS.some((p) => p.id === id))
+  // the listener's own presets (my-...) are read later: their ids stay
+  merged.pool = (merged.pool ?? []).filter((id) => id.startsWith('my-') || PRESETS.some((p) => p.id === id))
   if (!merged.pool.length) merged.pool = DEFAULT_VISUALS.pool
+  // settings from before Plenio Drop: its presets join the pool once
+  if (!given.dropsOffered) {
+    for (const p of PRESETS) if (p.kind === 'drop' && !merged.pool.includes(p.id)) merged.pool.push(p.id)
+    merged.dropsOffered = true
+  }
+  if (![0.5, 0.75, 1].includes(merged.dropScale)) merged.dropScale = 0.75
   return merged
 }
 
@@ -82,12 +95,14 @@ export interface Choice {
 
 export function chooseVisual({ settings, song, playlist = '', previous = null, turn = 0, random = Math.random }: Choice): string {
   const own = song ? settings.songs[song.id] : undefined
-  if (own && PRESETS.some((p) => p.id === own)) return own
-  if (playlist && PRESETS.some((p) => p.id === playlist)) return playlist
-  const pool = settings.pool.length ? settings.pool : PRESETS.map((p) => p.id)
+  const all = allPresets()
+  if (own && all.some((p) => p.id === own)) return own
+  if (playlist && all.some((p) => p.id === playlist)) return playlist
+  const known = settings.pool.filter((id) => all.some((p) => p.id === id))
+  const pool = known.length ? known : PRESETS.map((p) => p.id)
   switch (settings.mode) {
     case 'fixed':
-      return PRESETS.some((p) => p.id === settings.fixed) ? settings.fixed : 'bars'
+      return all.some((p) => p.id === settings.fixed) ? settings.fixed : 'bars'
     case 'cycle': {
       const at = previous ? pool.indexOf(previous) : -1
       return pool[(at + 1) % pool.length]
@@ -98,8 +113,8 @@ export function chooseVisual({ settings, song, playlist = '', previous = null, t
     }
     default: {
       const moods = song ? songMoods(song) : []
-      const fitting = PRESETS.filter((p) => pool.includes(p.id) && (moods.length ? p.suits.some((s) => moods.includes(s)) : true))
-      const choices = (fitting.length ? fitting : PRESETS.filter((p) => pool.includes(p.id))).map((p) => p.id)
+      const fitting = all.filter((p) => pool.includes(p.id) && (moods.length ? p.suits.some((s) => moods.includes(s)) : true))
+      const choices = (fitting.length ? fitting : all.filter((p) => pool.includes(p.id))).map((p) => p.id)
       const usable = choices.length > 1 ? choices.filter((id) => id !== previous) : choices
       const list = usable.length ? usable : ['bars']
       // the same song starts with the same visual; every change during it picks the next one

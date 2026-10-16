@@ -22,6 +22,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from .. import __version__
 from .library import RETIRED_DIR, Library, song_detail
 from .peaks import peaks
+from .visuals import list_presets, open_folder, save_copy, visuals_dir
 
 STATIC = Path(__file__).resolve().parent / "static"
 MEDIA_KINDS = {
@@ -243,6 +244,10 @@ def make_handler(
                     return self._error(500, str(error))
             if route == "/api/state":
                 return self._json(state.read())
+            if route == "/api/visuals":
+                # the listener's own Plenio Drop presets (the page reads them again every few seconds)
+                folder = visuals_dir(state.path.parent)
+                return self._json({"folder": str(folder), "files": list_presets(folder)})
             if route.startswith("/api/peaks/"):
                 song = library.song(route.removeprefix("/api/peaks/"))
                 audio = song.files.get("audio") if song else None
@@ -307,6 +312,30 @@ def make_handler(
             if route == "/api/rescan":
                 library.scan(force=True)
                 return self._json({"songs": len(library.songs())})
+            if route in ("/api/visuals/copy", "/api/visuals/open"):
+                if not self._from_this_page():
+                    return self._error(403, "only from the player's page")
+                folder = visuals_dir(state.path.parent)
+                if route == "/api/visuals/open":
+                    try:
+                        open_folder(folder)
+                    except OSError as error:
+                        return self._error(500, str(error))
+                    return self._json({"folder": str(folder)})
+                try:
+                    body = json.loads(raw.decode("utf-8")) if raw else None
+                except ValueError:
+                    body = None
+                if not isinstance(body, dict) or not isinstance(body.get("text"), str):
+                    return self._error(400, "name and text of the preset")
+                try:
+                    json.loads(body["text"])
+                    saved = save_copy(folder, str(body.get("name") or "preset"), body["text"])
+                except ValueError as error:
+                    return self._error(400, f"not a preset: {error}")
+                except OSError as error:
+                    return self._error(500, str(error))
+                return self._json({"file": saved.name, "folder": str(folder)})
             if route == "/api/quit":
                 # Stop the player (its Settings page): a player started from ComfyUI has no window to close
                 if not self._from_this_page():

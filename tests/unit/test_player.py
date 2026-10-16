@@ -416,3 +416,33 @@ def test_comfyui_starts_a_player_of_its_own_and_finds_it_again(
         )
         urllib.request.urlopen(quit_request, timeout=5).read()
     assert (state / "player.log").exists()
+
+
+def test_the_listeners_own_visuals_are_read_from_the_state_folder_and_a_copy_never_overwrites(
+    server: tuple[str, int, Library], tmp_path: Path
+) -> None:
+    # owner's request 2026-10-16: Plenio Drop presets of one's own, as files to write and share
+    answer = json.loads(request(server, "GET", "/api/visuals")[2])
+    assert answer["files"] == [] and Path(answer["folder"]) == tmp_path / "state" / "visuals"
+    preset = json.dumps({"name": "Nebula Swirl (my copy)", "base": {"decay": 0.97}})
+    body = json.dumps({"name": "Nebula Swirl (my copy)", "text": preset}).encode()
+    json_header = {"Content-Type": "application/json"}
+    first = json.loads(request(server, "POST", "/api/visuals/copy", body, **json_header)[2])
+    second = json.loads(request(server, "POST", "/api/visuals/copy", body, **json_header)[2])
+    assert (first["file"], second["file"]) == ("nebula-swirl-my-copy.json", "nebula-swirl-my-copy-2.json")
+    folder = tmp_path / "state" / "visuals"
+    assert (folder / "README.txt").is_file()
+    (folder / "huge.json").write_text(" " * (300 * 1024), encoding="utf-8")
+    (folder / "notes.txt").write_text("not a preset", encoding="utf-8")
+    files = json.loads(request(server, "GET", "/api/visuals")[2])["files"]
+    assert [f["name"] for f in files] == ["nebula-swirl-my-copy-2.json", "nebula-swirl-my-copy.json"]
+    assert json.loads(files[0]["text"])["base"] == {"decay": 0.97} and files[0]["mtime"] > 0
+    # only from the player's page, and only JSON presets
+    assert request(server, "POST", "/api/visuals/copy", body)[0] == 403
+    assert (
+        request(server, "POST", "/api/visuals/copy", body, Origin="http://evil.example", **json_header)[0]
+        == 403
+    )
+    bad = json.dumps({"name": "x", "text": "{not json"}).encode()
+    assert request(server, "POST", "/api/visuals/copy", bad, **json_header)[0] == 400
+    assert len(list(folder.glob("*.json"))) == 3

@@ -1,17 +1,35 @@
 <script setup lang="ts">
 /**
  * The visuals' settings: the mode (auto, random from a choice, cycle, fixed), when it changes, the colours,
- * the sensitivity - and a visual of its own for this song or for the playlist that plays.
+ * the sensitivity - and a visual of its own for this song or for the playlist that plays. Plenio Drop's
+ * quality, and the listener's own Drop presets: the folder, the files that do not work and why, a copy of a
+ * preset to edit.
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
-import { current, queueSource, settings, state } from '../store'
-import { PRESETS, presetById, type Scheme } from '../visuals/presets'
+import { current, queueSource, say, settings, state } from '../store'
+import { CLASSIC, PRESETS, allPresets, presetById, type Preset, type Scheme } from '../visuals/presets'
 import type { SwitchOn, VisualMode } from '../visuals/chooser'
+import { copyToMyPresets, myPresetErrors, myPresetFile, myPresetFolder, myPresets, openMyPresetFolder, playingFile } from '../visuals/drop'
 import Icon from './Icon.vue'
 
-defineProps<{ active: string }>()
-const emit = defineEmits<{ close: []; next: [] }>()
+const props = defineProps<{ active: string }>()
+const emit = defineEmits<{ close: []; next: []; fullscreen: [] }>()
+
+const GUIDE = 'https://github.com/jplenio/Plenio-Music-Production-System/blob/main/docs/user/concepts/player-visuals.md'
+const QUALITY: [number, string][] = [
+  [0.5, 'Fast - for a slow computer'],
+  [0.75, 'Balanced'],
+  [1, 'Sharp - every pixel'],
+]
+const GROUPS = computed<[string, string, Preset[]][]>(() => [
+  ['classic', 'Classic', CLASSIC],
+  ['drop', 'Plenio Drop', PRESETS.filter((p) => p.kind === 'drop')],
+  ['mine', 'My presets', myPresets.value],
+])
+const everything = computed(() => allPresets())
+const activePreset = computed(() => presetById(props.active))
+const copying = ref(false)
 
 const v = settings.visuals
 const MODES: [VisualMode, string, string][] = [
@@ -50,6 +68,27 @@ function setSong(id: string): void {
 function setPlaylist(id: string): void {
   if (playlist.value) playlist.value.visual = id
 }
+/** Tick or untick a whole group (at least one visual stays ticked). */
+function tickGroup(list: Preset[], on: boolean): void {
+  for (const p of list) {
+    const at = v.pool.indexOf(p.id)
+    if (on && at < 0) v.pool.push(p.id)
+    if (!on && at >= 0 && v.pool.length > 1) v.pool.splice(at, 1)
+  }
+}
+async function editCopy(): Promise<void> {
+  const file = playingFile.value ?? activePreset.value?.file
+  if (!file || copying.value) return
+  copying.value = true
+  try {
+    const saved = await copyToMyPresets(file)
+    say(`Saved as ${saved} in your visuals folder (Open my folder) - edit it, save, and it changes on screen.`, 7000)
+  } catch (error) {
+    say(error instanceof Error ? error.message : String(error), 6000)
+  } finally {
+    copying.value = false
+  }
+}
 </script>
 
 <template>
@@ -59,8 +98,9 @@ function setPlaylist(id: string): void {
       <button class="icon-btn" title="Close" @click="emit('close')"><Icon name="close" /></button>
     </header>
     <div class="now">
-      Now: <b>{{ presetById(active)?.name ?? '-' }}</b>
+      Now: <b>{{ activePreset?.name ?? '-' }}</b>
       <button class="chip" title="Another visual (N)" @click="emit('next')"><Icon name="dice" :size="14" /> next</button>
+      <button class="chip" title="Only the visual, on the whole screen (Shift+F, or double-click the visual)" @click="emit('fullscreen')"><Icon name="expand" :size="14" /> full screen</button>
     </div>
 
     <label class="row switch"><input v-model="v.enabled" type="checkbox" /> Visuals on</label>
@@ -75,7 +115,9 @@ function setPlaylist(id: string): void {
     <template v-if="v.mode === 'fixed'">
       <h4>The visual</h4>
       <select v-model="v.fixed">
-        <option v-for="p in PRESETS" :key="p.id" :value="p.id">{{ p.name }}</option>
+        <optgroup v-for="[id, label, list] in GROUPS" :key="id" :label="label">
+          <option v-for="p in list" :key="p.id" :value="p.id">{{ p.name }}</option>
+        </optgroup>
       </select>
     </template>
 
@@ -88,24 +130,48 @@ function setPlaylist(id: string): void {
     </template>
 
     <h4>{{ v.mode === 'auto' ? 'Choose from' : v.mode === 'fixed' ? 'All visuals' : 'Ticked visuals' }}</h4>
-    <div class="pool">
-      <label v-for="p in PRESETS" :key="p.id" class="preset" :class="{ on: v.pool.includes(p.id), now: p.id === active }" :title="p.blurb">
-        <input type="checkbox" :checked="v.pool.includes(p.id)" @change="togglePool(p.id)" />
-        <span class="name">{{ p.name }}</span>
-        <span class="blurb">{{ p.blurb }}</span>
-      </label>
+    <template v-for="[id, label, list] in GROUPS" :key="id">
+      <div v-if="list.length" class="group">
+        <span>{{ label }}</span>
+        <button class="link" @click="tickGroup(list, true)">all</button>
+        <button class="link" @click="tickGroup(list, false)">none</button>
+      </div>
+      <div class="pool">
+        <label v-for="p in list" :key="p.id" class="preset" :class="{ on: v.pool.includes(p.id), now: p.id === active }" :title="p.blurb">
+          <input type="checkbox" :checked="v.pool.includes(p.id)" @change="togglePool(p.id)" />
+          <span class="name">{{ p.name }}</span>
+          <span class="blurb">{{ p.blurb }}</span>
+        </label>
+      </div>
+    </template>
+
+    <h4>Plenio Drop</h4>
+    <label class="row">Quality
+      <select v-model.number="v.dropScale" title="How finely Plenio Drop draws: Fast draws a quarter of the pixels, and every computer keeps up">
+        <option v-for="[scale, label] in QUALITY" :key="scale" :value="scale">{{ label }}</option>
+      </select>
+    </label>
+    <p class="note">MilkDrop-style visuals, drawn by Plenio itself. Write your own: a preset is a short JSON file - <a :href="GUIDE" target="_blank" rel="noopener">the guide</a>.</p>
+    <div class="drop-tools">
+      <button class="chip" :disabled="!activePreset?.file || copying" :title="activePreset?.file ? `A copy of ${activePreset.name} in your visuals folder, to change` : 'Play a Plenio Drop visual to copy it'" @click="editCopy">
+        <Icon name="edit" :size="14" /> Edit a copy
+      </button>
+      <button class="chip" title="Your visuals folder: every .json file there is a visual of your own" @click="openMyPresetFolder"><Icon name="folder" :size="14" /> Open my folder</button>
     </div>
+    <p v-if="myPresetFile(active)" class="note">Playing your file <code>{{ myPresetFile(active) }}</code> - save it and it changes here.</p>
+    <p v-if="myPresetFolder" class="note path">{{ myPresetFolder }}</p>
+    <div v-for="e in myPresetErrors" :key="e.file" class="bad"><b>{{ e.file }}</b> {{ e.error }}</div>
 
     <h4>This song</h4>
     <select :value="songOwn" @change="setSong(($event.target as HTMLSelectElement).value)">
       <option value="">As the mode says</option>
-      <option v-for="p in PRESETS" :key="p.id" :value="p.id">Always {{ p.name }}</option>
+      <option v-for="p in everything" :key="p.id" :value="p.id">Always {{ p.name }}</option>
     </select>
     <template v-if="playlist">
       <h4>The playlist “{{ playlist.name }}”</h4>
       <select :value="playlist.visual ?? ''" @change="setPlaylist(($event.target as HTMLSelectElement).value)">
         <option value="">As the mode says</option>
-        <option v-for="p in PRESETS" :key="p.id" :value="p.id">Always {{ p.name }}</option>
+        <option v-for="p in everything" :key="p.id" :value="p.id">Always {{ p.name }}</option>
       </select>
     </template>
 
@@ -247,5 +313,53 @@ input[type='number'] {
   color: var(--muted);
   font-size: 11px;
   margin-top: 14px;
+}
+.note a {
+  color: var(--accent);
+}
+.note.path {
+  margin-top: 4px;
+  word-break: break-all;
+}
+.group {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 10px 0 4px;
+  font: 600 12px var(--font);
+  color: #fff;
+}
+.group span {
+  flex: 1;
+}
+.link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: 12px var(--font);
+}
+.drop-tools {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.bad {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 90, 90, 0.12);
+  color: #ffb4b4;
+  font-size: 11px;
+  word-break: break-word;
+}
+.bad b {
+  color: #fff;
+  margin-right: 4px;
 }
 </style>

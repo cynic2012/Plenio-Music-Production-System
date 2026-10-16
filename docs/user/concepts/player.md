@@ -123,7 +123,9 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
   plays, the lyrics light up as they are sung, and the line sung now stays in view.
 - **Notation**: the score with the lyrics under the notes. While the song plays, the notes light up as they
   sound and the sheet moves on with the music: the line of music sounding now always stays in view, also
-  after a jump or when you come back to the tab. Click a note to jump there.
+  after a jump or when you come back to the tab. The cursor points at the notes sounding (where only rests
+  sound, already at the bar's next note); it stands at the bar's chord only in a bar with no note, one note
+  or only a rest. Click a note to jump there.
 - **Sheet music**: the PDF from Export Release, in the browser's PDF viewer.
 - **Details**: the brief (genre, mood, tempo, key, voice, theme, template, creative mode, genre closeness),
   the model and the writer, loudness and true peak, the seeds (with a copy button, so you can make the take
@@ -142,6 +144,9 @@ Click the cover in the bar at the bottom (or press **F**) for the full screen. I
 - **Lyrics**: the lyrics, large and centred, lit up as they are sung (like karaoke).
 - **Notation**: the sheet following the music, with the lyrics at the side.
 - **Visual**: only the visual, with the lyrics as subtitles. The controls fade out while the mouse rests.
+
+**The visual on the whole screen:** press **Shift + F**, double-click the visual, click *full screen* in the
+visuals' settings, or click ⛶ on the small visual in the bar at the bottom. Again (or Esc) to go back.
 
 Every view has the song's sections as chips (*Verse*, *Chorus* …; click to jump) and the song's waveform:
 the part already played is filled in the song's colours, and hovering shows the time, the section and the
@@ -163,7 +168,9 @@ system's media controls work too.
 ## Visuals
 
 Visuals in the spirit of Winamp, MilkDrop and AVS, drawn live from the music (its spectrum, its waveform,
-left against right, the bass and the beats):
+left against right, the bass and the beats). There are two kinds.
+
+**Classic visuals:**
 
 | Visual | What you see |
 |---|---|
@@ -181,6 +188,36 @@ left against right, the bass and the beats):
 | Ripples | every beat drops a ring into still water |
 | Retro Grid | a synthwave horizon: the sun pulses, the grid races with the bass |
 
+**Plenio Drop**: visuals like Winamp's MilkDrop, drawn by Plenio's own renderer on the graphics card (nothing
+is taken from MilkDrop). Each frame draws the last one again - zoomed, turned, bent, fading - and the music
+on top, so trails, tunnels and swirls build up. When one Drop visual follows another, the picture stays and
+glides into the new one.
+
+| Visual | What you see |
+|---|---|
+| Drop · Nebula Swirl | a slow swirl of colour around a ring the music swells |
+| Drop · Liquid Mirror | a line of sound melting upward, mirrored left and right |
+| Drop · Star Gate | a tunnel rushing at you with the bass, the stereo picture at its heart |
+| Drop · Kaleido Bloom | six mirrored slices, three shapes circling, the spectrum as a ring of dots |
+| Drop · Pulse Rings | every beat drops a ring; the ripples carry the colour out |
+| Drop · Aurora Curtain | green and violet light rising from a wave along the ground |
+| Drop · Plasma Storm | the warp field wild, sparks of sound thrown into it |
+| Drop · Vortex Engine | an outward spiral that turns faster when the mids push |
+| Drop · Electric Lotus | eight petals of mirrored spectrum around a glowing core |
+| Drop · Deep Dive | plunging forward, the image echoing back on itself |
+| Drop · Mirror Hall | four mirrors and a slow turn |
+| Drop · Solar Wind | both channels as streams of light, flaring with the highs |
+| Drop · Neon Grid | a field of strokes along the flow, a line of sound across it |
+| Drop · Ink in Water | colour spreading slowly, as ink in still water |
+| Drop · Shockwave | every kick hits the picture: a jolt of zoom, a ring, a flash |
+| Drop · Firefly Orbit | five lights circling, their trails woven into the dark |
+| Drop · Random | a preset made up now - a different one each time |
+
+**Write your own:** a Plenio Drop preset is a short text file of numbers and small formulas. *Edit a copy*
+in the visuals' settings saves the visual that plays into your presets folder; change it in any editor, save,
+and the visual changes on screen. Your presets appear as *My · <name>*. The guide:
+[Plenio Drop: visuals of your own](player-visuals.md).
+
 Open the visuals' settings with ✦ in Now playing (or press **V**):
 
 - **Mode**:
@@ -195,6 +232,11 @@ Open the visuals' settings with ✦ in Now playing (or press **V**):
 - **The playlist**: a visual for the whole playlist that plays. You can also choose it on the playlist's page.
 - **Look**: the song's colours, Winamp classic, neon, sunset or monochrome. **Sensitivity** makes the visuals
   react more or less. Switch the lyrics over the visual and the title card on or off.
+- The visuals are listed in groups (*Classic*, *Plenio Drop*, *My presets*); **all** and **none** tick or
+  untick a whole group, for example to leave out Plenio Drop.
+- **Plenio Drop**: the **Quality** (*Fast* for a slow computer, *Balanced*, *Sharp*), **Edit a copy**,
+  **Open my folder**, and any of your preset files that has a mistake, with what is wrong.
+- **Visuals on** switches all visuals off (Now playing then shows the song's colours).
 
 A song's own visual wins, then the playlist's, then the mode. **N** shows another visual right away.
 
@@ -279,6 +321,7 @@ elsewhere.
 | Shift + ← → | previous / next song |
 | ↑ ↓ | louder / quieter |
 | F | Now playing |
+| Shift + F | only the visual, on the whole screen |
 | I | the page of the song that plays |
 | 1 2 3 4 | Stage, Lyrics, Notation, Visual |
 | V | the visuals' settings |

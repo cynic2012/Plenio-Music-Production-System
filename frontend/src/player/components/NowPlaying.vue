@@ -57,6 +57,17 @@ function fullscreen(): void {
   if (document.fullscreenElement) void document.exitFullscreen()
   else void document.documentElement.requestFullscreen().catch(() => {})
 }
+/** Only the visual, on the whole screen (Shift+F, a double-click on it, the Visuals panel); again: back. */
+function visualFullscreen(): void {
+  if (view.value === 'visual' && document.fullscreenElement) {
+    void document.exitFullscreen()
+    return
+  }
+  view.value = 'visual'
+  panel.value = false
+  if (!settings.visuals.enabled) settings.visuals.enabled = true
+  if (!document.fullscreenElement) void document.documentElement.requestFullscreen().catch(() => {})
+}
 
 onMounted(() => {
   wake()
@@ -66,7 +77,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('mousemove', wake)
   clearTimeout(idleTimer)
 })
-defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (view.value = v), togglePanel: () => (panel.value = !panel.value) })
+defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (view.value = v), togglePanel: () => (panel.value = !panel.value), visualFullscreen })
 </script>
 
 <template>
@@ -89,13 +100,13 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
       <div class="tools">
         <button class="icon-btn" title="The song's page: lyrics, notation, details (I)" @click="openCurrentPage"><Icon name="info" /></button>
         <button class="icon-btn" :class="{ on: panel }" title="Visuals (V)" @click="panel = !panel"><Icon name="sparkles" /></button>
-        <button class="icon-btn" title="Full screen" @click="fullscreen"><Icon name="expand" /></button>
+        <button class="icon-btn" title="Full screen (Shift+F: only the visual)" @click="fullscreen"><Icon name="expand" /></button>
       </div>
     </header>
 
-    <Transition name="panel"><VisualsPanel v-if="panel" class="vpanel" :active="activeVisual" @close="panel = false" @next="visual?.next()" /></Transition>
+    <Transition name="panel"><VisualsPanel v-if="panel" class="vpanel" :active="activeVisual" @close="panel = false" @next="visual?.next()" @fullscreen="visualFullscreen" /></Transition>
 
-    <main v-if="current" class="stage">
+    <main v-if="current" class="stage" title="" @dblclick.self="visualFullscreen">
       <section v-if="view === 'stage'" class="cover-col">
         <div class="cover-wrap" :class="{ playing }">
           <CoverArt :song="current" :live="playing" rounded />

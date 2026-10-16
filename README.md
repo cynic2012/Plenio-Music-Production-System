@@ -238,7 +238,7 @@ It finds every song Export Release wrote into ComfyUI's output folder. **Open in
 - **Find songs**: search titles, lyrics and briefs, or narrow it with fields like `genre:jazz`, `bpm:>110`, `key:Am` or `is:fav`; filter chips; eight sorts.
 - **A page per song**: the lyrics (click a line to hear it), the notation, the sheet music PDF, the brief and the seeds, every file, the other takes and songs alike.
 - **While it plays**: the lyrics light up syllable by syllable; on the sheet, the notes light up as they sound. The times are measured when the song is exported.
-- **Visuals after Winamp and MilkDrop**: 13 visuals that move with the music. Let the player match them to the music, pick at random from the ones you tick, cycle or fix one - or give a song or a playlist its own.
+- **Visuals after Winamp and MilkDrop**: 13 classic visuals and **Plenio Drop** - 16 MilkDrop-style presets drawn by Plenio's own renderer on the graphics card, and one made up anew each time - all moving with the music, on the whole screen if you like (Shift+F). Let the player match them to the music, pick at random from the ones you tick, cycle or fix one - or give a song or a playlist its own. **Write your own Drop presets**: a short JSON file of numbers and formulas, changed on screen as you save it ([guide](docs/user/concepts/player-visuals.md)).
 - **Playlists**: smart lists, your own lists, a radio of songs alike, crossfades, A/B with the unmastered take and a sleep timer.
 
 <p align="center">

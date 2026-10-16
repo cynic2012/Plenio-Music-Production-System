@@ -31,7 +31,7 @@ import Icon from './Icon.vue'
 import VisualCanvas from './VisualCanvas.vue'
 import Waveform from './Waveform.vue'
 
-const emit = defineEmits<{ queue: [] }>()
+const emit = defineEmits<{ queue: []; visual: [] }>()
 const RATES = [0.75, 0.85, 1, 1.1, 1.25]
 
 const line = computed(() => (lineIndex.value >= 0 && time.value <= (lines.value[lineIndex.value]?.end ?? 0) + 0.3 ? lines.value[lineIndex.value].text : ''))
@@ -90,7 +90,10 @@ function volume(event: Event): void {
     </div>
 
     <div class="right">
-      <div class="mini" title="Visuals (V)" @click="nowPlayingOpen = true"><VisualCanvas mini /></div>
+      <div class="mini" title="Now playing (F)" @click="nowPlayingOpen = true">
+        <VisualCanvas mini />
+        <button class="mini-full" title="The visual, full screen (Shift+F)" @click.stop="emit('visual')"><Icon name="expand" :size="14" /></button>
+      </div>
       <button v-if="current?.has.original" class="chip" :class="{ on: ab }" title="A/B: the unmastered take, in step (B)" @click="toggleAB">
         {{ ab ? 'B · original' : 'A · master' }}
       </button>
@@ -261,6 +264,7 @@ function volume(event: Event): void {
   gap: 10px;
 }
 .mini {
+  position: relative;
   width: 92px;
   height: 34px;
   border-radius: 8px;
@@ -268,6 +272,27 @@ function volume(event: Event): void {
   cursor: pointer;
   background: #05060a;
   border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.mini-full {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.mini:hover .mini-full,
+.mini-full:focus-visible {
+  opacity: 1;
 }
 .vol {
   display: flex;

@@ -1,0 +1,92 @@
+"""The listener's own Plenio Drop presets: JSON files in the player's visuals folder (``visuals`` in the
+state folder). The page reads them (and again while they are edited), and saves a copy of a preset there
+to edit. The page checks and runs them; a preset is data the page's own formula language reads, never
+script, so a file someone shares can draw and nothing else.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+FILE_LIMIT = 256 * 1024
+COUNT_LIMIT = 200
+README = """Plenio Drop presets
+===================
+
+Every .json file here is a visual of your own in the Plenio Player (Visuals: My presets). The player reads
+the folder again every few seconds: save a file and the visual changes on screen.
+
+Start from a copy: in the player, Visuals > Plenio Drop > Edit a copy. The format, every parameter, the
+music's names and the functions are in the guide: docs/user/concepts/player-visuals.md, online at
+https://github.com/jplenio/Plenio-Music-Production-System/blob/main/docs/user/concepts/player-visuals.md
+"""
+
+
+def visuals_dir(state_dir: Path) -> Path:
+    return state_dir / "visuals"
+
+
+def list_presets(folder: Path) -> list[dict[str, Any]]:
+    """The preset files (name, text, time of the last change); files too large or not UTF-8 are left
+    out."""
+    if not folder.is_dir():
+        return []
+    found: list[dict[str, Any]] = []
+    for path in sorted(folder.glob("*.json"), key=lambda p: p.name.lower())[:COUNT_LIMIT]:
+        try:
+            if not path.is_file() or path.stat().st_size > FILE_LIMIT:
+                continue
+            found.append(
+                {
+                    "name": path.name,
+                    "text": path.read_text(encoding="utf-8"),
+                    "mtime": path.stat().st_mtime,
+                }
+            )
+        except (OSError, UnicodeDecodeError):
+            continue
+    return found
+
+
+def file_name(name: str) -> str:
+    """A preset's name as a file name: ``Nebula Swirl (my copy)`` -> ``nebula-swirl-my-copy.json``."""
+    stem = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:60] or "preset"
+    return f"{stem}.json"
+
+
+def save_copy(folder: Path, name: str, text: str) -> Path:
+    """Save a preset under a name of its own (``-2``, ``-3`` ... when taken); never overwrites a file."""
+    if len(text.encode("utf-8")) > FILE_LIMIT:
+        raise ValueError("the preset is too large")
+    folder.mkdir(parents=True, exist_ok=True)
+    readme = folder / "README.txt"
+    if not readme.exists():
+        readme.write_text(README, encoding="utf-8")
+    base = file_name(name)
+    target = folder / base
+    count = 1
+    while target.exists():
+        count += 1
+        target = folder / f"{base.removesuffix('.json')}-{count}.json"
+    with target.open("x", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+    return target
+
+
+def open_folder(folder: Path) -> None:
+    """Show the folder in the system's file manager (made when it is not there yet)."""
+    folder.mkdir(parents=True, exist_ok=True)
+    readme = folder / "README.txt"
+    if not readme.exists():
+        readme.write_text(README, encoding="utf-8")
+    if sys.platform == "win32":
+        os.startfile(folder)  # noqa: S606 - our own folder
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", str(folder)])  # noqa: S603, S607
+    else:
+        subprocess.Popen(["xdg-open", str(folder)])  # noqa: S603, S607

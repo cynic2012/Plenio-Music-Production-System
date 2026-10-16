@@ -10,7 +10,9 @@ import { songHue } from '../colors'
 import { engine } from '../engine'
 import { current, settings } from '../store'
 import { chooseVisual } from '../visuals/chooser'
-import { makeColors, presetById, type Scene } from '../visuals/presets'
+import { dropOptions } from '../visuals/drop/renderer'
+import { myPresets } from '../visuals/drop'
+import { makeColors, presetById, type Preset, type Scene } from '../visuals/presets'
 
 const props = defineProps<{ section?: string; playlistVisual?: string; mini?: boolean; force?: string }>()
 const emit = defineEmits<{ change: [id: string] }>()
@@ -27,11 +29,16 @@ let quiet = 0
 
 const hue = computed(() => (current.value ? songHue(current.value.id, current.value.genre) : 200))
 
-function use(id: string): void {
+let playing: Preset | null = null
+/** Play a visual (``again``: the same one anew - a preset file saved while it plays). */
+function use(id: string, again = false): void {
   const preset = presetById(id) ?? presetById('bars')
-  if (!preset || preset.id === presetId.value) return
+  if (!preset || (preset.id === presetId.value && !again)) return
   const el = canvas.value
-  if (el && scene) {
+  // between two Drop presets the renderer glides by itself (the feedback stays); else the old image fades
+  const glide = playing?.kind === 'drop' && preset.kind === 'drop'
+  playing = preset
+  if (el && scene && !glide) {
     snapshot = snapshot ?? document.createElement('canvas')
     snapshot.width = el.width
     snapshot.height = el.height
@@ -82,6 +89,7 @@ function loop(): void {
   const ctx = el.getContext('2d')
   if (!ctx) return
   engine.sensitivity = settings.visuals.sensitivity
+  dropOptions.scale = settings.visuals.dropScale
   const frame = engine.frame()
   const colors = makeColors(hue.value, props.mini ? 'song' : settings.visuals.scheme, frame.time)
   ctx.save()
@@ -115,6 +123,11 @@ watch(() => props.section, (now, before) => {
   if (now && before && now !== before && settings.visuals.switchOn === 'section') pick(true)
 })
 watch(() => [settings.visuals.mode, settings.visuals.fixed, props.playlistVisual, props.force, current.value ? settings.visuals.songs[current.value.id] : ''], () => pick())
+
+// one of the listener's presets edited and saved while it plays: it changes on screen
+watch(myPresets, () => {
+  if (presetId.value.startsWith('my-')) use(presetId.value, true)
+})
 
 onMounted(() => {
   pick()

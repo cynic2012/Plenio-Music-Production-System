@@ -10,7 +10,7 @@ import { vFocus } from '../focus'
 import { byId, current, deletePlaylist, go, library, playSongs, playing, state } from '../store'
 import { countOf, formatTime } from '../timing'
 import { lyricsSnippet, parseQuery, score } from '../search'
-import { PRESETS } from '../visuals/presets'
+import { allPresets } from '../visuals/presets'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 
@@ -91,7 +91,7 @@ function removeAll(): void {
             <Icon name="sparkles" :size="16" />
             <select :value="playlist.visual ?? ''" @change="playlist.visual = ($event.target as HTMLSelectElement).value">
               <option value="">Visual: as set</option>
-              <option v-for="p in PRESETS" :key="p.id" :value="p.id">Visual: {{ p.name }}</option>
+              <option v-for="p in allPresets()" :key="p.id" :value="p.id">Visual: {{ p.name }}</option>
             </select>
           </label>
           <label class="hue" title="Colour"><input v-model.number="playlist.hue" type="range" min="0" max="359" /></label>

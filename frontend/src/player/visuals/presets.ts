@@ -2,9 +2,12 @@
  * The visuals: Winamp's classics (the spectrum bars with falling caps, the oscilloscope, the stereo
  * vectorscope, AVS fire) and MilkDrop-like feedback scenes (tunnel, kaleidoscope), plus a few of Plenio's
  * own. Each draws one frame on a 2D canvas from the music's ``Frame``; the scene keeps what it needs
- * between frames (caps, particles, the feedback buffer).
+ * between frames (caps, particles, the feedback buffer). Then Plenio Drop (drop/): MilkDrop-style visuals on
+ * WebGL2, its built-in presets and the listener's own.
  */
 import type { Frame } from './analysis'
+import { DROP_PRESETS, myPresets } from './drop'
+import type { PresetFile } from './drop/format'
 
 export type Scheme = 'song' | 'winamp' | 'neon' | 'mono' | 'sunset'
 
@@ -16,6 +19,8 @@ export interface Colors {
   at(t: number, alpha?: number): string
   /** 256 colours along the scheme as RGB (for the pixel scenes). */
   lut(): Uint8ClampedArray
+  /** 256 bright colours of the scheme as RGB, going round (0 and 1 meet): Plenio Drop's ``hue``. */
+  palette(): Uint8ClampedArray
 }
 
 export interface Scene {
@@ -29,6 +34,10 @@ export interface Preset {
   /** What music it suits: energetic, calm, acoustic, electronic, dark. */
   suits: string[]
   create(): Scene
+  /** A Plenio Drop preset (``source``: built in, or one of the listener's; ``file``: its preset file). */
+  kind?: 'drop'
+  source?: 'builtin' | 'mine'
+  file?: PresetFile
 }
 
 // --- colours ------------------------------------------------------------------------------------------
@@ -77,7 +86,24 @@ export function makeColors(hue: number, scheme: Scheme, time: number): Colors {
     }
     return table
   }
-  return { hue, scheme, time, at, lut }
+  let round: Uint8ClampedArray | null = null
+  const palette = (): Uint8ClampedArray => {
+    if (round) return round
+    round = new Uint8ClampedArray(256 * 3)
+    for (let i = 0; i < 256; i++) {
+      // there and back, so that the hue can run on (time * 0.05) without a jump
+      const t = 1 - Math.abs((i / 255) * 2 - 1)
+      let rgb: [number, number, number]
+      if (scheme === 'winamp') rgb = rgbOf(120 - t * 120, 1, 0.5)
+      else if (scheme === 'mono') rgb = rgbOf(hue, 0.15, 0.45 + t * 0.4)
+      else if (scheme === 'neon') rgb = rgbOf(hue + time * 25 + t * 200, 1, 0.58)
+      else if (scheme === 'sunset') rgb = rgbOf(270 + t * 140, 0.95, 0.55)
+      else rgb = rgbOf(hue - 30 + t * 150, 0.9, 0.56)
+      round.set(rgb, i * 3)
+    }
+    return round
+  }
+  return { hue, scheme, time, at, lut, palette }
 }
 
 // --- helpers ------------------------------------------------------------------------------------------
@@ -742,8 +768,17 @@ const retro: Preset = {
   },
 }
 
-export const PRESETS: Preset[] = [bars, scope, vector, radial, tunnel, stars, plasma, fire, kaleido, fountain, mountains, ripples, retro]
+/** The classic visuals, drawn on a 2D canvas. */
+export const CLASSIC: Preset[] = [bars, scope, vector, radial, tunnel, stars, plasma, fire, kaleido, fountain, mountains, ripples, retro]
+
+/** Every built-in visual: the classics and Plenio Drop's presets. */
+export const PRESETS: Preset[] = [...CLASSIC, ...DROP_PRESETS]
+
+/** Every visual, the listener's own Drop presets included (they are read later, and again when edited). */
+export function allPresets(): Preset[] {
+  return [...PRESETS, ...myPresets.value]
+}
 
 export function presetById(id: string | null | undefined): Preset | undefined {
-  return PRESETS.find((p) => p.id === id)
+  return PRESETS.find((p) => p.id === id) ?? myPresets.value.find((p) => p.id === id)
 }

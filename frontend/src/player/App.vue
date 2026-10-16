@@ -39,6 +39,7 @@ import {
   toggleFavorite,
   toggleMute,
 } from './store'
+import { loadMyPresets } from './visuals/drop'
 
 const queueOpen = ref(false)
 const help = ref(false)
@@ -86,6 +87,7 @@ const KEYS: [string, string][] = [
   ['Shift ← →', 'Previous / next song'],
   ['↑ ↓', 'Louder / quieter'],
   ['F', 'Now playing'],
+  ['Shift F', 'Only the visual, full screen'],
   ['I', 'The page of the song that plays'],
   ['1 – 4', 'Stage, lyrics, notation, visual'],
   ['V', 'The visuals’ settings'],
@@ -136,7 +138,8 @@ function onKey(event: KeyboardEvent): void {
       say(`Volume ${Math.round(settings.volume * 100)} %`)
       break
     case 'f':
-      nowPlayingOpen.value = !nowPlayingOpen.value
+      if (event.shiftKey) visualFullscreen()
+      else nowPlayingOpen.value = !nowPlayingOpen.value
       break
     case 'v':
       nowPlayingOpen.value = true
@@ -189,8 +192,24 @@ function onKey(event: KeyboardEvent): void {
       break
   }
 }
-onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+function visualFullscreen(): void {
+  nowPlayingOpen.value = true
+  void nextTick(() => nowPlaying.value?.visualFullscreen())
+}
+
+// the listener's own Plenio Drop presets: read now, and again every few seconds (a file saved shows at once)
+let presetTimer: number | undefined
+onMounted(() => {
+  window.addEventListener('keydown', onKey)
+  void loadMyPresets()
+  presetTimer = window.setInterval(() => {
+    if (document.visibilityState === 'visible') void loadMyPresets()
+  }, 3000)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey)
+  clearInterval(presetTimer)
+})
 </script>
 
 <template>
@@ -214,7 +233,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <LibraryView v-else ref="libraryView" :key="page.collection" :collection="page.collection" />
       </template>
     </main>
-    <PlayerBar class="playerbar" @queue="queueOpen = !queueOpen" />
+    <PlayerBar class="playerbar" @queue="queueOpen = !queueOpen" @visual="visualFullscreen" />
     <Transition name="slide"><QueuePanel v-if="queueOpen" class="queue" @close="queueOpen = false" /></Transition>
     <Transition name="np"><NowPlaying v-if="nowPlayingOpen" ref="nowPlaying" /></Transition>
     <Transition name="fade">
