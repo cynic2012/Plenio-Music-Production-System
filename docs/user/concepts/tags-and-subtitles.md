@@ -1,6 +1,6 @@
 # Tags, variables and lyrics subtitles
 
-Export Release writes the song's files; since 0.8.1 its tags and file names take **variables**, and it writes
+Export Release writes the song's files; since 1.0.0 its tags and file names take **variables**, and it writes
 the lyrics as **subtitles** next to the song.
 
 ## Tags

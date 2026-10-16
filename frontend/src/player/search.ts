@@ -67,7 +67,20 @@ export function score(song: SongSummary, terms: Term[], context: Context): numbe
   return total
 }
 
-/** ``0.8.1`` -> ``[0, 8, 1]`` (``null``: no version - other music, or a record from before versions). */
+/** The filter chips facets offer one of: *from 0.8.0* already holds every newer version, so two make no
+ * sense (owner's report 2026-10-16). */
+export const SINGLE_CHOICE_FACETS = new Set(['plenio'])
+
+/** The filter chips after a click on ``key:"value"``: a chip that is on goes off; a new one is added - and in
+ * a facet of one choice it takes the place of the one chosen before. */
+export function toggleFilterChip(chips: string[], key: string, value: string): string[] {
+  const chip = `${key}:"${value}"`
+  if (chips.includes(chip)) return chips.filter((c) => c !== chip)
+  const kept = SINGLE_CHOICE_FACETS.has(key) ? chips.filter((c) => !c.startsWith(`${key}:"`)) : chips
+  return [...kept, chip]
+}
+
+/** ``1.0.0`` -> ``[1, 0, 0]`` (``null``: no version - other music, or a record from before versions). */
 export function versionOf(text: string | undefined): number[] | null {
   const match = /^(\d+)\.(\d+)(?:\.(\d+))?/.exec(text ?? '')
   return match ? [Number(match[1]), Number(match[2]), Number(match[3] ?? 0)] : null
@@ -78,7 +91,7 @@ export function compareVersions(a: number[], b: number[]): number {
   return 0
 }
 
-/** A song's Plenio version against ``>=0.8``, ``from 0.8.0``, ``>0.7``, ``<0.8``, ``0.6-0.7`` or ``0.8.1``
+/** A song's Plenio version against ``>=0.8``, ``from 0.8.0``, ``>0.7``, ``<0.8``, ``0.6-0.7`` or ``1.0.0``
  * (that version; ``0.8``: any 0.8.x). A song without a version never matches. */
 export function versionTest(query: string, version: string | undefined): boolean {
   const have = versionOf(version)

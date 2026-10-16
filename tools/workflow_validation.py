@@ -288,7 +288,7 @@ def validate_file(
 
 ABOUT_TITLE = "About this template"
 EXTRA_NOTES = ("Tags & variables",)
-"""Notes a template may have besides its About note (0.8.1: the tags' variables beside Export Release)."""
+"""Notes a template may have besides its About note (1.0.0: the tags' variables beside Export Release)."""
 
 
 TITLE_HEIGHT = 30

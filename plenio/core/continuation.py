@@ -121,7 +121,7 @@ def workflow_nodes(workflow: Mapping[str, Any]) -> dict[str, WorkflowNode]:
 
 
 ROLES = {"SeedNode": "PlenioSeed"}
-"""Classes that took another's place in the templates: 0.8.1 replaced ComfyUI's *Seed* with *Plenio · Seed*
+"""Classes that took another's place in the templates: 1.0.0 replaced ComfyUI's *Seed* with *Plenio · Seed*
 (same input ``seed``, same titles), so an older record's seeds land on the new nodes."""
 
 

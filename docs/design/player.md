@@ -1,4 +1,4 @@
-# Plenio Player - design (0.8.1)
+# Plenio Player - design (1.0.0)
 
 The owner's request (2026-10-15): a local website that plays the songs made with Plenio - choosing and
 searching by many criteria, a page per song with its notation PDF and details, playback that shows which
@@ -34,7 +34,7 @@ User guide: [docs/user/concepts/player.md](../user/concepts/player.md).
   `end` and `units` `[start, cut, score?]` (the syllable's start, how much of the line it shows, the
   syllable's place in the score in seconds) and the `warp` (`t_audio = a * t_score + b`). Records without
   it fall back to the two SRT files (the notes file's cues inside a line become its units); records before
-  0.8.1 have plain lyrics.
+  1.0.0 have plain lyrics.
 
 ## 3. Time: song, lyrics and score
 

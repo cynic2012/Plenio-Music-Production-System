@@ -1,4 +1,4 @@
-"""0.8.1 (owner's request 2026-10-15): the briefs' fields as outputs and as Export Release's variables, the tags
+"""1.0.0 (owner's request 2026-10-15): the briefs' fields as outputs and as Export Release's variables, the tags
 filled with them, the lyrics subtitles timed from what the ASR heard, and Plenio · Seed."""
 
 from __future__ import annotations

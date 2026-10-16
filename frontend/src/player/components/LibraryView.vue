@@ -9,7 +9,7 @@ import type { SongSummary } from '../api'
 import { isPortable } from '../portable'
 import { current, library, playSongs, settings, shareFor, state, toggleCurrent } from '../store'
 import { countOf, formatTime } from '../timing'
-import { compareVersions, lyricsSnippet, parseQuery, score, sortSongs, topValues, versionOf, words, type SortKey } from '../search'
+import { compareVersions, lyricsSnippet, parseQuery, score, sortSongs, toggleFilterChip, topValues, versionOf, words, type SortKey } from '../search'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 import SongCard from './SongCard.vue'
@@ -75,7 +75,7 @@ const facets = computed(() => {
     { key: 'plenio', label: 'Plenio version', values: versionSteps(all) },
   ].filter((f) => f.values.length > 1 || f.key === 'model')
 })
-/** "from 0.8.1", "from 0.8.0" ...: the versions the songs were made with (newest first), each with how many
+/** "from 1.0.0", "from 0.8.0" ...: the versions the songs were made with (newest first), each with how many
  * songs are that version or newer - for an archive that still holds songs of older versions. */
 function versionSteps(all: typeof base.value): [string, number][] {
   const versions = new Map<string, number[]>()
@@ -98,10 +98,8 @@ function chipLabel(chip: string): string {
   return `${facet?.label ?? match[1]}: ${match[2]}`
 }
 function toggleChip(key: string, value: string): void {
-  const chip = chipValue(key, value)
-  const at = chips.value.indexOf(chip)
-  if (at >= 0) chips.value.splice(at, 1)
-  else chips.value.push(chip)
+  // the kept array itself changes, so the settings save it
+  chips.value.splice(0, chips.value.length, ...toggleFilterChip(chips.value, key, value))
 }
 
 // the featured song: one of the newest dozen, a different one each visit

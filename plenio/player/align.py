@@ -1,4 +1,4 @@
-"""Where a song's score sits in its recording, for songs without measured times (exported before 0.8.1, or
+"""Where a song's score sits in its recording, for songs without measured times (exported before 1.0.0, or
 with subtitle files only): the notation then follows the music instead of running a bar or more behind or
 ahead (owner's report 2026-10-16) - a YuE2 render is shifted against its score, 1.7 s in the median song,
 and the shift wanders over the song.
@@ -6,7 +6,7 @@ and the shift wanders over the song.
 The pitch classes (chroma) of the score - its notes, every voice - and of the recording are compared at every
 shift from -12 to +20 seconds; the best is the song's offset (``t_audio = t_score + b``). Then stretches of
 24 seconds, every 12, each on its own near that offset, give anchors along the song, as the measured
-syllables do for a song exported with 0.8.1. Chords and melody change over a song, so the match is clear
+syllables do for a song exported with 1.0.0. Chords and melody change over a song, so the match is clear
 where onsets alone repeat with every bar. Kept in the player's cache.
 """
 

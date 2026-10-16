@@ -99,7 +99,7 @@ export default async function coverCreative(s, { project }) {
   s.caption('A creative mode lets the writer model re-arrange every section. We take “many instruments”: a full ensemble.')
   await s.chooseCombo(BRIEF, 'arrangement', 'many instruments', { read: 2200 })
   await s.read('A creative mode lets the writer model re-arrange every section. We take “many instruments”: a full ensemble.', 3000)
-  // 0.8.1: the brief's panel says what the chosen mode does
+  // 1.0.0: the brief's panel says what the chosen mode does
   const modeLine = page.locator('.plenio-brief-template .mode').first()
   await modeLine.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
   if (await modeLine.isVisible().catch(() => false)) {

@@ -133,7 +133,7 @@ def _tag_inputs() -> list[Any]:
         io.String.Input(
             field,
             default=defaults.get(field, ""),
-            # added in 0.8.1: optional, so an API prompt of 0.8.0 in *tags* mode runs as before
+            # added in 1.0.0: optional, so an API prompt of 0.8.0 in *tags* mode runs as before
             optional=field == "lyrics",
             tooltip=TAG_TIPS[field] + VARIABLE_HINT,
         )

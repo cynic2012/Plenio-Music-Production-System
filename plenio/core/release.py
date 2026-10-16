@@ -36,7 +36,7 @@ _SECRET_VALUE = re.compile(
     r"\b(hf_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{16,}|AIza[0-9A-Za-z_-]{30,}|ghp_[A-Za-z0-9]{30,})\b"
 )
 PATTERN_TOKENS = ("title", "date", "time", "seed")
-"""The pattern's first variables; since 0.8.1 every ``core.variables`` name works."""
+"""The pattern's first variables; since 1.0.0 every ``core.variables`` name works."""
 
 
 def safe_filename(name: str, fallback: str = "Untitled") -> str:

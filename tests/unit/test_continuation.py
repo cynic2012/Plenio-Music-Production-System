@@ -93,7 +93,7 @@ def test_the_template_of_a_record_is_found_also_when_its_ids_moved() -> None:
 
 
 def test_the_seeds_of_a_record_made_before_0_8_1_land_on_the_new_seed_nodes() -> None:
-    """0.8.1 replaced ComfyUI's Seed with Plenio · Seed in the templates: an older record's seeds (a record
+    """1.0.0 replaced ComfyUI's Seed with Plenio · Seed in the templates: an older record's seeds (a record
     without its own workflow is matched against today's template) keep their numbers."""
     song = TEMPLATES[SONG]
     prompt = prompt_of(song)

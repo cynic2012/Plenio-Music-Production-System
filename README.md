@@ -2,7 +2,7 @@
   <img src="assets/branding/banner.png" alt="Plenio Music Production System for ComfyUI - YuE2, YuE2 Cover and MiniMax Music 3" width="100%" />
 </p>
 
-# Plenio Music Production System 0.8 for ComfyUI
+# Plenio Music Production System 1.0 for ComfyUI
 
 <p align="center">
   <a href="https://youtu.be/XpNpks9ZCgE"><img src="assets/branding/0.5.0/spot.jpg" alt="Plenio - Your idea. Your song. Your control. Watch the spot on YouTube" width="80%" /></a>
@@ -14,7 +14,49 @@
 
 Everything runs on your own machine, inside ComfyUI's own nodes: no cloud service, no API key, no extra Python packages. Before a single note is rendered, the **Song Sheet** shows you the title, style, lyrics and score that the model will receive. You can edit all of them, and your edits are never silently overwritten.
 
-What changed in each version is in the [changelog](CHANGELOG.md).
+**Free, open source - and now 1.0.** Plenio costs nothing: no subscription, no credits, no account, Apache 2.0 code. After fourteen releases in three weeks, 1.0.0 is the milestone where the whole way holds together - from the first idea to the song people listen to - and the version to build on: saved workflows and release records keep working in every 1.x version. What changed in each version is in the [changelog](CHANGELOG.md).
+
+## New in 1.0: from the finished song to the listener
+
+Plenio no longer stops at the exported file. The **Plenio Player** - one click from ComfyUI, or on its own without it - plays your songs in the browser, the lyrics lit up as they are sung and the sheet music following the music, and turns them into something to show and to give away.
+
+<p align="center">
+  <img src="assets/branding/1.0.0/player-drop.jpg" alt="Plenio Drop: the Electric Lotus preset full screen, a line of the lyrics in neon over it" width="49%" />
+  <img src="assets/branding/1.0.0/player-video-frame.jpg" alt="A frame of a song's video: the Star Gate visual, the lyrics as karaoke in the middle, the notation with its cursor below, the title in the corner" width="49%" />
+</p>
+<p align="center">
+  <img src="assets/branding/1.0.0/player-live.jpg" alt="Live Play: the live playlist with a song just made in ComfyUI marked new and playing next" width="49%" />
+  <img src="assets/branding/1.0.0/player-share.jpg" alt="Share your songs as a player: a playlist chosen, MP3 at 192 kbit/s, the sheet music, the look and the playlists packed into one HTML file" width="49%" />
+</p>
+
+*Plenio Drop with the lyrics in neon · a frame of a song's video · Live Play as a song made in ComfyUI arrives · one file to share your songs.*
+
+- **Plenio Drop**: visuals like Winamp's MilkDrop, made anew - 16 presets drawn by Plenio's own renderer on the graphics card, one made up fresh each time, all moving with the music. **Write your own** as a short JSON file of numbers and formulas; it changes on screen as you save it ([guide](docs/user/concepts/player-visuals.md)).
+- **Live Play**: a playlist for a party that you change while it plays - and the songs you make in ComfyUI join it the moment they are exported: next, at the end or anywhere.
+- **A song as a video**: an MP4 of the visual with the lyrics (subtitles or karaoke), the notation following the music and a title card - Full HD, 4K, square, or upright for Shorts, Reels and TikTok - made on your graphics card, several times faster than the song lasts.
+- **Share your songs as a player**: one HTML file with the player and the songs you choose, as MP3 - anyone double-clicks it and listens, with the lyrics, the notation and the visuals. No install, no server, no account.
+- **Your look**: eleven fonts and eleven effects for the lyrics - neon, glow, bounce, typewriter, rainbow, on the beat … - in the player and in the videos.
+- **Your folders, and other music**: the player reads the folders you choose and plays the other music in them too, with its tags, cover and `.lrc` lyrics.
+
+Also new in 1.0: **lyrics subtitles timed by listening** (`.srt`, ready for YouTube or DaVinci Resolve), **tags filled from the brief** with variables, and **Plenio · Seed** - one plain switch per seed. More about the player [below](#listen-in-the-plenio-player).
+
+## One package, from the idea to the listener
+
+Nothing else to buy, sign up for or glue together - every step is in the box, and every step runs on your computer:
+
+| Step | What Plenio gives you |
+|---|---|
+| **Write** | Song Brief and Cover Brief with templates for every genre; a local language model writes title, style and lyrics - Gemma 4 natively, or any GGUF, LM Studio, Ollama, llama.cpp, vLLM or Jan; thirteen creative modes plan the arrangement *(experimental)* |
+| **Check** | The Song Sheet: exactly what the music model will get - title, style, lyrics, score - editable, never silently overwritten |
+| **Compose** | A real score editor: notation, piano roll, chords, a MIDI keyboard, arranging like in a DAW, MIDI, MusicXML and PDF - or write the whole melody yourself (*YuE2 · DAW*) |
+| **Perform** | YuE2 for songs, covers and your own melody; MiniMax Music 3 for songs |
+| **Cover** | Any recording becomes a new version: its score read by SheetSage2, its words by faster-whisper, new lyrics fitted to the melody |
+| **Polish** | Stems with a mixer, Refine to 48 kHz, an EQ on the curve, loudness to -14 LUFS / -1 dBTP with a true-peak limiter |
+| **Release** | FLAC, MP3 or WAV with tags and cover art (FLUX.2 Klein), lyrics subtitles, the sheet music as PDF, and the whole project inside the FLAC |
+| **Go on** | Drop a song's FLAC onto ComfyUI and you are back in its workflow - new takes, a changed score, new lyrics |
+| **Listen & share** | The Plenio Player: visuals, Live Play, videos and a player in one file to send |
+
+Nine narrated video tutorials walk through it, all made with the real models.
 
 ## Watch the tutorials
 
@@ -36,7 +78,7 @@ What changed in each version is in the [changelog](CHANGELOG.md).
 | <img src="assets/branding/0.4.5/tutorial-5-yue2-daw.jpg" alt="Tutorial 5 · YuE2 · DAW" width="180" /> | **5 · YuE2 · DAW** | Compose it yourself: the words first, then the music - draw the notes, import a MIDI sketch or play it in with a MIDI keyboard - and YuE2 sings your melody. |
 | <img src="assets/branding/0.4.5/tutorial-6-yue2-song-creative.jpg" alt="Tutorial 6 · YuE2 · Song · Creative modes" width="180" /> | **6 · YuE2 · Song · Creative modes** *(experimental)* | The writer model plans the arrangement, Plenio writes the notes: a *dramatic* song, its arranged score in the Song Sheet, the rendered song - and another arrangement from the arrangement seed. |
 | <img src="assets/branding/0.4.5/tutorial-7-yue2-cover-creative.jpg" alt="Tutorial 7 · YuE2 · Cover · Creative modes" width="180" /> | **7 · YuE2 · Cover · Creative modes** *(experimental)* | A recording re-arranged for a full ensemble, with new lyrics that keep its story - *song flow closeness* and *lyrics closeness*, A/B against the original, the cover and its sheet music. |
-| <img src="assets/branding/0.8.1/tutorial-8-player.jpg" alt="Tutorial 8 · Plenio Player" width="180" /> | **8 · Plenio Player** | Your songs in the browser, one click from ComfyUI: search, a page per song, the lyrics lit up as they are sung and the sheet music following the music, playlists, Winamp-style visuals that move with the music, settings that last - and *Open in ComfyUI* back to the song's workflow. |
+| <img src="assets/branding/1.0.0/tutorial-8-player.jpg" alt="Tutorial 8 · Plenio Player" width="180" /> | **8 · Plenio Player** | Your songs in the browser, one click from ComfyUI: search, a page per song, the lyrics lit up as they are sung and the sheet music following the music, playlists, Winamp-style visuals that move with the music, settings that last - and *Open in ComfyUI* back to the song's workflow. |
 
 ## Listen first
 
@@ -61,6 +103,7 @@ The demos were made with the same music models by Plenio's predecessor, the [Mus
 - **Tags from the brief.** Tag fields and file names take variables - `Genre: {genre}[, mood: {mood}]`, `{artist} - {title}`, `{lyrics}` as the lyrics tag - or any connected text, and every field of the brief is an output of its own.
 - **Seeds you can read.** One switch per seed: 🔒 keeps a part (the lyrics, the take), 🎲 renews it every run - and the number shown is always the one that made what you just heard ([guide](docs/user/concepts/seeds.md)).
 - **Go on with a song later.** **File > Continue a Plenio song…** lists every song you exported, newest first - pick one (or drop its `.plenio.json` - or, since 0.8.0, the song's FLAC, which carries the same record - onto ComfyUI) and it opens in the workflow it was made with, its title, style, lyrics and score kept: new takes, a changed score or new lyrics from exactly where you stopped. Songs made with older versions open in today's template with their settings ([guide](docs/user/concepts/continue-a-song.md)).
+- **Listen, show and share** (new in 1.0). The **Plenio Player** plays every song you exported - lyrics lit up as they are sung, the sheet music following the music, Plenio Drop visuals, Live Play for a party - and makes a video of a song or a player in one file to send ([more](#listen-in-the-plenio-player)).
 - **Video tutorials for every template** and for the creative modes, narrated and recorded with the real models - [watch them](#watch-the-tutorials).
 - **Your own local LLMs as the writer.** The **Local LLM** node runs any GGUF from ComfyUI's `models/LLM` folder (or from LM Studio and the Hugging Face cache) in a llama.cpp server that is started for the draft and gone afterwards, so the GPU is free again for the music model - or asks a running LM Studio, Ollama, llama.cpp, vLLM or Jan. *Write Song*'s **writer model** lists them next to the native Gemma 4 writer (the default) - choose one, and only that one is loaded. No extra packages ([guide](docs/user/concepts/local-llm.md)).
 - **Creative modes and closeness sliders (experimental).** Besides the plain generation (arrangement *off*), thirteen modes from simple to rich - *standard*, *sterile*, *unplugged*, *varied*, *call and response*, *signature motif*, *hypnotic*, *breakdown*, *dramatic*, *many instruments*, *jazz colours*, *fantasy* and *key change* (the one mode that lifts the key) - shape the writing and let the writer model plan every section of YuE2's score - chords, what the instrument line plays, energy - with a slider for how close a song stays to its genre, and for covers how close the song flow and the new lyrics stay to the original. The writer plans, Plenio writes and checks every note - chords that carry the melody, instrument lines that leave room for the voice, a key lift that is led in: the score always stays valid, and a plan that cannot be used leaves it as it was, said in the Song Sheet. **Experimental:** the results can surprise - try the modes, listen and keep what you like; *off* stays the dependable choice ([guide](docs/user/concepts/creative-modes.md)).
@@ -228,7 +271,7 @@ Details and limits: [Mastering and audio formats](docs/user/concepts/mastering.m
 
 ## Listen in the Plenio Player
 
-New in 0.8.1: your songs in the browser - a program of its own, which runs without ComfyUI and opens at `http://127.0.0.1:8765/`.
+New in 1.0: your songs in the browser - a program of its own, which runs without ComfyUI and opens at `http://127.0.0.1:8765/`.
 
 - **From ComfyUI, one click:** **Plenio Player** beside *Run*, the **Plenio** menu, or **▶ Open in the Plenio Player** on Export Release (right at the song just exported). ComfyUI starts the player if it is not running yet.
 - **Without ComfyUI:** double-click **`Plenio Player.bat`** in the Plenio folder (`./plenio_player.sh` on macOS and Linux), or `python plenio_player.py`.
@@ -246,15 +289,19 @@ It finds every song Export Release wrote into ComfyUI's output folder. **Open in
 - **Your folders, and other music**: choose the folders in Settings; other music in them plays too, clearly marked, with its tags, cover and `.lrc` lyrics.
 
 <p align="center">
-  <img src="assets/branding/0.8.1/player-stage.jpg" alt="The Plenio Player's Now playing view: the song's cover, the lyrics lit up as they are sung, the sections as chips and the waveform as the seek bar, a visual behind" width="49%" />
-  <img src="assets/branding/0.8.1/player-notation.jpg" alt="The Plenio Player's notation view: the score with the lyrics under the notes, the cursor at the note sung now, the lyrics at the side" width="49%" />
+  <img src="assets/branding/1.0.0/player-stage.jpg" alt="The Plenio Player's Now playing view: the song's cover, the lyrics lit up as they are sung, the sections as chips and the waveform as the seek bar, a visual behind" width="49%" />
+  <img src="assets/branding/1.0.0/player-notation.jpg" alt="The Plenio Player's notation view: the score with the lyrics under the notes, the cursor at the note sung now, the lyrics at the side" width="49%" />
 </p>
 <p align="center">
-  <img src="assets/branding/0.8.1/player-library.jpg" alt="The Plenio Player's library: a featured song, the search with filter chips, the songs as cards, the bar with the line sung now" width="49%" />
-  <img src="assets/branding/0.8.1/player-visual.jpg" alt="The Plenio Player's visual view: the Retro Grid visual full screen with the lyrics as subtitles" width="49%" />
+  <img src="assets/branding/1.0.0/player-library.jpg" alt="The Plenio Player's library: a featured song, the search with filter chips, the songs as cards, the bar with the line sung now" width="49%" />
+  <img src="assets/branding/1.0.0/player-visual.jpg" alt="The Plenio Player's visual view: the Retro Grid visual full screen with the lyrics as subtitles" width="49%" />
+</p>
+<p align="center">
+  <img src="assets/branding/1.0.0/player-video.jpg" alt="Save a song as a video: the preview with karaoke lyrics and the notation, the size, the part, the visual and the lyrics' look" width="49%" />
+  <img src="assets/branding/1.0.0/player-lyrics-look.jpg" alt="How the lyrics look: the panel in Now playing with the fonts and effects, a line in Poster and Neon over Plenio Drop" width="49%" />
 </p>
 
-*The Plenio Player: Now playing, the sheet following the music, the library and a visual with the lyrics as subtitles.*
+*The Plenio Player: Now playing, the sheet following the music, the library, a visual with the lyrics as subtitles, a song saved as a video, and the lyrics' look.*
 
 Guide: [Plenio Player](docs/user/concepts/player.md).
 
@@ -309,7 +356,7 @@ Plenio is the successor of the [Music Production Toolkit](https://github.com/jpl
 
 ## Documentation
 
-- Users: [Getting started](docs/user/getting-started.md) · [YuE2 Song](docs/user/paths/yue2-song.md) · [YuE2 Cover](docs/user/paths/yue2-cover.md) · [YuE2 DAW](docs/user/paths/yue2-daw.md) · [MiniMax Song](docs/user/paths/minimax-song.md) · [Enhance & Master](docs/user/paths/enhance-master.md) · [Song Sheet](docs/user/concepts/song-sheet.md) · [Continue a song](docs/user/concepts/continue-a-song.md) · [Brief templates](docs/user/concepts/brief-templates.md) · [Score editor](docs/user/concepts/score-editor.md) · [Stems](docs/user/concepts/stems.md) · [Refine (48 kHz)](docs/user/concepts/refine.md) · [Instrumental](docs/user/concepts/instrumental.md) · [Mastering](docs/user/concepts/mastering.md) · [Plenio Player](docs/user/concepts/player.md) · [App mode](docs/user/concepts/app-mode.md) · [Local LLMs](docs/user/concepts/local-llm.md) · [Models](docs/user/models.md) · [Configuration](docs/user/configuration.md) · [Licensing](docs/user/licensing.md) · [Troubleshooting](docs/user/troubleshooting.md)
+- Users: [Getting started](docs/user/getting-started.md) · [YuE2 Song](docs/user/paths/yue2-song.md) · [YuE2 Cover](docs/user/paths/yue2-cover.md) · [YuE2 DAW](docs/user/paths/yue2-daw.md) · [MiniMax Song](docs/user/paths/minimax-song.md) · [Enhance & Master](docs/user/paths/enhance-master.md) · [Song Sheet](docs/user/concepts/song-sheet.md) · [Continue a song](docs/user/concepts/continue-a-song.md) · [Brief templates](docs/user/concepts/brief-templates.md) · [Score editor](docs/user/concepts/score-editor.md) · [Stems](docs/user/concepts/stems.md) · [Refine (48 kHz)](docs/user/concepts/refine.md) · [Instrumental](docs/user/concepts/instrumental.md) · [Mastering](docs/user/concepts/mastering.md) · [Plenio Player](docs/user/concepts/player.md) · [Plenio Drop presets](docs/user/concepts/player-visuals.md) · [Tags and subtitles](docs/user/concepts/tags-and-subtitles.md) · [Seeds](docs/user/concepts/seeds.md) · [App mode](docs/user/concepts/app-mode.md) · [Local LLMs](docs/user/concepts/local-llm.md) · [Models](docs/user/models.md) · [Configuration](docs/user/configuration.md) · [Licensing](docs/user/licensing.md) · [Troubleshooting](docs/user/troubleshooting.md)
 - Contributors: [Architecture](docs/dev/architecture.md) · [Extending Plenio](docs/dev/extending.md) · [Testing](docs/dev/testing.md) · [Design documents](docs/design/README.md) · [Decisions](docs/adr/README.md) · [Acceptance review](docs/audit/2026-09-25-phase-10-acceptance.md)
 - Videos: [the spot](https://youtu.be/XpNpks9ZCgE) · [Plenio in 75 seconds](https://youtu.be/q_dMH834E1o) · [all tutorials (playlist)](https://www.youtube.com/playlist?list=PLAFqTtP59fgE)
 - [Changelog](CHANGELOG.md): what changed in each version · [Security and privacy](SECURITY.md): what Plenio downloads, starts and writes
@@ -319,6 +366,7 @@ Plenio is the successor of the [Music Production Toolkit](https://github.com/jpl
 - YuE2 sometimes renders a take to the length ceiling and stops mid-phrase; render another take. *Instrumental* is a strong request, not a guarantee: the optional *Check Vocals* measures the take and keeps the cleanest one.
 - The ASR can mishear words. A cover shows unsure words highlighted so you can correct them before rendering.
 - Mastering is whole-song loudness with a gentle tone match. There is no restoration, no fades and no multiband processing.
+- The player's videos need a browser that can encode video (current Chrome or Edge), and Plenio Drop needs WebGL2; the other visuals draw everywhere.
 - **Stems** and **Refine** are experimental: their guarantees (a neutral mix returns the input, solo/mute rules, bandwidth before/after, no normalisation) are tested, but how the models *sound* is decided by the owner's listening checks (L1/L2), not yet done. On the two real takes measured so far, Refine's bandwidth rule counts both as full band: the model runs, but only the content above the crossover changes - see the [status](docs/design/CURRENT_STATUS.md) §5.
 
 ## Licences

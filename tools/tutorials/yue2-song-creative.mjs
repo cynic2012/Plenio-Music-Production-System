@@ -92,7 +92,7 @@ export default async function songCreative(s) {
   s.caption('We take “dramatic”: one long arc, from a quiet start to a big last chorus.')
   await s.click(page.locator('.litecontextmenu .litemenu-entry', { hasText: 'dramatic' }).first(), { pause: 400 })
   await s.read('We take “dramatic”: one long arc, from a quiet start to a big last chorus.', 4600)
-  // 0.8.1: the brief's panel says what the chosen mode does
+  // 1.0.0: the brief's panel says what the chosen mode does
   const modeLine = page.locator('.plenio-brief-template .mode').first()
   await modeLine.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
   if (await modeLine.isVisible().catch(() => false)) {

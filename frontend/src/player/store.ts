@@ -209,7 +209,7 @@ export async function openInComfyUI(song: SongSummary): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const timer = window.setTimeout(() => {
         window.removeEventListener('message', onMessage)
-        reject(new Error('ComfyUI did not answer - is Plenio installed there, in version 0.8.1 or newer?'))
+        reject(new Error('ComfyUI did not answer - is Plenio installed there, in version 1.0.0 or newer?'))
       }, 90_000)
       function onMessage(event: MessageEvent): void {
         if (event.source !== tab || event.origin !== origin || (event.data as { type?: string } | null)?.type !== 'plenio-ready') return

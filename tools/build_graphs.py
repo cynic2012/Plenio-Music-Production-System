@@ -1570,7 +1570,7 @@ WIDEN = BRIEF_WIDTH - 380
 SLOT_HEIGHT = 20
 SONG_FIELD_ROWS = 14
 COVER_FIELD_ROWS = 12
-"""The briefs' field outputs (0.8.1): each takes a slot row above the widgets."""
+"""The briefs' field outputs (1.0.0): each takes a slot row above the widgets."""
 
 
 def make_room(g: Graph, brief: Node, extra_height: float) -> None:
@@ -1739,7 +1739,7 @@ def finish(
 
 EXPORT_WIDER = 60
 EXPORT_TALLER = 9 * 24 + 24 + SLOT_HEIGHT
-"""0.8.1: the nine tag fields of *tags* (with *lyrics*), *lyrics subtitles (SRT)* and the *brief* socket."""
+"""1.0.0: the nine tag fields of *tags* (with *lyrics*), *lyrics subtitles (SRT)* and the *brief* socket."""
 TEMPLATE_COMMENT = "[Genre: {genre} · ][Mood: {mood} · ][Language: {language} · ]Powered by Plenio Music Production System / ComfyUI"
 TEMPLATE_TAGS: dict[str, object] = {
     "tags": "tags",
@@ -1919,7 +1919,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     brief = g.add(
         "PlenioSongBrief",
         (0, 0),
-        size=(BRIEF_WIDTH, 690 + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 0.8.1: field outputs
+        size=(BRIEF_WIDTH, 690 + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 1.0.0: field outputs
         widgets={
             "mode": "new song every run",
             "template": "pop/singer-songwriter-acoustic-vocal",
@@ -2103,7 +2103,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     brief = g.add(
         "PlenioCoverBrief",
         (0, 480),
-        size=(BRIEF_WIDTH, 640 + COVER_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 0.8.1: field outputs
+        size=(BRIEF_WIDTH, 640 + COVER_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 1.0.0: field outputs
         # the owner's defaults since 0.4.3: a pop style template (genre and mood come from it), the
         # original lyrics in the language detected from the singing, the original chords
         widgets={
@@ -2327,7 +2327,7 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     brief = g.add(
         "PlenioSongBrief",
         (0, 0),
-        size=(BRIEF_WIDTH, 690 + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 0.8.1: field outputs
+        size=(BRIEF_WIDTH, 690 + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 1.0.0: field outputs
         widgets={
             "mode": "new song every run",
             "template": "pop/singer-songwriter-acoustic-vocal",
@@ -2450,7 +2450,7 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     brief = g.add(
         "PlenioSongBrief",
         (0, 0),
-        size=(BRIEF_WIDTH, 690 + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 0.8.1: field outputs
+        size=(BRIEF_WIDTH, 690 + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 1.0.0: field outputs
         widgets={
             "mode": "one song, stop to review",
             "template": "pop/singer-songwriter-acoustic-vocal",
@@ -2584,7 +2584,7 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     export = g.add(
         "PlenioExportRelease",
         (2490, 180),
-        size=(380, 490 + SUMMARY_ROOM),  # 0.8.1: the brief socket and lyrics subtitles (SRT)
+        size=(380, 490 + SUMMARY_ROOM),  # 1.0.0: the brief socket and lyrics subtitles (SRT)
         autogrow={"reports": 5},
         widgets={
             "folder": "plenio/enhanced",

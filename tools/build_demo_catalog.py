@@ -94,7 +94,7 @@ def load(path: Path) -> dict[str, Any]:
         "files": files,
         "warnings": warnings,
         "licences": record.get("licences", []),
-        # ComfyUI's Seed until 0.8.0, Plenio · Seed since 0.8.1
+        # ComfyUI's Seed until 0.8.0, Plenio · Seed since 1.0.0
         "draft_seed": (
             node(prompt, "PlenioSeed", "Draft seed") or node(prompt, "SeedNode", "Draft seed")
         ).get("seed"),

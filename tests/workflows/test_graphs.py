@@ -593,7 +593,7 @@ def test_every_blueprint_input_and_output_has_a_tooltip() -> None:
     "name", ["1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"]
 )
 def test_export_takes_the_brief_and_writes_tags_with_variables(name: str) -> None:
-    """0.8.1 (owner's request 2026-10-15): the brief goes into Export Release, whose tags use its fields as
+    """1.0.0 (owner's request 2026-10-15): the brief goes into Export Release, whose tags use its fields as
     variables - genre, date, a comment of optional parts, the lyrics - and a note beside it lists them."""
     from build_graphs import TEMPLATE_TAGS
 

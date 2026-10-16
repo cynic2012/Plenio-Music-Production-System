@@ -1,6 +1,6 @@
-# Lyrics subtitles, tag variables, layout and seeds (0.8.1, 2026-10-15)
+# Lyrics subtitles, tag variables, layout and seeds (1.0.0, 2026-10-15)
 
-The owner's request of 2026-10-15, four features for 0.8.1, designed here before they are built. Every
+The owner's request of 2026-10-15, four features for 1.0.0, designed here before they are built. Every
 choice below says what it rests on: a measurement, the code as it stands or the platforms the files go to.
 
 | # | Request | Design in short |

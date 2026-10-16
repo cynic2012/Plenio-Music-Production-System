@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { SongSummary, TimedLine } from '../src/player/api'
-import { lyricsSnippet, parseQuery, score, sortSongs, topValues, versionTest } from '../src/player/search'
+import { lyricsSnippet, parseQuery, score, sortSongs, toggleFilterChip, topValues, versionTest } from '../src/player/search'
 import { similarSongs, takesOf } from '../src/player/similar'
 import { anchorsOf, audioToScore, chunksAt, countOf, formatTime, lineAt, scoreToAudio, sectionAt, sectionsInSong } from '../src/player/timing'
 import { chooseVisual, songMoods, withDefaults } from '../src/player/visuals/chooser'
@@ -146,6 +146,17 @@ describe('search', () => {
     expect(versionTest('>0.8.0', '0.8.1')).toBe(true)
     expect(versionTest('>=0.10', '0.9.4')).toBe(false) // numbers, not text
     expect(versionTest('>=0.1', '')).toBe(false)
+  })
+
+  it('offers one Plenio version at a time: a new one takes the place of the old one', () => {
+    // owner's report 2026-10-16: two "from" chips made no sense
+    let chips = toggleFilterChip([], 'genre', 'jazz')
+    chips = toggleFilterChip(chips, 'plenio', 'from 0.8.0')
+    chips = toggleFilterChip(chips, 'plenio', 'from 1.0.0')
+    expect(chips).toEqual(['genre:"jazz"', 'plenio:"from 1.0.0"'])
+    expect(toggleFilterChip(chips, 'plenio', 'from 1.0.0')).toEqual(['genre:"jazz"'])
+    // the other facets still take several
+    expect(toggleFilterChip(chips, 'genre', 'pop')).toEqual(['genre:"jazz"', 'plenio:"from 1.0.0"', 'genre:"pop"'])
   })
 
   it('ranks title hits above lyrics hits and sorts', () => {

@@ -134,7 +134,7 @@ fields:
 
 The **chips** under the search are your most common genres, moods, models, languages and creative modes; a
 click filters, a second click removes the filter. When your archive holds songs of older Plenio versions,
-**Plenio version** offers *from 0.8.1*, *from 0.8.0* …: only the songs made with that version or a newer one. You can sort by newest, oldest, title, length, tempo,
+**Plenio version** offers *from 1.0.0*, *from 0.8.0* …: only the songs made with that version or a newer one, one choice at a time (a click on another replaces it). You can sort by newest, oldest, title, length, tempo,
 loudness, most played or recently played, and switch between a grid and a list.
 
 **Your search and filters stay** - when you open a song's page, go to another view or another window and
@@ -399,7 +399,7 @@ new arrangement or an edit of the lyrics or the notes. It is the same as *File �
 in ComfyUI, or dropping the song's FLAC onto ComfyUI: the song's record travels from the player to the
 ComfyUI tab.
 
-It needs a ComfyUI with Plenio 0.8.1 or newer running on this computer. Which one: the ComfyUI that started
+It needs a ComfyUI with Plenio 1.0.0 or newer running on this computer. Which one: the ComfyUI that started
 the player; else the address under **Settings › Open in ComfyUI**; else the player looks for one at
 `127.0.0.1:8188` and `127.0.0.1:8000` (ComfyUI Desktop). The Settings page says which ComfyUI it found.
 
@@ -468,7 +468,7 @@ elsewhere.
 | Esc | close |
 | ? | all keys |
 
-**Songs without measured times** (exported before 0.8.1): the player finds where the score sits in the
+**Songs without measured times** (exported before 1.0.0): the player finds where the score sits in the
 recording by comparing their harmonies, once per song (a moment on its first notation), and the cursor
 follows the music - *The cursor follows the music as the player heard it*. A YuE2 render is shifted against
 its score, often by about a bar, and the shift wanders over the song; on the songs measured at export the
@@ -477,12 +477,12 @@ the buttons above the sheet (a quarter second or a bar at a time); the player ke
 
 ## Where the times come from
 
-Since 0.8.1, Export Release listens to every song as it exports it. It writes when each lyrics line and
+Since 1.0.0, Export Release listens to every song as it exports it. It writes when each lyrics line and
 syllable is sung into the release record and into the [subtitle files](tags-and-subtitles.md), and for songs
 with a score, where each syllable sits in the score. The player reads these times. On the songs measured
-for 0.8.1, half the words were within 0.16 seconds and 82 % within half a second.
+for 1.0.0, half the words were within 0.16 seconds and 82 % within half a second.
 
-- **Songs exported before 0.8.1** have no times. The player shows their lyrics as plain text, and the sheet's
+- **Songs exported before 1.0.0** have no times. The player shows their lyrics as plain text, and the sheet's
   cursor follows the score's tempo. Open the song with *File > Continue a Plenio song…* and export it again
   to add the times.
 - **Songs with subtitle files but no times in the record** (a record edited by hand) take the times from the

@@ -546,7 +546,7 @@ export async function sheetMusicSaved(s, node, text) {
   await s.read(text, 6000)
 }
 
-// Plenio · Seed (0.8.1): one switch per seed - the draft seed blue (🔒 the same draft), the take seed amber
+// Plenio · Seed (1.0.0): one switch per seed - the draft seed blue (🔒 the same draft), the take seed amber
 // (🎲 a new seed before every run). The take seed's switch is flipped to 🔒 and back, so the run that follows
 // still renders a new take.
 export async function seedsDemo(s, { draft = 'Draft seed', take = 'Take seed', what = 'lyrics' } = {}) {
@@ -569,7 +569,7 @@ export async function seedsDemo(s, { draft = 'Draft seed', take = 'Take seed', w
   await s.read(flip, 5200)
 }
 
-// Export Release (0.8.1): the lyrics as subtitles next to the song, timed by listening, and the tags filled
+// Export Release (1.0.0): the lyrics as subtitles next to the song, timed by listening, and the tags filled
 // from the brief with variables - the note beside the node lists them.
 export async function exportExtras(s, node = 'PlenioExportRelease', { lyrics = true } = {}) {
   const box = async () =>

@@ -58,7 +58,7 @@ describe('widget values of older workflows', () => {
   })
 })
 
-describe('Export Release saved before 0.8.1', () => {
+describe('Export Release saved before 1.0.0', () => {
   const old = ['plenio', '{date} {title}', 'number', true, false, false, 'tags', 'A', 'B', '2026', '3', 'pop', 'c', 'AA', 'Comp', 'PDF (A4)', 'standard', true]
 
   it('gets an empty lyrics tag after the composer, so the values after it stay on their widgets', () => {
