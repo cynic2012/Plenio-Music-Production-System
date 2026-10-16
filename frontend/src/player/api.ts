@@ -57,6 +57,10 @@ export interface SongSummary {
   score_meter?: string
   seeds: Partial<Record<'take' | 'draft' | 'arrangement', number>>
   writer: string
+  /** Music not made with Plenio (a folder with *also other music*): what its file has, no more. */
+  other?: boolean
+  artist?: string
+  album?: string
 }
 
 /** A timed lyrics line: ``units`` are ``[start, cut]`` (the line shown up to ``cut`` from ``start``), with the
@@ -91,6 +95,8 @@ export interface SongDetail extends SongSummary {
   timing_source: string
   files: Record<string, string>
   record_path: string
+  /** Other music: the audio file's path. */
+  file_path?: string
   /** Every file the song has in its record's folder (relative to it): what removing it moves or deletes. */
   owned_files: string[]
   /** Where retiring moves the files. */
@@ -139,6 +145,30 @@ export interface ComfyFound {
   version: string
 }
 
+/** A folder the player reads, its songs and its other music. */
+export interface FolderRow {
+  path: string
+  other: boolean
+  exists: boolean
+  songs: number
+  other_songs: number
+}
+
+export interface FoldersAnswer {
+  folders: FolderRow[]
+  /** Chosen in Settings (else the folders it started with). */
+  chosen: boolean
+  started_with: string[]
+}
+
+export interface DirsAnswer {
+  path: string | null
+  parent: string | null
+  dirs: { name: string; path: string }[]
+  places: { name: string; path: string }[]
+  error: string
+}
+
 export interface LibraryAnswer {
   songs: SongSummary[]
   folders: string[]
@@ -175,7 +205,20 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, confirm: id }),
     }),
-  peaks: (id: string) => json<{ peaks: number[] }>(`/api/peaks/${id}`)
+  peaks: (id: string) => json<{ peaks: number[] }>(`/api/peaks/${id}`),
+  folders: () => json<FoldersAnswer>('/api/folders'),
+  /** Save the folders (or ``null``: back to the ones it started with); errors carry the server's words. */
+  setFolders: async (folders: { path: string; other: boolean }[] | null): Promise<FoldersAnswer> => {
+    const response = await fetch('/api/folders', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(folders ? { folders } : { reset: true }),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data?.error ?? `could not save the folders (${response.status})`)
+    return data as FoldersAnswer
+  },
+  dirs: (path: string | null) => json<DirsAnswer>(`/api/dirs${path ? `?path=${encodeURIComponent(path)}` : ''}`, { headers: { 'X-Plenio-Player': '1' } }),
 }
 
 export const media = (id: string, kind: string): string => `/media/${id}/${kind}`

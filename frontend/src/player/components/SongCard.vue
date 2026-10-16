@@ -30,12 +30,13 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
     <div class="text">
       <a class="title" @click.stop="go(`/song/${song.id}`)">{{ song.title }}</a>
       <p class="sub">
-        <span>{{ song.genre || song.style.split(',')[0] || '—' }}</span>
+        <span>{{ song.other ? song.artist || song.genre || '—' : song.genre || song.style.split(',')[0] || '—' }}</span>
         <span class="dot">·</span>
         <span>{{ formatTime(song.seconds) }}</span>
       </p>
       <p v-if="snippet" class="snippet">“{{ snippet }}”</p>
       <p class="tags">
+        <span v-if="song.other" class="tag other" title="Not made with Plenio: it plays with what its file has">other music</span>
         <span v-if="song.model" class="tag model">{{ song.model.replace('MiniMax Music 3', 'MiniMax') }}</span>
         <span v-if="song.kind === 'cover'" class="tag">cover</span>
         <span v-if="song.instrumental" class="tag">instrumental</span>
@@ -174,6 +175,11 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
   border-radius: 99px;
   background: rgba(255, 255, 255, 0.07);
   color: rgba(255, 255, 255, 0.7);
+}
+.tag.other {
+  color: #ffd9a0;
+  border-color: rgba(255, 190, 90, 0.45);
+  background: rgba(255, 170, 60, 0.12);
 }
 .tag.model {
   background: color-mix(in srgb, var(--accent) 22%, transparent);

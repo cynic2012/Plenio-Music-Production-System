@@ -20,6 +20,8 @@ from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
 from .. import __version__
+from . import folders as folder_choice
+from . import other as other_music
 from .library import RETIRED_DIR, Library, song_detail
 from .peaks import peaks
 from .visuals import list_presets, open_folder, save_copy, visuals_dir
@@ -117,6 +119,23 @@ def make_handler(
 ) -> type[BaseHTTPRequestHandler]:
     """The requests' handler; with ``hosts`` it answers only requests addressed to one of them (a player on
     the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding)."""
+
+    def folders_answer() -> dict[str, Any]:
+        counts = library.counts()
+        return {
+            "folders": [
+                {
+                    "path": str(root),
+                    "other": root in library.other,
+                    "exists": root.is_dir(),
+                    "songs": counts.get(root, [0, 0])[0],
+                    "other_songs": counts.get(root, [0, 0])[1],
+                }
+                for root in library.folders
+            ],
+            "chosen": folder_choice.load(state.path.parent) is not None,
+            "started_with": [str(f) for f in library.started_with],
+        }
 
     class Handler(BaseHTTPRequestHandler):
         server_version = f"PlenioPlayer/{__version__}"
@@ -244,6 +263,14 @@ def make_handler(
                     return self._error(500, str(error))
             if route == "/api/state":
                 return self._json(state.read())
+            if route == "/api/folders":
+                return self._json(folders_answer())
+            if route == "/api/dirs":
+                # the folder browser of the Settings page: only for the player's own page (another page
+                # cannot send this header without asking first, and this server never says yes)
+                if self.headers.get("X-Plenio-Player") != "1":
+                    return self._error(403, "only from the player's page")
+                return self._json(folder_choice.list_dirs(query.get("path")))
             if route == "/api/visuals":
                 # the listener's own Plenio Drop presets (the page reads them again every few seconds)
                 folder = visuals_dir(state.path.parent)
@@ -259,6 +286,15 @@ def make_handler(
                     return self._error(404, "not found")
                 song = library.song(parts[2])
                 path = song.files.get(parts[3]) if song else None
+                if (
+                    song
+                    and not path
+                    and song.other
+                    and parts[3] == "cover"
+                    and song.summary["has"].get("cover")
+                ):
+                    # the picture inside the audio file, saved once into the cache
+                    path = other_music.embedded_cover(song.record, song.id, state.path.parent / "cache")
                 return self._file(path) if path else self._error(404, "no such file")
             # the page itself and its assets; every other path is the page (the player routes by #)
             target = (
@@ -291,10 +327,13 @@ def make_handler(
 
         def do_PUT(self) -> None:  # noqa: N802
             body = self._body()
-            if unquote(urlparse(self.path).path) != "/api/state":
+            route = unquote(urlparse(self.path).path)
+            if route not in ("/api/state", "/api/folders"):
                 return self._error(404, "not found")
             if not self._from_this_page():
                 return self._error(403, "only from the player's page")
+            if route == "/api/folders":
+                return self._put_folders(body)
             if body is None:
                 return self._error(413, "no state, or too large")
             try:
@@ -305,6 +344,28 @@ def make_handler(
                 return self._error(400, "the state is an object")
             state.write({**EMPTY_STATE, **{k: v for k, v in data.items() if k in EMPTY_STATE}})
             return self._json({"ok": True})
+
+        def _put_folders(self, body: bytes | None) -> None:
+            """The folders chosen in Settings (``{"folders": [{"path", "other"}]}``), or back to the folders
+            the player started with (``{"reset": true}``)."""
+            try:
+                data = json.loads(body.decode("utf-8")) if body else None
+            except ValueError:
+                data = None
+            if not isinstance(data, dict):
+                return self._error(400, "not JSON")
+            directory = state.path.parent
+            if data.get("reset"):
+                folder_choice.forget(directory)
+                library.set_folders(library.started_with)
+                return self._json(folders_answer())
+            try:
+                chosen = folder_choice.validate(data.get("folders"))
+            except ValueError as error:
+                return self._error(400, str(error))
+            folder_choice.save(directory, chosen)
+            library.set_folders([f.path for f in chosen], [f.path for f in chosen if f.other])
+            return self._json(folders_answer())
 
         def do_POST(self) -> None:  # noqa: N802
             raw = self._body()

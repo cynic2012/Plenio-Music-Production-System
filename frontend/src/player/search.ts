@@ -15,7 +15,7 @@ export interface Term {
 const FIELDS: Record<string, string> = {
   genre: 'genre', g: 'genre', mood: 'mood', bpm: 'bpm', tempo: 'bpm', key: 'key', model: 'model', m: 'model',
   year: 'year', lang: 'language', language: 'language', vocals: 'vocals', mode: 'mode', arrangement: 'mode',
-  len: 'len', length: 'len', is: 'is', has: 'has', title: 'title', lyrics: 'lyrics', style: 'style',
+  len: 'len', length: 'len', is: 'is', has: 'has', title: 'title', lyrics: 'lyrics', style: 'style', artist: 'artist', album: 'album',
   template: 'template', writer: 'writer', meter: 'meter',
 }  // prettier-ignore
 
@@ -74,14 +74,16 @@ function matches(song: SongSummary, term: Term, context: Context): number {
     case 'mood': return has(song.mood) ? 3 : 0
     case 'bpm': return numberTest(term.value, song.bpm) ? 2 : 0
     case 'key': return fold(song.score_key ?? '') === v || fold(song.brief.key ?? '').startsWith(v) ? 2 : 0
-    case 'model': return has(song.model) || (v === 'master' && !song.model) ? 2 : 0
+    case 'model': return has(song.model) || (v === 'master' && !song.model && !song.other) ? 2 : 0
     case 'year': return song.year === term.value ? 2 : 0
     case 'language': return has(song.language) ? 2 : 0
     case 'vocals': return has(song.vocals) || (v === 'sung' && !song.instrumental && !!song.vocals) ? 2 : 0
     case 'mode': return has(song.arrangement) ? 2 : 0
     case 'len': return numberTest(term.value, song.seconds / 60) ? 2 : 0
     case 'meter': return has(song.score_meter) || has(song.brief.meter) ? 2 : 0
-    case 'is': return v === 'fav' || v === 'favorite' ? (context.favorites.has(song.id) ? 2 : 0) : v === 'cover' ? (song.kind === 'cover' ? 2 : 0) : 0
+    case 'is': return v === 'fav' || v === 'favorite' ? (context.favorites.has(song.id) ? 2 : 0) : v === 'cover' ? (song.kind === 'cover' ? 2 : 0) : v === 'other' ? (song.other ? 2 : 0) : v === 'plenio' ? (song.other ? 0 : 2) : 0
+    case 'artist': return has(song.artist) || has(song.tags.artist) ? 3 : 0
+    case 'album': return has(song.album) || has(song.tags.album) ? 3 : 0
     case 'has': return (song.has as Record<string, boolean>)[v] ? 2 : 0
     case 'title': return has(song.title) ? 5 : 0
     case 'lyrics': return has(song.lyrics) ? 2 : 0
@@ -90,7 +92,7 @@ function matches(song: SongSummary, term: Term, context: Context): number {
     case 'writer': return has(song.writer) ? 2 : 0
     default: {
       if (has(song.title)) return 6
-      if (has(song.genre) || has(song.mood) || has(song.tags.artist) || has(song.tags.album)) return 4
+      if (has(song.genre) || has(song.mood) || has(song.artist) || has(song.album) || has(song.tags.artist) || has(song.tags.album)) return 4
       if (has(song.style) || has(song.template) || has(song.brief.description) || has(song.brief.theme)) return 3
       if (has(song.language) || has(song.model) || has(song.arrangement)) return 2
       if (has(song.lyrics)) return 1

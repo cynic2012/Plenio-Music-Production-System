@@ -121,6 +121,18 @@ describe('search', () => {
     expect(find('-jazz')).toEqual(['b', 'c'])
   })
 
+  it('finds other music by its mark, artist and album, and keeps it out of Plenio models', () => {
+    const other = song({ id: 'o', title: 'Blue Hour', model: '', kind: 'other', other: true, artist: 'Someone', album: 'Nights', genre: 'jazz' })
+    const all = [...songs, other]
+    const pick = (query: string): string[] => all.filter((s) => score(s, parseQuery(query), context) > 0).map((s) => s.id)
+    expect(pick('is:other')).toEqual(['o'])
+    expect(pick('is:plenio')).toEqual(['a', 'b', 'c'])
+    expect(pick('artist:someone')).toEqual(['o'])
+    expect(pick('album:nights')).toEqual(['o'])
+    expect(pick('someone')).toEqual(['o'])
+    expect(pick('model:master')).toEqual(['c'])
+  })
+
   it('ranks title hits above lyrics hits and sorts', () => {
     const terms = parseQuery('station')
     expect(score(songs[0], terms, context)).toBeGreaterThan(1)

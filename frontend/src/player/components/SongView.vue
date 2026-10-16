@@ -116,9 +116,12 @@ const facts = computed(() => {
     ['Creative mode', s.arrangement && s.arrangement !== 'off' ? s.arrangement : ''],
     ['Genre closeness', brief.closeness !== null && brief.closeness !== undefined ? String(brief.closeness) : ''],
     ['Template', s.template],
-    ['Model', s.model || 'a recording (Enhance & Master)'],
+    ['Artist', s.artist ?? ''],
+    ['Album', s.album ?? ''],
+    ['Year', s.other ? s.year : ''],
+    ['Model', s.other ? '' : s.model || 'a recording (Enhance & Master)'],
     ['Lyrics and score by', s.writer],
-    ['Kind', s.kind],
+    ['Kind', s.other ? 'other music - not made with Plenio' : s.kind],
   ].filter(([, value]) => value) as [string, string][]
 })
 const loudness = computed(() => {
@@ -192,14 +195,16 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
       <div class="art" :class="{ playing: isCurrent && playing }"><CoverArt :song="song" :live="isCurrent && playing" rounded /></div>
       <div class="text">
         <button class="back" @click="back"><Icon name="back" :size="16" /> Back</button>
-        <small>{{ song.kind === 'cover' ? 'Cover song' : song.model ? 'Song' : 'Recording' }} · {{ song.created.slice(0, 10) }}</small>
+        <small v-if="song.other"><span class="other-mark">Other music</span> {{ [song.artist, song.album, song.year].filter(Boolean).join(' · ') }}</small>
+        <small v-else>{{ song.kind === 'cover' ? 'Cover song' : song.model ? 'Song' : 'Recording' }} · {{ song.created.slice(0, 10) }}</small>
         <h1>{{ song.title }}</h1>
         <p class="style">{{ song.style }}</p>
+        <p v-if="song.other" class="other-note">Not made with Plenio: it plays with what its file has - its tags, cover and lyrics (timed from an <code>.lrc</code> file beside it). No notation, measured lyrics, brief or <i>Open in ComfyUI</i>.</p>
         <div class="actions">
           <button class="primary" @click="play"><Icon :name="isCurrent && playing ? 'pause' : 'play'" /> {{ isCurrent && playing ? 'Pause' : 'Play' }}</button>
           <button class="ghost" :class="{ on: isFavorite(song.id) }" @click="toggleFavorite(song.id)"><Icon name="heart" :filled="isFavorite(song.id)" /> {{ isFavorite(song.id) ? 'Favourite' : 'Add to favourites' }}</button>
           <button class="ghost" @click="menu = { x: $event.clientX, y: $event.clientY }"><Icon name="plus" /> Playlist, queue …</button>
-          <button class="ghost" :disabled="opening" title="Open the song's workflow in ComfyUI - with its lyrics, score and settings - to work on it" @click="toComfyUI"><Icon name="external" /> {{ opening ? 'Opening ComfyUI …' : 'Open in ComfyUI' }}</button>
+          <button v-if="!song.other" class="ghost" :disabled="opening" title="Open the song's workflow in ComfyUI - with its lyrics, score and settings - to work on it" @click="toComfyUI"><Icon name="external" /> {{ opening ? 'Opening ComfyUI …' : 'Open in ComfyUI' }}</button>
           <button class="ghost down" title="Remove the song from the library: to the retired songs, or deleted" @click="removing = song"><Icon name="thumbdown" /> Remove…</button>
         </div>
         <p class="meta">
@@ -232,9 +237,10 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
       </ol>
       <pre v-else class="plain">{{ song.lyrics || 'An instrumental - no lyrics.' }}</pre>
       <p v-if="detail?.timing_source" class="hint">
-        {{ detail.timing_source === 'subtitles' ? 'Times from the song’s subtitle files.' : 'Times measured when the song was exported.' }}
+        {{ detail.timing_source === 'subtitles' ? 'Times from the song’s subtitle files.' : detail.timing_source === 'lrc' || detail.timing_source === 'srt' ? `Times from the .${detail.timing_source} file beside the song.` : 'Times measured when the song was exported.' }}
         Click a line to hear it.
       </p>
+      <p v-else-if="lyricsLines.length === 0 && song.lyrics && song.other" class="hint">The lyrics from the file's tags. An <code>.lrc</code> file of the same name beside it gives their times.</p>
       <p v-else-if="lyricsLines.length === 0 && song.lyrics" class="hint">This song was exported without lyrics times - export it again with lyrics subtitles on to follow along.</p>
     </section>
 
@@ -287,8 +293,8 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
           <a v-for="d in downloads" :key="d.kind" class="file" :href="d.url" :download="d.name"><Icon name="download" :size="16" /> {{ d.label }} <small>{{ d.name }}</small></a>
         </div>
         <p class="path">
-          <Icon name="folder" :size="14" /> {{ detail?.record_path }}
-          <button v-if="detail" class="icon-btn" title="Copy the path" @click="copy(detail.record_path, 'path')"><Icon name="copy" :size="14" /></button>
+          <Icon name="folder" :size="14" /> {{ detail?.record_path || detail?.file_path }}
+          <button v-if="detail" class="icon-btn" title="Copy the path" @click="copy(detail.record_path || detail.file_path || '', 'path')"><Icon name="copy" :size="14" /></button>
           <em v-if="copied === 'path'">copied</em>
         </p>
         <p v-if="detail?.licences.length" class="hint">Licences: {{ detail.licences.join(', ') }}</p>
@@ -312,6 +318,21 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
 </template>
 
 <style scoped>
+.other-mark {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: #ffd9a0;
+  border: 1px solid rgba(255, 190, 90, 0.45);
+  background: rgba(255, 170, 60, 0.12);
+  font-weight: 600;
+}
+.other-note {
+  max-width: 640px;
+  color: var(--muted);
+  font-size: 13px;
+}
 .song-page {
   padding: 26px 34px 40px;
 }

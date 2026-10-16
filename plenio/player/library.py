@@ -4,7 +4,8 @@ documents, the notation and the times its lyrics are sung.
 
 Pure Python and ``plenio.core``. It reads the folders and writes there only when the listener removes a
 song (owner's request 2026-10-16): its files go to the retired songs (``_retired`` in the library folder,
-which the library does not read) or are deleted for good.
+which the library does not read) or are deleted for good. A folder can also take other music, audio files
+not from Plenio (``plenio.player.other``): songs of their own, marked so, with what their files have.
 """
 
 from __future__ import annotations
@@ -22,9 +23,10 @@ from pathlib import Path
 from typing import Any
 
 from ..core import subtitles as subtitle_rules
+from . import other as other_music
 
 RECORD_SUFFIX = ".plenio.json"
-CACHE_VERSION = 3
+CACHE_VERSION = 4
 RETIRED_DIR = "_retired"
 """Where removed songs go, below the library folder they were in; the library does not read it."""
 SKIP_DIRS = {".plenio-player", "__pycache__", ".git", RETIRED_DIR}
@@ -172,11 +174,14 @@ def parse_srt(text: str) -> list[dict[str, Any]]:
 
 @dataclass
 class Song:
+    """A song of the library. ``record`` is its release record - for other music (``other``) its audio file."""
+
     id: str
     record: Path
     root: Path
     summary: dict[str, Any]
     files: dict[str, Path] = field(default_factory=dict)
+    other: bool = False
 
 
 def _files(record: Mapping[str, Any], path: Path) -> dict[str, Path]:
@@ -309,8 +314,35 @@ def summarize(record: Mapping[str, Any], path: Path, root: Path) -> Song:
     return song
 
 
+def other_detail(song: Song) -> dict[str, Any]:
+    """The page of a song not from Plenio: its tags, its lyrics, timed lines from its ``.lrc``/``.srt``."""
+    lines = other_music.timed_lines(song.files)
+    return {
+        **song.summary,
+        "documents": {
+            "title": str(song.summary.get("title") or ""),
+            "lyrics": str(song.summary.get("lyrics") or ""),
+        },
+        "lyrics_raw": "",
+        "notation": {},
+        "lines": lines,
+        "timing_source": song.files["lines"].suffix.lstrip(".") if lines else "",
+        "files": {kind: path.name for kind, path in song.files.items()},
+        "owned_files": [
+            path.relative_to(song.record.parent.resolve()).as_posix() for path in owned_files(song)
+        ],
+        "retire_to": str(retired_folder(song)),
+        "record_path": "",
+        "file_path": str(song.record),
+        "licences": [],
+        "versions": {},
+    }
+
+
 def song_detail(song: Song) -> dict[str, Any]:
     """Everything the song's page needs: the documents, the notation, the times, the files."""
+    if song.other:
+        return other_detail(song)
     record = json.loads(song.record.read_text(encoding="utf-8"))
     documents = record.get("documents") or {}
 
@@ -395,7 +427,9 @@ def _line_from_cues(cue: Mapping[str, Any], notes: Sequence[Mapping[str, Any]]) 
 def owned_files(song: Song) -> list[Path]:
     """Every file of the song in its record's folder: the record, the files it lists (the audio of every take,
     the unmastered take, the cover, the sheet music, the subtitles, the stems) and the files Export Release
-    names after it. Nothing outside the record's folder."""
+    names after it. Nothing outside the record's folder. Other music: the audio and its own lyrics and cover."""
+    if song.other:
+        return other_music.owned(song.record, song.files)
     folder = song.record.parent.resolve()
     record = json.loads(song.record.read_text(encoding="utf-8"))
     candidates = [song.record]
@@ -482,10 +516,14 @@ def _spans(record: Mapping[str, Any]) -> list[list[int]]:
 
 
 class Library:
-    """The songs below ``folders``; summaries cached on disk by the record's size and time."""
+    """The songs below ``folders``; summaries cached on disk by the record's size and time. In the folders of
+    ``other``, audio files that no record owns are songs too."""
 
-    def __init__(self, folders: Iterable[Path], cache: Path | None = None):
+    def __init__(self, folders: Iterable[Path], cache: Path | None = None, other: Iterable[Path] = ()):
         self.folders = [Path(f).resolve() for f in folders]
+        self.other = {Path(f).resolve() for f in other}
+        # the folders it started with (--folder, the default): back to them when Settings forgets its own
+        self.started_with = list(self.folders)
         self.cache_path = cache
         self._lock = threading.Lock()
         self._songs: dict[str, Song] = {}
@@ -500,12 +538,37 @@ class Library:
             except (OSError, ValueError):
                 self._cache = {}
 
+    def set_folders(self, folders: Iterable[Path], other: Iterable[Path] = ()) -> None:
+        """Read other folders from now on (chosen in Settings)."""
+        with self._lock:
+            self.folders = [Path(f).resolve() for f in folders]
+            self.other = {Path(f).resolve() for f in other}
+        self.scan(force=True)
+
     def _records(self) -> Iterable[tuple[Path, Path]]:
         for root in self.folders:
             if not root.exists():
                 continue
             for path in sorted(root.rglob(f"*{RECORD_SUFFIX}")):
                 if not SKIP_DIRS.intersection(path.relative_to(root).parts):
+                    yield root, path
+
+    def _other_files(self, songs: Iterable[Song]) -> Iterable[tuple[Path, Path]]:
+        """The audio files of the folders with other music that no Plenio song owns."""
+        roots = [root for root in self.folders if root in self.other and root.exists()]
+        if not roots:
+            return
+        owned, stems = other_music.plenio_owned(songs)
+        seen: set[Path] = set()
+        for root in roots:
+            for path in sorted(root.rglob("*")):
+                if path.suffix.lower() not in other_music.AUDIO_SUFFIXES or not path.is_file():
+                    continue
+                relative = path.relative_to(root).parts
+                if SKIP_DIRS.intersection(relative) or path.resolve() in seen:
+                    continue
+                seen.add(path.resolve())
+                if not other_music.is_plenio_file(path, owned, stems):
                     yield root, path
 
     def scan(self, *, force: bool = False, every: float = 15.0) -> None:
@@ -537,6 +600,27 @@ class Library:
                     }
                 except (OSError, ValueError, KeyError, TypeError) as error:
                     errors.append(f"{path.name}: {error}")
+            for root, path in self._other_files(list(songs.values())):
+                try:
+                    stat = path.stat()
+                    key = path.as_posix()
+                    stamp = [stat.st_size, int(stat.st_mtime)]
+                    cached = self._cache.get(key)
+                    if cached and cached.get("stamp") == stamp and cached.get("other"):
+                        summary = cached["summary"]
+                        files = {k: Path(v) for k, v in cached["files"].items()}
+                    else:
+                        summary, files = other_music.summarize_other(path, root, song_id(path, root))
+                    song = Song(summary["id"], path, root, summary, files, other=True)
+                    songs[song.id] = song
+                    cache[key] = {
+                        "stamp": stamp,
+                        "other": True,
+                        "summary": summary,
+                        "files": {k: str(v) for k, v in files.items()},
+                    }
+                except (OSError, ValueError, KeyError, TypeError) as error:
+                    errors.append(f"{path.name}: {error}")
             self._songs, self._cache, self.errors = songs, cache, errors
             self._scanned = time.monotonic()
             if self.cache_path:
@@ -547,6 +631,14 @@ class Library:
                     temp.replace(self.cache_path)
                 except OSError:
                     pass
+
+    def counts(self) -> dict[Path, list[int]]:
+        """Per folder: its Plenio songs and its other music."""
+        self.scan()
+        found: dict[Path, list[int]] = {root: [0, 0] for root in self.folders}
+        for song in self._songs.values():
+            found.setdefault(song.root, [0, 0])[1 if song.other else 0] += 1
+        return found
 
     def songs(self) -> list[dict[str, Any]]:
         self.scan()

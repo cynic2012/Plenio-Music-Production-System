@@ -210,8 +210,14 @@ export async function openInComfyUI(song: SongSummary): Promise<void> {
 
 export async function rescan(): Promise<void> {
   await api.rescan()
+  await reloadLibrary()
+}
+
+/** The library as the server has it now (after the folders changed). */
+export async function reloadLibrary(): Promise<void> {
   const answer = await api.library()
   library.value = answer.songs
+  folders.value = answer.folders
 }
 
 // --- removing a song (owner's request 2026-10-16: a song you do not want any more) -----------------------

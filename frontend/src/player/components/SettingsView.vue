@@ -2,15 +2,57 @@
 /**
  * Settings (owner's request 2026-10-16): what the player keeps and where - everything is saved on this
  * computer by the player's server, not in the browser - when it last saved, a backup to download, a restore,
- * a fresh start; where *Open in ComfyUI* goes; the folders it reads; and stopping a player that runs without
- * a window (one started from ComfyUI).
+ * a fresh start; where *Open in ComfyUI* goes; the folders it reads (several, chosen here, each with or
+ * without other music - owner's request 2026-10-16); and stopping a player that runs without a window (one
+ * started from ComfyUI).
  */
 import { computed, onMounted, ref } from 'vue'
 
-import { api, type ComfyFound } from '../api'
-import { comfyuiAddress, folders, info, lastSaved, library, replaceState, rescan, saveError, say, settings, state } from '../store'
+import { api, type ComfyFound, type FoldersAnswer } from '../api'
+import { comfyuiAddress, info, lastSaved, library, reloadLibrary, replaceState, rescan, saveError, say, settings, state } from '../store'
 import { countOf } from '../timing'
+import FolderBrowser from './FolderBrowser.vue'
 import Icon from './Icon.vue'
+
+const shelf = ref<FoldersAnswer | null>(null)
+const browsing = ref(false)
+const savingFolders = ref(false)
+const folderError = ref('')
+
+async function readFolders(): Promise<void> {
+  try {
+    shelf.value = await api.folders()
+  } catch (error) {
+    folderError.value = error instanceof Error ? error.message : String(error)
+  }
+}
+/** Save the folders (``null``: back to the ones the player started with) and read the library again. */
+async function saveFolders(list: { path: string; other: boolean }[] | null): Promise<void> {
+  savingFolders.value = true
+  folderError.value = ''
+  try {
+    shelf.value = await api.setFolders(list)
+    await reloadLibrary()
+    say(`${countOf(library.value.length, 'song')} in ${countOf(shelf.value.folders.length, 'folder')}`, 3000)
+  } catch (error) {
+    folderError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    savingFolders.value = false
+  }
+}
+const current = (): { path: string; other: boolean }[] => (shelf.value?.folders ?? []).map((f) => ({ path: f.path, other: f.other }))
+function addFolder(path: string): void {
+  browsing.value = false
+  if (current().some((f) => f.path === path)) return say('That folder is already in the list')
+  void saveFolders([...current(), { path, other: false }])
+}
+function removeFolder(path: string): void {
+  void saveFolders(current().filter((f) => f.path !== path))
+}
+function toggleOther(path: string): void {
+  void saveFolders(current().map((f) => (f.path === path ? { ...f, other: !f.other } : f)))
+}
+onMounted(readFolders)
 
 const found = ref<ComfyFound | null>(null)
 const looking = ref(false)
@@ -123,11 +165,29 @@ async function stop(): Promise<void> {
     <section class="block">
       <h3><Icon name="folder" /> Songs</h3>
       <p class="lead">The player reads every release record (<code>.plenio.json</code>) below these folders: {{ countOf(library.length, 'song') }}.</p>
-      <ul class="folders">
-        <li v-for="f in folders" :key="f"><code>{{ f }}</code></li>
+      <ul class="shelf">
+        <li v-for="f in shelf?.folders ?? []" :key="f.path" :class="{ missing: !f.exists }">
+          <div class="where">
+            <code>{{ f.path }}</code>
+            <small>{{ f.exists ? countOf(f.songs, 'Plenio song') : 'not there (a drive not connected?)' }}<template v-if="f.other">, {{ countOf(f.other_songs, 'other song') }}</template></small>
+          </div>
+          <label class="other" title="Also play audio files in this folder that were not made with Plenio (FLAC, MP3, WAV, OGG, Opus, M4A). They are marked as other music and have what their files have.">
+            <input type="checkbox" :checked="f.other" :disabled="savingFolders" @change="toggleOther(f.path)" /> also other music
+          </label>
+          <button class="icon-btn" title="Do not read this folder any more (its files stay)" :disabled="savingFolders || (shelf?.folders.length ?? 0) < 2" @click="removeFolder(f.path)"><Icon name="close" :size="14" /></button>
+        </li>
       </ul>
-      <p class="hint">Removed songs go to <code>{{ info?.retired ?? '_retired' }}</code> in their folder, which the player does not read.</p>
-      <button class="ghost small" @click="rescan().then(() => say('Library read again'))"><Icon name="refresh" :size="14" /> Look for new songs</button>
+      <p v-if="folderError" class="error">{{ folderError }}</p>
+      <div class="row-buttons">
+        <button class="ghost small" :disabled="savingFolders" @click="browsing = true"><Icon name="plus" :size="14" /> Add a folder…</button>
+        <button class="ghost small" @click="rescan().then(readFolders).then(() => say('Library read again'))"><Icon name="refresh" :size="14" /> Look for new songs</button>
+        <button v-if="shelf?.chosen" class="ghost small" :disabled="savingFolders" :title="`Back to ${shelf.started_with.join(', ')}`" @click="saveFolders(null)">Back to the start's folders</button>
+      </div>
+      <p class="hint">
+        Songs made with Plenio come first; <b>also other music</b> plays the other audio files of a folder too, marked as <i>other music</i> - with their tags, cover and lyrics, without notation or <i>Open in ComfyUI</i>.
+        The folders are kept with the player (<code>library.json</code>), also when ComfyUI starts it. Removed songs go to <code>{{ info?.retired ?? '_retired' }}</code> in their folder, which the player does not read.
+      </p>
+      <FolderBrowser v-if="browsing" @choose="addFolder" @close="browsing = false" />
     </section>
 
     <section class="block">
@@ -245,9 +305,53 @@ code {
   padding: 7px 10px;
   font: 13px var(--mono);
 }
-.folders {
-  margin: 0 0 8px;
-  padding-left: 18px;
+.shelf {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.shelf li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.shelf li.missing {
+  border-color: rgba(255, 150, 90, 0.4);
+}
+.shelf .where {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.shelf code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shelf small {
+  color: var(--muted);
+}
+.shelf .other {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.error {
+  color: #ff9a9a;
 }
 .stopped {
   border-color: #ffb36b;

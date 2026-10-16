@@ -70,6 +70,34 @@ not start; open the running one, or start it with `--port 8766`. (ComfyUI's butt
 
 New songs show up when you click **Look for new songs** in the sidebar, or reload the page.
 
+## Your folders, and other music
+
+The player reads every release record below its folders: ComfyUI's output folder unless you choose others.
+Choose them on the **Settings** page under **Songs**:
+
+- **Add a folder…** opens a folder browser: start at *Home*, your music folder or a drive, go into a folder,
+  or type or paste its path, then **Choose this folder**. Add as many folders as you like; × stops reading one
+  (its files stay where they are).
+- **also other music** (per folder): the player also plays the folder's audio files that were **not made
+  with Plenio** - FLAC, MP3, WAV, OGG, Opus, M4A. The files of a Plenio song (its audio, its unmastered take,
+  its stems) always stay with that song.
+- **Back to the start's folders** forgets your choice.
+
+The folders are kept with the player (`library.json` in `~/.plenio/player`), so the player started from
+ComfyUI reads them too.
+
+**Other music is clearly marked**: *other music* on its card, **Other music** on its page, *Made with: other*
+among the library's filters, `is:other` in the search (`is:plenio` for the rest, `artist:` and `album:` for
+their tags). It has what its file has, no more: the title, artist, album, genre and year from its tags, the
+picture inside the file (or a `cover.jpg` / `folder.jpg` beside it), the lyrics from its tags - and timed
+lyrics, word by word, from an `.lrc` file of the same name beside it (or an `.srt`). It plays with the
+visuals, in playlists and the queue like every song, and can be removed (the audio and its own `.lrc` go,
+never the folder's cover). What needs a release record is not there: no notation, no sheet music, no brief or
+seeds, no measured lyrics, no *Open in ComfyUI*.
+
+The first time a folder with much other music is read, the player reads every file's tags once (a few
+seconds per thousand files); after that it remembers them.
+
 ## The library
 
 The library shows a featured song at the top, then every song as a card with its cover. Songs without a
@@ -357,5 +385,6 @@ for 0.8.1, half the words were within 0.16 seconds and 82 % within half a second
   Safari since version 11).
 - The sheet music tab uses the browser's PDF viewer. If your browser has none, use *Open the PDF*.
 - The player does not edit songs. It moves or deletes their files only when you remove a song.
+- Other music plays what the browser can play: OGG and Opus not in Safari, M4A (AAC) not in every Firefox.
 - The player keeps a cache of the records it has read in its state folder, so on later starts it reads
   only new or changed records again.

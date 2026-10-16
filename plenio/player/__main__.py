@@ -14,6 +14,7 @@ import webbrowser
 from pathlib import Path
 
 from .. import __version__
+from . import folders as folder_choice
 from .library import Library
 from .paths import default_folders, state_dir
 from .server import State, serve
@@ -22,6 +23,17 @@ from .server import State, serve
 def say(text: str) -> None:
     sys.stdout.write(text + "\n")
     sys.stdout.flush()
+
+
+def make_library(started: list[Path], directory: Path) -> Library:
+    """The library of the folders chosen in Settings (``library.json``), else of the folders it starts with
+    (``--folder``, the default) - which stay known, to go back to."""
+    chosen = folder_choice.load(directory)
+    folders = [f.path for f in chosen] if chosen else started
+    other = [f.path for f in chosen or [] if f.other]
+    library = Library(folders, cache=directory / "library-cache.json", other=other)
+    library.started_with = [Path(p).resolve() for p in started]
+    return library
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -34,9 +46,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-browser", action="store_true", help="do not open the browser")
     parser.add_argument("--comfyui", default="", help="the ComfyUI address that Open in ComfyUI goes to")
     args = parser.parse_args(argv)
-    folders = args.folder or default_folders()
+    started = args.folder or default_folders()
     directory = state_dir()
-    library = Library(folders, cache=directory / "library-cache.json")
+    library = make_library(started, directory)
+    folders = library.folders
     say(f"Plenio Player {__version__}: reading the songs of {', '.join(str(f) for f in folders)} ...")
     library.scan(force=True)
     say(f"{len(library.songs())} songs ({len(library.errors)} records could not be read)")

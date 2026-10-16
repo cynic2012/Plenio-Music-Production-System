@@ -65,7 +65,8 @@ const facets = computed(() => {
   return [
     { key: 'genre', label: 'Genre', values: topValues(all, (s) => words(s.genre), 10) },
     { key: 'mood', label: 'Mood', values: topValues(all, (s) => words(s.mood), 8) },
-    { key: 'model', label: 'Model', values: topValues(all, (s) => [s.model ? s.model.toLowerCase().split(' ')[0] : 'master'], 4) },
+    { key: 'is', label: 'Made with', values: topValues(all, (s) => [s.other ? 'other' : 'plenio'], 2) },
+    { key: 'model', label: 'Model', values: topValues(all, (s) => [s.other ? '' : s.model ? s.model.toLowerCase().split(' ')[0] : 'master'], 4) },
     { key: 'vocals', label: 'Vocals', values: topValues(all, (s) => [s.instrumental ? 'instrumental' : s.vocals ? 'sung' : ''], 3) },
     { key: 'lang', label: 'Language', values: topValues(all, (s) => [s.language.toLowerCase()], 6) },
     { key: 'mode', label: 'Creative mode', values: topValues(all, (s) => [s.arrangement && s.arrangement !== 'off' ? s.arrangement : ''], 8) },

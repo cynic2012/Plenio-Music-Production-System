@@ -113,7 +113,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
         </div>
         <h1 @click="go(`/song/${current.id}`); nowPlayingOpen = false">{{ current.title }}</h1>
         <p class="facts">
-          <span v-if="current.genre">{{ current.genre }}</span><span v-if="current.mood">{{ current.mood }}</span><span v-if="current.bpm">{{ current.bpm }} BPM</span><span v-if="current.score_key">{{ current.score_key }}</span><span>{{ current.model || 'recording' }}</span>
+          <span v-if="current.genre">{{ current.genre }}</span><span v-if="current.mood">{{ current.mood }}</span><span v-if="current.bpm">{{ current.bpm }} BPM</span><span v-if="current.score_key">{{ current.score_key }}</span><span>{{ current.other ? current.artist || 'other music' : current.model || 'recording' }}</span>
         </p>
       </section>
       <section v-if="view === 'stage' || view === 'lyrics'" class="lyrics-col">
@@ -133,7 +133,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
 
     <Transition name="card">
       <div v-if="card && current" class="title-card">
-        <small>{{ [current.model || 'Plenio', current.genre].filter(Boolean).join(' · ') }}</small>
+        <small>{{ (current.other ? [current.artist || 'Other music', current.album] : [current.model || 'Plenio', current.genre]).filter(Boolean).join(' · ') }}</small>
         <h2>{{ current.title }}</h2>
       </div>
     </Transition>
