@@ -126,12 +126,15 @@ fields:
 | `mode:dramatic` | the creative mode |
 | `len:<3` | length in minutes |
 | `year:2026` `template:jazz` `writer:gemma` | year, brief template, the model that wrote the lyrics |
-| `is:fav` `is:cover` | favourites, covers |
+| `is:fav` `is:cover` `is:other` `is:plenio` | favourites, covers, other music, Plenio's songs |
+| `plenio:>=0.8` `plenio:0.7` `plenio:0.5-0.7` | songs made with a Plenio version: from 0.8 on, any 0.7.x, from 0.5 to 0.7 |
+| `artist:` `album:` | the tags of other music |
 | `has:pdf` `has:timing` `has:original` | songs with sheet music, timed lyrics, an unmastered take |
 | `"a phrase"` `-word` | an exact phrase; leave out songs with a word |
 
 The **chips** under the search are your most common genres, moods, models, languages and creative modes; a
-click filters, a second click removes the filter. You can sort by newest, oldest, title, length, tempo,
+click filters, a second click removes the filter. When your archive holds songs of older Plenio versions,
+**Plenio version** offers *from 0.8.1*, *from 0.8.0* …: only the songs made with that version or a newer one. You can sort by newest, oldest, title, length, tempo,
 loudness, most played or recently played, and switch between a grid and a list.
 
 **Your search and filters stay** - when you open a song's page, go to another view or another window and
@@ -187,7 +190,10 @@ also has:
   in the song. You get this when you export with Export Release's *original* input connected (every
   template connects it).
 - **Speed**: 0.75× to 1.25× without changing the pitch, to learn a part or sing along.
-- **Volume**, **mute**, **shuffle** and **repeat** (all, one, off).
+- **Volume**, **mute**, **shuffle** and **repeat**: the button (in the bar and in Now playing) goes from
+  **repeat the whole playlist** (after its last song the queue starts again) to **repeat this song** (a small
+  *1* on the button) to **no repeat** (the music stops after the last song). **R** does the same. A song's
+  end is caught also while the player's tab is in the background.
 
 Songs fade into each other (**crossfade**, 3 seconds by default; set 0-12 s in the queue). The player
 remembers where you stopped and picks up there next time. The media keys on your keyboard and the operating
@@ -286,6 +292,34 @@ the **sleep timer**: stop after 15 to 90 minutes, with the music fading out over
 this song.
 
 A song counts as played after 30 seconds.
+
+## Save a song as a video
+
+**Video…** on a song's page (or *Save as a video…* in its menu) makes an **MP4 video** of the song: a visual
+moving with the music, and over it what you choose.
+
+- **Size**: 1920 × 1080 (Full HD), 1280 × 720, 3840 × 2160 (4K), 1080 × 1080 (square) or 1080 × 1920
+  (upright, for Shorts, Reels and TikTok). **30 or 60 frames a second**, standard or high quality.
+- **The part**: the whole song, or from - to (in seconds; the section chips set a section). A part cut out
+  of the song fades in and out.
+- **The visual**: any visual - classic, Plenio Drop or your own presets - or *as the visuals' settings
+  choose for this song*; **a new visual at every section** if you like; the colours.
+- **Over the visual**: the **lyrics** as subtitles or as **karaoke** (large in the middle, the line before
+  and after it), lit up as they are sung; **the notation**, the line of music sounding with a cursor at the
+  notes and the notes aglow; a **title card** at the start with the cover; the song in the **corner**; a
+  **progress bar** with the sections; *made with Plenio*.
+- **Sound**: the master, or the unmastered take.
+
+**Preview** draws one frame as the video will show it. **Make the video** draws every frame from the song's
+own sound - the visuals react exactly as when it plays - and encodes it on the graphics card where the browser
+can: usually several times faster than the song lasts (12 seconds of Full HD in about 3 seconds on a current
+graphics card). You see the video grow, how fast and how long it still takes, and can stop it. The finished
+MP4 (H.264 with AAC sound) is in the player's **videos** folder (`~/.plenio/player/videos`); download it,
+watch it, or open the folder - also later, under *Videos* in Settings. The video settings are kept for the
+next one.
+
+It needs a browser that can encode video (WebCodecs with H.264): current Chrome and Edge can, on Windows,
+macOS and Linux.
 
 ## Live Play: make songs at a party, and they play
 
@@ -386,7 +420,7 @@ elsewhere.
 | N | another visual |
 | L | favourite |
 | S | shuffle |
-| R | repeat: all, one, off |
+| R | repeat: the whole playlist, this song, off |
 | B | A/B: master or unmastered take |
 | M | mute |
 | Q | the queue |

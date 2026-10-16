@@ -239,7 +239,10 @@ It finds every song Export Release wrote into ComfyUI's output folder. **Open in
 - **A page per song**: the lyrics (click a line to hear it), the notation, the sheet music PDF, the brief and the seeds, every file, the other takes and songs alike.
 - **While it plays**: the lyrics light up syllable by syllable; on the sheet, the notes light up as they sound. The times are measured when the song is exported.
 - **Visuals after Winamp and MilkDrop**: 13 classic visuals and **Plenio Drop** - 16 MilkDrop-style presets drawn by Plenio's own renderer on the graphics card, and one made up anew each time - all moving with the music, on the whole screen if you like (Shift+F). Let the player match them to the music, pick at random from the ones you tick, cycle or fix one - or give a song or a playlist its own. **Write your own Drop presets**: a short JSON file of numbers and formulas, changed on screen as you save it ([guide](docs/user/concepts/player-visuals.md)).
-- **Playlists**: smart lists, your own lists, a radio of songs alike, crossfades, A/B with the unmastered take and a sleep timer.
+- **Playlists**: smart lists, your own lists, a radio of songs alike, crossfades, repeat (the playlist or the song), A/B with the unmastered take and a sleep timer.
+- **Live Play**: a playlist for a party that you change while it plays - and the songs you make in ComfyUI join it as soon as they are exported: next, at the end or anywhere.
+- **A song as a video**: an MP4 of the song's visual with its lyrics (subtitles or karaoke), its notation following the music and a title card - Full HD, 4K, square or upright for Shorts.
+- **Your folders, and other music**: choose the folders in Settings; other music in them plays too, clearly marked, with its tags, cover and `.lrc` lyrics.
 
 <p align="center">
   <img src="assets/branding/0.8.1/player-stage.jpg" alt="The Plenio Player's Now playing view: the song's cover, the lyrics lit up as they are sung, the sections as chips and the waveform as the seek bar, a visual behind" width="49%" />
