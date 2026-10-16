@@ -239,7 +239,9 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
     </section>
 
     <section v-if="tab === 'notation' && detail" class="pane">
-      <Notation :notation="detail.notation" :lines="lyricsLines" :time="Math.max(0, songTime)" :following="isCurrent" />
+      <div class="notation-box">
+        <Notation :notation="detail.notation" :lines="lyricsLines" :time="Math.max(0, songTime)" :following="isCurrent" />
+      </div>
       <p v-if="!isCurrent" class="hint">Play the song and the notes light up as they sound; click a note to jump there.</p>
     </section>
 
@@ -420,6 +422,10 @@ h1 {
 }
 .karaoke-box {
   height: min(60vh, 600px);
+}
+/* a height of its own, so the sheet scrolls inside it and follows the music */
+.notation-box {
+  height: min(72vh, 820px);
 }
 .timed {
   list-style: none;

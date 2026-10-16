@@ -122,7 +122,8 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
 - **Lyrics**: every line with the time it is sung. Click a line to hear the song from there. While the song
   plays, the lyrics light up as they are sung, and the line sung now stays in view.
 - **Notation**: the score with the lyrics under the notes. While the song plays, the notes light up as they
-  sound and the sheet scrolls along. Click a note to jump there.
+  sound and the sheet moves on with the music: the line of music sounding now always stays in view, also
+  after a jump or when you come back to the tab. Click a note to jump there.
 - **Sheet music**: the PDF from Export Release, in the browser's PDF viewer.
 - **Details**: the brief (genre, mood, tempo, key, voice, theme, template, creative mode, genre closeness),
   the model and the writer, loudness and true peak, the seeds (with a copy button, so you can make the take

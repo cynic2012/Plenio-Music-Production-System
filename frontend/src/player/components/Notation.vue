@@ -98,13 +98,28 @@ function follow(): void {
       h: bottom - top,
       show: true,
     }
-    const box = scroller.value
-    if (box) {
-      const top = first.top - box.getBoundingClientRect().top
-      if (top < box.clientHeight * 0.15 || top > box.clientHeight * 0.7) {
-        box.scrollTo({ top: box.scrollTop + top - box.clientHeight * 0.3, behavior: 'smooth' })
-      }
-    }
+    keepInView(systemTop(lit[0]) ?? top)
+  }
+}
+
+/** The top of the system (both staves of a line of music) a note is in: abcjs marks every element of a line
+ * with ``abcjs-l<n>``, its staff lines included. ``null``: no such mark. */
+function systemTop(note: Element | undefined): number | null {
+  const line = note ? [...note.classList].find((c) => /^abcjs-l\d+$/.test(c)) : undefined
+  if (!line || !host.value) return null
+  const tops = [...host.value.querySelectorAll(`.abcjs-staff.${line}`)].map((el) => el.getBoundingClientRect().top).filter((t) => t)
+  return tops.length ? Math.min(...tops) - 34 : null
+}
+
+/** The system sounding now stays at one place in the box (a quarter down): the sheet moves on with every new
+ * line of music, as the lyrics do, instead of turning a page only when the cursor nearly leaves the box. */
+function keepInView(systemTop: number, smooth = true): void {
+  const box = scroller.value
+  if (!box || box.scrollHeight <= box.clientHeight) return
+  const offset = systemTop - box.getBoundingClientRect().top
+  const place = box.clientHeight * 0.25
+  if (Math.abs(offset - place) > 24) {
+    box.scrollTo({ top: Math.max(0, box.scrollTop + offset - place), behavior: smooth ? 'smooth' : 'auto' })
   }
 }
 
@@ -114,12 +129,16 @@ watch(() => props.following, (on) => {
   if (!on) {
     for (const el of lit) el.classList.remove('sounding')
     cursor.value.show = false
-    litIndex = -1
   }
+  // following again (a song started on the page): find the line at once
+  litIndex = -1
+  if (on) void nextTick(follow)
 })
 
 onMounted(() => {
   render()
+  // opened while the song plays (a tab, a view): straight to where the music is
+  void nextTick(follow)
   observer = new ResizeObserver(() => {
     if (host.value && Math.abs(host.value.clientWidth - width) > 60) render()
   })
