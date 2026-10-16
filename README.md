@@ -234,7 +234,7 @@ New in 0.8.1: your songs in the browser, without ComfyUI. Start it with ComfyUI'
 python custom_nodes/Plenio-Music-Production-System/plenio_player.py
 ```
 
-It finds every song Export Release wrote into ComfyUI's output folder and never writes there.
+It finds every song Export Release wrote into ComfyUI's output folder - and a song you no longer want goes to the retired songs, or is deleted.
 
 - **Find songs**: search titles, lyrics and briefs, or narrow it with fields like `genre:jazz`, `bpm:>110`, `key:Am` or `is:fav`; filter chips; eight sorts.
 - **A page per song**: the lyrics (click a line to hear it), the notation, the sheet music PDF, the brief and the seeds, every file, the other takes and songs alike.

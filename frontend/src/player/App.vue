@@ -12,6 +12,7 @@ import PlayerBar from './components/PlayerBar.vue'
 import PlaylistView from './components/PlaylistView.vue'
 import PlaylistsView from './components/PlaylistsView.vue'
 import QueuePanel from './components/QueuePanel.vue'
+import RemoveDialog from './components/RemoveDialog.vue'
 import Sidebar from './components/Sidebar.vue'
 import SongView from './components/SongView.vue'
 import { engine } from './engine'
@@ -25,6 +26,7 @@ import {
   next,
   nowPlayingOpen,
   previous,
+  removing,
   route,
   setVolume,
   settings,
@@ -82,6 +84,7 @@ function onKey(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
     // Esc leaves a text field first; a list (select) that was chosen from does not hold it back
     if (typing && target.tagName !== 'SELECT') (target as HTMLInputElement).blur()
+    else if (removing.value) removing.value = null
     else if (help.value) help.value = false
     else if (queueOpen.value) queueOpen.value = false
     else if (nowPlayingOpen.value) nowPlayingOpen.value = false
@@ -198,6 +201,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
     </Transition>
     <Transition name="fade"><div v-if="toast" class="toast">{{ toast }}</div></Transition>
+    <Transition name="fade"><RemoveDialog v-if="removing" :song="removing" @close="removing = null" @done="say" /></Transition>
   </div>
 </template>
 

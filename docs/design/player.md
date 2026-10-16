@@ -14,9 +14,9 @@ User guide: [docs/user/concepts/player.md](../user/concepts/player.md).
 |---|---|
 | Runs without ComfyUI | its own small server (`python -m plenio.player`, `plenio_player.py`), only the Python standard library and `plenio.core` |
 | No new dependencies, nothing downloaded at runtime | `http.server` (threaded), the page built with the existing frontend toolchain (Vue, abcjs) and **committed** to `plenio/player/static` like `web/js`; the waveform uses PyAV and numpy when they are there (ComfyUI's Python has them) and is left out otherwise |
-| Never writes into the songs' folders | the listener's state, the library cache and the waveforms in `~/.plenio/player` (`PLENIO_PLAYER_STATE`) |
+| Writes into the songs' folders only to remove a song (owner's request 2026-10-16) | the listener's state, the library cache and the waveforms in `~/.plenio/player` (`PLENIO_PLAYER_STATE`); a removed song's files (`library.owned_files`: the record, the files it lists, the names Export Release uses - only inside the record's folder) move to `<library folder>/_retired/<subfolders>` (skipped by the scan; a name retired before gets a timestamp folder) or are deleted, on `POST /api/song/<id>/remove` with JSON `{action, confirm: <id>}` from the page's own origin |
 | The release record is the source | the library is every `*.plenio.json` below the folders; nothing else is indexed |
-| Local | binds to 127.0.0.1; requests must be addressed to it (DNS rebinding); files are served only from the record's own folder; no CORS |
+| Local | binds to 127.0.0.1; requests must be addressed to it (DNS rebinding); files are served only from the record's own folder; no CORS; changes (state, removing) only as JSON from the page's own origin; on Windows no `SO_REUSEADDR`, so a second player cannot bind the port and leave the first one answering |
 
 ## 2. Data
 
@@ -85,4 +85,4 @@ The pages and views were checked in Chromium with 33 songs (console clean).
 
 - No transcoding, no streaming outside the local network, no accounts.
 - No PDF renderer of its own (pdf.js would be a new dependency): the browser's viewer shows the PDF.
-- No editing or deleting of songs: the player reads records.
+- No editing of songs; removing one moves or deletes its files, nothing else.

@@ -42,6 +42,7 @@ const PATHS: Record<string, string> = {
   layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
   copy: 'M8 8h12v12H8zM4 16V4h12',
   info: 'M12 21a9 9 0 110-18 9 9 0 010 18zM12 11v6M12 7h.01',
+  thumbdown: 'M10 15v4a3 3 0 003 3l4-9V2H5.7a2 2 0 00-2 1.7l-1.4 9a2 2 0 002 2.3zM17 2h2.7A2.3 2.3 0 0122 4v7a2.3 2.3 0 01-2.3 2H17',
 }
 const SOLID = new Set(['play', 'pause', 'next', 'prev'])
 </script>

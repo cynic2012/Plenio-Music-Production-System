@@ -6,7 +6,7 @@ import { computed, ref } from 'vue'
 import type { SongSummary } from '../api'
 import { vFocus } from '../focus'
 import { similarSongs } from '../similar'
-import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, playSongs, state, toggleFavorite } from '../store'
+import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, playSongs, removing, state, toggleFavorite } from '../store'
 
 const props = defineProps<{ song: SongSummary; x: number; y: number }>()
 const emit = defineEmits<{ close: [] }>()
@@ -36,6 +36,7 @@ function create(): void {
       <button @click="radio">Start a radio of songs alike</button>
       <button @click="toggleFavorite(song.id); done()">{{ isFavorite(song.id) ? 'Remove from favourites' : 'Add to favourites' }}</button>
       <button @click="go(`/song/${song.id}`); done()">Open the song’s page</button>
+      <button class="remove" @click="removing = song; done()">Remove from the library…</button>
       <p class="head small">Add to a playlist</p>
       <button v-for="p in state.playlists" :key="p.id" @click="addToPlaylist(p, [song.id]); done()">
         <i class="dot" :style="{ background: `hsl(${p.hue ?? 260} 80% 60%)` }" />{{ p.name }}
@@ -125,6 +126,9 @@ button:hover {
 }
 .plus {
   color: var(--accent);
+}
+.remove {
+  color: #ff8f8f;
 }
 @keyframes pop {
   from {

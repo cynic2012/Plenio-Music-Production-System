@@ -4,7 +4,7 @@
  */
 import { computed, reactive, ref, shallowRef, watch } from 'vue'
 
-import { api, media, type Playlist, type PlayerState, type SongDetail, type SongSummary } from './api'
+import { api, media, type Playlist, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary } from './api'
 import { engine } from './engine'
 import { type VisualSettings, withDefaults } from './visuals/chooser'
 
@@ -35,6 +35,7 @@ const DEFAULT_SETTINGS: Settings = {
 }
 
 export const library = shallowRef<SongSummary[]>([])
+const details = new Map<string, SongDetail>()
 export const folders = ref<string[]>([])
 export const loading = ref(true)
 export const loadError = ref('')
@@ -50,8 +51,13 @@ export const route = ref(location.hash.slice(1) || '/')
 window.addEventListener('hashchange', () => {
   route.value = location.hash.slice(1) || '/'
 })
-export function go(path: string): void {
-  if (location.hash.slice(1) !== path) location.hash = path
+/** Open a page; ``replace``: in place of the one shown (the browser's Back skips it). */
+export function go(path: string, replace = false): void {
+  if (location.hash.slice(1) === path) return
+  if (replace) {
+    history.replaceState(null, '', `#${path}`)
+    route.value = path
+  } else location.hash = path
 }
 
 // --- loading and saving -------------------------------------------------------------------------------
@@ -90,6 +96,34 @@ export async function rescan(): Promise<void> {
   await api.rescan()
   const answer = await api.library()
   library.value = answer.songs
+}
+
+// --- removing a song (owner's request 2026-10-16: a song you do not want any more) -----------------------
+
+/** The song whose removal is being asked (the dialog in App.vue). */
+export const removing = shallowRef<SongSummary | null>(null)
+
+/** Retire the song (its files to the retired songs' folder) or delete it for good; it leaves the queue, the
+ * playlists and the favourites. A song that plays makes way for the next one first. */
+export async function removeSong(id: string, action: 'retire' | 'delete'): Promise<RemoveAnswer> {
+  if (current.value?.id === id) {
+    if (queue.value.length > 1) await next()
+    else engine.pause()
+  }
+  engine.release(id)
+  const answer = await api.removeSong(id, action)
+  const nowId = queue.value[index.value]
+  queue.value = queue.value.filter((x) => x !== id)
+  index.value = nowId && nowId !== id ? queue.value.indexOf(nowId) : -1
+  state.favorites = state.favorites.filter((x) => x !== id)
+  for (const playlist of state.playlists) playlist.songs = playlist.songs.filter((x) => x !== id)
+  delete state.plays[id]
+  delete state.last_played[id]
+  delete settings.visuals.songs[id]
+  details.delete(id)
+  const fresh = await api.library()
+  library.value = fresh.songs
+  return answer
 }
 
 // --- favourites and playlists -------------------------------------------------------------------------
@@ -135,7 +169,6 @@ export const time = ref(0)
 export const duration = ref(0)
 export const nowPlayingOpen = ref(false)
 
-const details = new Map<string, SongDetail>()
 export async function songDetail(id: string): Promise<SongDetail> {
   const cached = details.get(id)
   if (cached) return cached

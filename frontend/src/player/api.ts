@@ -91,6 +91,10 @@ export interface SongDetail extends SongSummary {
   timing_source: string
   files: Record<string, string>
   record_path: string
+  /** Every file the song has in its record's folder (relative to it): what removing it moves or deletes. */
+  owned_files: string[]
+  /** Where retiring moves the files. */
+  retire_to: string
   licences: string[]
   versions: Record<string, string>
 }
@@ -113,6 +117,12 @@ export interface PlayerState {
   settings: Record<string, unknown>
 }
 
+export interface RemoveAnswer {
+  action: 'retire' | 'delete'
+  files: string[]
+  folder: string | null
+}
+
 export interface LibraryAnswer {
   songs: SongSummary[]
   folders: string[]
@@ -133,6 +143,12 @@ export const api = {
   saveState: (state: PlayerState) =>
     json<{ ok: boolean }>('/api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state) }),
   rescan: () => json<{ songs: number }>('/api/rescan', { method: 'POST' }),
+  removeSong: (id: string, action: 'retire' | 'delete') =>
+    json<RemoveAnswer>(`/api/song/${id}/remove`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, confirm: id }),
+    }),
   peaks: (id: string) => json<{ peaks: number[] }>(`/api/peaks/${id}`)
 }
 

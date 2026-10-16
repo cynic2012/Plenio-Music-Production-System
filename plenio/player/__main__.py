@@ -55,7 +55,14 @@ def main(argv: list[str] | None = None) -> int:
     say(f"Plenio Player {__version__}: reading the songs of {', '.join(str(f) for f in folders)} ...")
     library.scan(force=True)
     say(f"{len(library.songs())} songs ({len(library.errors)} records could not be read)")
-    server = serve(library, State(directory / "state.json"), args.host, args.port)
+    try:
+        server = serve(library, State(directory / "state.json"), args.host, args.port)
+    except OSError as error:
+        say(
+            f"Port {args.port} on {args.host} is taken ({error.strerror or error}) - is the player already "
+            f"running? Open http://{args.host}:{args.port}/ or start it with --port {args.port + 1}."
+        )
+        return 1
     url = f"http://{args.host}:{server.server_address[1]}/"
     say(f"Plenio Player is running at {url} - stop it with Ctrl+C")
     if not args.no_browser:

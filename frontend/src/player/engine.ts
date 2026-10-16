@@ -176,6 +176,20 @@ export class Engine {
     if (!deck.main.paused) void deck.alt.play().catch(() => {})
   }
 
+  /** Let go of a song's files (before they are moved or deleted): its deck stops and forgets them. */
+  release(id: string): void {
+    for (const deck of this.decks) {
+      if (deck.id !== id) continue
+      for (const element of [deck.main, deck.alt]) {
+        element.pause()
+        element.removeAttribute('src')
+        element.load()
+      }
+      deck.id = null
+    }
+    this.emit()
+  }
+
   hasOriginal(): boolean {
     return !!this.deckNow?.alt.dataset.src
   }

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import re
 import threading
 from http import HTTPStatus
@@ -51,7 +52,7 @@ EMPTY_STATE: dict[str, Any] = {
 
 class State:
     """The listener's playlists, favourites, play counts and settings in one JSON file (outside the songs'
-    folders: the player never writes there)."""
+    folders, which the player changes only to remove a song)."""
 
     def __init__(self, path: Path):
         self.path = path
@@ -204,14 +205,35 @@ def make_handler(
                 target = static / "index.html"
             return self._file(target, cache="/assets/" in route)
 
+        def _from_this_page(self) -> bool:
+            """A request that changes something must come from the player's own page: JSON (another site's
+            page cannot send that without asking first, and this server never says yes) and, when the
+            browser names the page's origin, this one."""
+            if not (self.headers.get("Content-Type") or "").startswith("application/json"):
+                return False
+            origin = self.headers.get("Origin")
+            host = self.headers.get("Host") or ""
+            return origin is None or origin in (f"http://{host}", f"https://{host}")
+
+        def _body(self) -> bytes | None:
+            """The request's body, read before any answer (an answer with the body unread makes Windows
+            reset the connection); ``None`` when there is none or it is too large (the connection closes)."""
+            length = int(self.headers.get("Content-Length") or 0)
+            if length > STATE_LIMIT:
+                self.close_connection = True
+                return None
+            return self.rfile.read(length) if length > 0 else None
+
         def do_PUT(self) -> None:  # noqa: N802
+            body = self._body()
             if unquote(urlparse(self.path).path) != "/api/state":
                 return self._error(404, "not found")
-            length = int(self.headers.get("Content-Length") or 0)
-            if length <= 0 or length > STATE_LIMIT:
-                return self._error(413, "state too large")
+            if not self._from_this_page():
+                return self._error(403, "only from the player's page")
+            if body is None:
+                return self._error(413, "no state, or too large")
             try:
-                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                data = json.loads(body.decode("utf-8"))
             except ValueError:
                 return self._error(400, "not JSON")
             if not isinstance(data, dict):
@@ -220,10 +242,31 @@ def make_handler(
             return self._json({"ok": True})
 
         def do_POST(self) -> None:  # noqa: N802
-            if unquote(urlparse(self.path).path) == "/api/rescan":
+            raw = self._body()
+            route = unquote(urlparse(self.path).path)
+            if route == "/api/rescan":
                 library.scan(force=True)
                 return self._json({"songs": len(library.songs())})
-            return self._error(404, "not found")
+            match = re.fullmatch(r"/api/song/([0-9a-f]+)/remove", route)
+            if not match:
+                return self._error(404, "not found")
+            # retire or delete a song: from the player's page only, naming the song twice (in the address and
+            # in the body), so that no stray request removes one
+            if not self._from_this_page():
+                return self._error(403, "only from the player's page")
+            try:
+                body = json.loads(raw.decode("utf-8")) if raw else None
+            except ValueError:
+                body = None
+            if not isinstance(body, dict) or body.get("confirm") != match.group(1):
+                return self._error(400, "confirm the song's id")
+            if body.get("action") not in ("retire", "delete"):
+                return self._error(400, "action: retire or delete")
+            try:
+                result = library.remove(match.group(1), str(body["action"]))
+            except OSError as error:
+                return self._error(500, f"could not remove every file: {error}")
+            return self._json(result) if result else self._error(404, "no such song")
 
     return Handler
 
@@ -236,6 +279,9 @@ def serve(library: Library, state: State, host: str = "127.0.0.1", port: int = 8
 
     class Server(ThreadingHTTPServer):
         daemon_threads = True
+        # On Windows SO_REUSEADDR lets a second player bind the same port, and the first one keeps
+        # answering - a player started again would serve its old page. There the bind must fail instead.
+        allow_reuse_address = os.name != "nt"
 
         def server_bind(self) -> None:
             super().server_bind()

@@ -1,6 +1,6 @@
 """The Plenio Player's server (owner's request 2026-10-15): the songs of a folder from their release records,
-one song with its times and notation, the files in ranges, the listener's state - and it never writes into
-the songs' folder."""
+one song with its times and notation, the files in ranges, the listener's state - and it writes into the
+songs' folder only to retire or delete a song the listener removes (owner's request 2026-10-16)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,16 @@ from pathlib import Path
 
 import pytest
 
-from plenio.player.library import Library, brief_facts, parse_srt, prompt_facts, score_facts, song_detail
+from plenio.player.library import (
+    RETIRED_DIR,
+    Library,
+    brief_facts,
+    parse_srt,
+    prompt_facts,
+    remove_song,
+    score_facts,
+    song_detail,
+)
 from plenio.player.server import State, serve
 
 SCORE = """X:1
@@ -217,7 +226,11 @@ def test_the_state_is_kept_outside_the_songs_folder(server: tuple[str, int, Libr
     assert status == 200
     saved = json.loads(request(server, "GET", "/api/state")[2])
     assert saved["playlists"][0]["name"] == "Evening" and saved["favorites"] == ["a"] and "junk" not in saved
-    assert request(server, "PUT", "/api/state", b"[1, 2]")[0] == 400
+    assert request(server, "PUT", "/api/state", b"[1, 2]", **{"Content-Type": "application/json"})[0] == 400
+    # only the player's own page changes the state: JSON, and from this origin when one is named
+    assert request(server, "PUT", "/api/state", json.dumps(state).encode())[0] == 403
+    elsewhere = {"Content-Type": "application/json", "Origin": "http://evil.example"}
+    assert request(server, "PUT", "/api/state", json.dumps(state).encode(), **elsewhere)[0] == 403
     assert request(server, "POST", "/api/rescan")[0] == 200
     assert sorted(p.name for p in songs.rglob("*")) == before
 
@@ -239,3 +252,99 @@ def test_facts_from_a_score_a_prompt_and_subtitles() -> None:
     assert brief_facts({}) == {}
     cues = parse_srt("1\r\n00:01:02,500 --> 00:01:04,000\r\nhello\r\nthere\r\n")
     assert cues == [{"start": 62.5, "end": 64.0, "text": "hello\nthere"}]
+
+
+def add_song_with_stems(songs: Path) -> None:
+    folder = songs / "plenio"
+    files = [
+        {"name": "Song.flac", "format": "flac"},
+        {"name": "Song (lines).srt", "role": "subtitles", "subtitles": "lines"},
+        {"name": "Song-stems/vocals.flac", "role": "stem"},
+        {"name": "../outside.flac", "role": "original"},
+    ]
+    (folder / "Song.plenio.json").write_text(json.dumps({**record("Song"), "files": files}), encoding="utf-8")
+    (folder / "Song.flac").write_bytes(b"s" * 50)
+    (folder / "Song (lines).srt").write_text("1\n00:00:01,000 --> 00:00:02,000\nla\n", encoding="utf-8")
+    (folder / "Song-stems").mkdir()
+    (folder / "Song-stems" / "vocals.flac").write_bytes(b"v" * 20)
+
+
+def song_id_of(address: tuple[str, int, Library], title: str) -> str:
+    songs = json.loads(request(address, "GET", "/api/library")[2])["songs"]
+    return next(s["id"] for s in songs if s["title"] == title)
+
+
+def remove(address: tuple[str, int, Library], song: str, action: str, **headers: str) -> int:
+    body = json.dumps({"action": action, "confirm": song}).encode()
+    return request(
+        address, "POST", f"/api/song/{song}/remove", body, **{"Content-Type": "application/json", **headers}
+    )[0]
+
+
+def test_a_retired_song_moves_to_its_folder_and_leaves_the_library(
+    server: tuple[str, int, Library], songs: Path
+) -> None:
+    add_song_with_stems(songs)
+    server[2].scan(force=True)
+    song = song_id_of(server, "Song")
+    detail = json.loads(request(server, "GET", f"/api/song/{song}")[2])
+    assert sorted(detail["owned_files"]) == [
+        "Song (lines).srt",
+        "Song-stems/vocals.flac",
+        "Song.flac",
+        "Song.plenio.json",
+    ]
+    assert Path(detail["retire_to"]) == (songs / RETIRED_DIR / "plenio").resolve()
+    assert remove(server, song, "retire") == 200
+    retired = songs / RETIRED_DIR / "plenio"
+    assert (retired / "Song.plenio.json").is_file() and (retired / "Song-stems" / "vocals.flac").is_file()
+    assert not (songs / "plenio" / "Song.flac").exists() and not (songs / "plenio" / "Song-stems").exists()
+    assert (songs / "outside.flac").read_bytes() == b"secret"  # named by the record, but not in its folder
+    titles = [s["title"] for s in json.loads(request(server, "GET", "/api/library")[2])["songs"]]
+    assert "Song" not in titles and "River" in titles  # the library does not read the retired songs
+    assert request(server, "GET", f"/api/song/{song}")[0] == 404
+
+
+def test_a_song_retired_again_gets_a_folder_of_its_own(songs: Path) -> None:
+    library = Library([songs])
+    for _ in range(2):
+        add_song_with_stems(songs)
+        library.scan(force=True)
+        song = next(library.song(s["id"]) for s in library.songs() if s["title"] == "Song")
+        assert song is not None
+        result = remove_song(song, "retire")
+    retired = songs / RETIRED_DIR / "plenio"
+    assert (retired / "Song.flac").is_file()
+    assert (
+        Path(str(result["folder"])).parent == retired.resolve()
+        and (Path(str(result["folder"])) / "Song.flac").is_file()
+    )
+
+
+def test_a_deleted_song_is_gone(server: tuple[str, int, Library], songs: Path) -> None:
+    song = song_id_of(server, "Old")
+    assert remove(server, song, "delete") == 200
+    assert not list((songs / "plenio").glob("Old*")) and not (songs / RETIRED_DIR).exists()
+    assert (songs / "outside.flac").exists() and (songs / "plenio" / "River.flac").exists()
+
+
+def test_only_the_players_page_removes_a_song_and_only_the_one_it_names(
+    server: tuple[str, int, Library], songs: Path
+) -> None:
+    song = song_id_of(server, "River")
+    path = f"/api/song/{song}/remove"
+    body = json.dumps({"action": "delete", "confirm": song}).encode()
+    assert request(server, "POST", path, body)[0] == 403  # not JSON: what another site's page could send
+    assert remove(server, song, "delete", Origin="http://evil.example") == 403
+    other = json.dumps({"action": "delete", "confirm": "0123456789ab"}).encode()
+    assert request(server, "POST", path, other, **{"Content-Type": "application/json"})[0] == 400
+    assert remove(server, song, "burn") == 400
+    assert remove(server, "0123456789ab", "delete") == 404
+    assert (songs / "plenio" / "River.flac").exists()
+
+
+def test_a_second_player_on_a_taken_port_does_not_start(
+    server: tuple[str, int, Library], tmp_path: Path
+) -> None:
+    with pytest.raises(OSError):
+        serve(server[2], State(tmp_path / "other.json"), "127.0.0.1", server[1])

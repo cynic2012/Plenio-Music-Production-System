@@ -35,9 +35,13 @@ The browser opens at `http://127.0.0.1:8765/`. Stop the player with Ctrl+C.
 Instead of `--folder` you can set `PLENIO_PLAYER_FOLDER` (several folders separated by `;` on Windows, `:`
 elsewhere).
 
-**What it writes:** nothing in your song folders. Your playlists, favourites, play counts, settings and the
-waveforms it has worked out are saved in `~/.plenio/player` (or the folder in `PLENIO_PLAYER_STATE`).
-Copy that folder to take them to another computer.
+**What it writes:** your playlists, favourites, play counts, settings and the waveforms it has worked out
+are saved in `~/.plenio/player` (or the folder in `PLENIO_PLAYER_STATE`); copy that folder to take them to
+another computer. In your song folders it changes something only when you remove a song
+([see below](#remove-a-song)).
+
+If the port is taken - the player is already running, or another program uses 8765 - it says so and does
+not start; open the running one, or start it with `--port 8766`.
 
 New songs show up when you click **Look for new songs** in the sidebar, or reload the page.
 
@@ -51,6 +55,7 @@ cover. A right-click or ⋯ opens the song's menu:
 - **Start a radio of songs alike**: the song, then up to 40 songs like it
 - **Add to favourites**, or add it to a playlist
 - **Open the song's page**
+- **Remove from the library…** ([see below](#remove-a-song))
 
 **Search** looks through titles, lyrics, genres, moods, styles and briefs; every word you type must match.
 A line from the lyrics shows on the card when a word matches there. You can also narrow the search with
@@ -76,10 +81,12 @@ loudness, most played or recently played, and switch between a grid and a list.
 
 ## A song's page
 
-Click a title to open its page: the cover, the style, how often you played it, and these tabs:
+Click a title to open its page: the cover, the style, how often you played it, and these tabs. The page of
+the song that plays follows the music: when the next song starts, the page shows that one, on the same tab
+(on *Lyrics*, its live lyrics), and Back still leads to where you came from.
 
 - **Lyrics**: every line with the time it is sung. Click a line to hear the song from there. While the song
-  plays, the lyrics light up as they are sung.
+  plays, the lyrics light up as they are sung, and the line sung now stays in view.
 - **Notation**: the score with the lyrics under the notes. While the song plays, the notes light up as they
   sound and the sheet scrolls along. Click a note to jump there.
 - **Sheet music**: the PDF from Export Release, in the browser's PDF viewer.
@@ -175,6 +182,23 @@ this song.
 
 A song counts as played after 30 seconds.
 
+## Remove a song
+
+A song you do not want any more: **Remove…** (👎) on its page, or *Remove from the library…* in its menu.
+The dialog lists the song's files - the record, the audio of every take, the unmastered take, the cover,
+the sheet music, the subtitles, the stems - and offers two ways:
+
+- **Move to the retired songs**: the files go to `_retired` in the library folder, in the same subfolders
+  as before (`output/plenio/…` → `output/_retired/plenio/…`). The player does not read that folder. To have
+  the song back, move its files back and click **Look for new songs**. A song of the same name retired
+  before keeps its place: the next one gets a folder of its own, named after the time.
+- **Delete permanently**: the files are deleted, not moved to the recycle bin. The button asks once more
+  (*Yes, delete 7 files for good*).
+
+Either way the song leaves the queue, your playlists and your favourites. A song that is playing makes way
+for the next one first. Only files in the song's own folder are touched, never a file the record names
+elsewhere.
+
 ## Keys
 
 | Key | Does |
@@ -217,7 +241,6 @@ for 0.8.1, half the words were within 0.16 seconds and 82 % within half a second
 - The player plays what the browser can play: FLAC, MP3 and WAV work in Chrome, Edge and Firefox (and in
   Safari since version 11).
 - The sheet music tab uses the browser's PDF viewer. If your browser has none, use *Open the PDF*.
-- The player reads the release records; it does not change or delete songs. To delete a song, delete its files
-  and click **Look for new songs**.
+- The player does not edit songs. It moves or deletes their files only when you remove a song.
 - The player keeps a cache of the records it has read in its state folder, so on later starts it reads
   only new or changed records again.

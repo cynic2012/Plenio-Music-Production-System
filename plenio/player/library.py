@@ -2,17 +2,21 @@
 (``<name>.plenio.json``) with its files, the facts the library shows and searches, and - for one song - its
 documents, the notation and the times its lyrics are sung.
 
-Pure Python and ``plenio.core``; reads the folders, never writes into them.
+Pure Python and ``plenio.core``. It reads the folders and writes there only when the listener removes a
+song (owner's request 2026-10-16): its files go to the retired songs (``_retired`` in the library folder,
+which the library does not read) or are deleted for good.
 """
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import re
+import shutil
 import threading
 import time
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -21,7 +25,9 @@ from ..core import subtitles as subtitle_rules
 
 RECORD_SUFFIX = ".plenio.json"
 CACHE_VERSION = 3
-SKIP_DIRS = {".plenio-player", "__pycache__", ".git"}
+RETIRED_DIR = "_retired"
+"""Where removed songs go, below the library folder they were in; the library does not read it."""
+SKIP_DIRS = {".plenio-player", "__pycache__", ".git", RETIRED_DIR}
 AUDIO_KINDS = ("flac", "mp3", "wav")
 ENGINE_NAMES = {"yue2": "YuE2", "minimax_music3": "MiniMax Music 3", "minimax": "MiniMax Music 3"}
 RESOURCES = Path(__file__).resolve().parents[2] / "resources"
@@ -358,6 +364,10 @@ def song_detail(song: Song) -> dict[str, Any]:
         "lines": lines,
         "timing_source": source,
         "files": {kind: path.name for kind, path in song.files.items() if kind != "stems"},
+        "owned_files": [
+            path.relative_to(song.record.parent.resolve()).as_posix() for path in owned_files(song)
+        ],
+        "retire_to": str(retired_folder(song)),
         "record_path": str(song.record),
         "licences": record.get("licences") or [],
         "versions": record.get("versions") or {},
@@ -380,6 +390,79 @@ def _line_from_cues(cue: Mapping[str, Any], notes: Sequence[Mapping[str, Any]]) 
         "end": cue["end"],
         "units": units or [[cue["start"], len(text)]],
     }
+
+
+def owned_files(song: Song) -> list[Path]:
+    """Every file of the song in its record's folder: the record, the files it lists (the audio of every take,
+    the unmastered take, the cover, the sheet music, the subtitles, the stems) and the files Export Release
+    names after it. Nothing outside the record's folder."""
+    folder = song.record.parent.resolve()
+    record = json.loads(song.record.read_text(encoding="utf-8"))
+    candidates = [song.record]
+    for entry in record.get("files") or []:
+        name = _text(entry.get("name")) if isinstance(entry, Mapping) else ""
+        if name:
+            candidates.append(song.record.parent / name)
+    candidates.extend(path for kind, path in song.files.items() if kind != "stems")
+    found: list[Path] = []
+    seen: set[Path] = set()
+    for path in candidates:
+        resolved = path.resolve()
+        if resolved in seen or not resolved.is_file() or folder not in resolved.parents:
+            continue
+        seen.add(resolved)
+        found.append(resolved)
+    return found
+
+
+def retired_folder(song: Song) -> Path:
+    """Where the song's files go when it is retired: ``_retired`` below its library folder, in the same
+    subfolders as before (``output/plenio/x`` -> ``output/_retired/plenio/x``)."""
+    folder = song.record.parent.resolve()
+    root = song.root.resolve()
+    relative = folder.relative_to(root) if folder.is_relative_to(root) else Path(folder.name)
+    return root / RETIRED_DIR / relative
+
+
+def _retrying(action: Callable[[], object]) -> None:
+    # the server may be reading the file for the browser at this moment, and Windows refuses then
+    for attempt in range(8):
+        try:
+            action()
+            return
+        except PermissionError:
+            if attempt == 7:
+                raise
+            time.sleep(0.25)
+
+
+def remove_song(song: Song, action: str) -> dict[str, Any]:
+    """Retire the song (``retire``: its files moved to :func:`retired_folder`, subfolders kept) or delete its
+    files for good (``delete``). Empty subfolders the song leaves behind (its stems) go too."""
+    if action not in ("retire", "delete"):
+        raise ValueError(f"unknown action {action!r}")
+    folder = song.record.parent.resolve()
+    files = owned_files(song)
+    target = retired_folder(song)
+    if action == "retire" and any((target / f.relative_to(folder)).exists() for f in files):
+        # a song of the same name was retired before: this one gets a folder of its own
+        target = target / time.strftime("%Y-%m-%d %H%M%S")
+    done: list[str] = []
+    for path in files:
+        relative = path.relative_to(folder)
+        if action == "retire":
+            destination = target / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            _retrying(functools.partial(shutil.move, str(path), str(destination)))
+        else:
+            _retrying(path.unlink)
+        done.append(relative.as_posix())
+    for parent in sorted({p.parent for p in files if p.parent != folder}, key=lambda p: -len(p.parts)):
+        try:
+            parent.rmdir()  # only when empty
+        except OSError:
+            pass
+    return {"action": action, "files": done, "folder": str(target) if action == "retire" else None}
 
 
 def _spans(record: Mapping[str, Any]) -> list[list[int]]:
@@ -422,7 +505,7 @@ class Library:
             if not root.exists():
                 continue
             for path in sorted(root.rglob(f"*{RECORD_SUFFIX}")):
-                if not SKIP_DIRS.intersection(path.parts):
+                if not SKIP_DIRS.intersection(path.relative_to(root).parts):
                     yield root, path
 
     def scan(self, *, force: bool = False, every: float = 15.0) -> None:
@@ -474,3 +557,13 @@ class Library:
     def song(self, song_id: str) -> Song | None:
         self.scan()
         return self._songs.get(song_id)
+
+    def remove(self, song_id: str, action: str) -> dict[str, Any] | None:
+        """Retire or delete a song (:func:`remove_song`) and read the folders again; ``None``: no such song."""
+        song = self.song(song_id)
+        if song is None:
+            return None
+        try:
+            return remove_song(song, action)
+        finally:
+            self.scan(force=True)

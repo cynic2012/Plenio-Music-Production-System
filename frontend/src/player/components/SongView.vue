@@ -9,7 +9,7 @@ import { computed, ref, watch } from 'vue'
 import { media, type SongDetail } from '../api'
 import { engine } from '../engine'
 import { lineIndex, sections } from '../now'
-import { byId, current, go, isFavorite, library, playSongAt, playSongs, playing, songDetail, state, time, toggleFavorite } from '../store'
+import { byId, current, go, isFavorite, library, playSongAt, playSongs, playing, removing, songDetail, state, time, toggleFavorite } from '../store'
 import { formatTime, sectionName } from '../timing'
 import { similarSongs, takesOf } from '../similar'
 import CoverArt from './CoverArt.vue'
@@ -45,6 +45,15 @@ watch(
     if (tab.value === 'sheet' && !song.value?.has.pdf) tab.value = 'lyrics'
   },
   { immediate: true }
+)
+
+// The page of the song that plays follows the music: when the next song starts, it shows that one (the tab
+// stays - on Lyrics, its live lyrics), in place of the last, so Back still leads where you came from.
+watch(
+  () => current.value?.id,
+  (now, before) => {
+    if (now && before && now !== before && props.id === before) go(`/song/${now}`, true)
+  }
 )
 
 const takes = computed(() => (song.value ? takesOf(song.value, library.value) : []))
@@ -159,6 +168,7 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
           <button class="primary" @click="play"><Icon :name="isCurrent && playing ? 'pause' : 'play'" /> {{ isCurrent && playing ? 'Pause' : 'Play' }}</button>
           <button class="ghost" :class="{ on: isFavorite(song.id) }" @click="toggleFavorite(song.id)"><Icon name="heart" :filled="isFavorite(song.id)" /> {{ isFavorite(song.id) ? 'Favourite' : 'Add to favourites' }}</button>
           <button class="ghost" @click="menu = { x: $event.clientX, y: $event.clientY }"><Icon name="plus" /> Playlist, queue …</button>
+          <button class="ghost down" title="Remove the song from the library: to the retired songs, or deleted" @click="removing = song"><Icon name="thumbdown" /> Remove…</button>
         </div>
         <p class="meta">
           <span>{{ formatTime(song.seconds) }}</span>
@@ -327,6 +337,10 @@ h1 {
 }
 .actions .on {
   color: #ff5f8f;
+}
+.actions .down:hover {
+  border-color: #ff8f8f;
+  color: #ff8f8f;
 }
 .meta {
   display: flex;

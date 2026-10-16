@@ -4,7 +4,7 @@
  * it, the lines before it fading upwards, the next ones waiting below; a click on a line jumps there. A
  * song without measured times shows its lyrics still.
  */
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { TimedLine } from '../api'
 import { engine } from '../engine'
@@ -16,14 +16,35 @@ const box = ref<HTMLElement | null>(null)
 const active = computed(() => lineAt(props.lines, props.time))
 const on = computed(() => lineOn(props.lines, active.value, props.time))
 
-watch(active, async (i) => {
-  await nextTick()
-  const el = box.value?.querySelector<HTMLElement>(`[data-line="${i}"]`)
+/** Scroll the line sung now to its place in the box (40 % down, 35 % when compact). Measured against the
+ * box itself: offsetTop counts from the nearest positioned ancestor - on the song's page that is the whole
+ * page, header included, and the line slid out of view. */
+function center(smooth = true): void {
   const host = box.value
-  if (!el || !host) return
-  const target = el.offsetTop - host.clientHeight * (props.compact ? 0.35 : 0.4) + el.clientHeight / 2
-  host.scrollTo({ top: target, behavior: 'smooth' })
+  const el = host?.querySelector<HTMLElement>(`[data-line="${Math.max(0, active.value)}"]`)
+  if (!host || !el) return
+  const top = el.getBoundingClientRect().top - host.getBoundingClientRect().top + host.scrollTop
+  const target = top - host.clientHeight * (props.compact ? 0.35 : 0.4) + el.offsetHeight / 2
+  host.scrollTo({ top: Math.max(0, target), behavior: smooth ? 'smooth' : 'auto' })
+}
+
+watch(active, async () => {
+  await nextTick()
+  center()
 })
+// a new song, or the box shown again (a tab, a view): straight to the line sung now
+watch(() => props.lines, async () => {
+  await nextTick()
+  center(false)
+})
+let observer: ResizeObserver | null = null
+onMounted(async () => {
+  await nextTick()
+  center(false)
+  observer = new ResizeObserver(() => center(false))
+  if (box.value) observer.observe(box.value)
+})
+onBeforeUnmount(() => observer?.disconnect())
 
 const stanzas = computed(() => (props.plain ?? '').split(/\n\s*\n/).map((s) => s.split('\n')))
 </script>
