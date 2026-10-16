@@ -8,7 +8,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { SongSummary } from '../api'
 import { library, playSongs, settings, state } from '../store'
 import { countOf, formatTime } from '../timing'
-import { lyricsSnippet, parseQuery, score, sortSongs, topValues, words, type SortKey } from '../search'
+import { compareVersions, lyricsSnippet, parseQuery, score, sortSongs, topValues, versionOf, words, type SortKey } from '../search'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 import SongCard from './SongCard.vue'
@@ -71,8 +71,23 @@ const facets = computed(() => {
     { key: 'lang', label: 'Language', values: topValues(all, (s) => [s.language.toLowerCase()], 6) },
     { key: 'mode', label: 'Creative mode', values: topValues(all, (s) => [s.arrangement && s.arrangement !== 'off' ? s.arrangement : ''], 8) },
     { key: 'year', label: 'Year', values: topValues(all, (s) => [s.year], 4) },
+    { key: 'plenio', label: 'Plenio version', values: versionSteps(all) },
   ].filter((f) => f.values.length > 1 || f.key === 'model')
 })
+/** "from 0.8.1", "from 0.8.0" ...: the versions the songs were made with (newest first), each with how many
+ * songs are that version or newer - for an archive that still holds songs of older versions. */
+function versionSteps(all: typeof base.value): [string, number][] {
+  const versions = new Map<string, number[]>()
+  for (const song of all) {
+    const v = versionOf(song.plenio)
+    if (v) versions.set(v.join('.'), v)
+  }
+  const sorted = [...versions.values()].sort((a, b) => compareVersions(b, a))
+  return sorted.slice(0, 8).map((v) => [`from ${v.join('.')}`, all.filter((s) => {
+    const have = versionOf(s.plenio)
+    return have !== null && compareVersions(have, v) >= 0
+  }).length])
+}
 const chipValue = (key: string, value: string): string => `${key}:"${value}"`
 /** ``genre:"dance-pop"`` -> ``Genre: dance-pop`` (the active filters' row). */
 function chipLabel(chip: string): string {

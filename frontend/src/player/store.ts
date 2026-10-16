@@ -506,17 +506,36 @@ engine.on(() => {
   time.value = engine.time
   duration.value = engine.duration
 })
+/** Near the end of a song: the next one (fading over), or this one again (repeat one, at its very end). */
+function nearEnd(): void {
+  if (!current.value || !playing.value || fadingOut || engine.duration <= 0) return
+  const left = engine.duration - engine.time
+  const lead = settings.repeat === 'one' ? 0.05 : Math.max(0.05, settings.crossfade)
+  if (left <= lead) toNext()
+}
+function toNext(): void {
+  fadingOut = true
+  void next(true).finally(() => window.setTimeout(() => (fadingOut = false), 400))
+}
+// a song that ended without the page noticing in time (a tab in the background has no frames): on we go
+engine.onEnded(() => {
+  if (!fadingOut) toNext()
+})
+// in the background the page's frames stop, its timers do not (a page that plays sound is not held back)
+window.setInterval(() => {
+  if (document.hidden) {
+    sleepTick()
+    nearEnd()
+  }
+}, 250)
+
 function tick(): void {
   time.value = engine.time
   sleepTick()
   engine.keepInStep()
   const song = current.value
   if (song && playing.value) {
-    const left = engine.duration - engine.time
-    if (engine.duration > 0 && left <= Math.max(0.05, settings.crossfade) && settings.repeat !== 'one' && !fadingOut) {
-      fadingOut = true
-      void next(true).finally(() => window.setTimeout(() => (fadingOut = false), 400))
-    }
+    nearEnd()
     if (counted !== song.id && engine.time > 30) {
       counted = song.id
       state.plays[song.id] = (state.plays[song.id] ?? 0) + 1

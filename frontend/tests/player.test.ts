@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { SongSummary, TimedLine } from '../src/player/api'
-import { lyricsSnippet, parseQuery, score, sortSongs, topValues } from '../src/player/search'
+import { lyricsSnippet, parseQuery, score, sortSongs, topValues, versionTest } from '../src/player/search'
 import { similarSongs, takesOf } from '../src/player/similar'
 import { anchorsOf, audioToScore, chunksAt, countOf, formatTime, lineAt, scoreToAudio, sectionAt, sectionsInSong } from '../src/player/timing'
 import { chooseVisual, songMoods, withDefaults } from '../src/player/visuals/chooser'
@@ -131,6 +131,21 @@ describe('search', () => {
     expect(pick('album:nights')).toEqual(['o'])
     expect(pick('someone')).toEqual(['o'])
     expect(pick('model:master')).toEqual(['c'])
+  })
+
+  it('keeps only the songs of a Plenio version and newer, for an archive with older ones', () => {
+    const made = (id: string, plenio: string) => song({ id, plenio })
+    const archive = [made('old', '0.5.0'), made('mid', '0.7.0'), made('new', '0.8.1'), made('none', ''), { ...made('other', ''), other: true }]
+    const pick = (query: string): string[] => archive.filter((s) => score(s, parseQuery(query), context) > 0).map((s) => s.id)
+    expect(pick('plenio:"from 0.7.0"')).toEqual(['mid', 'new'])
+    expect(pick('plenio:>=0.8')).toEqual(['new'])
+    expect(pick('version:<0.7')).toEqual(['old'])
+    expect(pick('plenio:0.5-0.7')).toEqual(['old', 'mid'])
+    expect(pick('plenio:0.8')).toEqual(['new'])
+    expect(pick('plenio:0.7.0')).toEqual(['mid'])
+    expect(versionTest('>0.8.0', '0.8.1')).toBe(true)
+    expect(versionTest('>=0.10', '0.9.4')).toBe(false) // numbers, not text
+    expect(versionTest('>=0.1', '')).toBe(false)
   })
 
   it('ranks title hits above lyrics hits and sorts', () => {

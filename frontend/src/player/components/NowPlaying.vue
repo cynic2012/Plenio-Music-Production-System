@@ -151,6 +151,9 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
           <button class="play" @click="engine.toggle()"><Icon :name="playing ? 'pause' : 'play'" :size="28" /></button>
           <button class="icon-btn" @click="next()"><Icon name="next" :size="24" /></button>
           <button v-if="current" class="icon-btn" :class="{ on: isFavorite(current.id) }" @click="toggleFavorite(current.id)"><Icon name="heart" :filled="isFavorite(current.id)" /></button>
+          <button class="icon-btn repeat" :class="{ on: settings.repeat !== 'off' }" :title="{ all: 'Repeat the whole playlist (R)', one: 'Repeat this song (R)', off: 'No repeat (R)' }[settings.repeat]" @click="settings.repeat = settings.repeat === 'all' ? 'one' : settings.repeat === 'one' ? 'off' : 'all'">
+            <Icon name="repeat" /><i v-if="settings.repeat === 'one'">1</i>
+          </button>
         </div>
         <span class="t">{{ formatTime(duration) }}</span>
       </div>
@@ -196,6 +199,16 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
 }
 .view-notation .visual.dim {
   opacity: 0.12;
+}
+.repeat {
+  position: relative;
+}
+.repeat i {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  font: 700 9px var(--font);
+  font-style: normal;
 }
 .top {
   grid-row: 1;

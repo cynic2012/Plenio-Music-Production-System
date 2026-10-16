@@ -16,6 +16,7 @@ const FIELDS: Record<string, string> = {
   genre: 'genre', g: 'genre', mood: 'mood', bpm: 'bpm', tempo: 'bpm', key: 'key', model: 'model', m: 'model',
   year: 'year', lang: 'language', language: 'language', vocals: 'vocals', mode: 'mode', arrangement: 'mode',
   len: 'len', length: 'len', is: 'is', has: 'has', title: 'title', lyrics: 'lyrics', style: 'style', artist: 'artist', album: 'album',
+  plenio: 'plenio', version: 'plenio',
   template: 'template', writer: 'writer', meter: 'meter',
 }  // prettier-ignore
 
@@ -66,6 +67,43 @@ export function score(song: SongSummary, terms: Term[], context: Context): numbe
   return total
 }
 
+/** ``0.8.1`` -> ``[0, 8, 1]`` (``null``: no version - other music, or a record from before versions). */
+export function versionOf(text: string | undefined): number[] | null {
+  const match = /^(\d+)\.(\d+)(?:\.(\d+))?/.exec(text ?? '')
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3] ?? 0)] : null
+}
+
+export function compareVersions(a: number[], b: number[]): number {
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] - b[i]
+  return 0
+}
+
+/** A song's Plenio version against ``>=0.8``, ``from 0.8.0``, ``>0.7``, ``<0.8``, ``0.6-0.7`` or ``0.8.1``
+ * (that version; ``0.8``: any 0.8.x). A song without a version never matches. */
+export function versionTest(query: string, version: string | undefined): boolean {
+  const have = versionOf(version)
+  if (!have) return false
+  const q = query.trim().replace(/^from\s+/i, '>=')
+  const range = /^(\d+\.\d+(?:\.\d+)?)\s*-\s*(\d+\.\d+(?:\.\d+)?)$/.exec(q)
+  if (range) {
+    const low = versionOf(range[1]) as number[]
+    const high = versionOf(range[2]) as number[]
+    const highParts = range[2].split('.').length
+    return compareVersions(have, low) >= 0 && (highParts === 2 ? compareVersions(have.slice(0, 2).concat(0), high) <= 0 : compareVersions(have, high) <= 0)
+  }
+  const op = /^(>=|<=|>|<|=)?\s*(\d+\.\d+(?:\.\d+)?)$/.exec(q)
+  if (!op) return false
+  const want = versionOf(op[2]) as number[]
+  const c = compareVersions(have, want)
+  switch (op[1]) {
+    case '>=': return c >= 0
+    case '<=': return c <= 0
+    case '>': return c > 0
+    case '<': return c < 0
+    default: return op[2].split('.').length === 2 ? have[0] === want[0] && have[1] === want[1] : c === 0
+  }
+} // prettier-ignore
+
 function matches(song: SongSummary, term: Term, context: Context): number {
   const v = fold(term.value)
   const has = (text: string | undefined): boolean => !!text && fold(text).includes(v)
@@ -82,6 +120,7 @@ function matches(song: SongSummary, term: Term, context: Context): number {
     case 'len': return numberTest(term.value, song.seconds / 60) ? 2 : 0
     case 'meter': return has(song.score_meter) || has(song.brief.meter) ? 2 : 0
     case 'is': return v === 'fav' || v === 'favorite' ? (context.favorites.has(song.id) ? 2 : 0) : v === 'cover' ? (song.kind === 'cover' ? 2 : 0) : v === 'other' ? (song.other ? 2 : 0) : v === 'plenio' ? (song.other ? 0 : 2) : 0
+    case 'plenio': return versionTest(term.value, song.plenio) ? 2 : 0
     case 'artist': return has(song.artist) || has(song.tags.artist) ? 3 : 0
     case 'album': return has(song.album) || has(song.tags.album) ? 3 : 0
     case 'has': return (song.has as Record<string, boolean>)[v] ? 2 : 0

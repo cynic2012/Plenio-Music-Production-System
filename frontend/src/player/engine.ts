@@ -39,6 +39,7 @@ export class Engine {
   private started = performance.now()
   private lastFrame = performance.now()
   private listeners = new Set<Listener>()
+  private endListeners = new Set<Listener>()
   private fading: number | null = null
   ab = false
   rate = 1
@@ -88,7 +89,17 @@ export class Engine {
         el.addEventListener(type, () => this.emit())
       }
     }
+    // the song that plays came to its end (not one fading out under the next)
+    main.addEventListener('ended', () => {
+      if (this.deckNow?.main === main) for (const listener of this.endListeners) listener()
+    })
     return { main, alt, gain, mainGain, altGain, id: null }
+  }
+
+  /** When the song that plays ends - also in a tab in the background, where the page's frames stop. */
+  onEnded(listener: Listener): () => void {
+    this.endListeners.add(listener)
+    return () => this.endListeners.delete(listener)
   }
 
   on(listener: Listener): () => void {

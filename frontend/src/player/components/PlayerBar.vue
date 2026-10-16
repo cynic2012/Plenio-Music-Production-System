@@ -31,6 +31,12 @@ import Icon from './Icon.vue'
 import VisualCanvas from './VisualCanvas.vue'
 import Waveform from './Waveform.vue'
 
+/** What the repeat button does now - and a click goes on to the next of the three. */
+const REPEAT_TITLES = {
+  all: 'Repeat the whole playlist (the queue starts again) - click: repeat this song (R)',
+  one: 'Repeat this song - click: no repeat (R)',
+  off: 'No repeat: the music stops after the last song - click: repeat the whole playlist (R)',
+} as const
 const emit = defineEmits<{ queue: []; visual: [] }>()
 const RATES = [0.75, 0.85, 1, 1.1, 1.25]
 
@@ -78,7 +84,7 @@ function volume(event: Event): void {
           <Icon :name="playing ? 'pause' : 'play'" :size="22" />
         </button>
         <button class="icon-btn" title="Next" @click="next()"><Icon name="next" /></button>
-        <button class="icon-btn repeat" :class="{ on: settings.repeat !== 'off' }" :title="`Repeat: ${settings.repeat} (R)`" @click="cycleRepeat">
+        <button class="icon-btn repeat" :class="{ on: settings.repeat !== 'off' }" :title="REPEAT_TITLES[settings.repeat]" @click="cycleRepeat">
           <Icon name="repeat" /><i v-if="settings.repeat === 'one'">1</i>
         </button>
       </div>

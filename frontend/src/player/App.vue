@@ -97,7 +97,7 @@ const KEYS: [string, string][] = [
   ['N', 'Another visual'],
   ['L', 'Favourite'],
   ['S', 'Shuffle'],
-  ['R', 'Repeat: all, one, off'],
+  ['R', 'Repeat: the whole playlist, this song, off'],
   ['B', 'A/B: master or unmastered take'],
   ['M', 'Mute'],
   ['Q', 'The queue'],
@@ -173,7 +173,7 @@ function onKey(event: KeyboardEvent): void {
       break
     case 'r':
       settings.repeat = settings.repeat === 'all' ? 'one' : settings.repeat === 'one' ? 'off' : 'all'
-      say(`Repeat ${settings.repeat}`)
+      say({ all: 'Repeat: the whole playlist', one: 'Repeat: this song', off: 'Repeat off' }[settings.repeat])
       break
     case 'b':
       toggleAB()
