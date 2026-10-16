@@ -27,13 +27,19 @@ export interface Scene {
   draw(ctx: CanvasRenderingContext2D, frame: Frame, width: number, height: number, colors: Colors): void
 }
 
+/** How a scene is made: Plenio Drop's visuals can draw with a renderer of their own (a video made while the
+ * player shows visuals too) at a quality of its own. */
+export interface SceneOptions {
+  drop?: { renderer: () => import('./drop/renderer').DropRenderer | null; scale: number }
+}
+
 export interface Preset {
   id: string
   name: string
   blurb: string
   /** What music it suits: energetic, calm, acoustic, electronic, dark. */
   suits: string[]
-  create(): Scene
+  create(options?: SceneOptions): Scene
   /** A Plenio Drop preset (``source``: built in, or one of the listener's; ``file``: its preset file). */
   kind?: 'drop'
   source?: 'builtin' | 'mine'

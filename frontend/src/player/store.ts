@@ -30,6 +30,8 @@ export interface Settings {
   filters: Record<string, LibraryFilter>
   /** Live Play: on, where new songs go, whether they join by themselves, what happens at the end. */
   live: LiveSettings
+  /** The last settings of *Save as a video* (size, visual, lyrics ...). */
+  video: Record<string, unknown>
 }
 
 export interface LibraryFilter {
@@ -53,6 +55,7 @@ const DEFAULT_SETTINGS: Settings = {
   comfyui: '',
   filters: {},
   live: liveWithDefaults(null),
+  video: {},
 }
 
 /** Saved filters, checked (a file edited by hand or an older version may hold anything). */
@@ -296,6 +299,8 @@ export const duration = ref(0)
 export const nowPlayingOpen = ref(false)
 /** Live Play ran out with *wait for the next new song*: the next one plays as soon as it comes. */
 export const liveWaiting = ref(false)
+/** The song *Save as a video* is open for. */
+export const videoFor = shallowRef<SongSummary | null>(null)
 
 /** A short message at the top of the page (App.vue shows it). */
 export const toast = ref('')

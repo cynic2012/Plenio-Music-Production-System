@@ -54,6 +54,13 @@ function toggleOther(path: string): void {
 }
 onMounted(readFolders)
 
+// the videos made (Save as a video on a song's page)
+const videos = ref<{ folder: string; files: { name: string; size: number; mtime: number }[] } | null>(null)
+onMounted(async () => {
+  videos.value = await api.videos().catch(() => null)
+})
+const megabytes = (bytes: number): string => `${Math.max(1, Math.round(bytes / 2 ** 20))} MB`
+
 const found = ref<ComfyFound | null>(null)
 const looking = ref(false)
 const confirmReset = ref(false)
@@ -188,6 +195,20 @@ async function stop(): Promise<void> {
         The folders are kept with the player (<code>library.json</code>), also when ComfyUI starts it. Removed songs go to <code>{{ info?.retired ?? '_retired' }}</code> in their folder, which the player does not read.
       </p>
       <FolderBrowser v-if="browsing" @choose="addFolder" @close="browsing = false" />
+    </section>
+
+    <section class="block">
+      <h3><Icon name="layers" /> Videos</h3>
+      <p class="lead">A song as an MP4 video - its visual, lyrics and notation: <b>Video…</b> on a song's page. {{ videos?.files.length ? countOf(videos.files.length, 'video') + ' so far:' : 'None yet.' }}</p>
+      <ul v-if="videos?.files.length" class="videos">
+        <li v-for="v in videos.files.slice(0, 12)" :key="v.name">
+          <span>{{ v.name }} <small>{{ megabytes(v.size) }} · {{ new Date(v.mtime * 1000).toLocaleString() }}</small></span>
+          <a class="icon-btn" :href="`/videos/${encodeURIComponent(v.name)}`" target="_blank" rel="noopener" title="Watch"><Icon name="play" :size="16" /></a>
+          <a class="icon-btn" :href="`/videos/${encodeURIComponent(v.name)}?download=1`" :download="v.name" title="Download"><Icon name="download" :size="16" /></a>
+        </li>
+      </ul>
+      <button class="ghost small" @click="api.openVideos()"><Icon name="folder" :size="14" /> Open the videos folder</button>
+      <p v-if="videos" class="hint"><code>{{ videos.folder }}</code></p>
     </section>
 
     <section class="block">
@@ -344,6 +365,26 @@ code {
   font-size: 12px;
   white-space: nowrap;
   cursor: pointer;
+}
+.videos {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.videos li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.videos span {
+  flex: 1;
+  min-width: 0;
+}
+.videos small {
+  color: var(--muted);
+  margin-left: 6px;
 }
 .row-buttons {
   display: flex;

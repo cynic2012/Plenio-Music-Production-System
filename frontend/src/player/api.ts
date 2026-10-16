@@ -182,6 +182,14 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T
 }
 
+/** A JSON request that changes something; errors carry the server's words. */
+async function post<T>(url: string, body: unknown): Promise<T> {
+  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const data = await response.json().catch(() => null)
+  if (!response.ok) throw new Error(data?.error ?? `${url}: ${response.status}`)
+  return data as T
+}
+
 export const api = {
   library: () => json<LibraryAnswer>('/api/library'),
   song: (id: string) => json<SongDetail>(`/api/song/${id}`),
@@ -207,6 +215,16 @@ export const api = {
     }),
   peaks: (id: string) => json<{ peaks: number[] }>(`/api/peaks/${id}`),
   folders: () => json<FoldersAnswer>('/api/folders'),
+  videoStart: (body: { song: string; take: string; start: number; length: number; fps: number; width: number; height: number }) =>
+    post<{ job: string }>('/api/video', body),
+  videoData: async (job: string, data: Uint8Array<ArrayBuffer>): Promise<void> => {
+    const response = await fetch(`/api/video/${job}/data`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Plenio-Player': '1' }, body: data })
+    if (!response.ok) throw new Error((await response.json().catch(() => null))?.error ?? `the video could not be sent (${response.status})`)
+  },
+  videoFinish: (job: string, frames: number) => post<{ file: string; size: number; folder: string }>(`/api/video/${job}/finish`, { frames }),
+  videoCancel: (job: string) => post<{ ok: boolean }>(`/api/video/${job}/cancel`, {}),
+  videos: () => json<{ folder: string; files: { name: string; size: number; mtime: number }[] }>('/api/videos'),
+  openVideos: () => post<{ folder: string }>('/api/videos/open', {}),
   /** The songs that appeared since ``since`` (the last answer's ``now``; ``null``: only the ``now``). */
   newSongs: (since: number | null) => json<{ now: number; songs: SongSummary[] }>(`/api/new${since !== null ? `?since=${since}` : ''}`),
   /** Save the folders (or ``null``: back to the ones it started with); errors carry the server's words. */

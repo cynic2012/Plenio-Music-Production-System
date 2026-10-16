@@ -26,6 +26,7 @@ import {
   state,
   time,
   toggleFavorite,
+  videoFor,
 } from '../store'
 import { formatTime, sectionName } from '../timing'
 import { similarSongs, takesOf } from '../similar'
@@ -205,6 +206,7 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
           <button class="ghost" :class="{ on: isFavorite(song.id) }" @click="toggleFavorite(song.id)"><Icon name="heart" :filled="isFavorite(song.id)" /> {{ isFavorite(song.id) ? 'Favourite' : 'Add to favourites' }}</button>
           <button class="ghost" @click="menu = { x: $event.clientX, y: $event.clientY }"><Icon name="plus" /> Playlist, queue …</button>
           <button v-if="!song.other" class="ghost" :disabled="opening" title="Open the song's workflow in ComfyUI - with its lyrics, score and settings - to work on it" @click="toComfyUI"><Icon name="external" /> {{ opening ? 'Opening ComfyUI …' : 'Open in ComfyUI' }}</button>
+          <button class="ghost" title="Save the song as an MP4 video: a visual, its lyrics, its notation …" @click="videoFor = song"><Icon name="layers" /> Video…</button>
           <button class="ghost down" title="Remove the song from the library: to the retired songs, or deleted" @click="removing = song"><Icon name="thumbdown" /> Remove…</button>
         </div>
         <p class="meta">

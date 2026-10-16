@@ -485,11 +485,12 @@ export class DropRenderer {
   }
 
   /** One frame: warp, draw, composite. Returns the canvas to draw (at ``scale`` of width x height). */
-  render(frame: Frame, colors: { palette(): Uint8ClampedArray }, width: number, height: number): HTMLCanvasElement {
+  render(frame: Frame, colors: { palette(): Uint8ClampedArray }, width: number, height: number, quality?: number): HTMLCanvasElement {
     const gl = this.gl
-    const scale = Math.max(0.35, Math.min(1, dropOptions.scale))
-    const w = Math.max(2, Math.min(1920, Math.round(width * scale)))
-    const h = Math.max(2, Math.min(1200, Math.round(height * scale)))
+    const scale = Math.max(0.35, Math.min(1, quality ?? dropOptions.scale))
+    // the feedback at most 1920 across (2560 for a video in 4K): beyond that it is only drawn larger
+    const w = Math.max(2, Math.min(quality ? 2560 : 1920, Math.round(width * scale)))
+    const h = Math.max(2, Math.min(quality ? 2560 : 1200, Math.round(height * scale)))
     this.resize(w, h)
     const m = this.listener.update(frame)
     m.aspect = w / h

@@ -5,7 +5,7 @@
  */
 import { shallowRef } from 'vue'
 
-import type { Preset, Scene } from '../presets'
+import type { Preset, Scene, SceneOptions } from '../presets'
 import { BUILTIN, randomPreset } from './builtin'
 import { FormulaError, compilePreset, slug, type PresetFile } from './format'
 import { dropRenderer, type DropDef } from './renderer'
@@ -23,12 +23,12 @@ function asVisual(id: string, file: PresetFile, make: () => [DropDef, PresetFile
     kind: 'drop',
     source,
     file,
-    create(): Scene {
+    create(options?: SceneOptions): Scene {
       const [def, made] = make()
-      playingFile.value = made
+      if (!options?.drop) playingFile.value = made
       return {
         draw(ctx, frame, width, height, colors) {
-          const renderer = dropRenderer()
+          const renderer = options?.drop ? options.drop.renderer() : dropRenderer()
           if (!renderer) {
             ctx.fillStyle = '#05040a'
             ctx.fillRect(0, 0, width, height)
@@ -38,7 +38,7 @@ function asVisual(id: string, file: PresetFile, make: () => [DropDef, PresetFile
             return
           }
           renderer.use(def, frame.time)
-          ctx.drawImage(renderer.render(frame, colors, width, height), 0, 0, width, height)
+          ctx.drawImage(renderer.render(frame, colors, width, height, options?.drop?.scale), 0, 0, width, height)
         },
       }
     },

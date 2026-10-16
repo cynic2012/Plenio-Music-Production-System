@@ -17,13 +17,14 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from .. import __version__
 from . import folders as folder_choice
 from . import other as other_music
 from .library import RETIRED_DIR, Library, song_detail
 from .peaks import peaks
+from .video import VideoJobs, videos_dir
 from .visuals import list_presets, open_folder, save_copy, visuals_dir
 
 STATIC = Path(__file__).resolve().parent / "static"
@@ -41,9 +42,11 @@ MEDIA_KINDS = {
 }
 STATE_LIMIT = 4 * 2**20
 NEW_SONGS_EVERY = 2.0
+VIDEO_FPS = (24, 25, 30, 50, 60)
+VIDEO_MAX_SIDE = 3840
 """Live Play asks every few seconds for new songs: the folders are read again at most this often."""
 CHUNK = 256 * 1024
-TYPES = {".flac": "audio/flac", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".srt": "text/plain; charset=utf-8",
+TYPES = {".mp4": "video/mp4", ".flac": "audio/flac", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".srt": "text/plain; charset=utf-8",
          ".json": "application/json", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".js": "text/javascript",
          ".mjs": "text/javascript", ".css": "text/css", ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
          ".png": "image/png", ".woff2": "font/woff2"}  # fmt: skip
@@ -122,6 +125,8 @@ def make_handler(
     """The requests' handler; with ``hosts`` it answers only requests addressed to one of them (a player on
     the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding)."""
 
+    jobs = VideoJobs(videos_dir(state.path.parent))
+
     def folders_answer() -> dict[str, Any]:
         counts = library.counts()
         return {
@@ -166,7 +171,7 @@ def make_handler(
         def _error(self, status: int, message: str) -> None:
             self._json({"error": message}, status)
 
-        def _file(self, path: Path, *, cache: bool = False) -> None:
+        def _file(self, path: Path, *, cache: bool = False, download: str = "") -> None:
             if not path.is_file():
                 return self._error(404, "not found")
             size = path.stat().st_size
@@ -198,6 +203,8 @@ def make_handler(
             self.send_header("Accept-Ranges", "bytes")
             self.send_header("Content-Length", str(end - start + 1))
             self.send_header("Cache-Control", "max-age=86400" if cache else "no-cache")
+            if download:
+                self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{quote(download)}")
             self.end_headers()
             if self.command == "HEAD":
                 return
@@ -267,6 +274,13 @@ def make_handler(
                 return self._json(state.read())
             if route == "/api/folders":
                 return self._json(folders_answer())
+            if route == "/api/videos":
+                return self._json({"folder": str(jobs.folder), "files": jobs.listing()})
+            if route.startswith("/videos/"):
+                video = jobs.file(route.removeprefix("/videos/"))
+                if video is None:
+                    return self._error(404, "no such video")
+                return self._file(video, download=video.name if query.get("download") else "")
             if route == "/api/new":
                 # Live Play: the songs that appeared since the last answer's "now" (the folders read again,
                 # at most every two seconds); without "since" just the "now" to start from
@@ -328,6 +342,15 @@ def make_handler(
             host = self.headers.get("Host") or ""
             return origin is None or origin in (f"http://{host}", f"https://{host}")
 
+        def _binary_from_this_page(self) -> bool:
+            """A binary upload from the player's own page: a header another site's page cannot send without
+            asking first (and this server never says yes), and - when the browser names it - this origin."""
+            origin = self.headers.get("Origin")
+            host = self.headers.get("Host") or ""
+            return self.headers.get("X-Plenio-Player") == "1" and (
+                origin is None or origin in (f"http://{host}", f"https://{host}")
+            )
+
         def _body(self) -> bytes | None:
             """The request's body, read before any answer (an answer with the body unread makes Windows
             reset the connection); ``None`` when there is none or it is too large (the connection closes)."""
@@ -379,12 +402,89 @@ def make_handler(
             library.set_folders([f.path for f in chosen], [f.path for f in chosen if f.other])
             return self._json(folders_answer())
 
+        def _video(self, route: str, raw: bytes | None) -> None:
+            """A song made into a video: start (the song, the part, the size), the H.264 stream in pieces,
+            finish (the MP4 put together with the song's sound), cancel; and the videos folder shown."""
+            data_route = re.fullmatch(r"/api/video/([0-9a-f]{16})/data", route)
+            if data_route:
+                if not self._binary_from_this_page():
+                    return self._error(403, "only from the player's page")
+                if raw is None:
+                    return self._error(413, "no data, or too large")
+                try:
+                    return self._json({"bytes": jobs.append(data_route.group(1), raw)})
+                except KeyError:
+                    return self._error(404, "no such video")
+                except (OSError, ValueError) as error:
+                    return self._error(400, str(error))
+            if not self._from_this_page():
+                return self._error(403, "only from the player's page")
+            try:
+                body = json.loads(raw.decode("utf-8")) if raw else {}
+            except ValueError:
+                return self._error(400, "not JSON")
+            if not isinstance(body, dict):
+                return self._error(400, "not JSON")
+            if route == "/api/videos/open":
+                try:
+                    open_folder(jobs.folder)
+                except OSError as error:
+                    return self._error(500, str(error))
+                return self._json({"folder": str(jobs.folder)})
+            if route == "/api/video":
+                song = library.song(str(body.get("song", "")))
+                if song is None:
+                    return self._error(404, "no such song")
+                audio = song.files.get("original") if body.get("take") == "original" else None
+                audio = audio or song.files.get("audio")
+                if audio is None:
+                    return self._error(400, "the song has no audio")
+                try:
+                    fps, width, height = int(body["fps"]), int(body["width"]), int(body["height"])
+                    start, length = float(body.get("start") or 0.0), float(body["length"])
+                except (KeyError, TypeError, ValueError):
+                    return self._error(400, "fps, width, height, start and length")
+                if fps not in VIDEO_FPS or not (
+                    16 <= width <= VIDEO_MAX_SIDE and 16 <= height <= VIDEO_MAX_SIDE
+                ):
+                    return self._error(400, f"a frame rate of {VIDEO_FPS} and a size up to {VIDEO_MAX_SIDE}")
+                if start < 0 or not 0 < length <= 4 * 3600:
+                    return self._error(400, "a part of the song")
+                job = jobs.start(
+                    {
+                        "song": song.id,
+                        "title": song.summary.get("title") or "song",
+                        "audio": str(audio),
+                        "fps": fps,
+                        "width": width,
+                        "height": height,
+                        "start": start,
+                        "length": length,
+                    }
+                )
+                return self._json({"job": job})
+            action = re.fullmatch(r"/api/video/([0-9a-f]{16})/(finish|cancel)", route)
+            if not action:
+                return self._error(404, "not found")
+            try:
+                if action.group(2) == "cancel":
+                    jobs.cancel(action.group(1))
+                    return self._json({"ok": True})
+                made = jobs.finish(action.group(1), int(body.get("frames") or 0))
+            except KeyError:
+                return self._error(404, "no such video")
+            except Exception as error:  # noqa: BLE001 - PyAV's errors are many; the page shows the reason
+                return self._error(500, f"could not make the video: {error}")
+            return self._json({"file": made.name, "size": made.stat().st_size, "folder": str(jobs.folder)})
+
         def do_POST(self) -> None:  # noqa: N802
             raw = self._body()
             route = unquote(urlparse(self.path).path)
             if route == "/api/rescan":
                 library.scan(force=True)
                 return self._json({"songs": len(library.songs())})
+            if route == "/api/video" or route.startswith("/api/video/") or route == "/api/videos/open":
+                return self._video(route, raw)
             if route in ("/api/visuals/copy", "/api/visuals/open"):
                 if not self._from_this_page():
                     return self._error(403, "only from the player's page")

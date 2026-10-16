@@ -13,6 +13,7 @@ import PlaylistView from './components/PlaylistView.vue'
 import PlaylistsView from './components/PlaylistsView.vue'
 import SettingsView from './components/SettingsView.vue'
 import LiveView from './components/LiveView.vue'
+import VideoDialog from './components/VideoDialog.vue'
 import QueuePanel from './components/QueuePanel.vue'
 import RemoveDialog from './components/RemoveDialog.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -38,6 +39,7 @@ import {
   settings,
   toggleAB,
   toggleFavorite,
+  videoFor,
   toggleMute,
 } from './store'
 import { loadMyPresets } from './visuals/drop'
@@ -238,6 +240,7 @@ onBeforeUnmount(() => {
       </template>
     </main>
     <PlayerBar class="playerbar" @queue="queueOpen = !queueOpen" @visual="visualFullscreen" />
+    <VideoDialog v-if="videoFor" :song="videoFor" @close="videoFor = null" />
     <Transition name="slide"><QueuePanel v-if="queueOpen" class="queue" @close="queueOpen = false" /></Transition>
     <Transition name="np"><NowPlaying v-if="nowPlayingOpen" ref="nowPlaying" /></Transition>
     <Transition name="fade">
