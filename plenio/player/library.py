@@ -13,6 +13,7 @@ from __future__ import annotations
 import functools
 import hashlib
 import json
+import os
 import re
 import shutil
 import threading
@@ -35,6 +36,12 @@ ENGINE_NAMES = {"yue2": "YuE2", "minimax_music3": "MiniMax Music 3", "minimax": 
 RESOURCES = Path(__file__).resolve().parents[2] / "resources"
 SEED_TITLES = {"take seed": "take", "draft seed": "draft", "arrangement seed": "arrangement"}
 _SRT_TIME = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)\s*-->\s*(\d+):(\d+):(\d+)[,.](\d+)")
+
+
+def _appeared(stat: os.stat_result) -> float:
+    """When a file appeared here: written (mtime) or, for a file copied or moved in with its old time, put
+    here (ctime: its creation on Windows, its last change of place elsewhere)."""
+    return max(stat.st_mtime, stat.st_ctime)
 
 
 def song_id(path: Path, root: Path) -> str:
@@ -529,6 +536,9 @@ class Library:
         self._songs: dict[str, Song] = {}
         self._cache: dict[str, Any] = {}
         self._scanned = 0.0
+        # when each song appeared (its record's or file's time), and the wall clock at the last scan's start
+        self._appeared: dict[str, float] = {}
+        self.scan_started = 0.0
         self.errors: list[str] = []
         if cache and cache.exists():
             try:
@@ -577,6 +587,8 @@ class Library:
         with self._lock:
             if not force and time.monotonic() - self._scanned < every:
                 return
+            started = time.time()
+            appeared: dict[str, float] = {}
             songs: dict[str, Song] = {}
             cache: dict[str, Any] = {}
             errors: list[str] = []
@@ -593,6 +605,7 @@ class Library:
                         record = json.loads(path.read_text(encoding="utf-8"))
                         song = summarize(record, path, root)
                     songs[song.id] = song
+                    appeared[song.id] = _appeared(stat)
                     cache[key] = {
                         "stamp": stamp,
                         "summary": song.summary,
@@ -613,6 +626,7 @@ class Library:
                         summary, files = other_music.summarize_other(path, root, song_id(path, root))
                     song = Song(summary["id"], path, root, summary, files, other=True)
                     songs[song.id] = song
+                    appeared[song.id] = _appeared(stat)
                     cache[key] = {
                         "stamp": stamp,
                         "other": True,
@@ -622,6 +636,8 @@ class Library:
                 except (OSError, ValueError, KeyError, TypeError) as error:
                     errors.append(f"{path.name}: {error}")
             self._songs, self._cache, self.errors = songs, cache, errors
+            self._appeared = appeared
+            self.scan_started = started
             self._scanned = time.monotonic()
             if self.cache_path:
                 try:
@@ -631,6 +647,16 @@ class Library:
                     temp.replace(self.cache_path)
                 except OSError:
                     pass
+
+    def newer(self, since: float) -> list[dict[str, Any]]:
+        """The songs that appeared after ``since`` (the wall clock, as :attr:`scan_started` gives it), oldest
+        first - for Live Play, which adds the songs ComfyUI makes while the music plays."""
+        found = [
+            (at, self._songs[i].summary)
+            for i, at in self._appeared.items()
+            if at > since and i in self._songs
+        ]
+        return [summary for _, summary in sorted(found, key=lambda x: x[0])]
 
     def counts(self) -> dict[Path, list[int]]:
         """Per folder: its Plenio songs and its other music."""

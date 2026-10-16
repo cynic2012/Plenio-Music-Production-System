@@ -3,7 +3,7 @@
 import { computed, ref } from 'vue'
 
 import { vFocus } from '../focus'
-import { folders, go, lastSaved, library, newPlaylist, rescan, route, saveError, state } from '../store'
+import { folders, go, lastSaved, library, newPlaylist, rescan, route, saveError, settings, state } from '../store'
 import Icon from './Icon.vue'
 
 const naming = ref(false)
@@ -16,6 +16,7 @@ const LINKS = [
   ['/top', 'Most played', 'star'],
   ['/recent', 'Recently played', 'clock'],
   ['/playlists', 'Playlists', 'playlist'],
+  ['/live', 'Live Play', 'live'],
 ] as const
 const counts = computed<Record<string, number>>(() => ({
   '/': library.value.length,
@@ -48,7 +49,7 @@ async function scan(): Promise<void> {
       <span>Plenio <b>Player</b></span>
     </a>
     <a v-for="[path, label, icon] in LINKS" :key="path" class="link" :class="{ on: route === path }" @click="go(path)">
-      <Icon :name="icon" :size="18" /> {{ label }} <small>{{ counts[path] || '' }}</small>
+      <Icon :name="icon" :size="18" /> {{ label }} <small v-if="path === '/live' && settings.live.on" class="on-air">LIVE</small><small v-else>{{ counts[path] || '' }}</small>
     </a>
 
     <h4>Playlists <button class="icon-btn" title="New playlist" @click="naming = !naming"><Icon name="plus" :size="16" /></button></h4>
@@ -143,6 +144,20 @@ async function scan(): Promise<void> {
 .link.on {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
   color: #fff;
+}
+.link small.on-air {
+  color: #fff;
+  background: #e5484d;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  animation: on-air 1.6s ease-in-out infinite;
+}
+@keyframes on-air {
+  50% {
+    opacity: 0.55;
+  }
 }
 .link small {
   margin-left: auto;

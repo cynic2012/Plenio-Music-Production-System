@@ -40,6 +40,8 @@ MEDIA_KINDS = {
     "audio_wav",
 }
 STATE_LIMIT = 4 * 2**20
+NEW_SONGS_EVERY = 2.0
+"""Live Play asks every few seconds for new songs: the folders are read again at most this often."""
 CHUNK = 256 * 1024
 TYPES = {".flac": "audio/flac", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".srt": "text/plain; charset=utf-8",
          ".json": "application/json", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".js": "text/javascript",
@@ -265,6 +267,16 @@ def make_handler(
                 return self._json(state.read())
             if route == "/api/folders":
                 return self._json(folders_answer())
+            if route == "/api/new":
+                # Live Play: the songs that appeared since the last answer's "now" (the folders read again,
+                # at most every two seconds); without "since" just the "now" to start from
+                library.scan(every=NEW_SONGS_EVERY)
+                try:
+                    since = float(query.get("since", ""))
+                except ValueError:
+                    since = None
+                songs = library.newer(since) if since is not None else []
+                return self._json({"now": library.scan_started, "songs": songs})
             if route == "/api/dirs":
                 # the folder browser of the Settings page: only for the player's own page (another page
                 # cannot send this header without asking first, and this server never says yes)

@@ -6,6 +6,7 @@ import { computed, reactive, ref, shallowRef, watch } from 'vue'
 
 import { api, media, type Playlist, type PlayerInfo, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary } from './api'
 import { engine } from './engine'
+import { type LiveSettings, liveWithDefaults } from './liveSettings'
 import { type VisualSettings, withDefaults } from './visuals/chooser'
 
 export interface Settings {
@@ -27,6 +28,8 @@ export interface Settings {
   comfyui: string
   /** The library's search and filter chips, per view (``all``, ``favorites``, ``top``, ``recent``). */
   filters: Record<string, LibraryFilter>
+  /** Live Play: on, where new songs go, whether they join by themselves, what happens at the end. */
+  live: LiveSettings
 }
 
 export interface LibraryFilter {
@@ -49,6 +52,7 @@ const DEFAULT_SETTINGS: Settings = {
   songTab: 'lyrics',
   comfyui: '',
   filters: {},
+  live: liveWithDefaults(null),
 }
 
 /** Saved filters, checked (a file edited by hand or an older version may hold anything). */
@@ -132,7 +136,7 @@ export async function replaceState(data: Partial<PlayerState> | null): Promise<v
   state.plays = fresh.plays && typeof fresh.plays === 'object' ? fresh.plays : {}
   state.last_played = fresh.last_played && typeof fresh.last_played === 'object' ? fresh.last_played : {}
   const stored = (fresh.settings ?? {}) as Partial<Settings>
-  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters) })
+  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live) })
   engine.setVolume(settings.volume)
   engine.setRate(settings.rate)
   await saveNow()
@@ -147,7 +151,7 @@ export async function load(): Promise<void> {
     info.value = about
     Object.assign(state, saved)
     const stored = (saved.settings ?? {}) as Partial<Settings>
-    Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters) })
+    Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live) })
     engine.setVolume(settings.volume)
     engine.setRate(settings.rate)
     loadError.value = ''
@@ -290,6 +294,8 @@ export const playing = ref(false)
 export const time = ref(0)
 export const duration = ref(0)
 export const nowPlayingOpen = ref(false)
+/** Live Play ran out with *wait for the next new song*: the next one plays as soon as it comes. */
+export const liveWaiting = ref(false)
 
 /** A short message at the top of the page (App.vue shows it). */
 export const toast = ref('')
@@ -453,7 +459,13 @@ export async function next(auto = false): Promise<void> {
   }
   let i = index.value + 1
   if (i >= queue.value.length) {
-    if (settings.repeat === 'off' && auto) {
+    if (settings.live.on && settings.live.atEnd === 'wait' && auto) {
+      // Live Play waits for the next song ComfyUI makes
+      engine.pause()
+      liveWaiting.value = true
+      return
+    }
+    if (settings.repeat === 'off' && auto && !settings.live.on) {
       engine.pause()
       return
     }

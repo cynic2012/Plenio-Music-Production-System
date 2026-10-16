@@ -12,6 +12,7 @@ import PlayerBar from './components/PlayerBar.vue'
 import PlaylistView from './components/PlaylistView.vue'
 import PlaylistsView from './components/PlaylistsView.vue'
 import SettingsView from './components/SettingsView.vue'
+import LiveView from './components/LiveView.vue'
 import QueuePanel from './components/QueuePanel.vue'
 import RemoveDialog from './components/RemoveDialog.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -40,6 +41,7 @@ import {
   toggleMute,
 } from './store'
 import { loadMyPresets } from './visuals/drop'
+import './live'
 
 const queueOpen = ref(false)
 const help = ref(false)
@@ -53,6 +55,7 @@ const page = computed(() => {
   if (first === 'playlist' && second) return { kind: 'playlist' as const, id: decodeURIComponent(second) }
   if (first === 'playlists') return { kind: 'playlists' as const }
   if (first === 'settings') return { kind: 'settings' as const }
+  if (first === 'live') return { kind: 'live' as const }
   if (first === 'favorites' || first === 'top' || first === 'recent') return { kind: 'library' as const, collection: first as 'favorites' | 'top' | 'recent' }
   return { kind: 'library' as const, collection: 'all' as const }
 })
@@ -230,6 +233,7 @@ onBeforeUnmount(() => {
         <PlaylistView v-else-if="page.kind === 'playlist'" :id="page.id" />
         <PlaylistsView v-else-if="page.kind === 'playlists'" />
         <SettingsView v-else-if="page.kind === 'settings'" />
+        <LiveView v-else-if="page.kind === 'live'" />
         <LibraryView v-else ref="libraryView" :key="page.collection" :collection="page.collection" />
       </template>
     </main>

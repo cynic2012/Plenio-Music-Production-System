@@ -207,6 +207,8 @@ export const api = {
     }),
   peaks: (id: string) => json<{ peaks: number[] }>(`/api/peaks/${id}`),
   folders: () => json<FoldersAnswer>('/api/folders'),
+  /** The songs that appeared since ``since`` (the last answer's ``now``; ``null``: only the ``now``). */
+  newSongs: (since: number | null) => json<{ now: number; songs: SongSummary[] }>(`/api/new${since !== null ? `?since=${since}` : ''}`),
   /** Save the folders (or ``null``: back to the ones it started with); errors carry the server's words. */
   setFolders: async (folders: { path: string; other: boolean }[] | null): Promise<FoldersAnswer> => {
     const response = await fetch('/api/folders', {

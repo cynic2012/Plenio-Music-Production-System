@@ -446,3 +446,21 @@ def test_the_listeners_own_visuals_are_read_from_the_state_folder_and_a_copy_nev
     bad = json.dumps({"name": "x", "text": "{not json"}).encode()
     assert request(server, "POST", "/api/visuals/copy", bad, **json_header)[0] == 400
     assert len(list(folder.glob("*.json"))) == 3
+
+
+def test_live_play_hears_of_the_songs_made_while_it_plays(
+    server: tuple[str, int, Library], songs: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # owner's request 2026-10-16: a song ComfyUI exports during a party joins the live playlist
+    from plenio.player import server as server_module
+
+    monkeypatch.setattr(server_module, "NEW_SONGS_EVERY", 0.0)
+    start = json.loads(request(server, "GET", "/api/new")[2])
+    assert start["songs"] == [] and start["now"] > 0
+    assert json.loads(request(server, "GET", f"/api/new?since={start['now']}")[2])["songs"] == []
+    (songs / "plenio" / "Fresh.flac").write_bytes(b"x" * 100)
+    (songs / "plenio" / "Fresh.plenio.json").write_text(json.dumps(record("Fresh")), encoding="utf-8")
+    later = json.loads(request(server, "GET", f"/api/new?since={start['now']}")[2])
+    assert [s["title"] for s in later["songs"]] == ["Fresh"] and later["now"] >= start["now"]
+    # asked again from the new "now": nothing new
+    assert json.loads(request(server, "GET", f"/api/new?since={later['now']}")[2])["songs"] == []

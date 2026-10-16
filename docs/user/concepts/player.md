@@ -287,6 +287,36 @@ this song.
 
 A song counts as played after 30 seconds.
 
+## Live Play: make songs at a party, and they play
+
+**Live Play** (in the sidebar) is a playlist that plays while you change it - and the songs you make in
+ComfyUI join it as soon as **Export Release** has written them. Make songs while the party goes on; a moment
+after each export it is in the playlist.
+
+**Start** it with the queue as it is, with a playlist, with the newest 10-100 songs, or empty (it waits for
+the first song ComfyUI makes). While it runs, *LIVE* shows in the sidebar and in the bar at the bottom.
+
+**Change it while it plays:**
+
+- drag a song to another place (⠿), or drop it at the end
+- ▶ plays a song now, ↑ plays it next, × takes it out
+- **Add songs**: search the library and add a song *next* or *at the end*
+- *Played* lists the last songs; **Again** plays one once more after the song that plays
+- **Save as a playlist** keeps it
+
+**New songs from ComfyUI** (switch off *join by themselves* to only be told of them):
+
+- **next** - right after the song that plays (several new songs in the order they came)
+- **at the end**
+- **anywhere, at random** - somewhere after the song that plays
+
+A message says where each new song went, *Arrived from ComfyUI* lists them, and a red **new** mark shows on
+them (here and in the library) for a quarter of an hour.
+
+**At the end** Live Play starts again **from the top**, or **waits for the next new song** and plays it the
+moment it comes. Live Play stays on when you close the page and open it again, and so do its rules. The
+player asks for new songs every few seconds; it reads its folders again for it, at most every two seconds.
+
 ## Continue a song in ComfyUI
 
 **Open in ComfyUI** on a song's page (or in its menu) opens ComfyUI in a browser tab with the song's

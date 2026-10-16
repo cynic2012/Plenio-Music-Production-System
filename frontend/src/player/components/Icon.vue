@@ -4,6 +4,9 @@ const props = defineProps<{ name: string; size?: number; filled?: boolean }>()
 
 const PATHS: Record<string, string> = {
   play: 'M7 4.5v15l12.5-7.5z',
+  live: 'M10.5 12a1.5 1.5 0 103 0 1.5 1.5 0 10-3 0M8.5 8.5a5 5 0 000 7M15.5 8.5a5 5 0 010 7M5.6 5.6a9 9 0 000 12.8M18.4 5.6a9 9 0 010 12.8',
+  grip: 'M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01',
+  up: 'M12 19V5M6 11l6-6 6 6',
   pause: 'M7 4h3.5v16H7zM13.5 4H17v16h-3.5z',
   next: 'M5 5l10 7-10 7zM17 5h2.5v14H17z',
   prev: 'M19 5L9 12l10 7zM4.5 5H7v14H4.5z',

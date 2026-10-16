@@ -2,6 +2,7 @@
 /** A song in the library: its cover with a play button, the title, genre and length; playing, it moves. A click
  * opens the song's page (▶ plays, and so does a double click in the list). */
 import type { SongSummary } from '../api'
+import { isNew } from '../live'
 import { current, go, isFavorite, playing } from '../store'
 import { formatTime } from '../timing'
 import CoverArt from './CoverArt.vue'
@@ -36,6 +37,7 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
       </p>
       <p v-if="snippet" class="snippet">“{{ snippet }}”</p>
       <p class="tags">
+        <span v-if="isNew(song.id)" class="tag new" title="Made while Live Play was on">new</span>
         <span v-if="song.other" class="tag other" title="Not made with Plenio: it plays with what its file has">other music</span>
         <span v-if="song.model" class="tag model">{{ song.model.replace('MiniMax Music 3', 'MiniMax') }}</span>
         <span v-if="song.kind === 'cover'" class="tag">cover</span>
@@ -175,6 +177,11 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
   border-radius: 99px;
   background: rgba(255, 255, 255, 0.07);
   color: rgba(255, 255, 255, 0.7);
+}
+.tag.new {
+  color: #fff;
+  border-color: transparent;
+  background: #e5484d;
 }
 .tag.other {
   color: #ffd9a0;

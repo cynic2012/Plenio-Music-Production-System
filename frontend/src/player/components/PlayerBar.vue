@@ -90,6 +90,7 @@ function volume(event: Event): void {
     </div>
 
     <div class="right">
+      <button v-if="settings.live.on" class="live-pill" title="Live Play: new songs from ComfyUI join as they are made" @click="go('/live')">LIVE</button>
       <div class="mini" title="Now playing (F)" @click="nowPlayingOpen = true">
         <VisualCanvas mini />
         <button class="mini-full" title="The visual, full screen (Shift+F)" @click.stop="emit('visual')"><Icon name="expand" :size="14" /></button>
@@ -262,6 +263,16 @@ function volume(event: Event): void {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+}
+.live-pill {
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 8px;
+  background: #e5484d;
+  color: #fff;
+  font: 700 11px var(--font);
+  letter-spacing: 0.6px;
+  cursor: pointer;
 }
 .mini {
   position: relative;
