@@ -232,6 +232,9 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
   // the page that is recorded; switchTo() follows a tab it opens (ComfyUI's Plenio Player button, the
   // player's Open in ComfyUI)
   let page = await context.newPage()
+  // a rehearsal (PLENIO_TUTORIAL_REHEARSE=1): every pause at most a fifth of a second - a quick run through a
+  // script, to find what it cannot click before a long take (the take it makes is not for the edit)
+  const idle = (ms) => page.waitForTimeout(process.env.PLENIO_TUTORIAL_REHEARSE ? Math.min(ms, 200) : ms)
   context.on('page', (p) => p.on('pageerror', (e) => log('page error:', String(e).slice(0, 300))))
   page.on('pageerror', (e) => log('page error:', String(e).slice(0, 300)))
 
@@ -318,7 +321,7 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     for (let i = 1; i <= steps; i++) {
       const e = ease(i / steps)
       await page.mouse.move(from.x + (x - from.x) * e, from.y + (y - from.y) * e)
-      await page.waitForTimeout(dur / steps)
+      await idle(dur / steps)
     }
     mouse = { x, y }
   }
@@ -340,25 +343,25 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
   }
   async function click(target, { fx = 0.5, fy = 0.5, ms, pause = 180, button = 'left', count = 1 } = {}) {
     const p = await hover(target, { fx, fy, ms })
-    await page.waitForTimeout(pause)
+    await idle(pause)
     sfx('click', { count })
     await page.mouse.click(p.x, p.y, { button, clickCount: count, delay: 60 })
-    await page.waitForTimeout(250)
+    await idle(250)
     return p
   }
   // a neutral place for the pointer (no hover tooltips, no highlighted buttons)
   const rest = (ms = 700) => moveTo(width * 0.55, height * 0.55, ms)
   async function drag(from, to, { ms = 900, hold = 150 } = {}) {
     await moveTo(from.x, from.y)
-    await page.waitForTimeout(150)
+    await idle(150)
     sfx('press')
     await page.mouse.down()
-    await page.waitForTimeout(hold)
+    await idle(hold)
     await moveTo(to.x, to.y, ms)
-    await page.waitForTimeout(hold)
+    await idle(hold)
     sfx('release')
     await page.mouse.up()
-    await page.waitForTimeout(300)
+    await idle(300)
   }
   async function type(text, { delay = 45 } = {}) {
     sfx('type', { chars: text.length, delay })
@@ -371,7 +374,7 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
       await page.evaluate(([l, ms]) => window.__tut.keys(l, ms), [shown, 1400])
       sfx('key', { n: shown.length })
       await page.keyboard.press(combo)
-      await page.waitForTimeout(gap)
+      await idle(gap)
     }
   }
   async function spotlight(target, { ms = 1600, pad = 6 } = {}) {
@@ -400,9 +403,9 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     markers.fast.push(seg)
     return () => { seg.t1 = now() }
   }
-  const wait = (ms) => page.waitForTimeout(ms)
+  const wait = (ms) => idle(ms)
   // read slowly: a pause that scales with the caption's length
-  const read = (text, min = 2200) => page.waitForTimeout(Math.max(min, 900 + (text?.length ?? 60) * 42))
+  const read = (text, min = 2200) => idle(Math.max(min, 900 + (text?.length ?? 60) * 42))
   async function say(text, min) {
     caption(text)
     await read(text, min)
@@ -411,7 +414,7 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
   // --- another page (the Plenio Player) ---
   async function openPage(route = '') {
     await page.goto(url + route, { waitUntil: 'load' })
-    await page.waitForTimeout(1500)
+    await idle(1500)
   }
 
   // --- ComfyUI ---
@@ -419,7 +422,7 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     await page.goto(url, { waitUntil: 'networkidle' })
     await page.waitForFunction(() => window.app && window.app.graph && window.app.api, null, { timeout: 120000 })
     await page.evaluate(CAMERA)
-    await page.waitForTimeout(1500)
+    await idle(1500)
     await page.keyboard.press('Escape')
   }
   const fly = (rect, ms = 1100, pad = 0.94) => {
@@ -437,9 +440,9 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     await click(() => widgetBox(nodeId, name), { fx: 0.72 })
     const entry = page.locator('.litecontextmenu .litemenu-entry', { hasText: value }).first()
     await entry.waitFor({ state: 'visible', timeout: 5000 })
-    await page.waitForTimeout(pauseMs)
+    await idle(pauseMs)
     await click(entry)
-    await page.waitForTimeout(300)
+    await idle(300)
   }
 
   // Pull a canvas slider to `value`: the pointer drags along it, then the exact value is set (a canvas
@@ -450,7 +453,7 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     const at = (v) => ({ x: box.x + 12 + (box.width - 24) * ((v - min) / (max - min)), y: box.y + box.height / 2 })
     await drag(at(current), at(value), { ms })
     await page.evaluate(([n, w, v]) => window.__tut.setWidget(n, w, v), [nodeId, name, value])
-    await page.waitForTimeout(400)
+    await idle(400)
   }
   // A widget's value now.
   const widgetValue = (nodeId, name) => page.evaluate(([n, w]) => window.__tut.node(n).widgets.find((x) => x.name === w)?.value, [nodeId, name])
@@ -493,10 +496,10 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
         onStage?.(top)
       }
       if (!state.running && Date.now() - started > 1500) break
-      await page.waitForTimeout(250)
+      await idle(250)
     }
     end?.()
-    await page.waitForTimeout(600)
+    await idle(600)
     const error = await page.evaluate(() => window.__tut.error ?? null)
     if (error) throw new Error('the run failed: ' + JSON.stringify(error).slice(0, 600))
     const stop = await page.evaluate(() => window.__tut.stop)

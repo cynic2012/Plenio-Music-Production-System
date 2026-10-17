@@ -229,7 +229,7 @@ export default async function player(s) {
   await talk(s, 'And the visual, full screen, with the lyrics as subtitles. The controls fade out while the mouse rests.', 8000)
 
   s.chapter('Visuals')
-  await s.click(page.locator('.np .top .tools .icon-btn').nth(1))
+  await s.click(page.locator('.np .top .tools .icon-btn[title^="Visuals"]'))
   await s.wait(700)
   await talk(s, 'The visuals’ settings.', 2400)
   await s.hover(page.locator('.vpanel .mode').nth(0))
