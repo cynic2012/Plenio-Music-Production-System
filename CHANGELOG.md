@@ -20,6 +20,7 @@ All notable changes of the current version and the one before. Versions follow s
 ### Fixed
 
 - A player started from ComfyUI for a state folder of its own read the default state folder's chosen music folders (`launch.start_player` now hands the folder to the player).
+- ComfyUI's **Plenio Player** button took any player running on the player's ports - also one started for another state folder, with another library; it now takes the player of its own state folder and starts one when there is none.
 
 ## 1.0.0 - 2026-10-16
 
