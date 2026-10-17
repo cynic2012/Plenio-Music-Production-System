@@ -19,6 +19,7 @@ import QueuePanel from './components/QueuePanel.vue'
 import RemoveDialog from './components/RemoveDialog.vue'
 import Sidebar from './components/Sidebar.vue'
 import SongView from './components/SongView.vue'
+import Icon from './components/Icon.vue'
 import GuestWayIn from './components/GuestWayIn.vue'
 import { guestBig, loadGuests } from './guests'
 import { api } from './api'
@@ -52,6 +53,12 @@ import { isPortable } from './portable'
 
 const queueOpen = ref(false)
 const help = ref(false)
+/** The bar's height: the queue ends above it (the bar is taller in a narrow window). */
+const bar = ref<InstanceType<typeof PlayerBar> | null>(null)
+const barHeight = ref(96)
+let barWatch: ResizeObserver | undefined
+/** The sidebar as a drawer in a narrow window (below 860 px it has no room of its own); a new page closes it. */
+const drawer = ref(false)
 const main = ref<HTMLElement | null>(null)
 const libraryView = ref<InstanceType<typeof LibraryView> | null>(null)
 const nowPlaying = ref<InstanceType<typeof NowPlaying> | null>(null)
@@ -66,6 +73,7 @@ const page = computed(() => {
   if (first === 'favorites' || first === 'top' || first === 'recent') return { kind: 'library' as const, collection: first as 'favorites' | 'top' | 'recent' }
   return { kind: 'library' as const, collection: 'all' as const }
 })
+watch(page, () => (drawer.value = false))
 // a page opens at its top - except a library page you come back to, which is where you left it
 const scrolls = new Map<string, number>()
 watch(route, (now, before) => {
@@ -212,6 +220,11 @@ function visualFullscreen(): void {
 let presetTimer: number | undefined
 onMounted(() => {
   window.addEventListener('keydown', onKey)
+  const el = bar.value?.$el as HTMLElement | undefined
+  if (el && typeof ResizeObserver !== 'undefined') {
+    barWatch = new ResizeObserver(() => (barHeight.value = Math.round(el.getBoundingClientRect().height)))
+    barWatch.observe(el)
+  }
   void loadMyPresets()
   // the guests' access as it was left: on, the page tells the guests what plays again
   void loadGuests()
@@ -221,14 +234,17 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
+  barWatch?.disconnect()
   clearInterval(presetTimer)
 })
 </script>
 
 <template>
-  <div class="app" :class="{ 'no-side': !settings.sidebar }" :style="paletteStyle">
+  <div class="app" :class="{ 'no-side': !settings.sidebar }" :style="[paletteStyle, { '--bar-height': `${barHeight}px` }]">
     <div class="ambient" />
-    <Sidebar v-if="settings.sidebar" class="sidebar" />
+    <Sidebar v-if="settings.sidebar" class="sidebar" :class="{ open: drawer }" />
+    <button class="menu-btn icon-btn" :class="{ open: drawer }" :title="drawer ? 'Close the menu' : 'Menu: songs, playlists, Live Play, settings'" @click="drawer = !drawer"><Icon :name="drawer ? 'close' : 'list'" /></button>
+    <div v-if="drawer" class="drawer-veil" @click="drawer = false" />
     <main ref="main" class="main">
       <div v-if="loading && !library.length" class="splash">
         <span class="logo"><i /><i /><i /><i /><i /></span>
@@ -247,7 +263,7 @@ onBeforeUnmount(() => {
         <LibraryView v-else ref="libraryView" :key="page.collection" :collection="page.collection" />
       </template>
     </main>
-    <PlayerBar class="playerbar" @queue="queueOpen = !queueOpen" @visual="visualFullscreen" />
+    <PlayerBar ref="bar" class="playerbar" @queue="queueOpen = !queueOpen" @visual="visualFullscreen" />
     <VideoDialog v-if="videoFor" :song="videoFor" @close="videoFor = null" />
     <ShareDialog v-if="shareFor" :songs="shareFor.songs" :title="shareFor.title" @close="shareFor = null" />
     <Transition name="slide"><QueuePanel v-if="queueOpen" class="queue" @close="queueOpen = false" /></Transition>
@@ -272,13 +288,14 @@ onBeforeUnmount(() => {
   position: fixed;
   inset: 0;
   display: grid;
-  grid-template-columns: 240px 1fr;
-  grid-template-rows: 1fr auto;
+  /* minmax(0, ...): a wide child scrolls or wraps inside the page instead of widening it */
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas: 'side main' 'bar bar';
   background: #0a0910;
 }
 .app.no-side {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-areas: 'main' 'bar';
 }
 .ambient {
@@ -306,11 +323,12 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 10;
 }
-.queue {
+.app .queue {
   position: fixed;
   top: 0;
   right: 0;
-  bottom: 96px;
+  bottom: var(--bar-height, 96px);
+  height: auto;
   z-index: 40;
 }
 .splash {
@@ -439,13 +457,53 @@ code {
     transform: scaleY(1);
   }
 }
+.menu-btn,
+.drawer-veil {
+  display: none;
+}
+/* a narrow window: the sidebar becomes a drawer behind the menu button (it had no way back before) */
 @media (max-width: 860px) {
   .app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas: 'main' 'bar';
   }
   .sidebar {
-    display: none;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 260px;
+    z-index: 45;
+    background: #120f1c;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    box-shadow: 20px 0 60px rgba(0, 0, 0, 0.5);
+  }
+  .sidebar.open {
+    transform: none;
+  }
+  .menu-btn {
+    display: grid;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 46;
+    background: rgba(18, 15, 28, 0.85);
+    backdrop-filter: blur(8px);
+  }
+  /* open: beside the drawer, not over its logo */
+  .menu-btn.open {
+    left: 270px;
+  }
+  .drawer-veil {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    background: rgba(0, 0, 0, 0.45);
+  }
+  .main > * {
+    padding-top: 56px;
   }
 }
 </style>

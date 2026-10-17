@@ -13,6 +13,7 @@ All notable changes of the current version and the one before. Versions follow s
 ### Changed
 
 - **The small visual in the bar** is a square and bright at any window size (owner's report: a dark strip, stretched on a wide window): a ring of the music round a core that pulses with the bass, breathing slowly when the music stops.
+- **The player in a narrow or short window** (a design review, owner's request): below 860 px the sidebar was gone with no way to Playlists, Live Play or Settings - it is now a drawer behind a menu button; in a short window the sidebar scrolls instead of cutting off its foot; the bar gives its right side the room its buttons need and hides the volume slider and the speed below 1100 px (they overlapped the controls at 1024 px); the queue ends above the bar (it covered the bar's buttons, its own among them); no page is wider than the window; the guests' card in Now playing shows only the QR code in a narrower window.
 
 ### Fixed
 

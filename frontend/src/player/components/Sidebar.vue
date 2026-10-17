@@ -87,7 +87,8 @@ async function scan(): Promise<void> {
   gap: 2px;
   padding: 18px 12px;
   height: 100%;
-  overflow: hidden;
+  /* a short window: the whole column scrolls rather than cutting off its foot */
+  overflow-y: auto;
   background: rgba(0, 0, 0, 0.28);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -195,9 +196,8 @@ h4 {
   margin-bottom: 4px;
 }
 .lists {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 60px;
+  flex: 1 0 auto;
+  min-height: 40px;
 }
 .pl span {
   overflow: hidden;
@@ -256,6 +256,18 @@ h4 {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+@media (max-height: 760px) {
+  .keys,
+  .folder {
+    display: none;
+  }
+  .link {
+    padding: 6px 10px;
+  }
+  .brand {
+    padding-bottom: 10px;
   }
 }
 @keyframes logo {

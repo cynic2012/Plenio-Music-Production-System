@@ -255,6 +255,12 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
   right: 22px;
   z-index: 4;
 }
+/* a narrower window: the QR code alone, so the song's title keeps its room */
+@media (max-width: 1300px) {
+  .way-in :deep(.text) {
+    display: none;
+  }
+}
 .top {
   grid-row: 1;
   position: relative;

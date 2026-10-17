@@ -104,7 +104,7 @@ function volume(event: Event): void {
       <button v-if="current?.has.original" class="chip" :class="{ on: ab }" title="A/B: the unmastered take, in step (B)" @click="toggleAB">
         {{ ab ? 'B · original' : 'A · master' }}
       </button>
-      <button class="chip" title="Speed (keeps the pitch)" @click="cycleRate">{{ settings.rate }}×</button>
+      <button class="chip speed" title="Speed (keeps the pitch)" @click="cycleRate">{{ settings.rate }}×</button>
       <div class="vol">
         <button class="icon-btn" :title="muted ? 'Sound on (M)' : 'Mute (M)'" @click="toggleMute">
           <Icon :name="muted || settings.volume === 0 ? 'mute' : 'volume'" />
@@ -121,7 +121,8 @@ function volume(event: Event): void {
 .bar {
   grid-area: bar;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(360px, 2fr) minmax(220px, 1fr);
+  /* the right column takes what its buttons need; the song and the progress share the rest */
+  grid-template-columns: minmax(170px, 1fr) minmax(300px, 2fr) auto;
   align-items: center;
   gap: 18px;
   padding: 10px 18px 16px;
@@ -347,9 +348,21 @@ function volume(event: Event): void {
   font: 12px var(--mono);
   color: var(--accent);
 }
+/* less room: the volume keeps its button, the speed goes (Now playing and the keys still have it) */
+@media (max-width: 1280px) {
+  .vol input {
+    width: 60px;
+  }
+}
+@media (max-width: 1100px) {
+  .vol input,
+  .speed {
+    display: none;
+  }
+}
 @media (max-width: 980px) {
   .bar {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .right {
     justify-content: center;
