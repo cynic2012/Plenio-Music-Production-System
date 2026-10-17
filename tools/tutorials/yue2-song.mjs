@@ -93,9 +93,9 @@ export default async function song(s) {
     await s.flyGroups([group], 1000, 0.9)
     await s.read(text, 2600)
   }
-  s.caption('Optional blocks - Stems, Refine and Cover Art - stay switched off until you need them.')
+  s.caption('Optional blocks - Stems, Refine and Cover Art with a seed of its own - stay switched off until you need them.')
   await s.flyGroups(['STEMS (optional)', 'REFINE (optional)', 'COVER ART (optional)'], 1000, 0.9)
-  await s.read('Optional blocks - Stems, Refine and Cover Art - stay switched off until you need them.')
+  await s.read('Optional blocks - Stems, Refine and Cover Art with a seed of its own - stay switched off until you need them.')
 
   // --- part 1: a new song every run ------------------------------------------------------------------
   s.card('chapter', {
@@ -130,7 +130,7 @@ export default async function song(s) {
   await s.flyNodes([WRITER], 1000, 0.9)
   await s.spotlight(await s.widgetBox(WRITER, 'model'), { ms: 2400 })
   await s.read('The Writer model writes the text: Gemma 4 by default - or a local LLM from your machine.', 4800)
-  await seedsDemo(s)
+  await seedsDemo(s, { plan: 'Plan seed' })
 
   s.caption('Press Run.')
   await s.resetRunState()

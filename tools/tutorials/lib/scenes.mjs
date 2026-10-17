@@ -549,7 +549,7 @@ export async function sheetMusicSaved(s, node, text) {
 // Plenio · Seed (1.0.0): one switch per seed - the draft seed blue (🔒 the same draft), the take seed amber
 // (🎲 a new seed before every run). The take seed's switch is flipped to 🔒 and back, so the run that follows
 // still renders a new take.
-export async function seedsDemo(s, { draft = 'Draft seed', take = 'Take seed', what = 'lyrics' } = {}) {
+export async function seedsDemo(s, { draft = 'Draft seed', take = 'Take seed', what = 'lyrics', plan = '' } = {}) {
   const keep = `The Draft seed is blue: 🔒 same seed - the same ${what} on every run.`
   s.caption(keep)
   await s.flyNodes([draft], 1000, 0.9)
@@ -567,6 +567,14 @@ export async function seedsDemo(s, { draft = 'Draft seed', take = 'Take seed', w
   await s.wait(1600)
   await s.click(toggle, { fx: 0.92, pause: 600 })
   await s.read(flip, 5200)
+  if (plan) {
+    // YuE2 Song's plan seed (after 1.0.0): the melody and the form, kept or planned anew
+    const planned = 'The Plan seed under YuE2’s plan does the same for the melody and the form: 🎲 plans another melody for the same lyrics.'
+    s.caption(planned)
+    await s.flyNodes([plan], 1000, 0.9)
+    await s.spotlight(await s.widgetBox(plan, 'keep_seed'), { ms: 2600, pad: 6 })
+    await s.read(planned, 5600)
+  }
 }
 
 // Export Release (1.0.0): the lyrics as subtitles next to the song, timed by listening, and the tags filled

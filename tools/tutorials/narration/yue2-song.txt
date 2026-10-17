@@ -35,7 +35,7 @@ Here, YuE2 renders the actual song.
 And finally, Master sets the loudness, and Export writes the files.
 
 @ Optional blocks
-Optional blocks, like stems and cover art, stay off until you need them.
+Optional blocks, like stems, and cover art with a seed of its own, stay off until you need them.
 
 @ card A new song every run
 Part one: a new song, every single run. No stops, no questions asked.
@@ -72,6 +72,9 @@ The Take seed is amber: before every run, it draws a new number, so every run is
 
 @ The number shown is always
 The number you see is always the one that made what you hear. Like a take? One click on the switch, and it stays.
+
+@ The Plan seed under YuE2
+The Plan seed, under YuE2's plan, does the same for the melody and the form. Switch it to new seed, and YuE2 plans another melody for the same lyrics.
 
 @ Press Run.
 That's all it needs. Press Run.

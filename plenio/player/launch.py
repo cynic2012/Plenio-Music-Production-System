@@ -43,11 +43,19 @@ def _port_free(port: int) -> bool:
     return False
 
 
-def find_player() -> tuple[int, dict[str, Any]] | None:
-    """A Plenio Player running on one of the player's ports."""
+def _same_state(info: dict[str, Any], state: Path) -> bool:
+    try:
+        return Path(str(info.get("state") or "")).resolve() == (state / "state.json").resolve()
+    except OSError:
+        return False
+
+
+def find_player(state: Path | None = None) -> tuple[int, dict[str, Any]] | None:
+    """A Plenio Player running on one of the player's ports; with ``state``, only the one that keeps its state
+    there (a player started for another state folder - another library, other playlists - is not this one)."""
     for port in PORTS:
         info = player_at(port)
-        if info:
+        if info and (state is None or _same_state(info, state)):
             return port, info
     return None
 
@@ -93,7 +101,7 @@ def start_player(folder: Path, comfyui: str, port: int, state: Path) -> subproce
 def ensure_player(folder: Path, comfyui: str, state: Path, wait: float = 25.0) -> dict[str, Any]:
     """The address of a running Plenio Player - the one found, or one started now. ``started`` says which;
     raises ``RuntimeError`` when the player did not come up (the end of its log says why)."""
-    found = find_player()
+    found = find_player(state)
     if found:
         running, info = found
         return {"url": f"http://127.0.0.1:{running}/", "started": False, "version": info.get("version", "")}

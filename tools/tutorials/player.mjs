@@ -1,11 +1,14 @@
 // Tutorial 8 · Plenio Player: the songs made with Plenio in the browser. It starts in ComfyUI - the Plenio
 // Player button beside Run (and the one on Export Release) starts the player, a program of its own, and
-// opens it - then the library and its search, playing a song, a song's page (lyrics, notation, details,
-// takes), Now playing in its four views, the visuals and their modes, playlists, the queue with the sleep
-// timer, A/B and speed, the keys, the settings that are kept, and Open in ComfyUI back to the workflow.
+// opens it - then the library and its search, playing a song, a song's page (lyrics, notation, every field
+// of the brief, takes), Now playing in its four views, the visuals and their modes, Plenio Drop and the
+// lyrics' look, playlists, the queue with the sleep timer, Live Play with a song that arrives from ComfyUI,
+// guests in the network (the QR code, the guests' page, a wish carried out), a song as a video, the songs
+// shared as a player, A/B and speed, the keys, the settings (the version, the folders) and Open in ComfyUI.
 //
 // Recorded against a ComfyUI dev server whose output folder holds the songs, with PLENIO_PLAYER_STATE set to
-// a fresh folder (the player ComfyUI starts inherits it): node tools/tutorials/record.mjs player --url <it>
+// a fresh folder and PLENIO_GUESTS_HOST=127.0.0.1 (the player ComfyUI starts inherits both; on the loopback
+// address Windows asks nothing): node tools/tutorials/record.mjs player --url <it>
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -44,6 +47,21 @@ async function pickSong(s) {
   songs.sort((a, b) => Number(b.has.original) - Number(a.has.original) || Number(b.has.pdf) - Number(a.has.pdf) || b.seconds - a.seconds)
   if (!songs.length) throw new Error('the player has no song with timed lyrics and a score')
   return songs[0]
+}
+
+// A song "exported" while Live Play runs: a copy of one of the library's songs under a new title, written
+// into the player's folder as Export Release writes one (the record last)
+function arrive(folder, record, title) {
+  const stem = path.basename(record).replace(/\.plenio\.json$/, '')
+  const data = JSON.parse(fs.readFileSync(record, 'utf8'))
+  data.title = title
+  const name = title.replace(/\s+/g, '_')
+  for (const f of data.files ?? []) if (typeof f?.name === 'string' && f.name.startsWith(stem)) f.name = name + f.name.slice(stem.length)
+  for (const kind of ['.flac', '.mp3', ' (lines).srt', ' (notes).srt', '.jpg', '.pdf']) {
+    const from = path.join(path.dirname(record), `${stem}${kind}`)
+    if (fs.existsSync(from)) fs.copyFileSync(from, path.join(folder, `${name}${kind}`))
+  }
+  fs.writeFileSync(path.join(folder, `${name}.plenio.json`), JSON.stringify(data))
 }
 
 async function setVolume(s, value) {
@@ -126,6 +144,8 @@ export default async function player(s) {
   const wave = page.locator('.bar .progress .wave')
   await s.hover(wave, { fx: 0.42 })
   await talk(s, 'The waveform is the seek bar: its sections, and under the mouse, the line sung there.')
+  await s.hover(page.locator('.bar .mini'))
+  await talk(s, 'The bright square on the right moves with the music - a click opens Now playing.')
   await s.click(wave, { fx: 0.18 })
   await s.rest()
   await s.wait(1200)
@@ -148,7 +168,8 @@ export default async function player(s) {
   }
   await s.click(tab('Details'))
   await s.wait(800)
-  await talk(s, 'The details: the brief, the model and the writer, the loudness, and the seeds - to make the take again.')
+  await s.hover(page.locator('.details .block').first())
+  await talk(s, 'The details: every field of the brief - one you left empty shows its default - the model, the writer, the loudness, and the seeds to make the take again.')
   await page.locator('.downloads').scrollIntoViewIfNeeded()
   await s.hover(page.locator('.downloads .file').first())
   await talk(s, 'Every file to download: the audio, the sheet music, the subtitles, the cover and the record.')
@@ -198,7 +219,28 @@ export default async function player(s) {
   await talk(s, 'They change with every song, at every section, every few seconds - or when the music drops in.')
   await s.hover(page.locator('.vpanel h4', { hasText: 'This song' }))
   await talk(s, 'A song can have a visual of its own, and so can a playlist: the song’s wins, then the playlist’s, then the mode.')
+
+  s.chapter('Plenio Drop')
+  await s.click(page.locator('.vpanel .mode', { hasText: 'Fixed' }))
+  await s.wait(500)
+  const fixed = page.locator('.vpanel select').first()
+  await s.hover(fixed)
+  await fixed.selectOption('drop-electric-lotus')
+  await s.wait(1200)
+  await talk(s, 'Plenio Drop: visuals like Winamp’s MilkDrop, made anew and drawn on the graphics card - sixteen of them, and one made up fresh each time.')
+  const copy = page.locator('.vpanel .drop-tools .chip', { hasText: 'Edit a copy' })
+  await copy.scrollIntoViewIfNeeded()
+  await s.hover(copy)
+  await talk(s, 'Write your own: Edit a copy saves the one that plays as a short file of numbers and formulas - save a change, and the visual changes.')
+  await s.click(page.locator('.vpanel .mode', { hasText: 'Random' }))
   await s.click(page.locator('.vpanel header .icon-btn'))
+  await s.rest(400)
+  await s.click(page.locator('.np .top .tools .icon-btn[title^="How the lyrics look"]'))
+  await s.wait(700)
+  await s.click(page.locator('.lpanel .font', { hasText: 'Poster' }))
+  await s.click(page.locator('.lpanel .effect', { hasText: 'Neon' }))
+  await talk(s, 'How the lyrics look: a font, a colour and an effect - neon, glow, bounce, typewriter, on the beat - in the player and in videos.')
+  await s.click(page.locator('.lpanel header .icon-btn'))
   await s.rest(400)
   await talk(s, 'N shows the next one.', 2400)
   // no voice for a while: the music comes up
@@ -255,6 +297,101 @@ export default async function player(s) {
   await s.click({ x: 1180, y: 150, width: 0, height: 0 })
   await s.wait(500)
 
+  s.chapter('Live Play')
+  await s.click(page.locator('.side a.link', { hasText: 'Live Play' }))
+  await s.wait(1000)
+  await talk(s, 'Live Play: a playlist for a party, changed while it plays.')
+  const newest = page.locator('.way', { hasText: 'With the newest songs' })
+  if (await newest.count()) {
+    await newest.locator('select').selectOption('10')
+    await s.click(newest.locator('button'))
+    await s.wait(1500)
+  }
+  await s.hover(page.locator('.rules'))
+  await talk(s, 'Make songs in ComfyUI meanwhile: as soon as Export Release has written one, it joins - next, at the end, or anywhere.')
+  const info = await page.evaluate(() => fetch('/api/info').then((r) => r.json()))
+  const detail = await page.evaluate((id) => fetch(`/api/song/${id}`).then((r) => r.json()), song.id)
+  if (info.folders?.[0] && detail.record_path) arrive(info.folders[0], detail.record_path, 'Midnight on the Dance Floor')
+  await page.waitForFunction(() => document.body.innerText.includes('Midnight on the Dance Floor'), null, { timeout: 30000 }).catch(() => {})
+  await s.wait(800)
+  const fresh = page.locator('.list .row.fresh').first()
+  if (await fresh.count()) await s.hover(fresh)
+  await talk(s, 'There it is - marked new, playing next.')
+
+  s.chapter('Guests in your network')
+  const guests = page.locator('.guests')
+  await guests.scrollIntoViewIfNeeded()
+  await s.click(guests.locator('input[type=checkbox]').first())
+  await page.waitForSelector('.guests .url code', { timeout: 15000 })
+  await s.click(guests.locator('label', { hasText: 'change it' }).locator('input'))
+  await s.wait(800)
+  await talk(s, 'Guests in your network: switch it on, and everyone on the same Wi-Fi opens the live playlist on the phone - a QR code and an address with a random part.')
+  await s.click(guests.locator('button', { hasText: 'Show it big' }))
+  await s.wait(800)
+  await talk(s, 'Show it big, for a screen the whole room sees. A new address at any time locks the old one out.')
+  await s.keys('Escape')
+  const guestUrl = (await page.textContent('.guests .url code')).trim()
+  const phone = await s.context.newPage()
+  await phone.goto(guestUrl)
+  await s.switchTo(phone)
+  await phone.waitForSelector('#next li', { timeout: 15000 })
+  await s.wait(1000)
+  await talk(s, 'On the phone: the song that plays, and what comes next …')
+  const earlier = phone.locator('#next li').nth(2).locator('button[title="Earlier"]')
+  if (await earlier.count()) await s.click(earlier)
+  await talk(s, '… and if you allow it, guests move songs, take them out and add their favourites. The music plays on your computer.')
+  await s.switchTo(page)
+  await s.wait(1500)
+  const log = page.locator('.log p').first()
+  if (await log.count()) {
+    await log.scrollIntoViewIfNeeded()
+    await s.hover(log)
+  }
+  await talk(s, 'The playlist follows, and says what the guests did.')
+  await phone.close()
+
+  s.chapter('A song as a video')
+  await s.click(page.locator('.bar .song .icon-btn').first())
+  await s.wait(1200)
+  await s.click(page.locator('.song-page .actions button', { hasText: 'Video' }))
+  await page.waitForSelector('.dialog .shot canvas', { timeout: 30000 })
+  await s.wait(1200)
+  await page.selectOption('.dialog select >> nth=0', 'vertical')
+  await page.fill('.dialog input[type=number] >> nth=0', '20')
+  await page.fill('.dialog input[type=number] >> nth=1', '32')
+  await page.selectOption('.dialog fieldset:has-text("Over the visual") select', 'karaoke')
+  await s.click(page.locator('.dialog button', { hasText: 'Preview' }))
+  await s.wait(1500)
+  await talk(s, 'A song as a video: its visual, the lyrics as karaoke, the notes following the music - Full HD, 4K, or upright for Shorts.')
+  await s.click(page.locator('.dialog button', { hasText: 'Make the video' }))
+  await page.waitForSelector('.dialog .done, .dialog .error', { timeout: 300000 })
+  await s.wait(600)
+  await talk(s, 'Made on the graphics card, faster than the song plays: an MP4 in the player’s videos folder.')
+  await s.click(page.locator('.dialog header button[title="Close"]'))
+  await s.wait(500)
+
+  s.chapter('Share as a player')
+  await s.click(page.locator('.side button', { hasText: 'Share as a player' }))
+  await page.waitForSelector('.dialog .list .row', { timeout: 15000 })
+  const evening = page.locator('.dialog .quick .chip', { hasText: 'Evening' })
+  if (await evening.count()) await s.click(evening)
+  await page.selectOption('.dialog .right select', '128')
+  await talk(s, 'Share your songs as a player: one HTML file with the songs as MP3 - send it, and anyone just double-clicks it.')
+  await s.click(page.locator('.dialog button', { hasText: 'Make the player' }))
+  await page.waitForSelector('.dialog .done, .dialog .error', { timeout: 300000 })
+  const tryIt = page.locator('.dialog .done a', { hasText: 'Try it' })
+  if (await tryIt.count()) {
+    const [shared] = await Promise.all([s.context.waitForEvent('page'), s.click(tryIt)])
+    await s.switchTo(shared)
+    await shared.waitForSelector('.card', { timeout: 30000 })
+    await s.wait(1200)
+    await talk(s, 'It plays by itself in any browser: the lyrics, the notation, the visuals - nothing to install.')
+    await s.switchTo(page)
+    await shared.close()
+  }
+  await s.click(page.locator('.dialog header button[title="Close"]'))
+  await s.wait(500)
+
   s.chapter('Compare and keys')
   const ab = page.locator('.bar .right .chip', { hasText: 'master' })
   if (await ab.count()) {
@@ -274,9 +411,17 @@ export default async function player(s) {
   s.chapter('Settings')
   await s.click(page.locator('.side a.link', { hasText: 'Settings' }))
   await s.wait(1200)
+  await s.hover(page.locator('.settings .version'))
+  await talk(s, 'Settings starts with the version of the player that runs.')
   await talk(s, 'Everything you set is kept on this computer, by the player - not in the browser.')
   await s.hover(page.locator('.settings button', { hasText: 'Download a backup' }))
   await talk(s, 'A backup to download, and to restore here or on another computer.')
+  const addFolder = page.locator('.settings button', { hasText: 'Add a folder' })
+  if (await addFolder.count()) {
+    await addFolder.scrollIntoViewIfNeeded()
+    await s.hover(addFolder)
+    await talk(s, 'Choose the folders it reads - and the other music in them plays too, with its tags and lyrics.')
+  }
   const stop = page.locator('.settings button', { hasText: 'Stop the player' })
   await stop.scrollIntoViewIfNeeded()
   await s.hover(stop)
@@ -299,6 +444,6 @@ export default async function player(s) {
 
   s.card('end', {
     title: 'Plenio Player',
-    lines: ['In ComfyUI: <b>Plenio Player</b> beside Run', 'Without ComfyUI: double-click <b>Plenio Player.bat</b>', 'Guide and source: <b>github.com/jplenio/Plenio-Music-Production-System</b>'],
+    lines: ['In ComfyUI: <b>Plenio Player</b> beside Run', 'Live Play, guests, videos, a player to share', 'Guide and source: <b>github.com/jplenio/Plenio-Music-Production-System</b>'],
   }, 5)
 }

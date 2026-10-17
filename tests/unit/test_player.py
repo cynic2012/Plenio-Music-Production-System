@@ -457,6 +457,9 @@ def test_comfyui_starts_a_player_of_its_own_and_finds_it_again(
         assert info["folders"] == [str(songs.resolve())] and info["pid"] != os.getpid()
         again = launch.ensure_player(songs, "", state)
         assert again["started"] is False and again["url"] == started["url"]
+        # a player that keeps its state elsewhere is another player: not taken for this state folder
+        assert launch.find_player(tmp_path / "another-state") is None
+        assert launch.find_player(state) == (port, info)
     finally:
         quit_request = urllib.request.Request(
             f"http://127.0.0.1:{port}/api/quit",

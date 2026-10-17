@@ -42,6 +42,9 @@ The bar always shows the section, and the line that's sung right now.
 @ The waveform is the seek bar
 The waveform is the seek bar. It marks the sections, and under the mouse, it shows the line sung there.
 
+@ The bright square on the right
+The bright square on the right moves with the music. Click it, and Now playing opens.
+
 @ ⓘ beside the song opens its page
 The little i beside the song opens its page, too.
 
@@ -54,8 +57,8 @@ Click a line, and the song plays from there.
 @ The notation follows the music | optional
 The notation follows the music. The notes that sound light up, and a click on a note jumps right there.
 
-@ The details: the brief
-The details: the brief, the model and the writer, the loudness, and the seeds, to make the same take again.
+@ The details: every field of the brief
+The details list every field of the brief. One you left empty shows its default. Then the model, the writer, the loudness, and the seeds, to make the same take again.
 
 @ Every file to download
 And every file to download: the audio, the sheet music, the subtitles, the cover, and the record.
@@ -99,6 +102,15 @@ They can change with every song, at every section, every few seconds, or when th
 @ A song can have a visual of its own
 A song can have a visual of its own, and so can a playlist. The song's choice wins, then the playlist's, then the mode.
 
+@ Plenio Drop: visuals like
+Plenio Drop: visuals like Winamp's MilkDrop, made anew and drawn on the graphics card. There are sixteen of them, and one that's made up fresh every time.
+
+@ Write your own
+Want your own? Edit a copy saves the one that plays as a short file of numbers and formulas. Save a change, and the visual changes right away.
+
+@ How the lyrics look
+And how the lyrics look is up to you: a font, a colour, and an effect, like neon, glow, bounce, typewriter, or on the beat. In the player, and in videos.
+
 @ N shows the next one
 Press N for the next one.
 
@@ -123,6 +135,42 @@ Songs crossfade into each other, and the sleep timer fades the music out.
 @ A right-click on a song
 Right-click a song to play it next, add it to a playlist, start a radio of songs that are alike, or remove it.
 
+@ Live Play: a playlist for a party
+Live Play is a playlist for a party, and you change it while it plays.
+
+@ Make songs in ComfyUI meanwhile
+Make songs in ComfyUI meanwhile. As soon as Export Release has written one, it joins: next, at the end, or anywhere.
+
+@ There it is - marked new
+There it is. Marked new, and playing next.
+
+@ Guests in your network: switch it on
+Guests in your network: switch it on, and everyone on the same Wi-Fi opens the live playlist on their phone. There's a QR code, and an address with a random part.
+
+@ Show it big, for a screen
+Show it big, for a screen the whole room can see. And a new address, at any time, locks the old one out.
+
+@ On the phone: the song that plays
+On the phone: the song that plays, and what comes next.
+
+@ … and if you allow it, guests move songs
+And if you allow it, guests move songs, take them out, and add their favourites. The music keeps playing on your computer.
+
+@ The playlist follows
+The playlist follows, and tells you what the guests did.
+
+@ A song as a video
+A song as a video: its visual, the lyrics as karaoke, and the notes following the music. In Full HD, in 4K, or upright for Shorts.
+
+@ Made on the graphics card
+It's made on the graphics card, faster than the song plays. An MP4, in the player's videos folder.
+
+@ Share your songs as a player
+Share your songs as a player: one HTML file, with the songs as MP3. Send it, and anyone just double-clicks it.
+
+@ It plays by itself in any browser | optional
+It plays by itself, in any browser: the lyrics, the notation, the visuals. Nothing to install.
+
 @ A/B: the unmastered take | optional
 A, B: the unmastered take, at exactly the same moment, without a gap.
 
@@ -132,11 +180,17 @@ Speed goes from three quarters to one and a quarter, and the pitch stays the sam
 @ Every key is listed
 Every keyboard shortcut is listed under the question mark.
 
+@ Settings starts with the version
+Settings starts with the version of the player that's running.
+
 @ Everything you set is kept
 Everything you set is kept on this computer, by the player itself, not by the browser.
 
 @ A backup to download
 There's a backup to download, and to restore, here or on another computer.
+
+@ Choose the folders it reads | optional
+Choose the folders it reads. And the other music in them plays too, with its tags and lyrics.
 
 @ Started from ComfyUI, the player has no window
 Started from ComfyUI, the player has no window. Stop the player ends it.
