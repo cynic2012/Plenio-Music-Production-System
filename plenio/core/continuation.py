@@ -240,22 +240,44 @@ SUBGRAPH_INPUT_NODE = -10
 """The origin id of a link from a subgraph's inputs (LiteGraph)."""
 
 
+SEED_NODE = "PlenioSeed"
+
+
 def widget_inputs(workflow: Mapping[str, Any]) -> dict[tuple[str, str], tuple[str, str]]:
-    """(inner execution id, input name) -> (block instance id, widget name) for the inner inputs whose value is
-    a widget on their block's instance: a subgraph input shown as a widget and linked to nothing outside.
-    Such an input takes the instance's value when the prompt is made - setting the inner node changes nothing
-    (frontend 1.53.6, measured) - so a value for it is set on the instance."""
+    """(inner execution id, input name) -> (the node, the widget) that sets the inner input's value:
+
+    - a widget on the block's instance (a subgraph input shown as a widget and linked to nothing outside):
+      the input takes the instance's value when the prompt is made - setting the inner node changes nothing
+      (frontend 1.53.6, measured) - so a value for it is set on the instance;
+    - a Plenio · Seed linked to the instance's input: a seed that moved out of its block (the YuE2 plan's
+      and the cover art's, owner's request 2026-10-17) - an older record's value for it, from inside the
+      block, goes to that seed node's number."""
     subgraphs = _subgraphs(workflow)
+    seeds = {
+        node.get("id")
+        for node in workflow.get("nodes") or []
+        if isinstance(node, Mapping) and node.get("type") == SEED_NODE
+    }
+    origins = {}
+    for raw in workflow.get("links") or []:
+        if isinstance(raw, list) and len(raw) >= 5 and raw[1] in seeds:
+            origins[raw[0]] = raw[1]
+        elif isinstance(raw, Mapping) and raw.get("origin_id") in seeds:
+            origins[raw.get("id")] = raw.get("origin_id")
     result: dict[tuple[str, str], tuple[str, str]] = {}
     for instance in workflow.get("nodes") or []:
         if not isinstance(instance, Mapping) or str(instance.get("type")) not in subgraphs:
             continue
         sub = subgraphs[str(instance["type"])]
-        widgets = {
-            str(slot.get("name"))
-            for slot in instance.get("inputs") or []
-            if isinstance(slot, Mapping) and slot.get("widget") and slot.get("link") is None
-        }
+        holders: dict[str, tuple[str, str]] = {}
+        for slot in instance.get("inputs") or []:
+            if not isinstance(slot, Mapping):
+                continue
+            name = str(slot.get("name"))
+            if slot.get("widget") and slot.get("link") is None:
+                holders[name] = (str(instance["id"]), name)
+            elif slot.get("link") in origins:
+                holders[name] = (str(origins[slot["link"]]), "seed")
         inner = {n.get("id"): n for n in sub["nodes"] if isinstance(n, Mapping)}
         links = {}
         for raw in sub.get("links") or []:
@@ -269,7 +291,7 @@ def widget_inputs(workflow: Mapping[str, Any]) -> dict[tuple[str, str], tuple[st
                 links[link_id] = parsed
         for sub_input in sub.get("inputs") or []:
             name = str(sub_input.get("name")) if isinstance(sub_input, Mapping) else ""
-            if name not in widgets:
+            if name not in holders:
                 continue
             for link_id in sub_input.get("linkIds") or []:
                 link = links.get(link_id)
@@ -278,7 +300,7 @@ def widget_inputs(workflow: Mapping[str, Any]) -> dict[tuple[str, str], tuple[st
                 slots = inner[link[2]].get("inputs") or []
                 if 0 <= link[3] < len(slots) and isinstance(slots[link[3]], Mapping):
                     target = f"{instance['id']}:{link[2]}"
-                    result[(target, str(slots[link[3]].get("name")))] = (str(instance["id"]), name)
+                    result[(target, str(slots[link[3]].get("name")))] = holders[name]
     return result
 
 

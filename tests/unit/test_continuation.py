@@ -84,7 +84,7 @@ def test_the_template_of_a_record_is_found_also_when_its_ids_moved() -> None:
         match = c.match_template(prompt, TEMPLATES)
         assert match is not None and match.name == SONG, shift
         seeds = {pid: tid for pid, tid in match.mapping.items() if prompt[pid]["class_type"] == "PlenioSeed"}
-        assert len(seeds) == 3  # draft, arrangement and take seed
+        assert len(seeds) == 5  # draft, plan, arrangement, take and cover seed
         nodes = c.workflow_nodes(song)
         assert {prompt[p]["_meta"]["title"] for p in seeds} == {nodes[t].title for t in seeds.values()}
         assert all(prompt[p]["_meta"]["title"] == nodes[t].title for p, t in seeds.items())
@@ -105,9 +105,25 @@ def test_the_seeds_of_a_record_made_before_0_8_1_land_on_the_new_seed_nodes() ->
     assert found["from"] == "template" and found["template"] == SONG
     nodes = c.workflow_nodes(song)
     seeds = {i for i, n in nodes.items() if n.type == "PlenioSeed"}
-    assert len(seeds) == 3
+    assert len(seeds) == 5
     assert all(found["values"][i]["seed"] == 4242 for i in seeds)
     assert not any("seed" in name.lower() for name in found["unplaced"])
+
+
+def test_a_seed_that_moved_out_of_its_block_keeps_an_older_records_number() -> None:
+    """After 1.0.0 the YuE2 plan's seed and the cover art's are Plenio · Seed nodes beside their blocks
+    (owner's request 2026-10-17): a record made before keeps its plan and its cover - its numbers from inside
+    the blocks land on the new seed nodes."""
+    song = TEMPLATES[SONG]
+    nodes = c.workflow_nodes(song)
+    by_title = {n.title: i for i, n in nodes.items() if n.type == "PlenioSeed"}
+    fed = c.widget_inputs(song)
+    plan = next(i for i in nodes if ":" not in i and f"{i}:704" in nodes)  # the plan block (inner ids 701+)
+    assert fed[(f"{plan}:704", "value")] == (by_title["Plan seed"], "seed")
+    cover = [key for key, holder in fed.items() if holder == (by_title["Cover seed"], "seed")]
+    assert len(cover) == 1  # the cover art's noise seed
+    placed = c.place_values({f"{plan}:704": {"value": 77}, cover[0][0]: {cover[0][1]: 5}}, song)
+    assert placed[by_title["Plan seed"]] == {"seed": 77} and placed[by_title["Cover seed"]] == {"seed": 5}
 
 
 def test_a_workflow_of_ones_own_has_no_template() -> None:
@@ -123,13 +139,10 @@ def test_a_workflow_of_ones_own_has_no_template() -> None:
 
 def test_inner_values_go_to_the_widget_of_their_block() -> None:
     fed = c.widget_inputs(TEMPLATES[SONG])
-    # the Write Song block's *thinking* and the YuE2 Plan block's plan seed are widgets on the instance
+    # the Write Song block's *thinking* is a widget on the instance
     assert fed[("4:504", "thinking")] == ("4", "thinking")
-    assert fed[("8:704", "value")] == ("8", "seed")
-    placed = c.place_values(
-        {"4:504": {"thinking": True, "max_length": 512}, "8:704": {"value": 7}}, TEMPLATES[SONG]
-    )
-    assert placed == {"4": {"thinking": True}, "4:504": {"max_length": 512}, "8": {"seed": 7}}
+    placed = c.place_values({"4:504": {"thinking": True, "max_length": 512}}, TEMPLATES[SONG])
+    assert placed == {"4": {"thinking": True}, "4:504": {"max_length": 512}}
 
 
 def test_the_song_sheets_keep_their_documents_as_manual() -> None:
