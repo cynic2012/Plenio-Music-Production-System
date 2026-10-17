@@ -1,8 +1,8 @@
 {
  "id": "a5f390ed-d4cb-5c2e-8537-2f04fa3ebe66",
  "revision": 0,
- "last_node_id": 20,
- "last_link_id": 45,
+ "last_node_id": 21,
+ "last_link_id": 46,
  "nodes": [
   {
    "id": 1,
@@ -812,7 +812,7 @@
      "name": "title",
      "type": "STRING",
      "links": [
-      35
+      36
      ]
     },
     {
@@ -844,7 +844,7 @@
      "name": "artwork_prompt",
      "type": "STRING",
      "links": [
-      36
+      37
      ]
     },
     {
@@ -864,7 +864,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      39
+      40
      ]
     },
     {
@@ -1152,7 +1152,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      40
+      41
      ]
     },
     {
@@ -1392,7 +1392,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      41
+      42
      ]
     },
     {
@@ -1400,7 +1400,7 @@
      "name": "separation_report",
      "type": "PLENIO_REPORT",
      "links": [
-      42
+      43
      ]
     }
    ],
@@ -1570,8 +1570,8 @@
      "name": "audio",
      "type": "AUDIO",
      "links": [
-      31,
-      34
+      32,
+      35
      ]
     },
     {
@@ -1579,7 +1579,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      43
+      44
      ]
     }
    ],
@@ -1617,7 +1617,7 @@
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 31
+     "link": 32
     },
     {
      "localized_name": "reference",
@@ -1642,8 +1642,8 @@
      "name": "audio",
      "type": "AUDIO",
      "links": [
-      32,
-      33
+      33,
+      34
      ]
     },
     {
@@ -1651,7 +1651,7 @@
      "name": "eq_report",
      "type": "PLENIO_REPORT",
      "links": [
-      44
+      45
      ]
     },
     {
@@ -1659,7 +1659,7 @@
      "name": "loudness_report",
      "type": "PLENIO_REPORT",
      "links": [
-      45
+      46
      ]
     }
    ],
@@ -1688,7 +1688,7 @@
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 32
+     "link": 33
     }
    ],
    "outputs": [
@@ -1724,28 +1724,28 @@
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 33
+     "link": 34
     },
     {
      "localized_name": "title",
      "name": "title",
      "shape": 7,
      "type": "STRING",
-     "link": 35
+     "link": 36
     },
     {
      "localized_name": "original",
      "name": "original",
      "shape": 7,
      "type": "AUDIO",
-     "link": 34
+     "link": 35
     },
     {
      "localized_name": "cover",
      "name": "cover",
      "shape": 7,
      "type": "IMAGE",
-     "link": 37
+     "link": 38
     },
     {
      "localized_name": "brief",
@@ -1760,7 +1760,7 @@
      "label": "report_0",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 39
+     "link": 40
     },
     {
      "localized_name": "reports.report_1",
@@ -1768,7 +1768,7 @@
      "label": "report_1",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 40
+     "link": 41
     },
     {
      "localized_name": "reports.report_2",
@@ -1776,7 +1776,7 @@
      "label": "report_2",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 41
+     "link": 42
     },
     {
      "localized_name": "reports.report_3",
@@ -1784,7 +1784,7 @@
      "label": "report_3",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 42
+     "link": 43
     },
     {
      "localized_name": "reports.report_4",
@@ -1792,7 +1792,7 @@
      "label": "report_4",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 43
+     "link": 44
     },
     {
      "localized_name": "reports.report_5",
@@ -1800,7 +1800,7 @@
      "label": "report_5",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 44
+     "link": 45
     },
     {
      "localized_name": "reports.report_6",
@@ -1808,7 +1808,7 @@
      "label": "report_6",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 45
+     "link": 46
     },
     {
      "localized_name": "reports.report_7",
@@ -2086,7 +2086,7 @@
      "widget": {
       "name": "text"
      },
-     "link": 36
+     "link": 37
     },
     {
      "localized_name": "noise_seed",
@@ -2096,7 +2096,7 @@
      "widget": {
       "name": "noise_seed"
      },
-     "link": null
+     "link": 31
     },
     {
      "localized_name": "size",
@@ -2115,8 +2115,8 @@
      "name": "IMAGE",
      "type": "IMAGE",
      "links": [
-      37,
-      38
+      38,
+      39
      ]
     }
    ],
@@ -2147,7 +2147,7 @@
      "localized_name": "images",
      "name": "images",
      "type": "IMAGE",
-     "link": 38
+     "link": 39
     }
    ],
    "outputs": [
@@ -2163,6 +2163,63 @@
     "Node name for S&R": "PreviewImage"
    },
    "widgets_values": []
+  },
+  {
+   "id": 21,
+   "type": "PlenioSeed",
+   "pos": [
+    2860,
+    1264
+   ],
+   "size": [
+    340,
+    190
+   ],
+   "flags": {},
+   "order": 20,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "seed",
+     "name": "seed",
+     "label": "cover seed",
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "keep_seed",
+     "name": "keep_seed",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "keep_seed"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "seed",
+     "name": "seed",
+     "type": "INT",
+     "links": [
+      31
+     ]
+    }
+   ],
+   "title": "Cover seed",
+   "color": "#1f4e6e",
+   "bgcolor": "#14304a",
+   "properties": {
+    "Node name for S&R": "PlenioSeed",
+    "plenio_part": "cover art"
+   },
+   "widgets_values": [
+    0,
+    true
+   ]
   }
  ],
  "links": [
@@ -2408,17 +2465,17 @@
   ],
   [
    31,
-   14,
+   21,
    0,
-   15,
-   0,
-   "AUDIO"
+   19,
+   1,
+   "INT"
   ],
   [
    32,
-   15,
+   14,
    0,
-   16,
+   15,
    0,
    "AUDIO"
   ],
@@ -2426,12 +2483,20 @@
    33,
    15,
    0,
-   17,
+   16,
    0,
    "AUDIO"
   ],
   [
    34,
+   15,
+   0,
+   17,
+   0,
+   "AUDIO"
+  ],
+  [
+   35,
    14,
    0,
    17,
@@ -2439,7 +2504,7 @@
    "AUDIO"
   ],
   [
-   35,
+   36,
    7,
    0,
    17,
@@ -2447,7 +2512,7 @@
    "STRING"
   ],
   [
-   36,
+   37,
    7,
    4,
    19,
@@ -2455,7 +2520,7 @@
    "STRING"
   ],
   [
-   37,
+   38,
    19,
    0,
    17,
@@ -2463,7 +2528,7 @@
    "IMAGE"
   ],
   [
-   38,
+   39,
    19,
    0,
    20,
@@ -2471,7 +2536,7 @@
    "IMAGE"
   ],
   [
-   39,
+   40,
    7,
    7,
    17,
@@ -2479,7 +2544,7 @@
    "PLENIO_REPORT"
   ],
   [
-   40,
+   41,
    9,
    7,
    17,
@@ -2487,7 +2552,7 @@
    "PLENIO_REPORT"
   ],
   [
-   41,
+   42,
    12,
    1,
    17,
@@ -2495,7 +2560,7 @@
    "PLENIO_REPORT"
   ],
   [
-   42,
+   43,
    12,
    2,
    17,
@@ -2503,7 +2568,7 @@
    "PLENIO_REPORT"
   ],
   [
-   43,
+   44,
    14,
    1,
    17,
@@ -2511,7 +2576,7 @@
    "PLENIO_REPORT"
   ],
   [
-   44,
+   45,
    15,
    1,
    17,
@@ -2519,7 +2584,7 @@
    "PLENIO_REPORT"
   ],
   [
-   45,
+   46,
    15,
    2,
    17,
@@ -2574,7 +2639,7 @@
     2830,
     964,
     760,
-    400
+    520
    ],
    "color": "#555",
    "font_size": 24,

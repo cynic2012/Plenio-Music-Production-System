@@ -8,6 +8,8 @@ result; another seed gives something new. The templates have a seed per part:
 | **Take seed** | the render: how YuE2 or MiniMax sings and plays the documents | 🎲 new seed - every run a new take |
 | **Draft seed** | the writer's draft: title, style, lyrics, artwork prompt | 🔒 same seed - the draft stays |
 | **Arrangement seed** (YuE2 Song, YuE2 Cover) | the creative mode's arrangement | 🔒 same seed - the arrangement stays |
+| **Plan seed** (YuE2 Song) | YuE2's plan of the score: melody and song form (the brief's song seed is added) | 🔒 same seed - the plan stays |
+| **Cover seed** (in *COVER ART*, every song template) | the cover picture for the artwork prompt | 🔒 same seed - the same picture |
 
 Each seed node has **one switch**, *each run*:
 
@@ -25,6 +27,8 @@ Typical uses:
 
 - **More takes of a song you like** - draft 🔒, take 🎲: every run sings the same lyrics anew.
 - **A take you like, a new mix** - take 🔒: the render comes from ComfyUI's cache, only what follows it runs.
+- **Another melody for the same lyrics** (YuE2 Song) - plan 🎲, draft 🔒: YuE2 plans the score anew.
+- **Another cover picture** - cover 🎲 (with the Cover Art block switched on).
 - **New lyrics for the same brief** - draft 🎲 (in *one song, stop to review* every new draft then needs a
   new approval).
 - **Back to an earlier result** - type its seeds (the release record of every song lists them; *Continue a

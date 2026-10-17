@@ -8,6 +8,7 @@ Without ``--folder`` it plays ComfyUI's output folder when Plenio sits in ``Comf
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import threading
 import webbrowser
@@ -48,8 +49,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--comfyui", default="", help="the ComfyUI address that Open in ComfyUI goes to")
     parser.add_argument(
         "--guests-host",
-        default="0.0.0.0",  # noqa: S104 - guests reach the live playlist from the network
-        help="where the guests' access to the live playlist listens when switched on (default: every network)",
+        # guests reach the live playlist from the network; PLENIO_GUESTS_HOST also reaches a player ComfyUI starts
+        default=os.environ.get("PLENIO_GUESTS_HOST", "").strip() or "0.0.0.0",  # noqa: S104
+        help="where the guests' access to the live playlist listens when switched on (default: every network; "
+        "PLENIO_GUESTS_HOST sets it too)",
     )
     args = parser.parse_args(argv)
     started = args.folder or default_folders()

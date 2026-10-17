@@ -62,6 +62,8 @@ The brief's **arrangement** is *off* by default: YuE2 plans melody, chords and i
 2. After YuE2's plan, **Arrange** asks the writer model for a section plan - chords per bar, what the instrument line plays, energy, the tempo (a key lift only in the mode *key change*) - and Plenio writes those notes into the score and checks it.
 3. **Song Sheet · Score** shows the arranged score; its summary and the editor's *Arrangement* line say what was arranged and what stayed. A plan Plenio cannot use leaves YuE2's score as it was, and the sheet warns.
 
+**Plan seed** (in *4 · SCORE*, under the plan, and in App mode): 🎲 lets YuE2 plan another melody and form for the same lyrics, 🔒 (default) keeps the plan.
+
 **Arrangement seed** (in *4 · SCORE* and in App mode): another arrangement of the same song - only Arrange and what follows run again. The plan is written by the template's **Writer model** (the same as for the text); details, the modes and what each slider allows: [Creative modes](../concepts/creative-modes.md).
 
 ## Instrumental songs

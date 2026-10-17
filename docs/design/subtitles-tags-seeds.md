@@ -227,7 +227,7 @@ A small node `PlenioSeed` (*Seed*, category *Plenio/Utils*), output `seed` (INT)
 - Headless (API): the prompt carries the number; *new seed* is the browser's job, as with ComfyUI's
   control widgets.
 
-Templates: **Take seed** 🎲, **Draft seed** 🔒, **Arrangement seed** 🔒 (MiniMax: draft 🔒, take 🎲; DAW:
+Templates: **Take seed** 🎲, **Draft seed** 🔒, **Arrangement seed** 🔒 (later: also **Plan seed** 🔒 in YuE2 Song and **Cover seed** 🔒 in every song template's Cover Art) (MiniMax: draft 🔒, take 🎲; DAW:
 take 🎲). The About notes get a short *Seeds* paragraph: "🔒 keeps a part, 🎲 renews it - keep what you like,
 let the rest change".
 

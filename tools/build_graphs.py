@@ -1673,6 +1673,22 @@ def take_seed(g: Graph, pos: tuple[float, float]) -> Node:
     return seed_node(g, pos, "Take seed", "take seed", keep=False, part="take", seed=1)
 
 
+def plan_seed(g: Graph, plan: Node, pos: tuple[float, float]) -> Node:
+    """YuE2's plan seed as a Plenio · Seed (owner's request 2026-10-17: the seed node wherever it helps): 🔒
+    the same melody and form, 🎲 a new plan every run. The brief's song seed is still added inside."""
+    seed = seed_node(g, pos, "Plan seed", "plan seed", keep=True, part="plan (melody and form)")
+    g.link(seed, "seed", plan, "seed")
+    return seed
+
+
+def cover_seed(g: Graph, cover: Node, pos: tuple[float, float]) -> Node:
+    """The cover art's seed as a Plenio · Seed (owner's request 2026-10-17): 🔒 the same picture for the same
+    prompt, 🎲 another picture every run. 0 and 🔒, as the block's own field had it."""
+    seed = seed_node(g, pos, "Cover seed", "cover seed", keep=True, part="cover art")
+    g.link(seed, "seed", cover, "noise_seed")
+    return seed
+
+
 SEED_CONTROLS = ("seed", "keep_seed")
 """What App mode shows of a seed: the number and the switch."""
 
@@ -1722,6 +1738,7 @@ def finish(
     cover_preview = g.add(
         "PreviewImage", (x + 400, cover_y), size=(300, 300), mode=4, title="Cover preview (optional)"
     )
+    cover_seed_node = cover_seed(g, cover, (x, cover_y + 230))
     g.link(audio[0], audio[1], master, "audio")
     g.link(master, "audio", preview, "audio")
     g.link(master, "audio", export, "audio")
@@ -1733,7 +1750,7 @@ def finish(
     for index, (node, output) in enumerate(all_reports):
         g.link(node, output, export, f"reports.report_{index}")
     g.group(group, [master, preview, export])
-    g.group("COVER ART (optional)", [cover, cover_preview], color=OPTIONAL_GROUP)
+    g.group("COVER ART (optional)", [cover, cover_seed_node, cover_preview], color=OPTIONAL_GROUP)
     return master, preview, export
 
 
@@ -1933,14 +1950,15 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     writer = writer_model(g, (460, 520))
     text_sheet = song_sheet(g, (900, 0), "Song Sheet · Text")
     plan = g.add_subgraph(bp["yue2_plan"], (1400, 0), size=(340, 220))
+    plan_seed_node = plan_seed(g, plan, (1400, 280))
     tools = g.add(
         "PlenioScoreTools",
-        (1400, 300),
+        (1400, 530),
         size=(340, 120 + SUMMARY_ROOM),
         widgets={"operation": "prepare from brief"},
     )
-    arrange_node = g.add_subgraph(bp["arrange"], (1400, 570), size=(340, 260), title="Arrange")
-    arrangement = arrangement_seed(g, arrange_node, (1400, 880))
+    arrange_node = g.add_subgraph(bp["arrange"], (1400, 800), size=(340, 260), title="Arrange")
+    arrangement = arrangement_seed(g, arrange_node, (1400, 1110))
     score_sheet = song_sheet(g, (1820, 0), "Song Sheet · Score")
     seed = take_seed(g, (2320, 0))
     render = g.add_subgraph(bp["yue2_render"], (2320, 230), size=(320, 310))
@@ -2006,12 +2024,20 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("1 · SONG", [brief])
     g.group("2 · WRITE", [write, draft, writer])
     g.group("3 · TEXT", [text_sheet])
-    g.group("4 · SCORE", [plan, tools, arrange_node, arrangement, score_sheet])
+    g.group("4 · SCORE", [plan, plan_seed_node, tools, arrange_node, arrangement, score_sheet])
     g.group("5 · RENDER", [seed, render])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
     make_room(g, brief, SONG_FIELD_ROWS * SLOT_HEIGHT)
     return g, song_app(
-        brief, seed, draft, [text_sheet, score_sheet], preview, export, writer=writer, arrangement=arrangement
+        brief,
+        seed,
+        draft,
+        [text_sheet, score_sheet],
+        preview,
+        export,
+        [(plan_seed_node, name) for name in SEED_CONTROLS],
+        writer=writer,
+        arrangement=arrangement,
     )
 
 
@@ -2125,8 +2151,10 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         widgets={"lora_name": LORA, "strength_model": 0.0, "strength_clip": 1.0},
         properties=model(LORA),
     )
+    # under the adapter, in the first column: right of it, the wider brief's room pushed it across the group's
+    # edge (make_room moves what is right of the old brief column, not the group)
     adapter_switch = g.add(
-        "ComfySwitchNode", (420, 1475), size=(260, 90), title="Adapter for instrumental covers"
+        "ComfySwitchNode", (0, 1665), size=(260, 90), title="Adapter for instrumental covers"
     )
     transcribe = g.add_subgraph(bp["transcribe"], (460, 0), size=(340, 160))
     tools = g.add(
@@ -2151,7 +2179,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     writer = writer_model(g, (1380, 920))
     source_switch = g.add("ComfySwitchNode", (1800, 0), size=(260, 90), title="Original or new lyrics")
     tags_switch = g.add("ComfySwitchNode", (1800, 165), size=(260, 90), title="Instrumental: section tags")
-    text_sheet = song_sheet(g, (2135, 10), "Song Sheet · Text")
+    text_sheet = song_sheet(g, (2135, 0), "Song Sheet · Text")
     seed = take_seed(g, (2620, 0))
     render = g.add_subgraph(bp["yue2_takes"], (2620, 230), size=(320, 330), title="YuE2 Takes")
     check_vocals = g.add(

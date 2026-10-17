@@ -417,8 +417,8 @@ which still answers this computer only. It answers only below the random part of
 page, the live playlist with titles and covers, and in *change* mode the library's titles to add from. The
 first time, **Windows may ask whether Python may accept connections**: allow it for private networks, or
 the phones cannot reach the player. On a network you do not trust (a café, a hotel) leave it off. It stays on
-when the player starts again, with the same address; `--guests-host` sets where it listens (every network by
-default). Guests see the live playlist while the player's page is open - the page keeps the playlist.
+when the player starts again, with the same address; `--guests-host` (or `PLENIO_GUESTS_HOST`) sets where it
+listens (every network by default). Guests see the live playlist while the player's page is open - the page keeps the playlist.
 
 ## Continue a song in ComfyUI
 
