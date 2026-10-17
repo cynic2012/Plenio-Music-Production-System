@@ -41,10 +41,13 @@ async function talk(s, text, min = 0) {
   await s.wait(Math.max(min, 900 + spoken(text).length * 68))
 }
 
-// the song the video plays: timed lyrics, a score, sheet music, other takes and the longest of those - one
-// further down the songs (newest first), so that back from its page the songs' page goes to it
+// the song the video plays: the one named by its file name in PLENIO_PLAYER_SONG, else timed lyrics, a score,
+// sheet music, other takes and the longest of those - one further down the songs (newest first), so that back
+// from its page the songs' page goes to it
 async function pickSong(s) {
   const library = await s.page.evaluate(() => fetch('/api/library').then((r) => r.json()))
+  const named = process.env.PLENIO_PLAYER_SONG && library.songs.find((x) => x.file === process.env.PLENIO_PLAYER_SONG)
+  if (named) return named
   const newest = [...library.songs].sort((a, b) => String(b.created).localeCompare(String(a.created)))
   const place = new Map(newest.map((x, i) => [x.id, i]))
   const takes = (x) => !!x.takes_key && library.songs.some((o) => o.id !== x.id && o.takes_key === x.takes_key)
@@ -146,7 +149,8 @@ export default async function player(s) {
   await s.click(page.locator('.search input'))
   await s.type(song.title.split(/\s+/).slice(0, 2).join(' ').toLowerCase())
   await s.wait(700)
-  const card = page.locator('.card', { hasText: song.title }).first()
+  // by its id: two songs can have the same title
+  const card = page.locator(`.card[data-song="${song.id}"]`)
   await card.scrollIntoViewIfNeeded()
   await s.hover(card)
   await s.wait(400)
