@@ -65,7 +65,9 @@ def start_player(folder: Path, comfyui: str, port: int, state: Path) -> subproce
         flags["start_new_session"] = True
     # the launcher script; a copy of the package without it (some installs copy only the folders) runs the
     # module with the package on the import path
-    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    # the player keeps its state where its log goes (it read the default folder before, so a player started
+    # for another state folder took that folder's chosen music folders)
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PLENIO_PLAYER_STATE": str(state)}
     if SCRIPT.is_file():
         command = [sys.executable, str(SCRIPT)]
     else:

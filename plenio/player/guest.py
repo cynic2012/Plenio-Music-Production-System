@@ -1,0 +1,446 @@
+"""Guests in the same network see the live playlist (owner's request 2026-10-17): with the access switched on
+in Live Play, anyone on the same network (the party's Wi-Fi) opens a page of their own on their phone - the
+song that plays, what comes next - and, if the host allows it, moves songs up and down, takes them out and
+adds songs from the library.
+
+The access is a second, small server of its own (``serve_guests``), apart from the player's: the player keeps
+answering on the loopback address only, while this one listens on the network and answers only below a
+random path (``/<token>/``) that the host can make anew at any time - the old address then leads nowhere. It
+serves the guests' page, the live playlist and the songs' covers, and in *change* mode a search of the
+library and the guests' wishes. Nothing else: no audio, no records, no paths, no settings.
+
+The live playlist lives in the player's page (its queue). The page sends what it shows (``publish``) and asks
+for the guests' wishes (``take``), which it carries out itself - so the playlist has one owner, and a wish for
+a song that has moved on is simply not done.
+"""
+
+from __future__ import annotations
+
+import hmac
+import json
+import re
+import secrets
+import socket
+import threading
+import time
+from collections import deque
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qs, unquote, urlparse
+
+from . import other as other_music
+from .library import Library
+
+PAGE = Path(__file__).resolve().parent / "guest_page.html"
+PORTS = range(8770, 8780)
+MODES = ("view", "change")
+SHOWS = ("both", "qr", "address", "none")
+OPS = ("up", "down", "next", "remove", "add")
+SONG_ID = re.compile(r"[0-9a-f]{12}")
+STALE_AFTER = 20.0
+"""Seconds without news from the player's page after which the guests read that it is closed."""
+WISHES_KEPT = 200
+WISHES_PER_MINUTE = 40
+"""Wishes one guest (address) may send in a minute."""
+LIST_LIMIT = 200
+BODY_LIMIT = 64 * 1024
+DEFAULTS: dict[str, Any] = {"on": False, "mode": "view", "show": "both", "token": "", "port": 0}
+ALL_NETWORKS = ("0.0.0.0", "")  # noqa: S104 - the guests' access is meant for the network
+
+
+def new_token() -> str:
+    """A path nobody guesses: 16 URL characters, about 96 bits."""
+    return secrets.token_urlsafe(12)
+
+
+def lan_addresses() -> list[str]:
+    """This computer's addresses in its networks (IPv4), the one of the default route first; no loopback or
+    self-assigned (169.254) ones. Asking which address a route would use sends nothing."""
+    found: list[str] = []
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("10.254.254.254", 1))
+            found.append(probe.getsockname()[0])
+    except OSError:
+        pass
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            found.append(str(info[4][0]))
+    except OSError:
+        pass
+    seen: list[str] = []
+    for address in found:
+        if address.startswith(("127.", "169.254.", "0.")) or address in seen:
+            continue
+        seen.append(address)
+    return seen
+
+
+class GuestHub:
+    """The guests' access: its settings (kept in ``guests.json`` in the player's state folder), its server,
+    what the player's page last showed, and the guests' wishes on their way to it."""
+
+    def __init__(self, library: Library, directory: Path, host: str = "0.0.0.0") -> None:  # noqa: S104
+        self.library = library
+        self.path = directory / "guests.json"
+        self.cache = directory / "cache"
+        self.host = host
+        self.lock = threading.Lock()
+        self.settings = self._load()
+        self.server: ThreadingHTTPServer | None = None
+        self.error = ""
+        self.snapshot: dict[str, Any] = {}
+        self.snapshot_at = 0.0
+        self.wishes: deque[dict[str, Any]] = deque(maxlen=WISHES_KEPT)
+        self.last_wish = 0
+        self.sent: dict[str, deque[float]] = {}
+        self.seen: dict[str, float] = {}
+
+    # --- settings and the server -------------------------------------------------------------------
+    def _load(self) -> dict[str, Any]:
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = {}
+        settings = {
+            **DEFAULTS,
+            **{k: v for k, v in (data if isinstance(data, dict) else {}).items() if k in DEFAULTS},
+        }
+        if settings["mode"] not in MODES:
+            settings["mode"] = "view"
+        if settings["show"] not in SHOWS:
+            settings["show"] = "both"
+        if not isinstance(settings["token"], str) or len(settings["token"]) < 12:
+            settings["token"] = new_token()
+        return settings
+
+    def _save(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        temp = self.path.with_suffix(".tmp")
+        temp.write_text(json.dumps(self.settings, indent=1), encoding="utf-8")
+        temp.replace(self.path)
+
+    def resume(self) -> None:
+        """At the player's start: the access as it was left (on stays on)."""
+        if self.settings["on"]:
+            self._start()
+
+    def configure(self, changes: dict[str, Any]) -> dict[str, Any]:
+        """Switch the access on or off, choose what guests may do and what the screen shows, or make a new
+        address (``regenerate``: the old one leads nowhere from now on)."""
+        with self.lock:
+            if changes.get("mode") in MODES:
+                self.settings["mode"] = changes["mode"]
+            if changes.get("show") in SHOWS:
+                self.settings["show"] = changes["show"]
+            if changes.get("regenerate"):
+                self.settings["token"] = new_token()
+                self.wishes.clear()
+                self.seen.clear()
+            if "on" in changes:
+                self.settings["on"] = bool(changes["on"])
+            self._save()
+            if self.settings["on"] and self.server is None:
+                self._start()
+            elif not self.settings["on"] and self.server is not None:
+                self._stop()
+        return self.status()
+
+    def _start(self) -> None:
+        self.error = ""
+        wanted = self.settings.get("port") or 0
+        ports = [wanted] if wanted else []
+        ports += [p for p in PORTS if p not in ports]
+        for port in ports:
+            try:
+                server = serve_guests(self, self.host, int(port))
+            except OSError:
+                continue
+            self.server = server
+            self.settings["port"] = server.server_address[1]
+            self._save()
+            threading.Thread(target=server.serve_forever, daemon=True, name="plenio-guests").start()
+            return
+        self.error = f"no free port among {PORTS.start}-{PORTS.stop - 1}"
+        self.settings["on"] = False
+        self._save()
+
+    def _stop(self) -> None:
+        server, self.server = self.server, None
+        if server is not None:
+            server.shutdown()
+            server.server_close()
+
+    def close(self) -> None:
+        with self.lock:
+            self._stop()
+
+    def status(self) -> dict[str, Any]:
+        """For the player's page: the settings, whether the access answers, and its addresses."""
+        running = self.server is not None
+        port = self.settings["port"]
+        token = self.settings["token"]
+        # on every network: this computer's addresses; on one address: that one
+        addresses = (lan_addresses() if self.host in ALL_NETWORKS else [self.host]) if running else []
+        urls = [f"http://{address}:{port}/{token}/" for address in addresses]
+        now = time.monotonic()
+        return {
+            "on": bool(self.settings["on"]) and running,
+            "mode": self.settings["mode"],
+            "show": self.settings["show"],
+            "port": port,
+            "url": urls[0] if urls else "",
+            "urls": urls,
+            "guests": sum(1 for at in self.seen.values() if now - at < 30),
+            "error": self.error,
+        }
+
+    def token_ok(self, token: str) -> bool:
+        return bool(self.settings["on"]) and hmac.compare_digest(
+            token.encode(), self.settings["token"].encode()
+        )
+
+    # --- the player's page ---------------------------------------------------------------------------
+    def publish(self, data: dict[str, Any]) -> None:
+        """What the player's page shows now: the song that plays (with where it is), what comes next and
+        what played - song ids only; titles and covers come from the library, never from the page."""
+
+        def entry(item: Any) -> dict[str, Any] | None:
+            if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+                return None
+            song = self.library.song(item["id"])
+            if song is None:
+                return None
+            summary = song.summary
+            at = item.get("at")
+            return {
+                "id": song.id,
+                "at": at if isinstance(at, int) and not isinstance(at, bool) else -1,
+                "title": summary.get("title") or "",
+                "by": summary.get("artist") or summary.get("genre") or "",
+                "seconds": round(float(summary.get("seconds") or 0.0), 1),
+                "cover": bool((summary.get("has") or {}).get("cover")),
+                "new": bool(item.get("new")),
+            }
+
+        now = entry(data.get("now"))
+        if now is not None:
+            position = data.get("position")
+            now["position"] = round(float(position), 2) if isinstance(position, (int, float)) else 0.0
+        snapshot = {
+            "live": bool(data.get("live")),
+            "playing": bool(data.get("playing")),
+            "waiting": bool(data.get("waiting")),
+            "now": now,
+            "next": [e for e in (entry(x) for x in (data.get("next") or [])[:LIST_LIMIT]) if e],
+            "played": [e for e in (entry(x) for x in (data.get("played") or [])[:10]) if e],
+        }
+        with self.lock:
+            self.snapshot = snapshot
+            self.snapshot_at = time.monotonic()
+
+    def take(self, after: int) -> dict[str, Any]:
+        """The guests' wishes after ``after`` (the last one the page carried out)."""
+        with self.lock:
+            return {"wishes": [w for w in self.wishes if w["n"] > after], "last": self.last_wish}
+
+    # --- the guests ----------------------------------------------------------------------------------
+    def view(self, guest: str) -> dict[str, Any]:
+        """What a guest sees: the live playlist as the page last showed it, and what they may do."""
+        with self.lock:
+            self.seen[guest] = time.monotonic()
+            fresh = self.snapshot and time.monotonic() - self.snapshot_at < STALE_AFTER
+            snapshot = dict(self.snapshot) if fresh else {}
+            age = time.monotonic() - self.snapshot_at if fresh else None
+        if snapshot.get("now") and snapshot.get("playing") and age is not None:
+            now = dict(snapshot["now"])
+            now["position"] = round(min(now["seconds"] or 1e9, now["position"] + age), 2)
+            snapshot["now"] = now
+        return {"open": bool(fresh), "mode": self.settings["mode"], **snapshot}
+
+    def wish(self, guest: str, data: Any) -> tuple[int, dict[str, Any]]:
+        """A guest's wish (change mode only): a song up, down, next, out - or a song of the library added
+        next or at the end. Checked here; the page carries it out if it still can."""
+        if self.settings["mode"] != "change":
+            return 403, {"error": "the host lets guests only look"}
+        if not isinstance(data, dict) or data.get("op") not in OPS:
+            return 400, {"error": f"op: one of {', '.join(OPS)}"}
+        song_id = data.get("id")
+        if (
+            not isinstance(song_id, str)
+            or not SONG_ID.fullmatch(song_id)
+            or self.library.song(song_id) is None
+        ):
+            return 400, {"error": "no such song"}
+        wish: dict[str, Any] = {"op": data["op"], "id": song_id}
+        if data["op"] == "add":
+            if data.get("where") not in ("next", "end"):
+                return 400, {"error": "where: next or end"}
+            wish["where"] = data["where"]
+        else:
+            at = data.get("at")
+            if not isinstance(at, int) or isinstance(at, bool) or not 0 <= at < 100_000:
+                return 400, {"error": "at: the song's place in the playlist"}
+            wish["at"] = at
+        now = time.monotonic()
+        with self.lock:
+            sent = self.sent.setdefault(guest, deque())
+            while sent and now - sent[0] > 60:
+                sent.popleft()
+            if len(sent) >= WISHES_PER_MINUTE:
+                return 429, {"error": "slow down a little"}
+            sent.append(now)
+            self.last_wish += 1
+            wish["n"] = self.last_wish
+            self.wishes.append(wish)
+        return 200, {"ok": True, "n": wish["n"]}
+
+    def search(self, query: str) -> list[dict[str, Any]]:
+        """Songs of the library for a guest to add: every word in the title, artist, genre or mood."""
+        words = [w for w in query.lower().split() if w][:6]
+        found: list[tuple[int, dict[str, Any]]] = []
+        for summary in self.library.songs():
+            title = str(summary.get("title") or "")
+            text = " ".join(
+                str(summary.get(k) or "") for k in ("title", "artist", "album", "genre", "mood")
+            ).lower()
+            if words and not all(w in text for w in words):
+                continue
+            rank = 0 if words and all(w in title.lower() for w in words) else 1
+            found.append(
+                (
+                    rank,
+                    {
+                        "id": summary["id"],
+                        "title": title,
+                        "by": summary.get("artist") or summary.get("genre") or "",
+                        "seconds": round(float(summary.get("seconds") or 0.0), 1),
+                        "cover": bool((summary.get("has") or {}).get("cover")),
+                    },
+                )
+            )
+        found.sort(key=lambda x: (x[0], x[1]["title"].lower()))
+        return [item for _, item in found[:40]]
+
+    def cover(self, song_id: str) -> Path | None:
+        song = self.library.song(song_id) if SONG_ID.fullmatch(song_id) else None
+        if song is None:
+            return None
+        path = song.files.get("cover")
+        if path is None and song.other and (song.summary.get("has") or {}).get("cover"):
+            path = other_music.embedded_cover(song.record, song.id, self.cache)
+        return path
+
+
+IMAGE_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+PAGE_HEADERS = {
+    # the token is in the address: it goes to no other site, and the page runs only its own code
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": (
+        "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; "
+        "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    ),
+}
+
+
+def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
+    """The guests' server: everything below ``/<token>/``, every other address a plain 404."""
+
+    class Handler(BaseHTTPRequestHandler):
+        server_version = "PlenioLive"
+
+        def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 - the base class's name
+            pass
+
+        def _send(self, status: int, body: bytes, kind: str, headers: dict[str, str] | None = None) -> None:
+            self.send_response(status)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            for name, value in {**PAGE_HEADERS, **(headers or {})}.items():
+                self.send_header(name, value)
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
+
+        def _json(self, data: Any, status: int = 200) -> None:
+            self._send(
+                status,
+                json.dumps(data, ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8",
+            )
+
+        def _nothing(self) -> None:
+            self._send(404, b"not found", "text/plain; charset=utf-8")
+
+        def _route(self) -> tuple[str, dict[str, str]] | None:
+            """The path below a valid token, or ``None``."""
+            parsed = urlparse(self.path)
+            parts = unquote(parsed.path).split("/", 2)
+            if len(parts) < 3 or parts[0] != "" or not hub.token_ok(parts[1]):
+                return None
+            return "/" + parts[2], {k: v[0] for k, v in parse_qs(parsed.query).items()}
+
+        def do_HEAD(self) -> None:  # noqa: N802 - the base class's name
+            self.do_GET()
+
+        def do_GET(self) -> None:  # noqa: N802
+            address = unquote(urlparse(self.path).path)
+            if address.count("/") == 1 and hub.token_ok(address[1:]):
+                # the address typed without its last slash: the page's own links need it
+                self.send_response(301)
+                self.send_header("Location", f"{address}/")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return None
+            found = self._route()
+            if found is None:
+                return self._nothing()
+            route, query = found
+            guest = self.client_address[0]
+            if route == "/":
+                try:
+                    return self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+                except OSError:
+                    return self._nothing()
+            if route == "/api/live":
+                return self._json(hub.view(guest))
+            if route == "/api/songs":
+                if hub.settings["mode"] != "change":
+                    return self._json({"error": "the host lets guests only look"}, 403)
+                return self._json({"songs": hub.search(query.get("q", "")[:200])})
+            if route.startswith("/cover/"):
+                path = hub.cover(route.removeprefix("/cover/"))
+                kind = IMAGE_TYPES.get(path.suffix.lower()) if path else None
+                if path is None or kind is None or not path.is_file():
+                    return self._nothing()
+                return self._send(200, path.read_bytes(), kind, {"Cache-Control": "max-age=3600"})
+            return self._nothing()
+
+        def do_POST(self) -> None:  # noqa: N802
+            length = int(self.headers.get("Content-Length") or 0)
+            if length > BODY_LIMIT:
+                self.close_connection = True
+                return self._json({"error": "too large"}, 413)
+            raw = self.rfile.read(length) if length > 0 else b""
+            found = self._route()
+            if found is None or found[0] != "/api/wish":
+                return self._nothing()
+            # JSON only: another site's page in a guest's browser cannot send it without asking first
+            if not (self.headers.get("Content-Type") or "").startswith("application/json"):
+                return self._json({"error": "JSON only"}, 415)
+            try:
+                data = json.loads(raw.decode("utf-8"))
+            except ValueError:
+                return self._json({"error": "not JSON"}, 400)
+            status, answer = hub.wish(self.client_address[0], data)
+            return self._json(answer, status)
+
+    class Server(ThreadingHTTPServer):
+        daemon_threads = True
+        allow_reuse_address = False
+
+    return Server((host, port), Handler)

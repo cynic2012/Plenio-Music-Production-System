@@ -23,11 +23,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ..core import brief as brief_rules
 from ..core import subtitles as subtitle_rules
 from . import other as other_music
 
 RECORD_SUFFIX = ".plenio.json"
-CACHE_VERSION = 4
+CACHE_VERSION = 5
 RETIRED_DIR = "_retired"
 """Where removed songs go, below the library folder they were in; the library does not read it."""
 SKIP_DIRS = {".plenio-player", "__pycache__", ".git", RETIRED_DIR}
@@ -80,38 +81,88 @@ def template_fields(template_id: str) -> dict[str, str]:
     return _TEMPLATES.get(template_id, {})
 
 
+COVER_LANGUAGE_DEFAULTS = {"original lyrics": "auto", "new lyrics": "English"}
+"""The Cover Brief's language field by its vocals choice (``comfy/nodes/cover_brief.py``)."""
+SONG_MODE_DEFAULT = "new song every run"
+COVER_MODE_DEFAULT = "one cover, stop to review"
+"""The briefs' work mode by default (``comfy/nodes/brief.py``, ``cover_brief.py``)."""
+
+
 def brief_facts(prompt: Mapping[str, Any]) -> dict[str, Any]:
-    """The brief as the song was made: typed values, the template's where a text field was empty."""
+    """The brief as the song was made: typed values, the template's where a text field was empty, and the
+    brief's default where neither was set. ``sources`` says which, per field: ``typed``, ``template`` or
+    ``default`` (a text field left empty has no default value - the writer chose; owner's request
+    2026-10-17: the song page shows every field, a default marked as one)."""
     kind, inputs = _brief_node(prompt)
     if not kind:
         return {}
+    cover = kind == "PlenioCoverBrief"
     template = _text(inputs.get("template"))
     filled = template_fields(template) if template and template != "none" else {}
+    sources: dict[str, str] = {}
 
-    def field_value(name: str, key: str | None = None) -> str:
-        return _text(inputs.get(key or name)) or _text(filled.get(name))
+    def field_value(name: str, key: str | None = None, default: str = "") -> str:
+        typed = _text(inputs.get(key or name))
+        if typed and typed != default:
+            sources[name] = "typed"
+            return typed
+        from_template = _text(filled.get(name))
+        if from_template and not typed:
+            sources[name] = "template"
+            return from_template
+        sources[name] = "default"
+        return default
 
-    vocals = _text(inputs.get("vocals")) or _text(filled.get("vocals"))
+    def choice(name: str, default: str, key: str | None = None) -> str:
+        value = _text(inputs.get(key or name)) or default
+        sources[name] = "default" if value == default else "typed"
+        return value
+
+    def number(name: str, key: str, default: int) -> int:
+        value = brief_rules.closeness_value(inputs.get(key), default)
+        sources[name] = "default" if value == default else "typed"
+        return value
+
+    vocals = _text(inputs.get("vocals")) or _text(filled.get("vocals")) or ("" if cover else "sung")
+    sources["vocals"] = "typed" if _text(inputs.get("vocals")) else "default"
+    language_default = COVER_LANGUAGE_DEFAULTS.get(vocals, "") if cover else ""
     facts: dict[str, Any] = {
-        "kind": "cover" if kind == "PlenioCoverBrief" else "song",
-        "mode": _text(inputs.get("mode")),
+        "kind": "cover" if cover else "song",
+        "mode": choice("mode", COVER_MODE_DEFAULT if cover else SONG_MODE_DEFAULT),
         "template": "" if template == "none" else template,
         "description": field_value("description"),
         "genre": field_value("genre"),
         "mood": field_value("mood"),
         "tempo": field_value("tempo"),
-        "length": _text(inputs.get("length")),
+        "length": "" if cover else choice("length", brief_rules.DEFAULT_LENGTH),
         "vocals": vocals,
-        "language": field_value("language", "vocals.language"),
+        "language": field_value("language", "vocals.language", language_default),
         "voice": field_value("voice", "vocals.voice"),
         "theme": field_value("theme", "vocals.theme"),
+        "melody": choice("melody", next(iter(brief_rules.MELODY_OPTIONS)), "vocals.melody")
+        if vocals == "instrumental"
+        else "",
         "lead_instrument": field_value("lead_instrument", "vocals.lead_instrument"),
         "key": field_value("key"),
         "meter": field_value("meter"),
-        "arrangement": _text(inputs.get("arrangement")) or "off",
-        "harmony": _text(inputs.get("harmony")),
-        "closeness": inputs.get("genre_closeness", inputs.get("song_flow_closeness")),
+        "arrangement": choice("arrangement", brief_rules.ARRANGEMENT_DEFAULT),
+        "harmony": choice("harmony", next(iter(brief_rules.HARMONY_OPTIONS))) if cover else "",
+        "closeness": number(
+            "closeness",
+            "song_flow_closeness" if cover else "genre_closeness",
+            brief_rules.CLOSENESS_DEFAULT,
+        ),
+        "lyrics_closeness": number(
+            "lyrics_closeness", "lyrics_closeness", brief_rules.LYRICS_CLOSENESS_DEFAULT
+        )
+        if cover and vocals == "new lyrics"
+        else None,
+        "lines_under_singing": bool(inputs.get("lines_under_singing")),
     }
+    sources["lines_under_singing"] = "typed" if facts["lines_under_singing"] else "default"
+    if template == "none" or not template:
+        sources["template"] = "default"
+    facts["sources"] = sources
     return facts
 
 

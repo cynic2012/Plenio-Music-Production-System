@@ -13,6 +13,8 @@ import { parseQuery, score } from '../search'
 import { byId, current, duration, index, library, liveWaiting, newPlaylist, playAt, playing, queue, say, settings, state, time } from '../store'
 import { formatTime } from '../timing'
 import CoverArt from './CoverArt.vue'
+import GuestAccess from './GuestAccess.vue'
+import GuestWayIn from './GuestWayIn.vue'
 import Icon from './Icon.vue'
 import { isPortable } from '../portable'
 
@@ -94,7 +96,10 @@ const ago = (at: number): string => {
         <h1><Icon name="live" :size="30" /> Live Play <span v-if="live.on" class="on-air">LIVE</span></h1>
         <p class="lead">A playlist that plays while you change it - and the songs ComfyUI makes now join it as soon as they are exported. Make songs at a party, and they play.</p>
       </div>
-      <button v-if="live.on" class="ghost" @click="stopLive">Stop Live Play</button>
+      <div class="head-right">
+        <button v-if="live.on" class="ghost" @click="stopLive">Stop Live Play</button>
+        <GuestWayIn />
+      </div>
     </header>
 
     <section v-if="!live.on" class="start">
@@ -135,6 +140,7 @@ const ago = (at: number): string => {
       </div>
       <p v-if="live.on" class="hint">Listening for new songs every few seconds{{ live.auto ? '' : ' - they are announced, add them below' }}. Export Release writes a song; a moment later it is here.</p>
     </section>
+    <GuestAccess v-if="!isPortable" />
 
     <section v-if="live.on || queue.length" class="now">
       <div v-if="liveWaiting" class="waiting"><Icon name="live" :size="22" /> Waiting for the next new song …</div>
@@ -187,7 +193,7 @@ const ago = (at: number): string => {
     </section>
 
     <section v-if="liveLog.length" class="log">
-      <h3>Arrived from ComfyUI</h3>
+      <h3>What happened</h3>
       <p v-for="entry in liveLog" :key="`${entry.id}-${entry.at}`"><b>{{ entry.title }}</b> - {{ entry.where }} <small>{{ ago(entry.at) }}</small></p>
     </section>
 
@@ -212,6 +218,11 @@ const ago = (at: number): string => {
   justify-content: space-between;
   align-items: flex-start;
   gap: 20px;
+}
+.head-right {
+  display: grid;
+  justify-items: end;
+  gap: 12px;
 }
 h1 {
   display: flex;

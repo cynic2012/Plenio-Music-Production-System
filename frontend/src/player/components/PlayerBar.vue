@@ -280,15 +280,23 @@ function volume(event: Event): void {
   letter-spacing: 0.6px;
   cursor: pointer;
 }
+/* square at any window size, and bright (owner's request 2026-10-17) */
 .mini {
   position: relative;
-  width: 92px;
-  height: 34px;
-  border-radius: 8px;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
-  background: #05060a;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #0a0816;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.mini:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 .mini-full {
   position: absolute;

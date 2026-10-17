@@ -19,6 +19,8 @@ import QueuePanel from './components/QueuePanel.vue'
 import RemoveDialog from './components/RemoveDialog.vue'
 import Sidebar from './components/Sidebar.vue'
 import SongView from './components/SongView.vue'
+import GuestWayIn from './components/GuestWayIn.vue'
+import { guestBig, loadGuests } from './guests'
 import { api } from './api'
 import { engine } from './engine'
 import { paletteStyle } from './now'
@@ -116,6 +118,7 @@ function onKey(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
     // Esc leaves a text field first; a list (select) that was chosen from does not hold it back
     if (typing && target.tagName !== 'SELECT') (target as HTMLInputElement).blur()
+    else if (guestBig.value) guestBig.value = false
     else if (removing.value) removing.value = null
     else if (help.value) help.value = false
     else if (queueOpen.value) queueOpen.value = false
@@ -210,6 +213,8 @@ let presetTimer: number | undefined
 onMounted(() => {
   window.addEventListener('keydown', onKey)
   void loadMyPresets()
+  // the guests' access as it was left: on, the page tells the guests what plays again
+  void loadGuests()
   if (!isPortable) presetTimer = window.setInterval(() => {
     if (document.visibilityState === 'visible') void loadMyPresets()
   }, 3000)
@@ -256,6 +261,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </Transition>
+    <Transition name="fade"><GuestWayIn v-if="guestBig" big /></Transition>
     <Transition name="fade"><div v-if="toast" class="toast">{{ toast }}</div></Transition>
     <Transition name="fade"><RemoveDialog v-if="removing" :song="removing" @close="removing = null" @done="say" /></Transition>
   </div>

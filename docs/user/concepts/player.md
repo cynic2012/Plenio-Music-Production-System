@@ -158,8 +158,12 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
   sound, already at the bar's next note); it stands at the bar's chord only in a bar with no note, one note
   or only a rest. Click a note to jump there.
 - **Sheet music**: the PDF from Export Release, in the browser's PDF viewer.
-- **Details**: the brief (genre, mood, tempo, key, voice, theme, template, creative mode, genre closeness),
-  the model and the writer, loudness and true peak, the seeds (with a copy button, so you can make the take
+- **Details**: *The song* lists every field of the brief the song was made with - work mode, template,
+  genre, mood, tempo, key, meter, length and target length, vocals, language, voice, lyrics theme (or melody
+  and lead instrument), for a cover the harmony and the closeness sliders, the arrangement, genre closeness
+  and lines under the singing. A field you left empty shows the brief's default with *(default)*, or - for a
+  text field, which has none - *open - the writer chose*; a value the template filled says *(from the
+  template)*. Then the model and the writer, loudness and true peak, the seeds (with a copy button, so you can make the take
   again), the tags in the file, the cover's prompt, and every file to download: FLAC, MP3, WAV, the
   unmastered take, the PDF, both subtitle files, the cover and the release record. The record's path is
   shown with a copy button, ready for *File > Continue a Plenio song…* in ComfyUI.
@@ -196,8 +200,9 @@ Every view has the song's sections as chips (*Verse*, *Chorus* …; click to jum
 the part already played is filled in the song's colours, and hovering shows the time, the section and the
 line sung there. Click or drag the waveform to jump. A title card greets every new song.
 
-The bar at the bottom always shows the song, the line sung right now, the controls and a small visual. It
-also has:
+The bar at the bottom always shows the song, the line sung right now, the controls and a small square
+visual - a bright ring of the music round a core that pulses with the bass, which breathes slowly when the
+music stops; click it for Now playing. It also has:
 
 - **A · master / B · original**: switches to the unmastered take and back without a gap, at the same moment
   in the song. You get this when you export with Export Release's *original* input connected (every
@@ -384,12 +389,36 @@ the first song ComfyUI makes). While it runs, *LIVE* shows in the sidebar and in
 - **at the end**
 - **anywhere, at random** - somewhere after the song that plays
 
-A message says where each new song went, *Arrived from ComfyUI* lists them, and a red **new** mark shows on
-them (here and in the library) for a quarter of an hour.
+A message says where each new song went, *What happened* lists them (and what guests did), and a red **new**
+mark shows on them (here and in the library) for a quarter of an hour.
 
 **At the end** Live Play starts again **from the top**, or **waits for the next new song** and plays it the
 moment it comes. Live Play stays on when you close the page and open it again, and so do its rules. The
 player asks for new songs every few seconds; it reads its folders again for it, at most every two seconds.
+
+### Guests in your network
+
+Switch on **Let guests see the live playlist** in Live Play, and everyone on the same network - the party's
+Wi-Fi - opens a page of their own on the phone: the song that plays (with how far it is), what comes next and
+what played. The music keeps playing on your computer; the phones get no sound and no files.
+
+- **The way in**: a QR code and an address like `http://192.168.178.23:8770/Ab3dE…/`. The last part is made
+  at random; **New address** makes another one at any time, and the old one leads nowhere from then on.
+- **Guests may** *only look*, or *change it*: move a song up or down, take it out, and search your library to
+  add a song next or at the end. The song that plays and the ones already played stay as they are. A message
+  and *What happened* say what a guest did.
+- **On the screen**: the QR code and the address, only one of them, or nothing - as a card in Live Play and in
+  Now playing (it stays when the controls fade, for a screen the room sees). **Show it big** (or a click on
+  the card) shows it over everything.
+- *n guests are looking now* counts the phones that asked in the last half minute.
+
+The access is a small server of its own on port 8770 (8771-8779 when it is taken), apart from the player,
+which still answers this computer only. It answers only below the random part of the address - the guests'
+page, the live playlist with titles and covers, and in *change* mode the library's titles to add from. The
+first time, **Windows may ask whether Python may accept connections**: allow it for private networks, or
+the phones cannot reach the player. On a network you do not trust (a café, a hotel) leave it off. It stays on
+when the player starts again, with the same address; `--guests-host` sets where it listens (every network by
+default). Guests see the live playlist while the player's page is open - the page keeps the playlist.
 
 ## Continue a song in ComfyUI
 
@@ -417,8 +446,9 @@ It is saved half a second after each change, and once more when you close the pa
 there after closing the browser or restarting the computer, in another browser, and whether you started
 the player from ComfyUI or by hand. *Settings* in the sidebar says **kept ✓** (or *saved ✓* after a change).
 
-The **Settings** page shows what is kept, the file it is kept in (`~/.plenio/player/state.json`), and when it
-was last saved, and it has:
+The **Settings** page starts with the version of the player that runs (and says so when the page is from
+another version - reload it then). It shows what is kept, the file it is kept in
+(`~/.plenio/player/state.json`), and when it was last saved, and it has:
 
 - **Download a backup** - a `.json` file with everything above (the songs stay in their folders)
 - **Restore a backup…** - read such a file back, on this or another computer

@@ -2,6 +2,22 @@
 
 All notable changes of the current version and the one before. Versions follow semantic versioning; published Registry versions are immutable. Earlier versions (0.2.0 to 0.7.0): the [changelog of 0.8.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.8.0/CHANGELOG.md) (0.7.0), the [changelog of 0.7.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.7.0/CHANGELOG.md) (0.6.1), the [changelog of 0.6.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.6.0/CHANGELOG.md) (0.5.0 and 0.6.0), the [changelog of 0.4.4](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.4.4/CHANGELOG.md) (0.2.0 to 0.4.4) and the [GitHub releases](https://github.com/jplenio/Plenio-Music-Production-System/releases).
 
+## Unreleased
+
+### Added
+
+- **Guests in your network** (owner's request): in Live Play, *Let guests see the live playlist* gives everyone on the same network (the party's Wi-Fi) a page of their own on the phone - the song that plays, what comes next, what played. The host chooses whether guests *only look* or *change it*: move songs up and down, take them out, and add songs from the library next or at the end. The way in is a QR code and an address with a random part; **New address** makes another at any time and the old one leads nowhere. The screen shows the QR code, the address, both or nothing - as a card in Live Play and in Now playing, and **Show it big** over everything. The access is a small server of its own on port 8770 that serves only the guests' page, the playlist with titles and covers and, in change mode, the library's titles - no audio, no files, no paths; the player itself still answers this computer only (`plenio/player/guest.py`, `guest_page.html`; the page carries out the wishes, `frontend/src/player/guests.ts`; QR codes by an encoder of Plenio's own, `qr.ts`, checked against OpenCV's decoder for every version it makes). `--guests-host` sets where it listens.
+- **Every field of the brief on a song's page** (owner's request): *Details > The song* lists the work mode, template, genre, mood, tempo, key, meter, length and target length, vocals, language, voice, lyrics theme (or melody and lead instrument), a cover's harmony and closeness sliders, the arrangement, genre closeness and lines under the singing - a field left empty with the brief's default and *(default)*, or *open - the writer chose*; a template's value with *(from the template)*.
+- **The player's version at the top of Settings** (owner's request), and a note when the page open is from another version.
+
+### Changed
+
+- **The small visual in the bar** is a square and bright at any window size (owner's report: a dark strip, stretched on a wide window): a ring of the music round a core that pulses with the bass, breathing slowly when the music stops.
+
+### Fixed
+
+- A player started from ComfyUI for a state folder of its own read the default state folder's chosen music folders (`launch.start_player` now hands the folder to the player).
+
 ## 1.0.0 - 2026-10-16
 
 **Plenio 1.0.** The whole way from an idea to a song people listen to, on your own computer and free: a local language model writes the song (or you compose it yourself), YuE2 or MiniMax Music 3 performs it, Plenio masters it and exports it with its tags, its lyrics as subtitles and its whole project - and now the **Plenio Player** plays it, shows it and shares it. After fourteen published versions in three weeks, the templates, the nodes and the release record have settled: 1.0.0 is the version to build on, and saved workflows and release records keep working in every 1.x version. (0.8.1 was not published; everything it had is in 1.0.0.)

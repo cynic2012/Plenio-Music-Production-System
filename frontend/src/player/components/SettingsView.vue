@@ -9,6 +9,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { api, type ComfyFound, type FoldersAnswer } from '../api'
+import { version as pageVersion } from '../../../package.json'
 import { comfyuiAddress, info, lastSaved, library, reloadLibrary, replaceState, rescan, saveError, say, settings, state } from '../store'
 import { countOf } from '../timing'
 import FolderBrowser from './FolderBrowser.vue'
@@ -133,6 +134,13 @@ async function stop(): Promise<void> {
 <template>
   <div class="settings">
     <h1>Settings</h1>
+    <!-- which player answers (owner's request 2026-10-17); a page left open across an update says so -->
+    <p class="version">
+      <Icon name="info" :size="15" />
+      <template v-if="isPortable"><b>Shared with the Plenio Player {{ portable?.plenio }}</b></template>
+      <template v-else><b>Plenio Player {{ info?.version ?? '…' }}</b> is running</template>
+      <span v-if="!isPortable && info && info.version !== pageVersion" class="stale">· this page is {{ pageVersion }} - reload it (Ctrl+F5)</span>
+    </p>
 
     <div v-if="stopped" class="block stopped">
       <h3>The player has stopped</h3>
@@ -252,6 +260,21 @@ async function stop(): Promise<void> {
 </template>
 
 <style scoped>
+.version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -6px 0 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.version b {
+  color: #fff;
+}
+.version .stale {
+  color: #ffb86b;
+}
 .settings {
   padding: 26px 34px 40px;
   max-width: 980px;

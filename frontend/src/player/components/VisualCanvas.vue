@@ -2,7 +2,7 @@
 /**
  * The visual in motion: picks the scene (visuals/chooser.ts), draws it every frame from the music
  * (engine.frame), blends a change over 0.8 s, and changes it with the song, the section, the interval or a
- * drop - as the settings say. ``mini`` draws Winamp's little bars for the player bar.
+ * drop - as the settings say. ``mini`` draws the player bar's little square (``miniScene``).
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
@@ -12,7 +12,7 @@ import { current, settings } from '../store'
 import { chooseVisual } from '../visuals/chooser'
 import { dropOptions } from '../visuals/drop/renderer'
 import { myPresets } from '../visuals/drop'
-import { makeColors, presetById, type Preset, type Scene } from '../visuals/presets'
+import { makeColors, miniScene, presetById, type Preset, type Scene } from '../visuals/presets'
 
 const props = defineProps<{ section?: string; playlistVisual?: string; mini?: boolean; force?: string }>()
 const emit = defineEmits<{ change: [id: string] }>()
@@ -54,7 +54,10 @@ function use(id: string, again = false): void {
 /** The visual by the rules (``newTurn``: the song's next change); ``asked``: N or *next* - another one now,
  * even where the song, the playlist or *fixed* keep one (the rules take over again at the next change). */
 function pick(newTurn = false, asked = false): void {
-  if (props.mini) return use('bars')
+  if (props.mini) {
+    scene = scene ?? miniScene()
+    return
+  }
   if (props.force) return use(props.force)
   if (newTurn) turn += 1
   const v = settings.visuals
@@ -72,7 +75,7 @@ function pick(newTurn = false, asked = false): void {
 function resize(): void {
   const el = canvas.value
   if (!el) return
-  const ratio = props.mini ? 1 : Math.min(1.5, window.devicePixelRatio || 1)
+  const ratio = Math.min(props.mini ? 2 : 1.5, window.devicePixelRatio || 1)
   const w = Math.max(1, Math.floor(el.clientWidth * ratio))
   const h = Math.max(1, Math.floor(el.clientHeight * ratio))
   if (el.width !== w || el.height !== h) {

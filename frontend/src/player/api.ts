@@ -27,6 +27,12 @@ export interface Brief {
   arrangement?: string
   harmony?: string
   closeness?: number | null
+  melody?: string
+  lyrics_closeness?: number | null
+  lines_under_singing?: boolean
+  /** Per field where its value came from: ``typed``, ``template`` or ``default`` (left empty: the brief's
+   * default, or for a text field the writer's choice). */
+  sources?: Record<string, 'typed' | 'template' | 'default'>
 }
 
 export interface SongSummary {
@@ -205,6 +211,26 @@ export interface PackageOptions {
   playlists?: { name: string; songs: string[] }[]
 }
 
+/** The guests' access to the live playlist (``plenio/player/guest.py``). */
+export interface GuestStatus {
+  on: boolean
+  mode: 'view' | 'change'
+  show: 'both' | 'qr' | 'address' | 'none'
+  port: number
+  url: string
+  urls: string[]
+  guests: number
+  error: string
+}
+
+export interface GuestWish {
+  n: number
+  op: 'up' | 'down' | 'next' | 'remove' | 'add'
+  id: string
+  at?: number
+  where?: 'next' | 'end'
+}
+
 export interface PackageStatus {
   state: 'working' | 'done' | 'error'
   done: number
@@ -270,6 +296,14 @@ const serverApi = {
   packageStatus: (job: string) => json<PackageStatus>(`/api/package/${job}`),
   packages: () => json<{ folder: string; files: { name: string; size: number; mtime: number }[] }>('/api/packages'),
   openPackages: (file = '') => post<{ folder: string }>('/api/packages/open', file ? { file } : {}),
+  guests: () => json<GuestStatus>('/api/guests'),
+  /** Switch the guests' access on or off, choose what they may do and what the screen shows, or make a new
+   * address (``regenerate``). */
+  setGuests: (changes: Partial<Pick<GuestStatus, 'on' | 'mode' | 'show'>> & { regenerate?: boolean }) =>
+    json<GuestStatus>('/api/guests', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) }),
+  /** What the page shows of the live playlist, for the guests. */
+  showGuests: (shown: unknown) => post<{ ok: boolean }>('/api/guests/live', shown),
+  guestWishes: (after: number) => json<{ wishes: GuestWish[]; last: number }>(`/api/guests/wishes?after=${after}`),
 }
 
 /** In a shared player: the songs inside the page, the listener's state in their browser; the rest is the
@@ -315,6 +349,10 @@ function sharedApi(): typeof serverApi {
     packageStatus: none,
     packages: async () => ({ folder: '', files: [] }),
     openPackages: none,
+    guests: none,
+    setGuests: none,
+    showGuests: none,
+    guestWishes: none,
   }
 }
 

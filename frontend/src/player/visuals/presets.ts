@@ -774,6 +774,58 @@ const retro: Preset = {
   },
 }
 
+/**
+ * The player bar's little square (owner's request 2026-10-17: square and bright at any window size - the
+ * classic bars were a dark strip there): a ring of the spectrum round a core that pulses with the bass, in
+ * vivid colours of the song's hue over a glow. Paused, it breathes slowly, so it never goes dark.
+ * Not one of the visuals to choose.
+ */
+export function miniScene(): Scene {
+  const levels = new Float32Array(24)
+  return {
+    draw(ctx, f, w, h, c) {
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.fillStyle = '#0c0a1c'
+      ctx.fillRect(0, 0, w, h)
+      const n = levels.length
+      const v = logBins(f.freq, n, 2, 360)
+      for (let i = 0; i < n; i++) {
+        const idle = 0.22 + 0.12 * Math.sin(c.time * 1.8 + i * 0.7)
+        levels[i] = Math.max(levels[i] * 0.84, f.playing ? 0.12 + v[i] * 0.88 : idle)
+      }
+      const cx = w / 2
+      const cy = h / 2
+      const size = Math.min(w, h)
+      const inner = size * (0.15 + 0.04 * f.pulse)
+      // a soft glow behind, in the song's colour
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.5)
+      glow.addColorStop(0, `hsla(${c.hue} 95% 62% / ${0.45 + 0.3 * f.bass})`)
+      glow.addColorStop(1, `hsla(${c.hue + 30} 95% 50% / 0)`)
+      ctx.fillStyle = glow
+      ctx.fillRect(0, 0, w, h)
+      // the ring: the spectrum mirrored left and right, the low notes at the top
+      ctx.lineCap = 'round'
+      ctx.lineWidth = Math.max(1.5, size / 20)
+      for (let i = 0; i < n * 2; i++) {
+        const k = i < n ? i : n * 2 - 1 - i
+        const level = levels[k]
+        const angle = ((i + 0.5) / (n * 2)) * Math.PI * 2 - Math.PI / 2
+        const length = size * 0.27 * level
+        ctx.strokeStyle = `hsl(${c.hue + 40 + k * 6} 100% ${58 + level * 14}%)`
+        ctx.beginPath()
+        ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner)
+        ctx.lineTo(cx + Math.cos(angle) * (inner + length), cy + Math.sin(angle) * (inner + length))
+        ctx.stroke()
+      }
+      // the core
+      ctx.fillStyle = `hsl(${c.hue} 100% ${76 + 14 * f.pulse}%)`
+      ctx.beginPath()
+      ctx.arc(cx, cy, inner * 0.62, 0, Math.PI * 2)
+      ctx.fill()
+    },
+  }
+}
+
 /** The classic visuals, drawn on a 2D canvas. */
 export const CLASSIC: Preset[] = [bars, scope, vector, radial, tunnel, stars, plasma, fire, kaleido, fountain, mountains, ripples, retro]
 

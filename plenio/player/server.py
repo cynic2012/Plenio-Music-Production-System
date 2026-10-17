@@ -22,6 +22,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 from .. import __version__
 from . import folders as folder_choice
 from . import other as other_music
+from .guest import GuestHub
 from .library import RETIRED_DIR, Library, song_detail
 from .package import PackageJobs, package_file, packages_dir
 from .package import listing as package_listing
@@ -123,9 +124,12 @@ def make_handler(
     cache: Path | None = None,
     hosts: frozenset[str] = frozenset(),
     comfyui: str = "",
+    guests: GuestHub | None = None,
 ) -> type[BaseHTTPRequestHandler]:
     """The requests' handler; with ``hosts`` it answers only requests addressed to one of them (a player on
-    the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding)."""
+    the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding).
+    ``guests``: the guests' access to the live playlist (its own server; here only its settings, what the
+    page shows and the guests' wishes)."""
 
     jobs = VideoJobs(videos_dir(state.path.parent))
     packages = PackageJobs()
@@ -275,6 +279,16 @@ def make_handler(
                     return self._error(500, str(error))
             if route == "/api/state":
                 return self._json(state.read())
+            if route == "/api/guests":
+                return self._json(guests.status()) if guests else self._error(404, "no guests' access")
+            if route == "/api/guests/wishes":
+                if guests is None:
+                    return self._error(404, "no guests' access")
+                try:
+                    after = int(query.get("after", "0"))
+                except ValueError:
+                    after = 0
+                return self._json(guests.take(after))
             if route == "/api/folders":
                 return self._json(folders_answer())
             if route == "/api/packages":
@@ -380,12 +394,22 @@ def make_handler(
         def do_PUT(self) -> None:  # noqa: N802
             body = self._body()
             route = unquote(urlparse(self.path).path)
-            if route not in ("/api/state", "/api/folders"):
+            if route not in ("/api/state", "/api/folders", "/api/guests"):
                 return self._error(404, "not found")
             if not self._from_this_page():
                 return self._error(403, "only from the player's page")
             if route == "/api/folders":
                 return self._put_folders(body)
+            if route == "/api/guests":
+                try:
+                    changes = json.loads(body.decode("utf-8")) if body else None
+                except ValueError:
+                    changes = None
+                if guests is None or not isinstance(changes, dict):
+                    return self._error(
+                        400 if guests else 404, "the guests' access: on, mode, show, regenerate"
+                    )
+                return self._json(guests.configure(changes))
             if body is None:
                 return self._error(413, "no state, or too large")
             try:
@@ -527,6 +551,18 @@ def make_handler(
             if route == "/api/rescan":
                 library.scan(force=True)
                 return self._json({"songs": len(library.songs())})
+            if route == "/api/guests/live":
+                # what the page shows, for the guests: from the player's page only
+                if not self._from_this_page():
+                    return self._error(403, "only from the player's page")
+                try:
+                    shown = json.loads(raw.decode("utf-8")) if raw else None
+                except ValueError:
+                    shown = None
+                if guests is None or not isinstance(shown, dict):
+                    return self._error(400 if guests else 404, "the live playlist as the page shows it")
+                guests.publish(shown)
+                return self._json({"ok": True})
             if route in ("/api/package", "/api/packages/open"):
                 return self._package(route, raw)
             if route == "/api/video" or route.startswith("/api/video/") or route == "/api/videos/open":
@@ -590,10 +626,15 @@ LOOPBACK = {"127.0.0.1", "localhost", "::1"}
 
 
 def serve(
-    library: Library, state: State, host: str = "127.0.0.1", port: int = 8765, comfyui: str = ""
+    library: Library,
+    state: State,
+    host: str = "127.0.0.1",
+    port: int = 8765,
+    comfyui: str = "",
+    guests: GuestHub | None = None,
 ) -> ThreadingHTTPServer:
     """The player's server; on the loopback address only for requests addressed to it. ``comfyui``: the
-    ComfyUI that started it (where *Open in ComfyUI* goes)."""
+    ComfyUI that started it (where *Open in ComfyUI* goes); ``guests``: the guests' access."""
 
     class Server(ThreadingHTTPServer):
         daemon_threads = True
@@ -613,8 +654,10 @@ def serve(
                     cache=state.path.parent / "peaks",
                     hosts=frozenset(f"{name}:{bound}" for name in names),
                     comfyui=comfyui,
+                    guests=guests,
                 )
 
     return Server(
-        (host, port), make_handler(library, state, cache=state.path.parent / "peaks", comfyui=comfyui)
+        (host, port),
+        make_handler(library, state, cache=state.path.parent / "peaks", comfyui=comfyui, guests=guests),
     )

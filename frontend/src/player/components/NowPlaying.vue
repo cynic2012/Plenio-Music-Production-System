@@ -12,6 +12,7 @@ import { lineIndex, lines, paletteStyle, playlistVisual, section, sections } fro
 import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, openCurrentPage, playing, previous, settings, time, toggleFavorite } from '../store'
 import { formatTime, sectionName } from '../timing'
 import CoverArt from './CoverArt.vue'
+import GuestWayIn from './GuestWayIn.vue'
 import Icon from './Icon.vue'
 import Karaoke from './Karaoke.vue'
 import LyricLine from './LyricLine.vue'
@@ -110,6 +111,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
       </div>
     </header>
 
+    <GuestWayIn v-if="!panel && !lyricsPanel" class="way-in" />
     <Transition name="panel"><VisualsPanel v-if="panel" class="vpanel" :active="activeVisual" @close="panel = false" @next="visual?.next()" @fullscreen="visualFullscreen" /></Transition>
     <Transition name="panel">
       <aside v-if="lyricsPanel" class="vpanel lpanel">
@@ -245,6 +247,13 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
   bottom: 2px;
   font: 700 9px var(--font);
   font-style: normal;
+}
+/* the guests' way in: top right, under the tools; it stays when the controls fade (the room needs it) */
+.way-in {
+  position: absolute;
+  top: 70px;
+  right: 22px;
+  z-index: 4;
 }
 .top {
   grid-row: 1;

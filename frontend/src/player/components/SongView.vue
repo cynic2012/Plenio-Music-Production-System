@@ -29,6 +29,7 @@ import {
   toggleFavorite,
   videoFor,
 } from '../store'
+import { songFacts } from '../songFacts'
 import { formatTime, sectionName } from '../timing'
 import { similarSongs, takesOf } from '../similar'
 import CoverArt from './CoverArt.vue'
@@ -99,34 +100,7 @@ const tabs = computed(() =>
   ).filter(([, , shown]) => shown)
 )
 
-const facts = computed(() => {
-  const s = song.value
-  if (!s) return []
-  const brief = s.brief
-  return [
-    ['Genre', s.genre],
-    ['Mood', s.mood],
-    ['Tempo', s.bpm ? `${s.bpm} BPM${brief.tempo ? ` (${brief.tempo})` : ''}` : brief.tempo],
-    ['Key', s.score_key || brief.key],
-    ['Meter', s.score_meter || brief.meter],
-    ['Length', formatTime(s.seconds)],
-    ['Vocals', brief.vocals],
-    ['Voice', brief.voice],
-    ['Language', s.language],
-    ['Theme', brief.theme],
-    ['Lead instrument', brief.lead_instrument],
-    ['Harmony', brief.harmony],
-    ['Creative mode', s.arrangement && s.arrangement !== 'off' ? s.arrangement : ''],
-    ['Genre closeness', brief.closeness !== null && brief.closeness !== undefined ? String(brief.closeness) : ''],
-    ['Template', s.template],
-    ['Artist', s.artist ?? ''],
-    ['Album', s.album ?? ''],
-    ['Year', s.other ? s.year : ''],
-    ['Model', s.other ? '' : s.model || 'a recording (Enhance & Master)'],
-    ['Lyrics and score by', s.writer],
-    ['Kind', s.other ? 'other music - not made with Plenio' : s.kind],
-  ].filter(([, value]) => value) as [string, string][]
-})
+const facts = computed(() => (song.value ? songFacts(song.value) : []))
 const loudness = computed(() => {
   const l = song.value?.loudness
   if (!l) return []
@@ -267,7 +241,7 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
     <section v-if="tab === 'details'" class="pane details">
       <div class="block">
         <h3>The song</h3>
-        <dl><template v-for="[k, v] in facts" :key="k"><dt>{{ k }}</dt><dd>{{ v }}</dd></template></dl>
+        <dl><template v-for="f in facts" :key="f.label"><dt>{{ f.label }}</dt><dd :class="{ fallback: f.note?.startsWith('default') }">{{ f.value }}<small v-if="f.note" class="note"> ({{ f.note }})</small></dd></template></dl>
       </div>
       <div class="block">
         <h3>The sound</h3>
@@ -545,6 +519,14 @@ dd {
   margin: 0;
   color: #fff;
   word-break: break-word;
+}
+/* a field left empty: the brief's default, or the writer's choice */
+dd.fallback {
+  color: rgba(255, 255, 255, 0.7);
+}
+dd .note {
+  color: var(--muted);
+  font-size: 12px;
 }
 .seed {
   font-family: var(--mono);

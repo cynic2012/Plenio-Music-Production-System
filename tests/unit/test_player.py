@@ -7,6 +7,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import re
 import threading
 import urllib.parse
 import urllib.request
@@ -254,6 +255,55 @@ def test_facts_from_a_score_a_prompt_and_subtitles() -> None:
     assert prompt_facts(PROMPT) == {"seeds": {"take": 42}, "writer": "gemma-4-e4b"}
     assert brief_facts(PROMPT)["genre"] == "folk, acoustic"
     assert brief_facts({}) == {}
+
+
+def test_every_field_of_the_brief_with_where_its_value_came_from() -> None:
+    # owner's request 2026-10-17: the song page shows every field, a default marked as one
+    song = brief_facts(PROMPT)
+    assert song["sources"]["genre"] == "typed" and song["genre"] == "folk, acoustic"
+    assert song["sources"]["tempo"] == "default" and song["tempo"] == ""  # the writer chose
+    assert (song["mode"], song["sources"]["mode"]) == ("new song every run", "default")
+    assert (song["length"], song["sources"]["length"]) == ("standard (about 3:00)", "default")
+    assert (song["arrangement"], song["sources"]["arrangement"]) == ("off", "default")
+    assert (song["closeness"], song["sources"]["closeness"]) == (70, "default")
+    assert song["lines_under_singing"] is False and song["sources"]["template"] == "default"
+    cover = brief_facts(
+        {
+            "1": {
+                "class_type": "PlenioCoverBrief",
+                "inputs": {
+                    "mode": "new cover every run",
+                    "vocals": "new lyrics",
+                    "vocals.language": "English",
+                    "arrangement": "dramatic",
+                    "song_flow_closeness": 40,
+                },
+            }
+        }
+    )
+    assert cover["kind"] == "cover" and cover["sources"]["mode"] == "typed"
+    assert (cover["language"], cover["sources"]["language"]) == ("English", "default")
+    assert (cover["harmony"], cover["sources"]["harmony"]) == ("new accompaniment", "default")
+    assert (cover["arrangement"], cover["closeness"], cover["sources"]["closeness"]) == (
+        "dramatic",
+        40,
+        "typed",
+    )
+    assert (cover["lyrics_closeness"], cover["sources"]["lyrics_closeness"]) == (0, "default")
+    assert cover["length"] == "" and cover["melody"] == ""
+
+
+def test_the_song_page_knows_the_briefs_defaults() -> None:
+    from plenio.player import library as player_library
+
+    root = Path(__file__).resolve().parents[2] / "plenio" / "comfy" / "nodes"
+    song = (root / "brief.py").read_text(encoding="utf-8")
+    cover = (root / "cover_brief.py").read_text(encoding="utf-8")
+    assert f'default="{player_library.SONG_MODE_DEFAULT}"' in song
+    assert f'default="{player_library.COVER_MODE_DEFAULT}"' in cover
+    for choice, language in player_library.COVER_LANGUAGE_DEFAULTS.items():
+        start = cover.index(f'"{choice}"')
+        assert re.search(rf'"language",\s*default="{language}"', cover[start : start + 400])
     cues = parse_srt("1\r\n00:01:02,500 --> 00:01:04,000\r\nhello\r\nthere\r\n")
     assert cues == [{"start": 62.5, "end": 64.0, "text": "hello\nthere"}]
 
