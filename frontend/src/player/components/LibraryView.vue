@@ -1,9 +1,15 @@
+<script lang="ts">
+/** How many songs each library page showed (Show more), while the page is open: a page you come back to shows
+ * as many again, so the place you left is still there. */
+const shownBefore = new Map<string, { limit: number; list: string }>()
+</script>
+
 <script setup lang="ts">
 /**
  * The library: a featured song, the search (free words and field filters), filter chips for the most
  * common genres, moods, models and more, the sort, and the songs as a grid or a list.
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { SongSummary } from '../api'
 import { isPortable } from '../portable'
@@ -30,7 +36,9 @@ function resetFilters(): void {
 }
 const input = ref<HTMLInputElement | null>(null)
 const menu = ref<{ song: SongSummary; x: number; y: number } | null>(null)
-const limit = ref(120)
+const root = ref<HTMLElement | null>(null)
+const FIRST = 120
+const MORE = 240
 
 const base = computed<SongSummary[]>(() => {
   const all = library.value
@@ -58,8 +66,14 @@ const sortKey = computed<SortKey>(() => {
   return settings.sort as SortKey
 })
 const songs = computed(() => sortSongs(scored.value.found, sortKey.value, { plays: state.plays, lastPlayed: state.last_played }, scored.value.map))
+// a new search, other chips or another sort start with the first songs again - a song that counts a play, or
+// one that arrives, changes the songs but not the list you are in (it shrank back to the first 120 before)
+const list = computed(() => [query.value.trim(), ...chips.value, sortKey.value].join('\n'))
+const kept = shownBefore.get(props.collection)
+const limit = ref(kept && kept.list === list.value ? kept.limit : FIRST)
+watch(list, () => (limit.value = FIRST))
+onBeforeUnmount(() => shownBefore.set(props.collection, { limit: limit.value, list: list.value }))
 const shown = computed(() => songs.value.slice(0, limit.value))
-watch(songs, () => (limit.value = 120))
 
 const facets = computed(() => {
   const all = base.value
@@ -128,11 +142,21 @@ function playAll(shuffle = false): void {
   if (shuffle) settings.shuffle = true
   void playSongs(ids, shuffle ? Math.floor(Math.random() * ids.length) : 0)
 }
-defineExpose({ focus: () => input.value?.focus() })
+/** The card of the song that plays, when it is among these songs - the list grows by Show more's steps until it
+ * holds it (back from a song's page with 1000 songs, the page shows where it plays, not the top). */
+async function cardOfCurrent(): Promise<HTMLElement | null> {
+  const id = current.value?.id
+  const at = id ? songs.value.findIndex((s) => s.id === id) : -1
+  if (!id || at < 0) return null
+  if (at >= limit.value) limit.value = FIRST + Math.ceil((at + 1 - FIRST) / MORE) * MORE
+  await nextTick()
+  return root.value?.querySelector<HTMLElement>(`[data-song="${CSS.escape(id)}"]`) ?? null
+}
+defineExpose({ focus: () => input.value?.focus(), cardOfCurrent })
 </script>
 
 <template>
-  <div class="library">
+  <div ref="root" class="library">
     <section v-if="collection === 'all' && featured && !query" class="hero">
       <div class="hero-art"><CoverArt :song="featured" live rounded /></div>
       <div class="hero-text">
@@ -200,6 +224,7 @@ defineExpose({ focus: () => input.value?.focus() })
       <SongCard
         v-for="(song, i) in shown"
         :key="song.id"
+        :data-song="song.id"
         :song="song"
         :index="i"
         :list="settings.view === 'list'"
@@ -209,7 +234,7 @@ defineExpose({ focus: () => input.value?.focus() })
         @menu="menu = { song, x: $event.clientX, y: $event.clientY }"
       />
     </TransitionGroup>
-    <button v-if="songs.length > shown.length" class="ghost more" @click="limit += 240">Show {{ Math.min(240, songs.length - shown.length) }} more</button>
+    <button v-if="songs.length > shown.length" class="ghost more" @click="limit += MORE">Show {{ Math.min(MORE, songs.length - shown.length) }} more</button>
     <p class="foot">{{ songs.length }} of {{ countOf(base.length, 'song') }} · {{ formatTime(songs.reduce((t, s) => t + s.seconds, 0)) }}</p>
     <SongMenu v-if="menu" :song="menu.song" :x="menu.x" :y="menu.y" @close="menu = null" />
   </div>

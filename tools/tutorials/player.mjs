@@ -1,7 +1,8 @@
 // Tutorial 8 · Plenio Player: the songs made with Plenio in the browser. It starts in ComfyUI - the Plenio
 // Player button beside Run (and the one on Export Release) starts the player, a program of its own, and
 // opens it - then the library and its search, playing a song, a song's page (lyrics, notation, every field
-// of the brief, takes), Now playing in its four views, the visuals and their modes, Plenio Drop and the
+// of the brief, takes), back to the songs where the song plays, Now playing in its four views, the visuals
+// and their modes, Plenio Drop and the
 // lyrics' look, playlists, the queue with the sleep timer, Live Play with a song that arrives from ComfyUI,
 // guests in the network (the QR code, the guests' page, a wish carried out), a song as a video, the songs
 // shared as a player, A/B and speed, the keys, the settings (the version, the folders) and Open in ComfyUI.
@@ -40,11 +41,20 @@ async function talk(s, text, min = 0) {
   await s.wait(Math.max(min, 900 + spoken(text).length * 68))
 }
 
-// the song the video plays: timed lyrics, a score, sheet music and the longest of those
+// the song the video plays: timed lyrics, a score, sheet music, other takes and the longest of those - one
+// further down the songs (newest first), so that back from its page the songs' page goes to it
 async function pickSong(s) {
   const library = await s.page.evaluate(() => fetch('/api/library').then((r) => r.json()))
+  const newest = [...library.songs].sort((a, b) => String(b.created).localeCompare(String(a.created)))
+  const place = new Map(newest.map((x, i) => [x.id, i]))
+  const takes = (x) => !!x.takes_key && library.songs.some((o) => o.id !== x.id && o.takes_key === x.takes_key)
   const songs = library.songs.filter((x) => x.has.timing && x.has.score && x.seconds > 90)
-  songs.sort((a, b) => Number(b.has.original) - Number(a.has.original) || Number(b.has.pdf) - Number(a.has.pdf) || b.seconds - a.seconds)
+  const rank = (x) => [Number(x.has.original), Number(x.has.pdf), Number(takes(x)), Number(place.get(x.id) >= 40), x.seconds]
+  songs.sort((a, b) => {
+    const [ra, rb] = [rank(a), rank(b)]
+    for (let i = 0; i < ra.length; i++) if (ra[i] !== rb[i]) return rb[i] - ra[i]
+    return 0
+  })
   if (!songs.length) throw new Error('the player has no song with timed lyrics and a score')
   return songs[0]
 }
@@ -132,6 +142,10 @@ export default async function player(s) {
   await s.wait(600)
 
   s.chapter('Play')
+  // the song is further down the songs: the search brings it up
+  await s.click(page.locator('.search input'))
+  await s.type(song.title.split(/\s+/).slice(0, 2).join(' ').toLowerCase())
+  await s.wait(700)
   const card = page.locator('.card', { hasText: song.title }).first()
   await card.scrollIntoViewIfNeeded()
   await s.hover(card)
@@ -139,6 +153,8 @@ export default async function player(s) {
   await s.click(card.locator('.play'))
   await s.wait(1500)
   await talk(s, 'Press play on a cover. A click on the card opens the song’s page.')
+  await s.click(page.locator('.search .icon-btn'))
+  await s.wait(500)
   await s.hover(page.locator('.bar .meta .sub'))
   await talk(s, 'The bar shows the song’s section and the line sung right now.')
   const wave = page.locator('.bar .progress .wave')
@@ -181,6 +197,13 @@ export default async function player(s) {
     }
   }
   await s.click(tab('Lyrics'))
+  // back to the songs: the page goes to the song that plays, however far down it is, and it lights up
+  await s.click(page.locator('.side a.link', { hasText: 'Songs' }))
+  await page.waitForSelector('.card.now', { timeout: 10000 }).catch(() => {})
+  await s.wait(700)
+  const playingCard = page.locator('.card.now').first()
+  if (await playingCard.count()) await s.hover(playingCard)
+  await talk(s, 'Back to your songs, the page shows the one that plays - even among hundreds.')
 
   s.chapter('Now playing')
   await s.keys('f')
@@ -289,7 +312,9 @@ export default async function player(s) {
   await s.keys('q')
   await s.click(page.locator('.side a.link', { hasText: 'Songs' }))
   await s.wait(900)
-  const other = page.locator('.card').nth(2)
+  // the songs' page is at the song that plays: the song after it
+  const after = page.locator('.card.now + .card')
+  const other = (await after.count()) ? after.first() : page.locator('.card').nth(2)
   await s.hover(other)
   await s.click(other, { button: 'right' })
   await talk(s, 'A right-click on a song: play it next, add it to a playlist, start a radio of songs alike - or remove it.')

@@ -69,6 +69,9 @@ The song's other takes, to compare them,
 @ … and songs alike | optional
 and songs that are alike.
 
+@ Back to your songs
+Back to your songs, the page shows the one that plays, even among hundreds of songs.
+
 @ F opens Now playing
 Press F for Now playing. The stage: the cover, and the lyrics as they're sung.
 

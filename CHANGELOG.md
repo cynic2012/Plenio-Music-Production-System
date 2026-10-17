@@ -9,6 +9,7 @@ All notable changes of the current version and the one before. Versions follow s
 - **Guests in your network** (owner's request): in Live Play, *Let guests see the live playlist* gives everyone on the same network (the party's Wi-Fi) a page of their own on the phone - the song that plays, what comes next, what played. The host chooses whether guests *only look* or *change it*: move songs up and down, take them out, and add songs from the library next or at the end. The way in is a QR code and an address with a random part; **New address** makes another at any time and the old one leads nowhere. The screen shows the QR code, the address, both or nothing - as a card in Live Play and in Now playing, and **Show it big** over everything. The access is a small server of its own on port 8770 that serves only the guests' page, the playlist with titles and covers and, in change mode, the library's titles - no audio, no files, no paths; the player itself still answers this computer only (`plenio/player/guest.py`, `guest_page.html`; the page carries out the wishes, `frontend/src/player/guests.ts`; QR codes by an encoder of Plenio's own, `qr.ts`, checked against OpenCV's decoder for every version it makes). `--guests-host` sets where it listens.
 - **Every field of the brief on a song's page** (owner's request): *Details > The song* lists the work mode, template, genre, mood, tempo, key, meter, length and target length, vocals, language, voice, lyrics theme (or melody and lead instrument), a cover's harmony and closeness sliders, the arrangement, genre closeness and lines under the singing - a field left empty with the brief's default and *(default)*, or *open - the writer chose*; a template's value with *(from the template)*.
 - **The player's version at the top of Settings** (owner's request), and a note when the page open is from another version.
+- **Back to the songs, the song that plays is in sight** (owner's request: with 1000 songs, not from the top again): coming back from a song's page or another view, the songs' page goes to the card of the song that plays when it is not in sight where the list was left - the list grows by *Show more*'s steps until it holds it - and the card lights up for a moment.
 
 ### Changed
 
@@ -19,6 +20,7 @@ All notable changes of the current version and the one before. Versions follow s
 
 ### Fixed
 
+- The songs' page forgot *Show more*: back from a song's page it showed the first 120 songs again, so the place you left could be out of reach; and while it was open, a song that counted a play or arrived from ComfyUI shrank the list back to 120. Only a new search, other filters or another sort start with the first songs now.
 - A player started from ComfyUI for a state folder of its own read the default state folder's chosen music folders (`launch.start_player` now hands the folder to the player).
 - ComfyUI's **Plenio Player** button took any player running on the player's ports - also one started for another state folder, with another library; it now takes the player of its own state folder and starts one when there is none.
 

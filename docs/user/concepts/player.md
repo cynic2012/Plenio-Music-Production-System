@@ -138,8 +138,10 @@ click filters, a second click removes the filter. When your archive holds songs 
 loudness, most played or recently played, and switch between a grid and a list.
 
 **Your search and filters stay** - when you open a song's page, go to another view or another window and
-come back, or reload the page; the library also keeps its place in the list. Each view (*Songs*,
-*Favourites*, *Most played*, *Recently played*) has its own. While a search or filter is on, a **Filtered**
+come back, or reload the page; the library also keeps its place in the list, and as many songs as *Show more*
+had shown. **Back to the songs, the page shows the song that plays**: when it is not in sight where you left
+the list, the page goes to it - however far down, also among a thousand songs - and its card lights up for a
+moment. Each view (*Songs*, *Favourites*, *Most played*, *Recently played*) has its own. While a search or filter is on, a **Filtered**
 row shows each of them (× removes one) and how many songs are left, and **Reset filters** clears them all.
 
 ## A song's page

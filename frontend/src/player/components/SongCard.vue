@@ -82,6 +82,10 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
   border-color: color-mix(in srgb, var(--accent) 50%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 18px 50px var(--glow);
 }
+/* back on the songs' page: the song that plays lights up for a moment, so the eye finds it */
+.card.found {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 46px color-mix(in srgb, var(--accent) 55%, transparent);
+}
 .art {
   position: relative;
 }

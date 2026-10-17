@@ -74,12 +74,25 @@ const page = computed(() => {
   return { kind: 'library' as const, collection: 'all' as const }
 })
 watch(page, () => (drawer.value = false))
-// a page opens at its top - except a library page you come back to, which is where you left it
+// a page opens at its top - except a library page you come back to, which is where you left it; and when the
+// song that plays is not in sight there, the page goes to it (owner's request 2026-10-17: back from a song's
+// page with 1000 songs, the place of the song that plays - not the top again)
 const scrolls = new Map<string, number>()
 watch(route, (now, before) => {
   if (before !== undefined && main.value) scrolls.set(before, main.value.scrollTop)
   const keep = !now.startsWith('/song/') && !now.startsWith('/record/')
-  void nextTick(() => main.value?.scrollTo({ top: keep ? (scrolls.get(now) ?? 0) : 0, behavior: 'instant' as ScrollBehavior }))
+  void nextTick(async () => {
+    const box = main.value
+    if (!box) return
+    box.scrollTo({ top: keep ? (scrolls.get(now) ?? 0) : 0, behavior: 'instant' as ScrollBehavior })
+    const card = page.value.kind === 'library' ? await libraryView.value?.cardOfCurrent() : null
+    if (!card) return
+    const at = card.getBoundingClientRect()
+    const view = box.getBoundingClientRect()
+    if (at.top < view.top || at.bottom > view.bottom) card.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior })
+    card.classList.add('found')
+    window.setTimeout(() => card.classList.remove('found'), 1400)
+  })
 })
 
 // ComfyUI's Export Release opens the player at a song by its record file: #/record/<path> -> its page
