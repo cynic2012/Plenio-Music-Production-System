@@ -53,7 +53,10 @@ node tools/tutorials/record.mjs yue2-song --render-only --tts-url http://127.0.0
 badges, no canvas info, no selection toolbox, full-quality drawing when zoomed out). Without
 `--record-only` it cuts the video right after recording; `--render-only` cuts it again from an existing
 recording (for example after a change of the narration);
-`--headed` shows the browser. `enhance-master` masters `$PLENIO_TUTORIAL_AUDIO` (an unmastered take shows
+`--headed` shows the browser. `PLENIO_TUTORIAL_REHEARSE=1` keeps every pause under a fifth of a second: a
+rehearsal that finds what a script cannot click in minutes instead of a long take (its recording is not for
+the edit; give it another `--out`). Tutorial 8 plays the song named by its file name in `PLENIO_PLAYER_SONG`
+(else the longest with timed lyrics, a score and sheet music). `enhance-master` masters `$PLENIO_TUTORIAL_AUDIO` (an unmastered take shows
 the most; without it, the repository's sample song); `yue2-daw` imports `assets/Open Window Sketch.mid`
 (an original 18-bar song made for the video, in the shape of the writer's lyrics for its brief - `assets/Open Window Sketch.abc` is its score - or
 `$PLENIO_TUTORIAL_MIDI`).
