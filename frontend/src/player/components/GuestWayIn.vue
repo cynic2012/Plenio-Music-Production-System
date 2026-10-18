@@ -11,7 +11,8 @@ import { settings } from '../store'
 import Icon from './Icon.vue'
 import QrCode from './QrCode.vue'
 
-const props = defineProps<{ big?: boolean }>()
+/** ``side``: the QR code's side in the card (over the visual it can be larger, for a room to scan). */
+const props = defineProps<{ big?: boolean; side?: number }>()
 const status = guestStatus
 const shown = computed(() => {
   const s = status.value
@@ -34,7 +35,7 @@ const short = computed(() => status.value?.url.replace(/^https?:\/\//, '') ?? ''
     </div>
   </div>
   <button v-else-if="shown" class="card" :class="{ wide: address && !qr }" title="Show it big" @click="guestBig = true">
-    <QrCode v-if="qr" :text="status?.url ?? ''" :size="104" />
+    <QrCode v-if="qr" :text="status?.url ?? ''" :size="side ?? 104" />
     <span class="text">
       <b><Icon name="guests" :size="14" /> Join the live playlist</b>
       <small v-if="address">{{ short }}</small>

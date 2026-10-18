@@ -141,14 +141,14 @@ function un(e) {
   }
   return t;
 }
-function Rt(e) {
+function qt(e) {
   return e.choices.filter((t) => t.suggested && t.suggested !== t.current).map((t) => ({ field: t.field, value: t.suggested }));
 }
 function hs(e, t) {
   return !t || !e || e.template === "none" ? null : e.fills.length ? `Template fills: ${e.fills.map((o) => `${o.field} (${bs(o.value)})`).join(", ")}` : "The template fills nothing: every text field has your value.";
 }
 function ms(e) {
-  const t = e ? Rt(e) : [];
+  const t = e ? qt(e) : [];
   return t.length ? `The template suggests: ${t.map((n) => `${n.field} = ${n.value}`).join(", ")}` : null;
 }
 function gs(e) {
@@ -203,8 +203,8 @@ function xs(e, t) {
   }, S = m("Copy template text", "Fill every empty text field with the template’s text", () => {
     n && (dn(e, cn(e, n).map((g) => ({ field: g.field, value: g.value }))), k());
   }), _ = m("Use template choices", "Set length, vocals and melody to the template’s choices", () => {
-    n && (dn(e, Rt(n)), k());
-  }), R = m("Reset all to template", "Clear every text field you typed into (they fall back to the template)", () => {
+    n && (dn(e, qt(n)), k());
+  }), q = m("Reset all to template", "Clear every text field you typed into (they fall back to the template)", () => {
     const g = un(e);
     g.length && window.confirm(`Clear ${g.length} text field(s)? The template's values apply again.`) && (ws(e, g), k());
   }), M = m("↻", "Ask again what the template fills", () => {
@@ -213,7 +213,7 @@ function xs(e, t) {
     const g = hs(n, o);
     a.textContent = s ?? g ?? "The template fills nothing: every text field has your value.", a.dataset.state = s ? "error" : o && n ? "ok" : "empty";
     const y = ms(n), w = gs(n);
-    l.textContent = [y, w].filter(Boolean).join(" · "), l.style.display = l.textContent ? "" : "none", d.textContent = ys(n) ?? "", d.style.display = d.textContent ? "" : "none", p.style.display = o && n && n.template !== "none" ? "" : "none", S.disabled = !n || !cn(e, n).length, _.disabled = !n || !Rt(n).length, R.disabled = !un(e).length, M.disabled = !1, e.setDirtyCanvas?.(!0, !0);
+    l.textContent = [y, w].filter(Boolean).join(" · "), l.style.display = l.textContent ? "" : "none", d.textContent = ys(n) ?? "", d.style.display = d.textContent ? "" : "none", p.style.display = o && n && n.template !== "none" ? "" : "none", S.disabled = !n || !cn(e, n).length, _.disabled = !n || !qt(n).length, q.disabled = !un(e).length, M.disabled = !1, e.setDirtyCanvas?.(!0, !0);
   }, H = /* @__PURE__ */ new WeakSet(), u = () => {
     for (const g of ["template", "arrangement", ...Object.keys(Qt)]) {
       const y = g === "template" || g === "arrangement" ? e.widgets?.find((w) => w.name === g) : Pe(e, g);
@@ -502,7 +502,7 @@ function Is(e, t) {
   }
   return n;
 }
-function qs(e, t) {
+function Rs(e, t) {
   return (e.split(/[\\/]/).pop() ?? "").replace(/\.plenio\.json$/i, "").replace(/\.(json|flac)$/i, "") || t || "Plenio song";
 }
 function Et(e, t) {
@@ -515,7 +515,7 @@ function Et(e, t) {
   return `The workflow "${e.title}" was made with cannot be rebuilt (a workflow of your own, from before records kept it).`;
 }
 const zt = "Plenio was updated while this page was open: reload the page (F5).";
-function Rs(e) {
+function qs(e) {
   const t = /\/chunks\/(main-[^/?#]+\.mjs)(?:[?#].*)?$/.exec(e);
   return t ? t[1] : null;
 }
@@ -523,7 +523,7 @@ function zs(e) {
   return /chunks\/(main-[^"'?#\s]+\.mjs)/.exec(e)?.[1] ?? null;
 }
 async function Zt(e, t) {
-  const n = Rs(e);
+  const n = qs(e);
   if (!n) return !1;
   try {
     const o = await t(new URL("../plenio.js", e).href), s = o ? zs(o) : null;
@@ -536,7 +536,7 @@ async function en(e) {
   const t = await fetch(e, { cache: "no-store" });
   return t.ok ? await t.text() : null;
 }
-async function Re(e, t, n = "") {
+async function qe(e, t, n = "") {
   try {
     return await e();
   } catch (o) {
@@ -551,7 +551,7 @@ async function dt(e, t) {
   const n = await cs(e.fetcher, t);
   if (n.workflow) {
     if (!e.app.loadGraphData) throw new Error("This ComfyUI frontend cannot load a workflow for Plenio.");
-    await e.app.loadGraphData(n.workflow, !0, !0, qs("path" in t ? t.path : t.name, n.title));
+    await e.app.loadGraphData(n.workflow, !0, !0, Rs("path" in t ? t.path : t.name, n.title));
     const r = e.app.graph;
     if (!r) throw new Error("The workflow did not load.");
     const i = Os(r, n);
@@ -609,7 +609,7 @@ function js(e, t = window) {
   return t.addEventListener("drop", n, !0), () => t.removeEventListener("drop", n, !0);
 }
 async function Fs(e) {
-  const t = () => Zt(import.meta.url, en), { openContinueDialog: n } = await Re(() => import("./openContinue-mQGvms0l.mjs"), t);
+  const t = () => Zt(import.meta.url, en), { openContinueDialog: n } = await qe(() => import("./openContinue-CYF50-su.mjs"), t);
   n(e.fetcher, (o) => dt(e, o));
 }
 const Ws = "COMFY_DYNAMICCOMBO_V3";
@@ -807,8 +807,8 @@ function En(e, t, n, { heightFraction: o = 0.7 } = {}) {
   if (!s.length) return "";
   const r = Math.max(...s), i = Math.min(...s), a = Math.max(r - i, 1e-6), l = e.height - 4, d = l - Math.max(12, e.height * G(o, 0.1, 0.95));
   return `M${t.map((m, S) => {
-    const _ = n[S], R = Number.isFinite(_) ? (_ - i) / a : 0;
-    return `${xe(e, m).toFixed(1)},${(l - R * (l - d)).toFixed(1)}`;
+    const _ = n[S], q = Number.isFinite(_) ? (_ - i) / a : 0;
+    return `${xe(e, m).toFixed(1)},${(l - q * (l - d)).toFixed(1)}`;
   }).join(" L")} L${e.width.toFixed(1)},${l.toFixed(1)} L0,${l.toFixed(1)} Z`;
 }
 class sr {
@@ -880,8 +880,8 @@ function ar(e, t) {
     preserveAspectRatio: "none"
   });
   _.setAttribute("aria-label", "EQ response curve"), _.setAttribute("tabindex", "0"), _.setAttribute("title", "Drag a handle to move a band (Shift = fine), wheel = Q, double-click = new band, Delete = remove");
-  const R = F("div", "plenio-eq-strip"), M = F("div", "plenio-eq-editor"), k = F("div", "plenio-eq-fields");
-  M.append(k), n.append(o, S, _, R, M);
+  const q = F("div", "plenio-eq-strip"), M = F("div", "plenio-eq-editor"), k = F("div", "plenio-eq-fields");
+  M.append(k), n.append(o, S, _, q, M);
   const H = e.addDOMWidget(Mn, Mn, n, {
     serialize: !1,
     getValue: () => "",
@@ -891,7 +891,7 @@ function ar(e, t) {
     getMaxHeight: () => 620
   });
   H.serialize = !1;
-  let u = { sampleRate: 48e3, frequencies: [], response: [], settings: Me(), readonly: !0, note: "" }, W = null, A = null, b = !1, g = 12, y = null, w = [], L = 0, E, V, z = null, q = !1;
+  let u = { sampleRate: 48e3, frequencies: [], response: [], settings: Me(), readonly: !0, note: "" }, W = null, A = null, b = !1, g = 12, y = null, w = [], L = 0, E, V, z = null, R = !1;
   const D = /* @__PURE__ */ new Map();
   let j = null;
   const N = new sr(Me()), pe = () => de(e, Ke), K = () => g, T = () => er({ ...te, maxHz: Math.min(2e4, u.sampleRate / 2) }, K());
@@ -983,18 +983,18 @@ function ar(e, t) {
       }), _.append(x), D.set(f.id, x);
     }), Wo(), Go(), Vo();
     const h = u.settings.bands.find((f) => f.id === A);
-    m.textContent = u.note || (b ? "compare: the curve is off (the node still applies it)" : h ? Ie(h) : u.readonly ? `${u.settings.bands.length} band(s)` : `drag a handle, Shift = fine, wheel = Q, double-click = add · ${u.settings.bands.length}/${it}`), s.disabled = u.readonly, i.disabled = !N.canUndo, a.disabled = !N.canRedo, l.disabled = u.readonly || !u.settings.bands.length, q && (q = !1, A && D.get(A)?.focus({ preventScroll: !0 })), r.value = String(g), s.value = le(), d.classList.toggle("active", b), p.classList.toggle("active", yt()), e.setDirtyCanvas?.(!0, !0);
+    m.textContent = u.note || (b ? "compare: the curve is off (the node still applies it)" : h ? Ie(h) : u.readonly ? `${u.settings.bands.length} band(s)` : `drag a handle, Shift = fine, wheel = Q, double-click = add · ${u.settings.bands.length}/${it}`), s.disabled = u.readonly, i.disabled = !N.canUndo, a.disabled = !N.canRedo, l.disabled = u.readonly || !u.settings.bands.length, R && (R = !1, A && D.get(A)?.focus({ preventScroll: !0 })), r.value = String(g), s.value = le(), d.classList.toggle("active", b), p.classList.toggle("active", yt()), e.setDirtyCanvas?.(!0, !0);
   }
   function Wo() {
-    if (R.replaceChildren(), u.readonly && !u.settings.bands.length) {
-      R.append(F("span", "plenio-eq-hint", u.note || "no bands"));
+    if (q.replaceChildren(), u.readonly && !u.settings.bands.length) {
+      q.append(F("span", "plenio-eq-hint", u.note || "no bands"));
       return;
     }
     u.settings.bands.forEach((c, h) => {
       const f = F("button", "plenio-eq-chip", or(c, h));
       f.style.borderLeftColor = Ze[h % Ze.length], f.classList.toggle("selected", c.id === A), f.classList.toggle("disabled", !c.enabled), f.setAttribute("aria-label", `Edit band ${h + 1}`), f.title = `Band ${h + 1}: ${Ie(c)} - click to open its fields`, f.addEventListener("click", (v) => {
         v.stopPropagation(), A = A === c.id ? null : c.id, U();
-      }), R.append(f);
+      }), q.append(f);
     });
   }
   function Go() {
@@ -1068,7 +1068,7 @@ function ar(e, t) {
     }), S.append(h);
   }
   function Uo(c) {
-    A = c, q = !0, U();
+    A = c, R = !0, U();
   }
   function Xo(c) {
     A = c, gt();
@@ -1351,7 +1351,7 @@ function kr(e, t) {
   if (e === t) return !0;
   try {
     const n = new URL(e);
-    return (n.protocol === "http:" || n.protocol === "https:") && Sr.has(n.hostname);
+    return n.protocol !== "http:" && n.protocol !== "https:" ? !1 : Sr.has(n.hostname) || n.hostname === new URL(t).hostname;
   } catch {
     return !1;
   }
@@ -1460,7 +1460,7 @@ function bo(e, t) {
   const n = e.widgets?.find((o) => o.name === t);
   return n ? String(n.value ?? "") : null;
 }
-function qr(e) {
+function Rr(e) {
   const t = e.inputs?.findIndex((n) => n.name === "brief") ?? -1;
   if (t < 0) return null;
   try {
@@ -1472,9 +1472,9 @@ function qr(e) {
 }
 function Ft(e) {
   const t = yo(e);
-  return t || (e.type !== Or ? null : $r(bo(e, "review") ?? "continue", qr(e)) ? "stop" : null);
+  return t || (e.type !== Or ? null : $r(bo(e, "review") ?? "continue", Rr(e)) ? "stop" : null);
 }
-function Rr(e) {
+function qr(e) {
   const t = e?.plenio_sheet, n = t?.[t.length - 1];
   if (n) return go(n);
   const o = e?.plenio_summary;
@@ -1493,7 +1493,7 @@ function zr(e, t) {
     const r = Ft(this);
     !r || !Tt[r].frame || this.flags?.collapsed || !this.size || Dr(s, Tt[r], this.size, Ir, t.scale());
   }), n.onExecuted = ee(n.onExecuted, function(s) {
-    const r = Rr(s);
+    const r = qr(s);
     r && (Le(this, r), r === "waiting" && t.toast(
       `Stopped at ${this.title || "the Song Sheet"}`,
       'Waiting for your approval: open it with "Edit Song Sheet…", check the documents, press Approve, then run again.'
@@ -1595,8 +1595,8 @@ function La(e, t) {
 function Na(e, t, n, o, s, r) {
   const i = e && t > 0 ? e.duration_s / t : 0, a = e && i > 0 ? Math.max(0, n - e.start_s) : 0, l = i > 0 ? Math.floor(a / i + 1e-6) : 0, d = i > 0 ? (a - l * i) / i * r : 0, p = d > 1e-3 ? 0 : 1, m = Math.max(0, o * t);
   return Array.from({ length: m }, (S, _) => {
-    const R = p + m - 1 - _, M = ((l - R) % t + t) % t === 0;
-    return { at: Math.max(0, s - d - R * r), duration: vo, midi: M ? 96 : 89, part: "click" };
+    const q = p + m - 1 - _, M = ((l - q) % t + t) % t === 0;
+    return { at: Math.max(0, s - d - q * r), duration: vo, midi: M ? 96 : 89, part: "click" };
   });
 }
 function Ta(e, t) {
@@ -1705,7 +1705,7 @@ function ne(e, t, n, o = 0.7) {
   const s = e.createBiquadFilter();
   return s.type = t, s.frequency.value = Math.min(n, e.sampleRate / 2 - 100), s.Q.value = o, s;
 }
-function qe(e, t, n, o, s, r) {
+function Re(e, t, n, o, s, r) {
   const i = C(e, "sine", o), a = e.createGain();
   a.gain.setValueAtTime(0, n), a.gain.setValueAtTime(0, n + r), a.gain.linearRampToValueAtTime(s, n + r + 0.4), i.connect(a);
   for (const l of t) a.connect(l.detune);
@@ -1723,14 +1723,14 @@ const lt = (e, t) => Math.min(t * 2.5, Math.max(t * 0.3, t * 2 ** ((60 - e) / 24
     sustain: 0.85,
     decay: 0.4,
     release: 0.015,
-    build: (e, t, n) => [qn(C(e, "sine", n), t)]
+    build: (e, t, n) => [Rn(C(e, "sine", n), t)]
   },
   soft: {
     attack: 0.012,
     sustain: 0.85,
     decay: 0.4,
     release: 0.015,
-    build: (e, t, n) => [qn(C(e, "triangle", n), t)]
+    build: (e, t, n) => [Rn(C(e, "triangle", n), t)]
   },
   piano: {
     attack: 3e-3,
@@ -1770,7 +1770,7 @@ const lt = (e, t) => Math.min(t * 2.5, Math.max(t * 0.3, t * 2 ** ((60 - e) / 24
       s.connect(t);
       const r = [-9, 0, 8].map((a) => C(e, "sawtooth", n, a));
       for (const a of r) a.connect(s);
-      const i = qe(e, r, o, 5.3, 7, 0.3);
+      const i = Re(e, r, o, 5.3, 7, 0.3);
       return [...r, i];
     }
   },
@@ -1797,7 +1797,7 @@ const lt = (e, t) => Math.min(t * 2.5, Math.max(t * 0.3, t * 2 ** ((60 - e) / 24
     build(e, t, n, o) {
       const s = Pt(e, "organ", [1, 0.75, 0.55, 0.5, 0.18, 0.3, 0, 0.22, 0, 0.08, 0, 0.1]), r = C(e, s, n), i = C(e, "sine", n / 2), a = me(e, 0.35);
       i.connect(a).connect(t), r.connect(t);
-      const l = qe(e, [r, i], o, 6.6, 4, 0), d = Ot(e, t, o, 3e3, 0.05, 4e-3);
+      const l = Re(e, [r, i], o, 6.6, 4, 0), d = Ot(e, t, o, 3e3, 0.05, 4e-3);
       return [r, i, l, d];
     }
   },
@@ -1813,7 +1813,7 @@ const lt = (e, t) => Math.min(t * 2.5, Math.max(t * 0.3, t * 2 ** ((60 - e) / 24
       i.buffer = _o(e), i.loop = !0;
       const a = ne(e, "bandpass", Math.min(n * 2, 8e3), 1.5), l = me(e, 0.06);
       i.connect(a).connect(l).connect(t);
-      const d = qe(e, [r], o, 4.9, 9, 0.25);
+      const d = Re(e, [r], o, 4.9, 9, 0.25);
       return [r, i, d];
     }
   },
@@ -1835,7 +1835,7 @@ const lt = (e, t) => Math.min(t * 2.5, Math.max(t * 0.3, t * 2 ** ((60 - e) / 24
       }
       const i = me(e, 0.15);
       r.connect(i).connect(t);
-      const a = qe(e, [s], o, 5.4, 18, 0.22);
+      const a = Re(e, [s], o, 5.4, 18, 0.22);
       return [s, a];
     }
   },
@@ -1863,7 +1863,7 @@ const lt = (e, t) => Math.min(t * 2.5, Math.max(t * 0.3, t * 2 ** ((60 - e) / 24
       s.frequency.setTargetAtTime(Math.min(n * 4, 4e3), o + 0.02, 0.2), s.connect(t);
       const r = C(e, "square", n), i = C(e, "sawtooth", n, 6);
       r.connect(s), i.connect(s);
-      const a = qe(e, [r, i], o, 5.6, 10, 0.3);
+      const a = Re(e, [r, i], o, 5.6, 10, 0.3);
       return [r, i, a];
     }
   },
@@ -1892,7 +1892,7 @@ const lt = (e, t) => Math.min(t * 2.5, Math.max(t * 0.3, t * 2 ** ((60 - e) / 24
     }
   }
 };
-function qn(e, t) {
+function Rn(e, t) {
   return e.connect(t), e;
 }
 function Oa(e, t, n, o, s, { velocity: r = 0.8, level: i = 1 } = {}) {
@@ -1900,7 +1900,7 @@ function Oa(e, t, n, o, s, { velocity: r = 0.8, level: i = 1 } = {}) {
   m.gain.setValueAtTime(0, s), m.gain.linearRampToValueAtTime(p, s + a.attack), m.gain.setTargetAtTime(p * a.sustain, s + a.attack, d), m.connect(t);
   const S = a.build(e, m, l, s, r, o);
   for (const k of S) k.start(s);
-  let _ = !1, R = !1;
+  let _ = !1, q = !1;
   const M = (k) => {
     for (const H of S)
       try {
@@ -1909,17 +1909,17 @@ function Oa(e, t, n, o, s, { velocity: r = 0.8, level: i = 1 } = {}) {
       }
   };
   return S[0].onended = () => {
-    R = !0, m.disconnect();
+    q = !0, m.disconnect();
   }, a.sustain === 0 && M(s + a.attack + d * 7), {
     release(k) {
-      if (_ || R) return;
+      if (_ || q) return;
       _ = !0;
       const H = Math.max(k, s + a.attack);
       m.gain.setTargetAtTime(0, H, a.release), M(H + a.release * 7);
     },
     stop() {
-      if (R) return;
-      R = !0, _ = !0;
+      if (q) return;
+      q = !0, _ = !0;
       const k = e.currentTime;
       try {
         m.gain.cancelScheduledValues(k), m.gain.setValueAtTime(0, k);
@@ -1937,13 +1937,13 @@ function Xr(e, t) {
   const n = He(e.width, nt.width, Math.max(nt.width, t.width - 16)), o = He(e.height, nt.height, Math.max(nt.height, t.height - 16));
   return { width: Math.round(n), height: Math.round(o) };
 }
-function qa(e, t) {
+function Ra(e, t) {
   return Math.round(He(e + t, So, ko));
 }
-function Ra(e, t, n) {
-  return !Number.isFinite(n) || n <= 0 ? Rn(e) : Rn(e + t / n);
+function qa(e, t, n) {
+  return !Number.isFinite(n) || n <= 0 ? qn(e) : qn(e + t / n);
 }
-function Rn(e) {
+function qn(e) {
   return Math.round(He(e, Eo, Mo) * 1e3) / 1e3;
 }
 function za(e, t) {
@@ -2242,7 +2242,7 @@ const fi = "PlenioSongSheet";
 function Ge(e) {
   return e.widgets?.find((t) => t.name === "sheet_state") ?? null;
 }
-function qo(e, t) {
+function Ro(e, t) {
   const n = e.inputs?.[t]?.link;
   if (n == null) return null;
   try {
@@ -2252,12 +2252,12 @@ function qo(e, t) {
     return null;
   }
 }
-function Ro(e, t) {
+function qo(e, t) {
   const n = (e.inputs ?? []).findIndex((o) => o.name === t && o.link != null);
-  return n < 0 ? null : qo(e, n);
+  return n < 0 ? null : Ro(e, n);
 }
 function zo(e, t) {
-  const n = Ro(e, t);
+  const n = qo(e, t);
   return n && (n.comfyClass ?? n.type) === fi && Ge(n) ? n : null;
 }
 function pi(e) {
@@ -2267,7 +2267,7 @@ function hi(e) {
   return zo(e, "context_score");
 }
 function mi(e, t, n) {
-  const o = [], s = Ro(t, n);
+  const o = [], s = qo(t, n);
   s && o.push(s);
   const r = /* @__PURE__ */ new Set();
   for (; o.length && r.size < 1e3; ) {
@@ -2275,7 +2275,7 @@ function mi(e, t, n) {
     if (!r.has(a)) {
       if (r.add(a), i === e || a === String(e.id)) return !0;
       (i.inputs ?? []).forEach((l, d) => {
-        const p = qo(i, d);
+        const p = Ro(i, d);
         p && o.push(p);
       });
     }
@@ -2374,11 +2374,11 @@ const _i = (e, t, n) => {
   async function m() {
     const M = Se(o);
     M === null && (r.textContent = "The stored state is unreadable; it will be replaced when you apply.");
-    const k = Ee(String(e.id)), u = (e.inputs ?? []).filter((N) => N.link != null).map((N) => N.name), W = M ?? { schema: "plenio.sheet_state/1", docs: {} }, A = k?.owned ?? io(u, W), b = String(e.widgets?.find((N) => N.name === "review")?.value ?? "continue"), g = b === "as the brief says" ? k?.review ?? "continue" : b, y = () => Zt(import.meta.url, en), { openSheetDialog: w } = await Re(() => import("./open-DCDUNJbM.mjs"), y), { parseGuide: L, serializeGuide: E } = await Re(() => import("./tracks-DxmZeggM.mjs"), y), { parseShift: V, parseSpans: z } = await Re(() => import("./lyricPlacement-rAf-x_fn.mjs"), y);
+    const k = Ee(String(e.id)), u = (e.inputs ?? []).filter((N) => N.link != null).map((N) => N.name), W = M ?? { schema: "plenio.sheet_state/1", docs: {} }, A = k?.owned ?? io(u, W), b = String(e.widgets?.find((N) => N.name === "review")?.value ?? "continue"), g = b === "as the brief says" ? k?.review ?? "continue" : b, y = () => Zt(import.meta.url, en), { openSheetDialog: w } = await qe(() => import("./open-BwuavIMT.mjs"), y), { parseGuide: L, serializeGuide: E } = await qe(() => import("./tracks-DxmZeggM.mjs"), y), { parseShift: V, parseSpans: z } = await qe(() => import("./lyricPlacement-rAf-x_fn.mjs"), y);
     if (!ut) throw new Error("Plenio: API not initialised");
-    let q = null;
+    let R = null;
     try {
-      q = gi(e, k, Ee);
+      R = gi(e, k, Ee);
     } catch (N) {
       console.warn("Plenio: the lyrics sheet of this score was not found", N);
     }
@@ -2405,7 +2405,7 @@ const _i = (e, t, n) => {
       lyricSpans: z(e.properties?.plenio_lyric_spans),
       // how far a cover's source recording is moved against the bars (the beat grid corrected by hand)
       sourceShift: V(e.properties?.plenio_source_shift),
-      lyricsTarget: q?.target ?? null,
+      lyricsTarget: R?.target ?? null,
       scoreTarget: D?.target ?? null,
       onApply: (N, pe, K, T, P, ae) => {
         const Ve = String(p.value ?? "");
@@ -2414,7 +2414,7 @@ const _i = (e, t, n) => {
           plenio_guide: E(pe),
           plenio_lyric_spans: (ae?.lyricSpans ?? []).map((le) => [...le]),
           plenio_source_shift: ae?.sourceShift ?? 0
-        }, P ? Le(e, "approved") : String(p.value) !== Ve && S(e), K !== null && q && !q.target.blocked && (yi(q.owner, K, Ee(String(q.owner.id))), S(q.owner)), T && D && !D.target.blocked) {
+        }, P ? Le(e, "approved") : String(p.value) !== Ve && S(e), K !== null && R && !R.target.blocked && (yi(R.owner, K, Ee(String(R.owner.id))), S(R.owner)), T && D && !D.target.blocked) {
           const le = D.owner;
           vi(le, T.text, Ee(String(le.id)), T.approved ? { fetcher: j } : null).then(
             (U) => {
@@ -2436,10 +2436,10 @@ const _i = (e, t, n) => {
     Tr((M) => {
       (M === null || M === e) && d();
     })
-  ], R = e.onRemoved;
+  ], q = e.onRemoved;
   return e.onRemoved = function() {
     for (const M of _) M();
-    R?.call(this);
+    q?.call(this);
   }, d(), { widget: p };
 }, je = "plenio.stem_mix/1", Te = "rest", Si = ["reverb", "delay"], Bo = -60, ki = 12;
 function Ei() {
@@ -2517,11 +2517,11 @@ function Ii(e, t, n, o) {
   const s = se(e, t);
   return ht(e, t, { ...s, muted: Ci(s.muted, n, o) });
 }
-function qi(e, t, n) {
+function Ri(e, t, n) {
   const o = se(e, t), s = Pi(o.muted, n);
   return s < 0 ? e : ht(e, t, { ...o, muted: Oi(o.muted, s) });
 }
-function Ri(e) {
+function qi(e) {
   const t = e?.plenio_stems, n = t?.[t.length - 1];
   if (!n?.peaks) return {};
   const o = {};
@@ -2592,8 +2592,8 @@ function Bi(e) {
       z.setAttribute("aria-label", `${g} mute`), z.addEventListener("click", (T) => {
         T.stopPropagation(), p(g, { mute: !y.mute });
       });
-      const q = I("button", y.solo ? "toggle active" : "toggle", "S");
-      q.setAttribute("aria-label", `${g} solo`), q.addEventListener("click", (T) => {
+      const R = I("button", y.solo ? "toggle active" : "toggle", "S");
+      R.setAttribute("aria-label", `${g} solo`), R.addEventListener("click", (T) => {
         T.stopPropagation(), p(g, { solo: !y.solo });
       });
       const D = ot(0, 1, 0.05, y.compression, `${g} compression`);
@@ -2608,12 +2608,12 @@ function Bi(e) {
       const pe = Ni(i.mix, g, b);
       w.classList.toggle("silent", !pe);
       const K = I("canvas", "plenio-mix-wave");
-      K.width = ge, K.height = 26, K.setAttribute("aria-label", `${g} waveform (drag to mute a time range)`), R(K, y, zi(i.peaks, g, ge)), K.addEventListener("pointerdown", (T) => M(T, K, g)), w.append(
+      K.width = ge, K.height = 26, K.setAttribute("aria-label", `${g} waveform (drag to mute a time range)`), q(K, y, zi(i.peaks, g, ge)), K.addEventListener("pointerdown", (T) => M(T, K, g)), w.append(
         L,
         E,
         V,
         z,
-        q,
+        R,
         I("span", "label", "comp"),
         D,
         I("span", "label", "verb"),
@@ -2626,7 +2626,7 @@ function Bi(e) {
     }
     k(), s.textContent = i.seconds ? `last run: ${i.seconds.toFixed(1)} s - drag on a strip to mute a time range, click a range to remove it` : "no run yet: the strips show the documented stems (vocals, drums, bass, other and the residual rest); Separate Stems fills them", e.setDirtyCanvas?.(!0, !0);
   }
-  function R(b, g, y) {
+  function q(b, g, y) {
     const w = b.getContext("2d");
     if (!w) return;
     w.clearRect(0, 0, ge, b.height);
@@ -2638,24 +2638,24 @@ function Bi(e) {
     }
     w.stroke(), w.fillStyle = "rgba(224, 104, 94, 0.35)", w.strokeStyle = "rgba(224, 104, 94, 0.9)";
     for (const [E, V] of g.muted) {
-      const z = Math.max(0, Math.min(ge, E / Math.max(i.seconds, 1e-6) * ge)), q = Math.max(0, Math.min(ge, V / Math.max(i.seconds, 1e-6) * ge));
-      w.fillRect(z, 0, Math.max(1, q - z), b.height), w.strokeRect(z + 0.5, 0.5, Math.max(1, q - z) - 1, b.height - 1);
+      const z = Math.max(0, Math.min(ge, E / Math.max(i.seconds, 1e-6) * ge)), R = Math.max(0, Math.min(ge, V / Math.max(i.seconds, 1e-6) * ge));
+      w.fillRect(z, 0, Math.max(1, R - z), b.height), w.strokeRect(z + 0.5, 0.5, Math.max(1, R - z) - 1, b.height - 1);
     }
   }
   function M(b, g, y) {
     if (b.preventDefault(), b.stopPropagation(), !i.seconds) return;
     const w = g.getBoundingClientRect(), L = (j) => Math.max(0, Math.min(1, (j - w.left) / (w.width || ge))) * i.seconds, E = L(b.clientX);
     if (se(i.mix, y).muted.some(([j, N]) => j <= E && E <= N)) {
-      d(qi(i.mix, y, E));
+      d(Ri(i.mix, y, E));
       return;
     }
     let z = E;
-    const q = (j) => {
+    const R = (j) => {
       z = L(j.clientX);
     }, D = () => {
-      window.removeEventListener("pointermove", q), window.removeEventListener("pointerup", D), d(Ii(i.mix, y, Math.min(E, z), Math.max(E, z)));
+      window.removeEventListener("pointermove", R), window.removeEventListener("pointerup", D), d(Ii(i.mix, y, Math.min(E, z), Math.max(E, z)));
     };
-    window.addEventListener("pointermove", q), window.addEventListener("pointerup", D);
+    window.addEventListener("pointermove", R), window.addEventListener("pointerup", D);
   }
   function k() {
     o.replaceChildren();
@@ -2694,7 +2694,7 @@ function Bi(e) {
   }
   return A(), {
     showExecuted(b) {
-      const g = b?.plenio_stems?.at(-1), y = Ri(b), w = Wn(i.mix, g ?? null);
+      const g = b?.plenio_stems?.at(-1), y = qi(b), w = Wn(i.mix, g ?? null);
       i = { ...i, names: w, peaks: y, seconds: Number(g?.seconds ?? i.seconds) || 0 }, A();
     }
   };
@@ -2965,7 +2965,7 @@ function oa(e) {
 }
 const sa = "Plenio.Core", oe = rs;
 xi(oe);
-const re = eo, It = { app: re, fetcher: oe }, qt = { app: re, fetcher: oe }, jo = () => re.graph;
+const re = eo, It = { app: re, fetcher: oe }, Rt = { app: re, fetcher: oe }, jo = () => re.graph;
 function Xt(e) {
   if (e == null) return null;
   const t = String(e);
@@ -2977,7 +2977,7 @@ const ra = {
 }, Fo = () => Zt(import.meta.url, en), ia = {
   fetcher: oe,
   async draw(e, t, n, o) {
-    const { notationPdf: s, renderLines: r } = await Re(
+    const { notationPdf: s, renderLines: r } = await qe(
       () => import("./notationExport-DkCMgjck.mjs").then((a) => a.c),
       Fo,
       "The sheet music is drawn and saved then."
@@ -3028,7 +3028,7 @@ eo.registerExtension({
         });
       })
     },
-    { id: Ln, label: "Plenio Player", icon: "pi pi-play-circle", function: () => jt(qt) }
+    { id: Ln, label: "Plenio Player", icon: "pi pi-play-circle", function: () => jt(Rt) }
   ],
   menuCommands: [
     { path: ["File"], commands: [Mt] },
@@ -3041,7 +3041,7 @@ eo.registerExtension({
       label: "Plenio Player",
       tooltip: "Open the Plenio Player: your songs with live lyrics, sheet music and visuals (starts it if needed)",
       onClick: () => {
-        jt(qt);
+        jt(Rt);
       }
     }
   ],
@@ -3068,7 +3068,7 @@ eo.registerExtension({
         o.get(this)?.showExecuted(r);
       });
     }
-    if (t.name === "PlenioExportRelease" && _r(e, qt), t.name === si && di(e), _s.has(t.name) && Ss(e, oe), t.name === "PlenioStemMixer") {
+    if (t.name === "PlenioExportRelease" && _r(e, Rt), t.name === si && di(e), _s.has(t.name) && Ss(e, oe), t.name === "PlenioStemMixer") {
       const o = /* @__PURE__ */ new WeakMap(), s = e.prototype.onNodeCreated;
       e.prototype.onNodeCreated = function() {
         s?.call(this), o.set(this, Bi(this));
@@ -3120,16 +3120,16 @@ export {
   Eo as E,
   _e as F,
   Da as G,
-  qa as H,
+  Ra as H,
   Wr as I,
-  Rn as J,
+  qn as J,
   za as K,
   ma as L,
   ha as M,
   Mo as N,
   Fa as O,
   Q as P,
-  Ra as Q,
+  qa as Q,
   ko as R,
   Ao as S,
   Y as T,

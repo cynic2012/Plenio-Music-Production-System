@@ -56,6 +56,9 @@ describe('the Plenio Player from ComfyUI', () => {
     expect(trustedOrigin('http://192.168.0.5:8188', 'http://192.168.0.5:8188')).toBe(true)
     expect(trustedOrigin('https://evil.example', 'http://127.0.0.1:8188')).toBe(false)
     expect(trustedOrigin('null', 'http://127.0.0.1:8188')).toBe(false)
+    // ComfyUI opened from the network by the player's gateway: the player's gateway on the same computer
+    expect(trustedOrigin('http://192.168.0.5:8780', 'http://192.168.0.5:8781')).toBe(true)
+    expect(trustedOrigin('http://192.168.0.6:8780', 'http://192.168.0.5:8781')).toBe(false)
   })
 
   it('opened by the player, says it is ready and continues the song the player sends', async () => {

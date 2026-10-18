@@ -11,7 +11,8 @@ import { settings } from '../store'
 import { sectionAt, sectionsInSong, songAnchors, type TimedSection } from '../timing'
 import { chooseVisual } from '../visuals/chooser'
 import { DropRenderer } from '../visuals/drop/renderer'
-import { allPresets, makeColors, presetById, type Preset, type Scene, type Scheme } from '../visuals/presets'
+import { SceneMixer, fadeWithDefaults, type FadeStyle } from '../visuals/mixer'
+import { allPresets, makeColors, presetById, type Scheme } from '../visuals/presets'
 import { NotationStrip } from './notationStrip'
 import { OfflineAnalysis } from './offline'
 import { drawCorner, drawCredit, drawKaraoke, drawProgress, drawSubtitles, drawTitleCard, type LyricsLook, type TitleInfo } from './overlay'
@@ -29,6 +30,9 @@ export interface VideoOptions {
   /** Another visual: never, at every section of the song, or every ``interval`` seconds. */
   change: 'never' | 'section' | 'interval'
   interval: number
+  /** How one visual turns into the next, and over how many seconds (owner's request 2026-10-18: softly). */
+  fade: FadeStyle
+  fadeSeconds: number
   scheme: Scheme
   lyrics: 'off' | 'subtitles' | 'karaoke'
   /** The lyrics' font, colour, size and effect (at first the player's own). */
@@ -59,6 +63,8 @@ export const DEFAULT_VIDEO: VideoOptions = {
   visual: '',
   change: 'never',
   interval: 20,
+  fade: 'blend',
+  fadeSeconds: 3,
   scheme: 'song',
   lyrics: 'subtitles',
   lyricsStyle: lyricsWithDefaults(null),
@@ -79,6 +85,9 @@ export function videoWithDefaults(raw: unknown, lyrics?: unknown): VideoOptions 
   delete (out as { eachSection?: boolean }).eachSection
   if (!['never', 'section', 'interval'].includes(out.change)) out.change = 'never'
   out.interval = Math.min(600, Math.max(3, Number(out.interval) || 20))
+  const fade = fadeWithDefaults(out.fade, out.fadeSeconds)
+  out.fade = fade.style
+  out.fadeSeconds = fade.seconds
   out.lyricsStyle = lyricsWithDefaults(given.lyricsStyle ?? lyrics)
   if (!SIZES.some((s) => s.width === out.width && s.height === out.height)) Object.assign(out, { width: 1920, height: 1080 })
   if (![24, 25, 30, 50, 60].includes(out.fps)) out.fps = 30
@@ -131,11 +140,8 @@ export class Composer {
   readonly canvas: HTMLCanvasElement
   private readonly ctx: CanvasRenderingContext2D
   private readonly analysis: OfflineAnalysis
-  private scene: Scene | null = null
-  private preset: Preset | null = null
+  private readonly mixer: SceneMixer
   private drop: DropRenderer | null | undefined
-  private snapshot: HTMLCanvasElement | null = null
-  private blend = 0
   private turn = 0
   private lastChange = 0
   private section: TimedSection | null = null
@@ -160,6 +166,7 @@ export class Composer {
     this.canvas.height = height
     this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D
     this.analysis = new OfflineAnalysis(sound, options.fps, settings.visuals.sensitivity)
+    this.mixer = new SceneMixer((preset) => preset.create({ drop: { renderer: () => this.dropRenderer(), scale: 1 } }))
     this.sections = sectionsInSong(detail.notation.sections, songAnchors(detail.lines, detail.notation), detail.notation.warp, sound.duration)
     this.hue = songHue(song.id, song.genre)
     this.accent = paletteFrom(this.hue).accent
@@ -191,6 +198,8 @@ export class Composer {
     if (this.drop === undefined) {
       try {
         this.drop = new DropRenderer()
+        // a change of Drop preset glides as long as the video's crossfade
+        this.drop.blendSeconds = this.options.fade === 'cut' ? 0.05 : this.options.fadeSeconds
       } catch {
         this.drop = null
       }
@@ -204,30 +213,21 @@ export class Composer {
     const { change, interval } = this.options
     const section = change === 'section' ? sectionAt(this.sections, t) : null
     const due =
-      this.scene === null ||
+      this.mixer.preset === null ||
       (change === 'section' && section !== this.section) ||
       (change === 'interval' && elapsed - this.lastChange >= Math.max(3, interval))
     if (!due) return
-    if (this.scene) this.turn += 1
+    if (this.mixer.preset) this.turn += 1
     this.section = section
     this.lastChange = elapsed
     let id = this.options.visual
     if (!id || (change !== 'never' && this.turn > 0)) {
       const pool = { ...settings.visuals, songs: this.turn > 0 ? {} : settings.visuals.songs }
       if (this.options.visual && this.turn > 0) Object.assign(pool, { mode: 'cycle' as const })
-      id = chooseVisual({ settings: pool, song: this.song, previous: this.preset?.id ?? (this.options.visual || null), turn: this.turn })
+      id = chooseVisual({ settings: pool, song: this.song, previous: this.mixer.preset?.id ?? (this.options.visual || null), turn: this.turn })
     }
-    const preset = presetById(id) ?? allPresets()[0]
-    const glide = this.preset?.kind === 'drop' && preset.kind === 'drop'
-    if (this.scene && !glide) {
-      this.snapshot = this.snapshot ?? document.createElement('canvas')
-      this.snapshot.width = this.canvas.width
-      this.snapshot.height = this.canvas.height
-      this.snapshot.getContext('2d')?.drawImage(this.canvas, 0, 0)
-      this.blend = 1
-    }
-    this.preset = preset
-    this.scene = preset.create({ drop: { renderer: () => this.dropRenderer(), scale: 1 } })
+    // the change as the video's crossfade says: both visuals play on while the new one comes in
+    this.mixer.use(presetById(id) ?? allPresets()[0], { style: this.options.fade, seconds: this.options.fadeSeconds })
   }
 
   /** Draw frame ``k`` (``k / fps`` seconds into the part). */
@@ -241,15 +241,7 @@ export class Composer {
     const frame = this.analysis.frame(t, 1 / fps, elapsed)
     this.pick(t, elapsed)
     const colors = makeColors(this.hue, this.options.scheme, elapsed)
-    ctx.save()
-    this.scene?.draw(ctx, frame, w, h, colors)
-    ctx.restore()
-    if (this.blend > 0 && this.snapshot) {
-      ctx.globalAlpha = this.blend
-      ctx.drawImage(this.snapshot, 0, 0, w, h)
-      ctx.globalAlpha = 1
-      this.blend = Math.max(0, this.blend - (1 / fps) * 1.25)
-    }
+    this.mixer.draw(ctx, frame, w, h, colors)
     // what is drawn over it
     const upright = h > w * 1.2
     const stripH = Math.round(h * (upright ? 0.16 : 0.25))
@@ -316,6 +308,35 @@ async function encoderConfig(options: VideoOptions): Promise<VideoEncoderConfig>
     }
   }
   throw new Error(`This browser cannot encode H.264 at ${width} × ${height}, ${fps} frames a second.`)
+}
+
+// --- pauses a tab in the background does not stretch --------------------------------------------------------
+
+const channel = typeof MessageChannel !== 'undefined' ? new MessageChannel() : null
+const resumes: (() => void)[] = []
+if (channel) channel.port1.onmessage = () => resumes.shift()?.()
+
+/** A short pause for the page between frames. A tab in the background has its timers held back to once a second
+ * (a video in the queue would crawl there); a message to itself is not held back. */
+export function nextTask(): Promise<void> {
+  if (!channel) return new Promise((resolve) => setTimeout(resolve, 0))
+  return new Promise((resolve) => {
+    resumes.push(resolve)
+    channel.port2.postMessage(0)
+  })
+}
+
+/** Until the encoder has taken a frame from its queue (its ``dequeue`` event; a short wait where it has none). */
+function dequeued(encoder: VideoEncoder): Promise<void> {
+  return new Promise((resolve) => {
+    const done = (): void => {
+      encoder.removeEventListener('dequeue', done)
+      window.clearTimeout(timer)
+      resolve()
+    }
+    const timer = window.setTimeout(done, 40)
+    encoder.addEventListener('dequeue', done)
+  })
 }
 
 export interface Progress {
@@ -388,13 +409,13 @@ export async function makeVideo(
       const frame = new VideoFrame(composer.canvas, { timestamp: Math.round((k * 1e6) / options.fps), duration: Math.round(1e6 / options.fps) })
       encoder.encode(frame, { keyFrame: k % (options.fps * 2) === 0 })
       frame.close()
-      while (encoder.encodeQueueSize > 6) await new Promise((resolve) => setTimeout(resolve, 2))
+      while (encoder.encodeQueueSize > 6) await dequeued(encoder)
       if (k % 15 === 0 || k === total - 1) {
         const seconds = (performance.now() - began) / 1000
         const rate = (k + 1) / Math.max(seconds, 0.001)
         onProgress({ stage: 'Drawing and encoding', frame: k + 1, total, speed: rate / options.fps, left: (total - k - 1) / rate })
         if (k % 60 === 0) onFrame?.(composer.canvas)
-        await new Promise((resolve) => setTimeout(resolve, 0))
+        await nextTask()
       }
     }
     await encoder.flush()

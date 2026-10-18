@@ -7,7 +7,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import type { SongDetail, SongSummary } from '../api'
-import { go, removeSong, route, songDetail } from '../store'
+import { go, remote, removeSong, route, songDetail } from '../store'
 import Icon from './Icon.vue'
 
 const props = defineProps<{ song: SongSummary }>()
@@ -59,7 +59,8 @@ async function remove(action: 'retire' | 'delete'): Promise<void> {
         <code v-if="detail">{{ detail.retire_to }}</code>
       </button>
 
-      <button class="choice danger" :class="{ sure }" :disabled="busy || !detail" @click="remove('delete')">
+      <p v-if="remote" class="hint">From the network a song is retired; deleting it for good is done on the computer itself.</p>
+      <button v-if="!remote" class="choice danger" :class="{ sure }" :disabled="busy || !detail" @click="remove('delete')">
         <b><Icon name="trash" :size="18" /> {{ sure ? `Yes, delete ${files.length} ${files.length === 1 ? 'file' : 'files'} for good` : 'Delete permanently' }}</b>
         <span>{{ sure ? 'This cannot be undone - click again to delete.' : 'The files are deleted, not moved to the recycle bin.' }}</span>
       </button>

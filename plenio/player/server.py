@@ -12,6 +12,7 @@ import mimetypes
 import os
 import re
 import threading
+import time
 import urllib.request
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -24,7 +25,8 @@ from . import folders as folder_choice
 from . import other as other_music
 from .guest import GuestHub
 from .library import RETIRED_DIR, Library, song_detail
-from .package import PackageJobs, package_file, packages_dir
+from .network import REMOTE_HEADER, REMOTE_HOST_HEADER, NetworkAccess
+from .package import MAX_SONGS, PackageJobs, package_file, packages_dir
 from .package import listing as package_listing
 from .peaks import peaks
 from .video import VideoJobs, videos_dir
@@ -68,11 +70,15 @@ EMPTY_STATE: dict[str, Any] = {
 
 class State:
     """The listener's playlists, favourites, play counts and settings in one JSON file (outside the songs'
-    folders, which the player changes only to remove a song)."""
+    folders, which the player changes only to remove a song). ``rev`` counts the changes: a page that saves
+    names the one it started from, and is told when another page (another tab, a phone from the network)
+    saved in between - it then merges the two and saves again (owner's request 2026-10-18: the player open
+    on several devices at once). It starts from the clock, so a page from before a restart merges too."""
 
     def __init__(self, path: Path):
         self.path = path
         self.lock = threading.Lock()
+        self.rev = int(time.time() * 1000)
 
     def read(self) -> dict[str, Any]:
         try:
@@ -81,12 +87,18 @@ class State:
         except (OSError, ValueError):
             return dict(EMPTY_STATE)
 
-    def write(self, data: dict[str, Any]) -> None:
+    def write(self, data: dict[str, Any], base: int | None = None) -> int | None:
+        """Save ``data``; with ``base``, only when nothing was saved since that change (``None`` back: it was).
+        The new change's number back."""
         with self.lock:
+            if base is not None and base != self.rev:
+                return None
             self.path.parent.mkdir(parents=True, exist_ok=True)
             temp = self.path.with_suffix(".tmp")
             temp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
             temp.replace(self.path)
+            self.rev += 1
+            return self.rev
 
 
 def comfyui_at(url: str, timeout: float = 0.8) -> dict[str, Any] | None:
@@ -126,11 +138,14 @@ def make_handler(
     hosts: frozenset[str] = frozenset(),
     comfyui: str = "",
     guests: GuestHub | None = None,
+    network: NetworkAccess | None = None,
 ) -> type[BaseHTTPRequestHandler]:
     """The requests' handler; with ``hosts`` it answers only requests addressed to one of them (a player on
     the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding).
     ``guests``: the guests' access to the live playlist (its own server; here only its settings, what the
-    page shows and the guests' wishes)."""
+    page shows and the guests' wishes). ``network``: the player and ComfyUI from the network (gateways of
+    their own; here their settings) - requests that come by them do all but what belongs to this computer
+    alone."""
 
     jobs = VideoJobs(videos_dir(state.path.parent))
     packages = PackageJobs()
@@ -165,6 +180,18 @@ def make_handler(
 
         def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 - the base class's name
             pass  # quiet: a player streams many ranges
+
+        @property
+        def remote(self) -> bool:
+            """The request came from the network, by the gateway (which says so, on this computer)."""
+            return self.headers.get(REMOTE_HEADER) == "1" and self.client_address[0] in ("127.0.0.1", "::1")
+
+        def _not_from_network(self, what: str) -> bool:
+            """Answer 403 to a request from the network for what only this computer does; ``True``: answered."""
+            if not self.remote:
+                return False
+            self._error(403, f"{what} - only on the computer itself, not from the network")
+            return True
 
         # --- answers ------------------------------------------------------------------------------
         def _json(self, data: Any, status: int = 200) -> None:
@@ -248,6 +275,16 @@ def make_handler(
                         "retired": RETIRED_DIR,
                         "comfyui": comfyui,
                         "pid": os.getpid(),
+                        "remote": self.remote,
+                    }
+                )
+            if route == "/api/network":
+                if network is None:
+                    return self._error(404, "no access from the network")
+                return self._json(
+                    {
+                        **network.status(self.headers.get(REMOTE_HOST_HEADER, "") if self.remote else ""),
+                        "remote": self.remote,
                     }
                 )
             if route == "/api/comfyui":
@@ -279,7 +316,9 @@ def make_handler(
                 except (OSError, ValueError) as error:
                     return self._error(500, str(error))
             if route == "/api/state":
-                return self._json(state.read())
+                return self._json({**state.read(), "rev": state.rev})
+            if route == "/api/state/rev":
+                return self._json({"rev": state.rev})
             if route == "/api/guests":
                 return self._json(guests.status()) if guests else self._error(404, "no guests' access")
             if route == "/api/guests/wishes":
@@ -297,6 +336,9 @@ def make_handler(
                 return self._json(
                     {"folder": str(packages_dir(directory)), "files": package_listing(directory)}
                 )
+            if route == "/api/package-jobs":
+                # the shared players being made, waiting and made since the player started (the queue)
+                return self._json({"jobs": packages.listing()})
             job = re.fullmatch(r"/api/package/([0-9a-f]{16})", route)
             if job:
                 status = packages.status(job.group(1))
@@ -328,6 +370,8 @@ def make_handler(
                 # cannot send this header without asking first, and this server never says yes)
                 if self.headers.get("X-Plenio-Player") != "1":
                     return self._error(403, "only from the player's page")
+                if self._not_from_network("This computer's folders"):
+                    return None
                 return self._json(folder_choice.list_dirs(query.get("path")))
             if route == "/api/visuals":
                 # the listener's own Plenio Drop presets (the page reads them again every few seconds)
@@ -395,12 +439,24 @@ def make_handler(
         def do_PUT(self) -> None:  # noqa: N802
             body = self._body()
             route = unquote(urlparse(self.path).path)
-            if route not in ("/api/state", "/api/folders", "/api/guests"):
+            if route not in ("/api/state", "/api/folders", "/api/guests", "/api/network"):
                 return self._error(404, "not found")
             if not self._from_this_page():
                 return self._error(403, "only from the player's page")
             if route == "/api/folders":
+                if self._not_from_network("Choosing the folders"):
+                    return None
                 return self._put_folders(body)
+            if route == "/api/network":
+                if self._not_from_network("Switching the access from the network"):
+                    return None
+                try:
+                    changes = json.loads(body.decode("utf-8")) if body else None
+                except ValueError:
+                    changes = None
+                if network is None or not isinstance(changes, dict):
+                    return self._error(400 if network else 404, "the access from the network: on, regenerate")
+                return self._json(network.configure(changes))
             if route == "/api/guests":
                 try:
                     changes = json.loads(body.decode("utf-8")) if body else None
@@ -419,8 +475,17 @@ def make_handler(
                 return self._error(400, "not JSON")
             if not isinstance(data, dict):
                 return self._error(400, "the state is an object")
-            state.write({**EMPTY_STATE, **{k: v for k, v in data.items() if k in EMPTY_STATE}})
-            return self._json({"ok": True})
+            base = data.get("rev")
+            saved = state.write(
+                {**EMPTY_STATE, **{k: v for k, v in data.items() if k in EMPTY_STATE}},
+                base if isinstance(base, int) and not isinstance(base, bool) else None,
+            )
+            if saved is None:
+                # another page saved since: this one merges the two and saves again
+                return self._json(
+                    {"error": "saved elsewhere since", "rev": state.rev, "state": state.read()}, 409
+                )
+            return self._json({"ok": True, "rev": saved})
 
         def _put_folders(self, body: bytes | None) -> None:
             """The folders chosen in Settings (``{"folders": [{"path", "other"}]}``), or back to the folders
@@ -445,10 +510,23 @@ def make_handler(
             return self._json(folders_answer())
 
         def _package(self, route: str, raw: bytes | None) -> None:
-            """A portable player of chosen songs (one HTML file: plenio.player.package), or its folder shown."""
+            """A portable player of chosen songs (one HTML file: plenio.player.package) put in the queue, one
+            stopped, the finished ones forgotten, or the folder shown."""
             if not self._from_this_page():
                 return self._error(403, "only from the player's page")
+            stop = re.fullmatch(r"/api/package/([0-9a-f]{16})/cancel", route)
+            if stop:
+                return (
+                    self._json({"ok": True})
+                    if packages.cancel(stop.group(1))
+                    else self._error(404, "no such package")
+                )
+            if route == "/api/package-jobs/clear":
+                packages.clear()
+                return self._json({"jobs": packages.listing()})
             if route == "/api/packages/open":
+                if self._not_from_network("Opening a folder on this computer's screen"):
+                    return None
                 folder = packages_dir(state.path.parent)
                 try:
                     chosen = json.loads(raw.decode("utf-8")).get("file") if raw else None
@@ -463,7 +541,7 @@ def make_handler(
                 body = None
             if not isinstance(body, dict) or not isinstance(body.get("songs"), list) or not body["songs"]:
                 return self._error(400, "the songs to pack")
-            ids = [str(i) for i in body["songs"]][:500]
+            ids = [str(i) for i in body["songs"]][:MAX_SONGS]
             if int(body.get("bitrate") or 192) not in (128, 160, 192):
                 return self._error(400, "MP3 at 128, 160 or 192 kbit/s")
             job = packages.start(library, ids, body, state.path.parent)
@@ -493,6 +571,8 @@ def make_handler(
             if not isinstance(body, dict):
                 return self._error(400, "not JSON")
             if route == "/api/videos/open":
+                if self._not_from_network("Opening a folder on this computer's screen"):
+                    return None
                 try:
                     show_folder(
                         jobs.folder, jobs.file(str(body.get("file") or "")) if body.get("file") else None
@@ -564,7 +644,9 @@ def make_handler(
                     return self._error(400 if guests else 404, "the live playlist as the page shows it")
                 guests.publish(shown)
                 return self._json({"ok": True})
-            if route in ("/api/package", "/api/packages/open"):
+            if route in ("/api/package", "/api/packages/open", "/api/package-jobs/clear") or re.fullmatch(
+                r"/api/package/[0-9a-f]{16}/cancel", route
+            ):
                 return self._package(route, raw)
             if route == "/api/video" or route.startswith("/api/video/") or route == "/api/videos/open":
                 return self._video(route, raw)
@@ -573,6 +655,8 @@ def make_handler(
                     return self._error(403, "only from the player's page")
                 folder = visuals_dir(state.path.parent)
                 if route == "/api/visuals/open":
+                    if self._not_from_network("Opening a folder on this computer's screen"):
+                        return None
                     try:
                         open_folder(folder)
                     except OSError as error:
@@ -596,6 +680,8 @@ def make_handler(
                 # Stop the player (its Settings page): a player started from ComfyUI has no window to close
                 if not self._from_this_page():
                     return self._error(403, "only from the player's page")
+                if self._not_from_network("Stopping the player"):
+                    return None
                 self._json({"ok": True})
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
                 return None
@@ -614,6 +700,8 @@ def make_handler(
                 return self._error(400, "confirm the song's id")
             if body.get("action") not in ("retire", "delete"):
                 return self._error(400, "action: retire or delete")
+            if body["action"] == "delete" and self._not_from_network("Deleting a song for good (retire it)"):
+                return None
             try:
                 result = library.remove(match.group(1), str(body["action"]))
             except OSError as error:
@@ -633,9 +721,11 @@ def serve(
     port: int = 8765,
     comfyui: str = "",
     guests: GuestHub | None = None,
+    network: NetworkAccess | None = None,
 ) -> ThreadingHTTPServer:
     """The player's server; on the loopback address only for requests addressed to it. ``comfyui``: the
-    ComfyUI that started it (where *Open in ComfyUI* goes); ``guests``: the guests' access."""
+    ComfyUI that started it (where *Open in ComfyUI* goes); ``guests``: the guests' access; ``network``: the
+    player and ComfyUI from the network."""
 
     class Server(ThreadingHTTPServer):
         daemon_threads = True
@@ -656,9 +746,12 @@ def serve(
                     hosts=frozenset(f"{name}:{bound}" for name in names),
                     comfyui=comfyui,
                     guests=guests,
+                    network=network,
                 )
 
     return Server(
         (host, port),
-        make_handler(library, state, cache=state.path.parent / "peaks", comfyui=comfyui, guests=guests),
+        make_handler(
+            library, state, cache=state.path.parent / "peaks", comfyui=comfyui, guests=guests, network=network
+        ),
     )

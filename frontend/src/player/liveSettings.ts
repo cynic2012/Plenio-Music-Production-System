@@ -11,9 +11,19 @@ export interface LiveSettings {
   auto: boolean
   /** At the end: from the top again, or wait for the next new song. */
   atEnd: 'again' | 'wait'
+  /** The guests' way in (QR code, address) also over the visual on the whole screen, in which corner, how large
+   * (owner's request 2026-10-18). */
+  overVisual: boolean
+  wayInCorner: WayInCorner
+  wayInSize: 's' | 'm' | 'l'
 }
 
-export const DEFAULT_LIVE: LiveSettings = { on: false, insert: 'next', auto: true, atEnd: 'again' }
+export type WayInCorner = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
+export const WAY_IN_CORNERS: WayInCorner[] = ['top-right', 'top-left', 'bottom-right', 'bottom-left']
+/** The QR code's side in the corner, by size. */
+export const WAY_IN_SIDES = { s: 104, m: 170, l: 250 } as const
+
+export const DEFAULT_LIVE: LiveSettings = { on: false, insert: 'next', auto: true, atEnd: 'again', overVisual: true, wayInCorner: 'top-right', wayInSize: 'm' }
 
 /** Saved live settings, checked (a file edited by hand or an older version may hold anything). */
 export function liveWithDefaults(raw: unknown): LiveSettings {
@@ -23,6 +33,9 @@ export function liveWithDefaults(raw: unknown): LiveSettings {
   if (!['again', 'wait'].includes(out.atEnd)) out.atEnd = 'again'
   out.on = !!out.on
   out.auto = out.auto !== false
+  out.overVisual = out.overVisual !== false
+  if (!WAY_IN_CORNERS.includes(out.wayInCorner)) out.wayInCorner = 'top-right'
+  if (!['s', 'm', 'l'].includes(out.wayInSize)) out.wayInSize = 'm'
   return out
 }
 

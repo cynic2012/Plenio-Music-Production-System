@@ -6,6 +6,7 @@
  */
 import type { SongSummary } from '../api'
 import { hashOf } from '../colors'
+import { DEFAULT_FADE, fadeWithDefaults, type FadeStyle } from './mixer'
 import { PRESETS, allPresets, type Scheme } from './presets'
 
 export type VisualMode = 'auto' | 'random' | 'cycle' | 'fixed'
@@ -30,6 +31,9 @@ export interface VisualSettings {
   dropScale: number
   /** Plenio Drop's presets were offered in the pool once (settings saved before them had only the classics). */
   dropsOffered: boolean
+  /** How one visual changes into the next, and how long it takes (owner's request 2026-10-18: softly). */
+  fade: FadeStyle
+  fadeSeconds: number
 }
 
 export const DEFAULT_VISUALS: VisualSettings = {
@@ -46,6 +50,8 @@ export const DEFAULT_VISUALS: VisualSettings = {
   titles: true,
   dropScale: 0.75,
   dropsOffered: true,
+  fade: DEFAULT_FADE.style,
+  fadeSeconds: DEFAULT_FADE.seconds,
 }
 
 export function withDefaults(raw: unknown): VisualSettings {
@@ -60,6 +66,9 @@ export function withDefaults(raw: unknown): VisualSettings {
     merged.dropsOffered = true
   }
   if (![0.5, 0.75, 1].includes(merged.dropScale)) merged.dropScale = 0.75
+  const fade = fadeWithDefaults(merged.fade, merged.fadeSeconds)
+  merged.fade = fade.style
+  merged.fadeSeconds = fade.seconds
   return merged
 }
 

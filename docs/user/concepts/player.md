@@ -324,6 +324,17 @@ Open the visuals' settings with ✦ in Now playing (or press **V**):
   - *Fixed*: always the same visual.
 - **Change**: with every song, at every section (verse, chorus …), **every few seconds - also within a song**
   (10, 20, 30, 60 s or any number from 5), or *when the music drops in* after a quiet passage.
+- **Crossfade**: how one visual turns into the next, and over how many seconds (0.5-8, 3 by default). Both
+  visuals play on while it changes, and every soft change has a gentle swirl: the picture of the moment before
+  drawn again a little larger and turned over it, so the two flow into each other like smoke.
+  - *Morph - both into one* (the default): both visuals play together, each as bright as the other half way,
+    and melt into one another until only the new one is left.
+  - *Melt*: the new visual flows in through soft blots that drift and grow, like ink in water.
+  - *Soft fade*, *Zoom through* (the old one swells away, the new one grows in), *Slide* (behind a soft edge).
+  - *Flash on the beat*: the old visual plays on to the next beat, then the new one comes in a soft glow.
+  - *A different one each time*: morph, melt, fade, zoom or slide, another at every change. *Cut*: at once.
+  From one Plenio Drop visual to another the picture stays and its motion turns into the new one, over the same
+  time. A song's video has the same choice (*a new visual … · Crossfade*).
 - **This song**: a visual of its own for the song that plays. It is kept for that song.
 - **The playlist**: a visual for the whole playlist that plays. You can also choose it on the playlist's page.
 - **Look**: the song's colours, Winamp classic, neon, sunset or monochrome. **Sensitivity** makes the visuals
@@ -367,7 +378,24 @@ installing anything, without Plenio or ComfyUI.
   find some. The dialog shows how long and how large the file gets.
 - **Sound**: MP3 at 128, 160 or 192 kbit/s (about 1-1.5 MB a minute). Never the FLAC or WAV.
 - **Also**: the sheet music (PDF), your look (the visuals' and the lyrics' settings), your own Plenio Drop
-  visuals, your playlists of these songs.
+  visuals, your playlists and your tags of these songs.
+- **Files**: one file, or **parts** of at most 250 MB, 500 MB or 1 GB - see below. Above about 600 MB the dialog
+  takes parts of 500 MB until you choose otherwise.
+
+**Made in the background**: *Make the player* puts it in the queue (*In the making*, see below) - the player
+itself makes it, so it goes on when you close the dialog or the page. 365 songs (2.6 GB at 192 kbit/s) take
+about five minutes: the MP3s are made in several threads at once.
+
+**Large files, and phones.** The file is laid out to be read from the top: the songs' list and the player come
+first and start at once - the list shows within a second, also in a 2.6 GB file - and every song plays as soon
+as its sound has arrived (the sidebar says *Songs arriving: 120 of 1095 files*; a song clicked before it is
+there plays when it arrives). Once read, the page holds about 150 MB, whatever the size. What no file can
+change: **a browser holds an HTML file in memory while it reads it** - opening a 2.6 GB file takes about 2.8 GB
+for a few seconds (measured in Edge), which a computer has and most phones do not. For phones choose **parts**:
+each part is a whole player of its songs (*All my songs (1 of 6).html* …), opens with about as much memory as its
+size (a 500 MB part: under 600 MB), and favourites and playlists are the same in all of them. Phones open an HTML
+file from their files app in Chrome or Firefox; on an iPhone a files app that opens web pages may be needed -
+or open the whole player from your network instead ([see below](#the-player-in-your-network)).
 
 In the shared player everything that needs no Plenio plays as here: the library with its search and filters,
 a page per song with the lyrics and the notation following the music, Now playing with its four views, every
@@ -379,6 +407,22 @@ What stays out of the file: the FLAC and WAV files, the unmastered takes, the re
 workflows, and every path of your computer. The songs' details (style, brief, seeds) go in, as their pages
 show them. The files are kept in the player's `packages` folder (`~/.plenio/player/packages`), listed under
 *Shared players* in Settings, with *Download* and *Try it*.
+
+## In the making: videos and shared players in the background
+
+Videos and shared players are made in the background while you go on listening: **In the making** in the
+sidebar (it shows once something is made, with how many are waiting or at work) lists them - each with how far
+it is, **Stop**, and when it is done *Watch* or *Try it*, *Download* (every part of a shared player) and the
+folder. *Clear the finished* tidies the list (the files stay).
+
+- Videos are made one after the other, shared players one after the other - a video and a shared player at the
+  same time.
+- A **video** is drawn by the player's page: it goes on with the page in a tab in the background (also there
+  at full speed), but not when the page closes - the browser asks before it does.
+- A **shared player** is made by the player itself: it goes on when the page closes, and the page shows it
+  again when opened.
+- *Make the video* again with other settings puts another one in the queue (*Make another*).
+- Stop: a waiting one never starts, the one at work stops and leaves no file.
 
 ## Save a song as a video
 
@@ -398,18 +442,22 @@ moving with the music, and over it what you choose.
   **progress bar** with the sections; *made with Plenio*.
 - **Sound**: the master, or the unmastered take.
 
-**Preview** draws one frame as the video will show it. **Make the video** draws every frame from the song's
-own sound - the visuals react exactly as when it plays - and encodes it on the graphics card where the browser
-can: usually several times faster than the song lasts (12 seconds of Full HD in about 3 seconds on a current
-graphics card). You see the video grow, how fast and how long it still takes, and can stop it. The finished
-MP4 (H.264 with AAC sound) is in the player's **videos** folder (`~/.plenio/player/videos`); download it,
-watch it, or open the folder - also later, under *Videos* in Settings. The video settings are kept for the
-next one.
+**Preview** draws one frame as the video will show it. **Make the video** puts it in the queue ([In the
+making](#in-the-making-videos-and-shared-players-in-the-background)): every frame is drawn from the song's own
+sound - the visuals react exactly as when it plays - and encoded on the graphics card where the browser can:
+usually several times faster than the song lasts (12 seconds of Full HD in about 3 seconds on a current
+graphics card). The dialog shows it grow, how fast and how long it still takes; close it, and it goes on.
+The finished MP4 (H.264 with AAC sound) is in the player's **videos** folder (`~/.plenio/player/videos`);
+download it, watch it, or open the folder - also later, under *Videos* in Settings. The video settings are
+kept for the next one.
 
 It needs a browser that can encode video (WebCodecs with H.264): current Chrome and Edge can, on Windows,
 macOS and Linux.
 
 ## Live Play: make songs at a party, and they play
+
+**Show the visual** at the top of Live Play puts the party on the big screen: Now playing with only the visual,
+on the whole screen (Esc goes back). The guests' QR code can stay over it (see below).
 
 **Live Play** (in the sidebar) is a playlist that plays while you change it - and the songs you make in
 ComfyUI join it as soon as **Export Release** has written them. Make songs while the party goes on; a moment
@@ -453,6 +501,9 @@ what played. The music keeps playing on your computer; the phones get no sound a
 - **On the screen**: the QR code and the address, only one of them, or nothing - as a card in Live Play and in
   Now playing (it stays when the controls fade, for a screen the room sees). **Show it big** (or a click on
   the card) shows it over everything.
+- **Over the visual**: whether the card shows on the visual on the whole screen too (on by default), in which
+  corner, and how large - *large* for a room to scan from afar. Also in the visuals' settings (✦), as *The
+  guests' way in over the visual*.
 - *n guests are looking now* counts the phones that asked in the last half minute.
 
 The access is a small server of its own on port 8770 (8771-8779 when it is taken), apart from the player,
@@ -462,6 +513,30 @@ first time, **Windows may ask whether Python may accept connections**: allow it 
 the phones cannot reach the player. On a network you do not trust (a café, a hotel) leave it off. It stays on
 when the player starts again, with the same address; `--guests-host` (or `PLENIO_GUESTS_HOST`) sets where it
 listens (every network by default). Guests see the live playlist while the player's page is open - the page keeps the playlist.
+
+## The player in your network
+
+**Settings > In your network > Open the player from your network** opens the whole player to the devices in
+your home network - a phone, a tablet, another computer - while it runs here: your songs, playlists, tags,
+the visuals, Live Play, videos and shared players. The music plays on the device that opens it.
+
+- **The link**: a QR code and an address like `http://192.168.178.23:8780/Ab3dE…/`. Open it once on a device,
+  and from then on the address alone opens it there (the link leaves a cookie in that browser). Nobody without
+  the link comes in. **New link** makes another one: the old link, and every browser let in by it, are out.
+- **ComfyUI** too, when it runs on this computer: a second link (`…:8781/…`), and *ComfyUI ↗* in the sidebar of
+  a page that came from the network. ComfyUI need not listen on the network itself (no `--listen`); *Open in
+  ComfyUI* on a song's page works from there too.
+- From the network the player does everything but **choose its folders, stop, open folders on this
+  computer's screen and delete songs for good** (it retires them) - those are done on the computer itself.
+- Two devices at once - or two tabs: the player counts the changes, and a page that saved after another merges
+  the two instead of overwriting them (a playlist both changed keeps the one saved last, favourites and tags
+  keep both sides' changes, plays add up). Every few seconds each page takes in what another changed.
+
+It is two small gateways of the player's own on ports 8780-8789, apart from the player, which still answers
+this computer only. The first time, **Windows may ask whether Python may accept connections**: allow it for
+private networks. On a network you do not trust (a café, a hotel) leave it off. It stays on when the player
+starts again, with the same link; `--network-host` (or `PLENIO_NETWORK_HOST`) sets where it listens (every
+network by default). The sidebar's *ComfyUI ↗* also opens ComfyUI on this computer when it runs.
 
 ## Continue a song in ComfyUI
 
@@ -497,8 +572,8 @@ another version - reload it then). It shows what is kept, the file it is kept in
 - **Restore a backup…** - read such a file back, on this or another computer
 - **Start afresh…** - forget playlists, favourites, play counts and settings (asks once more)
 
-It also shows where *Open in ComfyUI* goes, the folders the player reads, the player's version, and
-**Stop the player**.
+It also shows the player in your network, where *Open in ComfyUI* goes (and *Open ComfyUI*), your tags, the
+folders the player reads, the player's version, and **Stop the player**.
 
 ## Remove a song
 

@@ -1,16 +1,24 @@
 <script setup lang="ts">
 /** The sidebar: the library and its smart lists, your saved filters, the playlists (a new one in place), the
  * folder, a rescan. */
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { vFocus } from '../focus'
-import { applySavedFilter, deleteSavedFilter, folders, go, lastSaved, library, newPlaylist, rescan, route, saveError, settings, shareFor, state } from '../store'
+import { applySavedFilter, comfyLink, deleteSavedFilter, folders, go, lastSaved, library, lookForComfyUI, newPlaylist, remote, rescan, route, saveError, settings, shareFor, state } from '../store'
 import Icon from './Icon.vue'
-import { isPortable, portable } from '../portable'
+import { active, jobs } from '../jobs'
+import { isPortable, loading, portable } from '../portable'
 
 const naming = ref(false)
 const name = ref('')
 const scanning = ref(false)
+// ComfyUI to open, while it runs (asked now and then)
+let comfyTimer: number | undefined
+onMounted(() => {
+  void lookForComfyUI()
+  comfyTimer = window.setInterval(() => void lookForComfyUI(), 15000)
+})
+onBeforeUnmount(() => window.clearInterval(comfyTimer))
 
 const LINKS = [
   ['/', 'Songs', 'music'],
@@ -53,6 +61,9 @@ async function scan(): Promise<void> {
     <a v-for="[path, label, icon] in LINKS" :key="path" class="link" :class="{ on: route === path }" @click="go(path)">
       <Icon :name="icon" :size="18" /> {{ label }} <small v-if="path === '/live' && settings.live.on" class="on-air">LIVE</small><small v-else>{{ counts[path] || '' }}</small>
     </a>
+    <a v-if="jobs.length" class="link" :class="{ on: route === '/jobs' }" title="Videos and shared players being made, waiting and made" @click="go('/jobs')">
+      <Icon name="layers" :size="18" /> In the making <small v-if="active.length" class="busy">{{ active.length }}</small><small v-else>✓</small>
+    </a>
 
     <template v-if="settings.savedFilters.length">
       <h4>Saved filters</h4>
@@ -76,8 +87,15 @@ async function scan(): Promise<void> {
     <div class="foot">
       <template v-if="isPortable">
         <p class="shared">“{{ portable?.title }}” - shared with the Plenio Player</p>
+        <p v-if="portable?.part" class="shared" :title="portable.part.files.join('\n')">Part {{ portable.part.index }} of {{ portable.part.count }} - the others: {{ portable.part.files.filter((_, k) => k !== portable!.part!.index - 1).join(', ') }}</p>
+        <div v-if="!loading.done && loading.total" class="arriving" :title="'A large file is read for a while: the songs play as they arrive'">
+          <span>Songs arriving: {{ loading.got }} of {{ loading.total }} files</span>
+          <i :style="{ width: `${(loading.got / loading.total) * 100}%` }" />
+        </div>
       </template>
+      <p v-if="remote" class="remote-mark" title="This page came from the network: the player runs on another computer"><Icon name="external" :size="13" /> from the network</p>
       <p v-for="f in folders" :key="f" class="folder" :title="f"><Icon name="folder" :size="14" /> {{ f }}</p>
+      <a v-if="comfyLink" class="link small-link comfy" :href="comfyLink" target="_blank" rel="noopener" title="ComfyUI, in a tab of its own"><Icon name="external" :size="16" /> ComfyUI <small>↗</small></a>
       <button v-if="!isPortable" class="ghost small" :class="{ wide: true }" @click="shareFor = { songs: [], title: '' }"><Icon name="download" :size="14" /> Share as a player…</button>
       <button v-if="!isPortable" class="ghost small" :disabled="scanning" @click="scan"><Icon name="refresh" :size="14" :class="{ spin: scanning }" /> {{ scanning ? 'Looking …' : 'Look for new songs' }}</button>
       <a class="link small-link" :class="{ on: route === '/settings' }" @click="go('/settings')">
@@ -159,6 +177,32 @@ async function scan(): Promise<void> {
 .link.on {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
   color: #fff;
+}
+.link small.busy {
+  color: #0b0a12;
+  background: var(--accent);
+  padding: 1px 7px;
+  border-radius: 6px;
+  font-weight: 700;
+  animation: on-air 1.6s ease-in-out infinite;
+}
+.arriving {
+  position: relative;
+  margin: 0 0 8px;
+  padding: 6px 8px 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+}
+.arriving i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--accent);
+  transition: width 0.4s;
 }
 .link small.on-air {
   color: #fff;
@@ -257,6 +301,17 @@ h4 {
 .small {
   font-size: 12px;
   padding: 6px 10px;
+}
+.remote-mark {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--accent);
+}
+.small-link.comfy small {
+  color: var(--muted);
 }
 .small-link small {
   color: #7fe0a0;

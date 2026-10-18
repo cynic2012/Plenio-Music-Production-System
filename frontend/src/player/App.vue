@@ -13,6 +13,7 @@ import PlaylistView from './components/PlaylistView.vue'
 import PlaylistsView from './components/PlaylistsView.vue'
 import SettingsView from './components/SettingsView.vue'
 import LiveView from './components/LiveView.vue'
+import JobsView from './components/JobsView.vue'
 import VideoDialog from './components/VideoDialog.vue'
 import ShareDialog from './components/ShareDialog.vue'
 import QueuePanel from './components/QueuePanel.vue'
@@ -48,6 +49,7 @@ import {
   toggleMute,
 } from './store'
 import { loadMyPresets } from './visuals/drop'
+import { loadJobs, videosAtWork } from './jobs'
 import './live'
 import { isPortable } from './portable'
 
@@ -70,6 +72,7 @@ const page = computed(() => {
   if (first === 'playlists') return { kind: 'playlists' as const }
   if (first === 'settings') return { kind: 'settings' as const }
   if (first === 'live') return { kind: 'live' as const }
+  if (first === 'jobs') return { kind: 'jobs' as const }
   if (first === 'favorites' || first === 'top' || first === 'recent') return { kind: 'library' as const, collection: first as 'favorites' | 'top' | 'recent' }
   return { kind: 'library' as const, collection: 'all' as const }
 })
@@ -229,10 +232,20 @@ function visualFullscreen(): void {
   void nextTick(() => nowPlaying.value?.visualFullscreen())
 }
 
+/** A video in the queue is drawn by this page: closing it stops the video, so the browser asks first. */
+function beforeLeave(event: BeforeUnloadEvent): void {
+  if (!videosAtWork.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
 // the listener's own Plenio Drop presets: read now, and again every few seconds (a file saved shows at once)
 let presetTimer: number | undefined
 onMounted(() => {
   window.addEventListener('keydown', onKey)
+  window.addEventListener('beforeunload', beforeLeave)
+  // the shared players the player is making or made (also before this page opened)
+  void loadJobs()
   const el = bar.value?.$el as HTMLElement | undefined
   if (el && typeof ResizeObserver !== 'undefined') {
     barWatch = new ResizeObserver(() => (barHeight.value = Math.round(el.getBoundingClientRect().height)))
@@ -247,6 +260,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
+  window.removeEventListener('beforeunload', beforeLeave)
   barWatch?.disconnect()
   clearInterval(presetTimer)
 })
@@ -273,6 +287,7 @@ onBeforeUnmount(() => {
         <PlaylistsView v-else-if="page.kind === 'playlists'" />
         <SettingsView v-else-if="page.kind === 'settings'" />
         <LiveView v-else-if="page.kind === 'live'" />
+        <JobsView v-else-if="page.kind === 'jobs'" />
         <LibraryView v-else ref="libraryView" :key="page.collection" :collection="page.collection" />
       </template>
     </main>

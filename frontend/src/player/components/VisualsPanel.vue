@@ -7,9 +7,11 @@
  */
 import { computed, ref } from 'vue'
 
+import { guestStatus } from '../guests'
 import { current, queueSource, say, settings, state } from '../store'
 import { CLASSIC, PRESETS, allPresets, presetById, type Preset, type Scheme } from '../visuals/presets'
 import type { SwitchOn, VisualMode } from '../visuals/chooser'
+import { FADE_STYLES } from '../visuals/mixer'
 import { copyToMyPresets, myPresetErrors, myPresetFile, myPresetFolder, myPresets, openMyPresetFolder, playingFile } from '../visuals/drop'
 import Icon from './Icon.vue'
 import { isPortable } from '../portable'
@@ -133,6 +135,15 @@ async function editCopy(): Promise<void> {
       </div>
     </template>
 
+    <h4>Crossfade</h4>
+    <select v-model="v.fade" title="How one visual turns into the next - with a new song, a new section, or N">
+      <option v-for="[id, label, hint] in FADE_STYLES" :key="id" :value="id" :title="hint">{{ label }}</option>
+    </select>
+    <label v-if="v.fade !== 'cut'" class="row" :title="v.fade === 'flash' ? 'How long the flash fades' : 'How long the change takes'">
+      {{ v.fade === 'flash' ? 'Flash' : 'Over' }} <input v-model.number="v.fadeSeconds" type="range" min="0.5" max="8" step="0.5" /> {{ v.fadeSeconds }} s
+    </label>
+    <p class="note tight">{{ FADE_STYLES.find(([id]) => id === v.fade)?.[2] }}. Both visuals play on while it changes; from one Plenio Drop preset to another the picture stays and its motion turns into the new one.</p>
+
     <h4>{{ v.mode === 'auto' ? 'Choose from' : v.mode === 'fixed' ? 'All visuals' : 'Ticked visuals' }}</h4>
     <template v-for="[id, label, list] in GROUPS" :key="id">
       <div v-if="list.length" class="group">
@@ -186,6 +197,7 @@ async function editCopy(): Promise<void> {
     <label class="row">Sensitivity <input v-model.number="v.sensitivity" type="range" min="0.5" max="2" step="0.05" /></label>
     <label class="row switch"><input v-model="v.lyrics" type="checkbox" /> Lyrics over the visual</label>
     <label class="row switch"><input v-model="v.titles" type="checkbox" /> Title card when a song starts</label>
+    <label v-if="guestStatus?.on" class="row switch" title="The QR code and address of the live playlist over the visual (its corner and size: Live Play > Guests)"><input v-model="settings.live.overVisual" type="checkbox" /> The guests' way in over the visual</label>
     <p class="note">A song’s own visual wins, then the playlist’s, then the mode.</p>
   </aside>
 </template>
@@ -320,6 +332,9 @@ input[type='number'] {
 }
 .note a {
   color: var(--accent);
+}
+.note.tight {
+  margin-top: 2px;
 }
 .note.path {
   margin-top: 4px;

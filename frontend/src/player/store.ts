@@ -2,9 +2,11 @@
  * The player's state: the library, the listener's state (playlists, favourites, plays, settings - saved on
  * the server), the route (``#/``, ``#/song/<id>``, ``#/playlist/<id>`` ...), the queue and what plays.
  */
-import { computed, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, reactive, ref, shallowRef, watch } from 'vue'
 
-import { api, media, mediaReady, type Playlist, type PlayerInfo, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary } from './api'
+import { api, media, mediaReady, type Playlist, type PlayerInfo, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary, type StateAnswer } from './api'
+import { isPortable, loading as portableLoading, mediaArrived } from './portable'
+import { mergeState } from './stateMerge'
 import { engine } from './engine'
 import { type LiveSettings, liveWithDefaults } from './liveSettings'
 import { type LyricsStyle, lyricsWithDefaults } from './lyricsStyle'
@@ -164,25 +166,79 @@ export const lastSaved = ref<Date | null>(null)
 export const saveError = ref('')
 let saving: number | undefined
 let pending = false
+/** The state as the player last had it (saved or read here) and its change's number: the base of a merge
+ * when another page - another tab, a phone from the network - saved in between (owner's request 2026-10-18). */
+let base: PlayerState | null = null
+let baseRev: number | undefined
+/** Taking the player's state in: the page's watcher does not save it back. */
+let adopting = false
 function snapshot(): PlayerState {
   state.settings = JSON.parse(JSON.stringify(settings))
   return JSON.parse(JSON.stringify(state)) as PlayerState
 }
-async function saveNow(keepalive = false): Promise<void> {
+/** Save now; ``force``: whatever another page saved since (a backup put back, a fresh start). */
+async function saveNow(keepalive = false, force = false, tries = 3): Promise<void> {
   clearTimeout(saving)
   pending = false
+  const mine = snapshot()
   try {
-    await api.saveState(snapshot(), keepalive)
-    lastSaved.value = new Date()
-    saveError.value = ''
+    const answer = await api.saveState(mine, keepalive, force ? undefined : baseRev)
+    if (answer.ok) {
+      base = mine
+      baseRev = answer.rev
+      lastSaved.value = new Date()
+      saveError.value = ''
+      return
+    }
+    // another page saved since this one read: both changes merged, and saved again
+    await adopt(answer.state, mine)
+    if (tries > 1) await saveNow(keepalive, false, tries - 1)
   } catch (error) {
     saveError.value = error instanceof Error ? error.message : String(error)
   }
 }
 function save(): void {
+  if (adopting) return
   clearTimeout(saving)
   pending = true
   saving = window.setTimeout(() => void saveNow(), 600)
+}
+
+/** The player's state taken in, merged with what this page changed since ``base``; ``true`` when this page
+ * has something of its own left to save. */
+async function adopt(theirs: StateAnswer, mine = snapshot()): Promise<boolean> {
+  const { rev, ...saved } = theirs
+  const merged = base ? mergeState(base, mine, saved) : saved
+  base = JSON.parse(JSON.stringify(saved)) as PlayerState
+  baseRev = rev
+  adopting = true
+  state.playlists = merged.playlists ?? []
+  state.favorites = merged.favorites ?? []
+  state.plays = merged.plays ?? {}
+  state.last_played = merged.last_played ?? {}
+  state.tags = tagsOf(merged.tags)
+  applySettings((merged.settings ?? {}) as Partial<Settings>)
+  if (!muted.value) engine.setVolume(settings.volume)
+  engine.setRate(settings.rate)
+  await nextTick()
+  adopting = false
+  return JSON.stringify(merged) !== JSON.stringify(saved)
+}
+
+// another page's changes come in every few seconds (when this one has none waiting to be saved)
+if (!isPortable) {
+  window.setInterval(async () => {
+    if (pending || baseRev === undefined || document.visibilityState !== 'visible') return
+    try {
+      const { rev } = await api.stateRev()
+      if (rev === baseRev || pending) return
+      const theirs = await api.state()
+      if (pending) return
+      if (await adopt(theirs)) save()
+    } catch {
+      // the player restarts: next time
+    }
+  }, 4000)
 }
 window.addEventListener('pagehide', () => {
   if (pending) void saveNow(true)
@@ -204,7 +260,7 @@ export async function replaceState(data: Partial<PlayerState> | null): Promise<v
   applySettings((fresh.settings ?? {}) as Partial<Settings>)
   engine.setVolume(settings.volume)
   engine.setRate(settings.rate)
-  await saveNow()
+  await saveNow(false, true)
 }
 
 export async function load(): Promise<void> {
@@ -214,9 +270,12 @@ export async function load(): Promise<void> {
     library.value = answer.songs
     folders.value = answer.folders
     info.value = about
-    Object.assign(state, saved)
-    state.tags = tagsOf(saved.tags)
-    applySettings((saved.settings ?? {}) as Partial<Settings>)
+    const { rev, ...kept } = saved
+    Object.assign(state, kept)
+    state.tags = tagsOf(kept.tags)
+    applySettings((kept.settings ?? {}) as Partial<Settings>)
+    base = JSON.parse(JSON.stringify(kept)) as PlayerState
+    baseRev = rev
     engine.setVolume(settings.volume)
     engine.setRate(settings.rate)
     loadError.value = ''
@@ -232,12 +291,31 @@ export async function load(): Promise<void> {
 
 // --- the way back to ComfyUI ------------------------------------------------------------------------
 
+/** This page came from the network (owner's request 2026-10-18): it does all but this computer's own things. */
+export const remote = computed(() => !!info.value?.remote)
+
 /** The ComfyUI that *Open in ComfyUI* goes to: the address in the settings, else the one that started the
- * player, else one the player's server finds on this computer (``null``: none runs). */
+ * player, else one the player's server finds on this computer (``null``: none runs). A page from the network
+ * reaches it by the player's gateway to it. */
 export async function comfyuiAddress(): Promise<string | null> {
+  if (remote.value) {
+    const network = await api.network().catch(() => null)
+    return network?.comfyui_running && network.comfyui_here ? network.comfyui_here : null
+  }
   const wanted = settings.comfyui.trim() || info.value?.comfyui || ''
   const answer = await api.comfyui(wanted)
   return answer.found?.url ?? (settings.comfyui.trim() || null)
+}
+
+/** ComfyUI to open in the browser, when it runs (``''``: not now) - asked now and then. */
+export const comfyLink = ref('')
+export async function lookForComfyUI(): Promise<void> {
+  if (isPortable) return
+  try {
+    comfyLink.value = (await comfyuiAddress()) ?? ''
+  } catch {
+    comfyLink.value = ''
+  }
 }
 
 /** Open a song's workflow in ComfyUI to work on it: ComfyUI opens in a tab (inside the click, so no pop-up
@@ -520,7 +598,8 @@ export async function playAt(i: number, { crossfade = 0, at = 0, autoplay = true
     ab.value = false
     engine.setAB(false)
   }
-  // a shared player makes the song's sound from the page first
+  // a shared player makes the song's sound from the page first (a large one is still reading it in)
+  if (!mediaArrived(song.id)) say(`“${song.title}” is still arriving (${portableLoading.got} of ${portableLoading.total} files) - it plays as soon as it is here`, 4000)
   await mediaReady(song.id, 'audio')
   await engine.load(
     { id: song.id, url: audioUrl(song), original: song.has.original ? media(song.id, 'original') : null },

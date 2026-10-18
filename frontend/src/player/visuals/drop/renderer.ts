@@ -359,7 +359,8 @@ export function paramsOf(def: DropDef, m: Music, vars: Record<string, number>): 
   return { ...DEFAULTS, ...def.frame(m, vars) }
 }
 
-const BLEND_SECONDS = 2
+/** How long a change of preset glides when nothing else says (the visuals' crossfade sets it). */
+const BLEND_SECONDS = 3
 
 export class DropRenderer {
   readonly canvas: HTMLCanvasElement
@@ -384,6 +385,11 @@ export class DropRenderer {
   private vars: Record<string, number> = {}
   private previous: { def: DropDef; vars: Record<string, number> } | null = null
   private blendStart = 0
+  /** The time of the last frame drawn: a preset that starts after a pause starts from black, not from an old
+   * picture left in the feedback. */
+  private lastTime = -1
+  /** How long a change of preset glides (owner's request 2026-10-18: soft, and set with the crossfade). */
+  blendSeconds = BLEND_SECONDS
   private uniforms = new Map<WebGLProgram, Map<string, WebGLUniformLocation | null>>()
 
   constructor() {
@@ -475,13 +481,27 @@ export class DropRenderer {
     }
   }
 
-  /** Play this preset from now on: the parameters glide from the one before over two seconds. */
+  /** Play this preset from now on: the parameters glide from the one before (``blendSeconds``) - unless the
+   * renderer drew nothing for a while, then it starts afresh from black. */
   use(def: DropDef, time: number): void {
     if (def === this.def) return
-    if (this.def) this.previous = { def: this.def, vars: this.vars }
+    const fresh = !this.def || this.lastTime < 0 || time < this.lastTime || time - this.lastTime > 1
+    this.previous = fresh || !this.def ? null : { def: this.def, vars: this.vars }
+    if (fresh) this.clear()
     this.def = def
     this.vars = {}
     this.blendStart = time
+  }
+
+  /** The feedback to black. */
+  private clear(): void {
+    const gl = this.gl
+    for (const buffer of this.buffers) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, buffer)
+      gl.clearColor(0, 0, 0, 1)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
   }
 
   /** One frame: warp, draw, composite. Returns the canvas to draw (at ``scale`` of width x height). */
@@ -494,10 +514,11 @@ export class DropRenderer {
     this.resize(w, h)
     const m = this.listener.update(frame)
     m.aspect = w / h
+    this.lastTime = m.time
     if (!this.def) return this.canvas
     let p = paramsOf(this.def, m, this.vars)
     if (this.previous) {
-      const t = (m.time - this.blendStart) / BLEND_SECONDS
+      const t = (m.time - this.blendStart) / Math.max(0.05, this.blendSeconds)
       if (t >= 1 || t < 0) this.previous = null
       else {
         const eased = t * t * (3 - 2 * t)

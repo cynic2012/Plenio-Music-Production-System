@@ -10,7 +10,7 @@ import { computed, ref } from 'vue'
 import type { SongSummary } from '../api'
 import { addLive, isNew, liveLog, startLive, stopLive } from '../live'
 import { parseQuery, score } from '../search'
-import { byId, current, duration, index, library, liveWaiting, newPlaylist, playAt, playing, queue, say, settings, state, time } from '../store'
+import { byId, current, duration, index, library, liveWaiting, newPlaylist, nowPlayingOpen, playAt, playing, queue, say, settings, state, time } from '../store'
 import { formatTime } from '../timing'
 import CoverArt from './CoverArt.vue'
 import GuestAccess from './GuestAccess.vue'
@@ -83,6 +83,14 @@ function save(): void {
   const playlist = newPlaylist(`Live ${new Date().toLocaleString()}`, queue.value)
   say(`Saved as the playlist “${playlist.name}”`, 3000)
 }
+/** The party on the big screen (owner's request 2026-10-18): Now playing with only the visual, on the whole
+ * screen - the guests' way in over it, as its settings say. */
+function showVisual(): void {
+  settings.visuals.enabled = true
+  settings.npView = 'visual'
+  nowPlayingOpen.value = true
+  if (!document.fullscreenElement) void document.documentElement.requestFullscreen().catch(() => {})
+}
 const ago = (at: number): string => {
   const s = Math.round((Date.now() - at) / 1000)
   return s < 60 ? `${s} s ago` : `${Math.round(s / 60)} min ago`
@@ -97,7 +105,10 @@ const ago = (at: number): string => {
         <p class="lead">A playlist that plays while you change it - and the songs ComfyUI makes now join it as soon as they are exported. Make songs at a party, and they play.</p>
       </div>
       <div class="head-right">
-        <button v-if="live.on" class="ghost" @click="stopLive">Stop Live Play</button>
+        <div class="head-buttons">
+          <button class="primary" :disabled="!current && !queue.length" title="Only the visual, on the whole screen - for the party's big screen (Esc: back)" @click="showVisual"><Icon name="sparkles" :size="18" /> Show the visual</button>
+          <button v-if="live.on" class="ghost" @click="stopLive">Stop Live Play</button>
+        </div>
         <GuestWayIn />
       </div>
     </header>
@@ -223,6 +234,12 @@ const ago = (at: number): string => {
   display: grid;
   justify-items: end;
   gap: 12px;
+}
+.head-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 h1 {
   display: flex;

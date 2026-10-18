@@ -10,6 +10,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { engine } from '../engine'
 import { lineIndex, lines, paletteStyle, playlistVisual, section, sections } from '../now'
 import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, openCurrentPage, playing, previous, settings, time, toggleFavorite } from '../store'
+import { WAY_IN_SIDES } from '../liveSettings'
 import { formatTime, sectionName } from '../timing'
 import CoverArt from './CoverArt.vue'
 import GuestWayIn from './GuestWayIn.vue'
@@ -111,7 +112,13 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
       </div>
     </header>
 
-    <GuestWayIn v-if="!panel && !lyricsPanel" class="way-in" />
+    <!-- the guests' way in; over the visual only when Live Play's settings say so, in their corner and size -->
+    <GuestWayIn
+      v-if="!panel && !lyricsPanel && (view !== 'visual' || settings.live.overVisual)"
+      class="way-in"
+      :class="view === 'visual' ? [settings.live.wayInCorner, `size-${settings.live.wayInSize}`] : []"
+      :side="view === 'visual' ? WAY_IN_SIDES[settings.live.wayInSize] : 104"
+    />
     <Transition name="panel"><VisualsPanel v-if="panel" class="vpanel" :active="activeVisual" @close="panel = false" @next="visual?.next()" @fullscreen="visualFullscreen" /></Transition>
     <Transition name="panel">
       <aside v-if="lyricsPanel" class="vpanel lpanel">
@@ -254,6 +261,28 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
   top: 70px;
   right: 22px;
   z-index: 4;
+}
+/* over the visual: in the corner chosen; at the bottom above the controls while they show */
+.view-visual .way-in.top-left {
+  right: auto;
+  left: 22px;
+}
+.view-visual .way-in.bottom-right,
+.view-visual .way-in.bottom-left {
+  top: auto;
+  bottom: 190px;
+  transition: bottom 0.6s;
+}
+.view-visual.idle .way-in.bottom-right,
+.view-visual.idle .way-in.bottom-left {
+  bottom: 24px;
+}
+.view-visual .way-in.bottom-left {
+  right: auto;
+  left: 22px;
+}
+.view-visual .way-in.size-l :deep(.text b) {
+  font-size: 17px;
 }
 /* a narrower window: the QR code alone, so the song's title keeps its room */
 @media (max-width: 1300px) {

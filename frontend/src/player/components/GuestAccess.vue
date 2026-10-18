@@ -8,7 +8,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { guestBig, guestError, guestStatus, loadGuests, setGuests } from '../guests'
-import { say } from '../store'
+import { say, settings } from '../store'
 import Icon from './Icon.vue'
 import QrCode from './QrCode.vue'
 
@@ -79,6 +79,24 @@ onBeforeUnmount(() => window.clearInterval(timer))
             <option value="none">nothing</option>
           </select>
           <small>in Live Play and Now playing</small>
+        </div>
+        <div class="choice">
+          <span>Over the visual</span>
+          <label><input v-model="settings.live.overVisual" type="checkbox" /> show it too</label>
+          <template v-if="settings.live.overVisual">
+            <select v-model="settings.live.wayInCorner" title="Where on the visual">
+              <option value="top-right">top right</option>
+              <option value="top-left">top left</option>
+              <option value="bottom-right">bottom right</option>
+              <option value="bottom-left">bottom left</option>
+            </select>
+            <select v-model="settings.live.wayInSize" title="How large - large for a room to scan">
+              <option value="s">small</option>
+              <option value="m">medium</option>
+              <option value="l">large</option>
+            </select>
+          </template>
+          <small>the visual on the whole screen (<b>Show the visual</b> above)</small>
         </div>
         <div class="buttons">
           <button class="ghost small" @click="guestBig = true"><Icon name="qr" :size="14" /> Show it big</button>

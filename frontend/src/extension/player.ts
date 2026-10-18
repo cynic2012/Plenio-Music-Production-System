@@ -114,12 +114,15 @@ export function installPlayerButton(nodeType: ComfyNodeType, host: PlayerHost): 
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]'])
 
-/** A record may come from this page's own origin or from a player on this computer, nothing else. */
+/** A record may come from this page's own origin, from a player on this computer, or - this ComfyUI opened
+ * from the network by the player's gateway - from the player's gateway on the same computer (the same host,
+ * another port); nothing else. */
 export function trustedOrigin(origin: string, own: string): boolean {
   if (origin === own) return true
   try {
     const url = new URL(origin)
-    return (url.protocol === 'http:' || url.protocol === 'https:') && LOOPBACK.has(url.hostname)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
+    return LOOPBACK.has(url.hostname) || url.hostname === new URL(own).hostname
   } catch {
     return false
   }

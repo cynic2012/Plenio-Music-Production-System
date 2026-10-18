@@ -18,8 +18,9 @@ from .. import __version__
 from . import folders as folder_choice
 from .guest import GuestHub
 from .library import Library
+from .network import NetworkAccess
 from .paths import default_folders, state_dir
-from .server import State, serve
+from .server import State, find_comfyui, serve
 
 
 def say(text: str) -> None:
@@ -54,6 +55,14 @@ def main(argv: list[str] | None = None) -> int:
         help="where the guests' access to the live playlist listens when switched on (default: every network; "
         "PLENIO_GUESTS_HOST sets it too)",
     )
+    parser.add_argument(
+        "--network-host",
+        default=os.environ.get("PLENIO_NETWORK_HOST", "").strip()
+        or os.environ.get("PLENIO_GUESTS_HOST", "").strip()
+        or "0.0.0.0",  # noqa: S104
+        help="where the player and ComfyUI listen for the network when Open from your network is on (default: "
+        "every network; PLENIO_NETWORK_HOST sets it too)",
+    )
     args = parser.parse_args(argv)
     started = args.folder or default_folders()
     directory = state_dir()
@@ -63,6 +72,13 @@ def main(argv: list[str] | None = None) -> int:
     library.scan(force=True)
     say(f"{len(library.songs())} songs ({len(library.errors)} records could not be read)")
     guests = GuestHub(library, directory, host=args.guests_host)
+    ports: list[int] = []
+    network = NetworkAccess(
+        directory,
+        player_port=lambda: ports[0] if ports else args.port,
+        comfyui=lambda: (find_comfyui(args.comfyui) or {}).get("url"),
+        host=args.network_host,
+    )
     try:
         server = serve(
             library,
@@ -71,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
             args.port,
             comfyui=args.comfyui,
             guests=guests,
+            network=network,
         )
     except OSError as error:
         say(
@@ -78,9 +95,13 @@ def main(argv: list[str] | None = None) -> int:
             f"running? Open http://{args.host}:{args.port}/ or start it with --port {args.port + 1}."
         )
         return 1
+    ports.append(server.server_address[1])
     url = f"http://{args.host}:{server.server_address[1]}/"
     say(f"Plenio Player is running at {url} - stop it with Ctrl+C")
     guests.resume()
+    network.resume()
+    if network.status()["on"]:
+        say(f"From your network: {network.status()['url'] or 'no network address'}")
     if guests.status()["on"]:
         say(
             f"Guests in your network see the live playlist at {guests.status()['url'] or 'no network address'}"
@@ -93,6 +114,7 @@ def main(argv: list[str] | None = None) -> int:
         pass
     finally:
         guests.close()
+        network.close()
         server.server_close()
     return 0
 

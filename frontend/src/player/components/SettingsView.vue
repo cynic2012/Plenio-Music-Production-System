@@ -10,11 +10,12 @@ import { computed, onMounted, ref } from 'vue'
 
 import { api, type ComfyFound, type FoldersAnswer } from '../api'
 import { version as pageVersion } from '../../../package.json'
-import { allTags, comfyuiAddress, deleteTag, go, info, lastSaved, library, reloadLibrary, renameTag, replaceState, rescan, saveError, say, settings, state } from '../store'
+import { allTags, comfyuiAddress, deleteTag, go, info, lastSaved, library, reloadLibrary, remote, renameTag, replaceState, rescan, saveError, say, settings, state } from '../store'
 import { countOf } from '../timing'
 import FolderBrowser from './FolderBrowser.vue'
 import Icon from './Icon.vue'
 import LyricsPanel from './LyricsPanel.vue'
+import NetworkAccess from './NetworkAccess.vue'
 import { isPortable, portable } from '../portable'
 
 const shelf = ref<FoldersAnswer | null>(null)
@@ -162,7 +163,7 @@ async function stop(): Promise<void> {
     <p class="version">
       <Icon name="info" :size="15" />
       <template v-if="isPortable"><b>Shared with the Plenio Player {{ portable?.plenio }}</b></template>
-      <template v-else><b>Plenio Player {{ info?.version ?? '…' }}</b> is running</template>
+      <template v-else><b>Plenio Player {{ info?.version ?? '…' }}</b> is running<template v-if="remote"> - on the computer you came from by the network</template></template>
       <span v-if="!isPortable && info && info.version !== pageVersion" class="stale">· this page is {{ pageVersion }} - reload it (Ctrl+F5)</span>
     </p>
 
@@ -202,21 +203,27 @@ async function stop(): Promise<void> {
       <p class="hint">The songs themselves are not in the backup: they stay in their folders.</p>
     </section>
 
-    <section v-if="!isPortable" class="block">
-      <h3><Icon name="external" /> Open in ComfyUI</h3>
-      <p class="lead">A song's page opens the song's workflow in ComfyUI, with its lyrics, score and settings, to work on it.</p>
+    <NetworkAccess v-if="!isPortable" />
+
+    <section v-if="!isPortable && !remote" class="block">
+      <h3><Icon name="external" /> ComfyUI</h3>
+      <p class="lead">A song's page opens the song's workflow in ComfyUI, with its lyrics, score and settings, to work on it - and ComfyUI itself opens here, in the browser, when it runs.</p>
       <p class="status" :class="{ ok: found }">
         {{ looking ? 'Looking for ComfyUI …' : found ? `ComfyUI ${found.version} at ${found.url}` : 'ComfyUI is not running on this computer (or not at the address below).' }}
       </p>
       <label class="field">
         Address <input v-model.lazy="settings.comfyui" :placeholder="info?.comfyui || 'found by itself (127.0.0.1:8188, 127.0.0.1:8000)'" @change="look" />
       </label>
-      <button class="ghost small" :disabled="looking" @click="look"><Icon name="refresh" :size="14" /> Look again</button>
+      <div class="row-buttons">
+        <a v-if="found" class="ghost small" :href="found.url" target="_blank" rel="noopener"><Icon name="external" :size="14" /> Open ComfyUI</a>
+        <button class="ghost small" :disabled="looking" @click="look"><Icon name="refresh" :size="14" /> Look again</button>
+      </div>
     </section>
 
     <section v-if="!isPortable" class="block">
       <h3><Icon name="folder" /> Songs</h3>
       <p class="lead">The player reads every release record (<code>.plenio.json</code>) below these folders: {{ countOf(library.length, 'song') }}.</p>
+      <p v-if="remote" class="hint">The folders are chosen on the computer the player runs on.</p>
       <ul class="shelf">
         <li v-for="f in shelf?.folders ?? []" :key="f.path" :class="{ missing: !f.exists }">
           <div class="where">
@@ -224,16 +231,16 @@ async function stop(): Promise<void> {
             <small>{{ f.exists ? countOf(f.songs, 'Plenio song') : 'not there (a drive not connected?)' }}<template v-if="f.other">, {{ countOf(f.other_songs, 'other song') }}</template></small>
           </div>
           <label class="other" title="Also play audio files in this folder that were not made with Plenio (FLAC, MP3, WAV, OGG, Opus, M4A). They are marked as other music and have what their files have.">
-            <input type="checkbox" :checked="f.other" :disabled="savingFolders" @change="toggleOther(f.path)" /> also other music
+            <input type="checkbox" :checked="f.other" :disabled="savingFolders || remote" @change="toggleOther(f.path)" /> also other music
           </label>
-          <button class="icon-btn" title="Do not read this folder any more (its files stay)" :disabled="savingFolders || (shelf?.folders.length ?? 0) < 2" @click="removeFolder(f.path)"><Icon name="close" :size="14" /></button>
+          <button v-if="!remote" class="icon-btn" title="Do not read this folder any more (its files stay)" :disabled="savingFolders || (shelf?.folders.length ?? 0) < 2" @click="removeFolder(f.path)"><Icon name="close" :size="14" /></button>
         </li>
       </ul>
       <p v-if="folderError" class="error">{{ folderError }}</p>
       <div class="row-buttons">
-        <button class="ghost small" :disabled="savingFolders" @click="browsing = true"><Icon name="plus" :size="14" /> Add a folder…</button>
+        <button v-if="!remote" class="ghost small" :disabled="savingFolders" @click="browsing = true"><Icon name="plus" :size="14" /> Add a folder…</button>
         <button class="ghost small" @click="rescan().then(readFolders).then(() => say('Library read again'))"><Icon name="refresh" :size="14" /> Look for new songs</button>
-        <button v-if="shelf?.chosen" class="ghost small" :disabled="savingFolders" :title="`Back to ${shelf.started_with.join(', ')}`" @click="saveFolders(null)">Back to the start's folders</button>
+        <button v-if="shelf?.chosen && !remote" class="ghost small" :disabled="savingFolders" :title="`Back to ${shelf.started_with.join(', ')}`" @click="saveFolders(null)">Back to the start's folders</button>
       </div>
       <p class="hint">
         Songs made with Plenio come first; <b>also other music</b> plays the other audio files of a folder too, marked as <i>other music</i> - with their tags, cover and lyrics, without notation or <i>Open in ComfyUI</i>.
@@ -273,7 +280,7 @@ async function stop(): Promise<void> {
           <a class="icon-btn" :href="`/packages/${encodeURIComponent(f.name)}?download=1`" :download="f.name" title="Download"><Icon name="download" :size="16" /></a>
         </li>
       </ul>
-      <button class="ghost small" @click="api.openPackages().catch((e) => say(e.message, 5000))"><Icon name="folder" :size="14" /> Open the folder</button>
+      <button v-if="!remote" class="ghost small" @click="api.openPackages().catch((e) => say(e.message, 5000))"><Icon name="folder" :size="14" /> Open the folder</button>
     </section>
 
     <section v-if="!isPortable" class="block">
@@ -286,11 +293,11 @@ async function stop(): Promise<void> {
           <a class="icon-btn" :href="`/videos/${encodeURIComponent(v.name)}?download=1`" :download="v.name" title="Download"><Icon name="download" :size="16" /></a>
         </li>
       </ul>
-      <button class="ghost small" @click="api.openVideos().catch((e) => say(e.message, 5000))"><Icon name="folder" :size="14" /> Open the videos folder</button>
+      <button v-if="!remote" class="ghost small" @click="api.openVideos().catch((e) => say(e.message, 5000))"><Icon name="folder" :size="14" /> Open the videos folder</button>
       <p v-if="videos" class="hint"><code>{{ videos.folder }}</code></p>
     </section>
 
-    <section v-if="!isPortable" class="block">
+    <section v-if="!isPortable && !remote" class="block">
       <h3><Icon name="info" /> The player</h3>
       <p class="lead">Plenio Player {{ info?.version }} - a program of its own, which runs without ComfyUI. Started from ComfyUI it has no window: stop it here.</p>
       <button class="ghost danger" @click="stop">Stop the player</button>

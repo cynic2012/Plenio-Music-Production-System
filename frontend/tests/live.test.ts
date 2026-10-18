@@ -19,8 +19,12 @@ describe('Live Play', () => {
   })
 
   it('keeps its settings sane', () => {
-    expect(liveWithDefaults(null)).toEqual({ on: false, insert: 'next', auto: true, atEnd: 'again' })
-    expect(liveWithDefaults({ on: true, insert: 'sideways', atEnd: 'never', auto: false })).toEqual({ on: true, insert: 'next', auto: false, atEnd: 'again' })
+    const way = { overVisual: true, wayInCorner: 'top-right', wayInSize: 'm' }
+    expect(liveWithDefaults(null)).toEqual({ on: false, insert: 'next', auto: true, atEnd: 'again', ...way })
+    expect(liveWithDefaults({ on: true, insert: 'sideways', atEnd: 'never', auto: false })).toEqual({ on: true, insert: 'next', auto: false, atEnd: 'again', ...way })
+    // the guests' way in over the visual (owner's request 2026-10-18): on by default, its corner and size checked
+    expect(liveWithDefaults({ overVisual: false, wayInCorner: 'middle', wayInSize: 'xl' })).toMatchObject({ overVisual: false, wayInCorner: 'top-right', wayInSize: 'm' })
+    expect(liveWithDefaults({ wayInCorner: 'bottom-left', wayInSize: 'l' })).toMatchObject({ wayInCorner: 'bottom-left', wayInSize: 'l' })
     expect(liveWithDefaults({ insert: 'random', atEnd: 'wait' })).toMatchObject({ insert: 'random', atEnd: 'wait', auto: true })
   })
 })

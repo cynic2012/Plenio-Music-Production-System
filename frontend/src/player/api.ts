@@ -1,6 +1,6 @@
 /** The Plenio Player's server (plenio/player/server.py): the library, one song, the files and the state - or,
  * in a shared player (one HTML file, portable.ts), the songs inside the page and the listener's browser. */
-import { ensureMedia, isPortable, notInShared, portable, portableMedia, portableState, savePortableState } from './portable'
+import { ensureMedia, isPortable, notInShared, portable, portableMedia, portablePage, portableState, savePortableState } from './portable'
 
 export interface Loudness {
   lufs: number | null
@@ -151,7 +151,33 @@ export interface PlayerInfo {
   retired: string
   comfyui: string
   pid: number
+  /** This page came from the network (by the player's gateway): it does all but this computer's own things. */
+  remote?: boolean
 }
+
+/** The player and ComfyUI from the network (``plenio/player/network.py``). */
+export interface NetworkStatus {
+  on: boolean
+  port: number
+  comfy_port: number
+  /** The links with their code: they let a browser in (the first is this computer's main address). */
+  url: string
+  urls: string[]
+  comfyui_url: string
+  comfyui_urls: string[]
+  /** For a page from the network: ComfyUI by the address it came by. */
+  comfyui_here: string
+  comfyui_running: boolean
+  error: string
+  remote: boolean
+}
+
+/** The state as the player sends it: with its change's number. */
+export type StateAnswer = PlayerState & { rev?: number }
+
+/** Saving the state: saved (and the change's number) - or another page saved since, and this is what is saved
+ * now, to merge. */
+export type SaveAnswer = { ok: true; rev?: number } | { ok: false; rev: number; state: StateAnswer }
 
 export interface ComfyFound {
   url: string
@@ -213,6 +239,8 @@ export interface PackageOptions {
   playlists?: { name: string; songs: string[] }[]
   /** Your tags of the songs packed (song id -> tags). */
   tags?: Record<string, string[]>
+  /** Parts of at most so many MB (250, 500, 1000) - for phones; 0: one file. */
+  part_mb?: number
 }
 
 /** The guests' access to the live playlist (``plenio/player/guest.py``). */
@@ -236,27 +264,47 @@ export interface GuestWish {
 }
 
 export interface PackageStatus {
-  state: 'working' | 'done' | 'error'
+  job?: string
+  state: 'waiting' | 'working' | 'done' | 'error' | 'stopped'
+  /** ``reading`` the songs, then ``packing`` their sound. */
+  stage?: string
   done: number
   total: number
+  title?: string
+  bitrate?: number
   file?: string
+  /** Every file made: one, or the parts. */
+  files?: { name: string; size: number }[]
   size?: number
   folder?: string
   error?: string
+  part_mb?: number
 }
 
 const serverApi = {
   library: () => json<LibraryAnswer>('/api/library'),
   song: (id: string) => json<SongDetail>(`/api/song/${id}`),
-  state: () => json<PlayerState>('/api/state'),
-  /** ``keepalive``: also when the page is closing (the last change is not lost). */
-  saveState: (state: PlayerState, keepalive = false) =>
-    json<{ ok: boolean }>('/api/state', {
+  state: () => json<StateAnswer>('/api/state'),
+  /** The number of the last change saved (another page's too). */
+  stateRev: () => json<{ rev: number }>('/api/state/rev'),
+  /** Save the state, from the change ``rev`` (``undefined``: whatever is saved); ``keepalive``: also when the
+   * page is closing (the last change is not lost). */
+  saveState: async (state: PlayerState, keepalive = false, rev?: number): Promise<SaveAnswer> => {
+    const response = await fetch('/api/state', {
       method: 'PUT',
       keepalive,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state),
-    }),
+      body: JSON.stringify(rev === undefined ? state : { ...state, rev }),
+    })
+    const data = await response.json().catch(() => null)
+    if (response.status === 409 && data?.state) return { ok: false, rev: data.rev, state: data.state }
+    if (!response.ok) throw new Error(data?.error ?? `/api/state: ${response.status}`)
+    return { ok: true, rev: data?.rev }
+  },
+  network: () => json<NetworkStatus>('/api/network'),
+  /** Switch the player's access from the network on or off, or make a new link. */
+  setNetwork: (changes: { on?: boolean; regenerate?: boolean }) =>
+    json<NetworkStatus>('/api/network', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) }),
   info: () => json<PlayerInfo>('/api/info'),
   find: (record: string) => json<{ id: string }>(`/api/find?record=${encodeURIComponent(record)}`),
   comfyui: (url = '') => json<{ found: ComfyFound | null }>(`/api/comfyui${url ? `?url=${encodeURIComponent(url)}` : ''}`),
@@ -298,6 +346,10 @@ const serverApi = {
   /** A shared player of chosen songs (one HTML file), made by the server; its progress, the ones made. */
   packageStart: (options: PackageOptions) => post<{ job: string }>('/api/package', options),
   packageStatus: (job: string) => json<PackageStatus>(`/api/package/${job}`),
+  /** The shared players being made, waiting and made since the player started (newest first). */
+  packageJobs: () => json<{ jobs: PackageStatus[] }>('/api/package-jobs'),
+  packageCancel: (job: string) => post<{ ok: boolean }>(`/api/package/${job}/cancel`, {}),
+  packageClear: () => post<{ jobs: PackageStatus[] }>('/api/package-jobs/clear', {}),
   packages: () => json<{ folder: string; files: { name: string; size: number; mtime: number }[] }>('/api/packages'),
   openPackages: (file = '') => post<{ folder: string }>('/api/packages/open', file ? { file } : {}),
   guests: () => json<GuestStatus>('/api/guests'),
@@ -319,15 +371,18 @@ function sharedApi(): typeof serverApi {
     ...serverApi,
     library: async () => ({ songs: data.songs, folders: [], errors: [], version: data.plenio }),
     song: async (id: string) => {
-      const detail = data.details[id]
-      if (!detail) throw new Error('no such song')
-      return detail
+      const page = await portablePage(id)
+      if (!page) throw new Error('no such song')
+      return page.detail
     },
     state: async () => portableState(),
+    stateRev: async () => ({ rev: 0 }),
     saveState: async (state: PlayerState) => {
       savePortableState(state)
-      return { ok: true }
+      return { ok: true as const }
     },
+    network: none,
+    setNetwork: none,
     info: async () => ({ app: 'plenio-shared', version: data.plenio, folders: [], state: 'this browser', retired: '', comfyui: '', pid: 0 }),
     find: none,
     comfyui: async () => ({ found: null }),
@@ -335,7 +390,7 @@ function sharedApi(): typeof serverApi {
     rescan: async () => ({ songs: data.songs.length }),
     removeSong: none,
     peaks: async (id: string) => {
-      const levels = data.peaks[id]
+      const levels = (await portablePage(id))?.peaks
       if (!levels) throw new Error('no waveform')
       return { peaks: levels }
     },
@@ -351,6 +406,9 @@ function sharedApi(): typeof serverApi {
     openVideos: none,
     packageStart: none,
     packageStatus: none,
+    packageJobs: async () => ({ jobs: [] }),
+    packageCancel: none,
+    packageClear: none,
     packages: async () => ({ folder: '', files: [] }),
     openPackages: none,
     guests: none,
