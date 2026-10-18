@@ -6,13 +6,20 @@ import { computed, ref } from 'vue'
 import type { SongSummary } from '../api'
 import { vFocus } from '../focus'
 import { similarSongs } from '../similar'
-import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, openInComfyUI, playSongs, removing, say, state, toggleFavorite, videoFor } from '../store'
+import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, openInComfyUI, playSongs, removing, say, settings, songTags, state, toggleFavorite, videoFor } from '../store'
 import { isPortable } from '../portable'
+import TagEditor from './TagEditor.vue'
 
 const props = defineProps<{ song: SongSummary; x: number; y: number }>()
 const emit = defineEmits<{ close: [] }>()
 const naming = ref(false)
-const place = computed(() => ({ left: `${Math.min(props.x, window.innerWidth - 260)}px`, top: `${Math.min(props.y, window.innerHeight - 380)}px` }))
+const tagging = ref(false)
+const place = computed(() => ({ left: `${Math.min(props.x, window.innerWidth - 300)}px`, top: `${Math.min(props.y, window.innerHeight - 420)}px` }))
+function songsTagged(tag: string): void {
+  settings.filters.all = { query: '', chips: [`tag:"${tag}"`] }
+  go('/')
+  done()
+}
 const name = ref('')
 
 function done(): void {
@@ -44,6 +51,8 @@ function create(): void {
       <button @click="radio">Start a radio of songs alike</button>
       <button @click="toggleFavorite(song.id); done()">{{ isFavorite(song.id) ? 'Remove from favourites' : 'Add to favourites' }}</button>
       <button @click="go(`/song/${song.id}`); done()">Open the song’s page</button>
+      <button :class="{ open: tagging }" @click="tagging = !tagging">Tags…<small v-if="songTags(song.id).length">{{ songTags(song.id).map((t) => `#${t}`).join(' ') }}</small></button>
+      <div v-if="tagging" class="tags"><TagEditor :ids="[song.id]" autofocus @filter="songsTagged" /></div>
       <button v-if="!song.other && !isPortable" @click="comfy">Open in ComfyUI</button>
       <button v-if="!isPortable" @click="videoFor = song; done()">Save as a video…</button>
       <button v-if="!isPortable" class="remove" @click="removing = song; done()">Remove from the library…</button>
@@ -68,8 +77,8 @@ function create(): void {
 }
 .menu {
   position: fixed;
-  width: 250px;
-  max-height: 380px;
+  width: 290px;
+  max-height: 420px;
   overflow-y: auto;
   background: rgba(20, 18, 30, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -139,6 +148,24 @@ button:hover {
 }
 .remove {
   color: #ff8f8f;
+}
+button small {
+  margin-left: auto;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent);
+  font-size: 11px;
+}
+.tags {
+  padding: 4px 6px 8px;
+}
+.tags :deep(button) {
+  width: auto;
+}
+.tags :deep(.add input) {
+  width: 130px;
 }
 @keyframes pop {
   from {

@@ -81,7 +81,8 @@ def test_a_shared_player_has_the_songs_as_mp3_and_nothing_of_this_computer(
         library,
         ids,
         {"title": "Party <Mix>", "bitrate": 128, "pdf": True, "settings": {"lyrics": {"effect": "neon"}},
-         "playlists": [{"name": "Both", "songs": ids}, {"name": "Elsewhere", "songs": ["0123456789ab"]}]},
+         "playlists": [{"name": "Both", "songs": ids}, {"name": "Elsewhere", "songs": ["0123456789ab"]}],
+         "tags": {ids[0]: ["party", "", 7], "0123456789ab": ["elsewhere"]}},
         tmp_path / "state",
         lambda done, total: seen.append((done, total)),
     )  # fmt: skip
@@ -97,6 +98,8 @@ def test_a_shared_player_has_the_songs_as_mp3_and_nothing_of_this_computer(
     assert sorted(s["title"] for s in data["songs"]) == ["First", "Second"]
     assert data["settings"] == {"lyrics": {"effect": "neon"}}
     assert data["playlists"] == [{"name": "Both", "songs": ids}]
+    # the tags of the songs packed, nothing else
+    assert data["tags"] == {ids[0]: ["party"]}
     # MP3 only, at the bit rate asked for
     audio = blocks(html, "audio")
     assert sorted(audio) == sorted(ids)

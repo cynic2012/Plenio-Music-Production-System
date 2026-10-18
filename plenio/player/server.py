@@ -61,6 +61,7 @@ EMPTY_STATE: dict[str, Any] = {
     "favorites": [],
     "plays": {},
     "last_played": {},
+    "tags": {},
     "settings": {},
 }
 

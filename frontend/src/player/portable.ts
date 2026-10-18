@@ -22,6 +22,8 @@ export interface PortableData {
   settings: Record<string, unknown>
   presets: { name: string; text: string; mtime: number }[]
   playlists: { name: string; songs: string[] }[]
+  /** The tags of the songs, as the one who shared them gave them. */
+  tags?: Record<string, string[]>
 }
 
 function read(): PortableData | null {
@@ -97,6 +99,7 @@ export function portableState(): PlayerState {
     favorites: [],
     plays: {},
     last_played: {},
+    tags: { ...(portable?.tags ?? {}) },
     settings: { ...(portable?.settings ?? {}) },
   }
 }

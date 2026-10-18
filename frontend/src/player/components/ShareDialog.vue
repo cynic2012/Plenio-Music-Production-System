@@ -26,6 +26,8 @@ const pdf = ref(true)
 const look = ref(true)
 const presets = ref(true)
 const playlists = ref(true)
+const tags = ref(true)
+const tagged = computed(() => [...chosen.value].filter((id) => (state.tags[id] ?? []).length).length)
 const status = ref<PackageStatus | null>(null)
 const error = ref('')
 let timer: number | undefined
@@ -67,6 +69,7 @@ async function make(): Promise<void> {
       settings: look.value ? JSON.parse(JSON.stringify({ visuals: settings.visuals, lyrics: settings.lyrics })) : {},
       presets: presets.value ? myPresetTexts.value : [],
       playlists: playlists.value ? state.playlists.map((p) => ({ name: p.name, songs: p.songs.filter((id) => chosen.value.has(id)) })).filter((p) => p.songs.length) : [],
+      tags: tags.value ? Object.fromEntries(ids.filter((id) => state.tags[id]?.length).map((id) => [id, state.tags[id]])) : {},
     })
     const ask = async (): Promise<void> => {
       try {
@@ -133,6 +136,7 @@ onBeforeUnmount(() => window.clearTimeout(timer))
           <label class="check"><input v-model="look" type="checkbox" /> my look: the visuals’ and the lyrics’ settings</label>
           <label class="check"><input v-model="presets" type="checkbox" :disabled="!myPresetTexts.length" /> my own Plenio Drop visuals ({{ myPresetTexts.length }})</label>
           <label class="check"><input v-model="playlists" type="checkbox" /> my playlists of these songs</label>
+          <label class="check"><input v-model="tags" type="checkbox" :disabled="!tagged" /> my tags of these songs ({{ tagged }} tagged)</label>
           <p class="sum"><b>{{ chosen.size }}</b> songs · {{ formatTime(seconds) }} · about {{ Math.max(1, Math.round(megabytes)) }} MB</p>
           <p class="hint">What stays out: the FLAC and WAV files, the unmastered takes, the release records with their workflows, and every path of this computer.</p>
           <div v-if="status?.state === 'working'" class="progress">

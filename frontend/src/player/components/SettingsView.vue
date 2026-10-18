@@ -10,7 +10,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import { api, type ComfyFound, type FoldersAnswer } from '../api'
 import { version as pageVersion } from '../../../package.json'
-import { comfyuiAddress, info, lastSaved, library, reloadLibrary, replaceState, rescan, saveError, say, settings, state } from '../store'
+import { allTags, comfyuiAddress, deleteTag, go, info, lastSaved, library, reloadLibrary, renameTag, replaceState, rescan, saveError, say, settings, state } from '../store'
 import { countOf } from '../timing'
 import FolderBrowser from './FolderBrowser.vue'
 import Icon from './Icon.vue'
@@ -69,6 +69,28 @@ onMounted(async () => {
   shared.value = await api.packages().catch(() => null)
 })
 
+// your tags: renamed (into another: the two become one) or taken off every song
+const renaming = ref('')
+const newName = ref('')
+function startRename(tag: string): void {
+  renaming.value = tag
+  newName.value = tag
+}
+function finishRename(): void {
+  if (renaming.value && newName.value.trim()) {
+    renameTag(renaming.value, newName.value)
+    say(`#${renaming.value} is #${newName.value.trim()} now`, 2500)
+  }
+  renaming.value = ''
+}
+function forgetTag(tag: string, count: number): void {
+  if (window.confirm(`Take #${tag} off ${countOf(count, 'song')}?`)) deleteTag(tag)
+}
+function songsTagged(tag: string): void {
+  settings.filters.all = { query: '', chips: [`tag:"${tag}"`] }
+  go('/')
+}
+
 const found = ref<ComfyFound | null>(null)
 const looking = ref(false)
 const confirmReset = ref(false)
@@ -78,6 +100,8 @@ const file = ref<HTMLInputElement | null>(null)
 const kept = computed(() => [
   ['Playlists', countOf(state.playlists.length, 'playlist')],
   ['Favourites', countOf(state.favorites.length, 'song')],
+  ['Tags', `${countOf(allTags.value.length, 'tag')} on ${countOf(Object.keys(state.tags).length, 'song')}`],
+  ['Saved filters', countOf(settings.savedFilters.length, 'filter')],
   ['Play counts', countOf(Object.keys(state.plays).length, 'song')],
   ['Visuals', `${settings.visuals.mode}, ${countOf(settings.visuals.pool.length, 'visual')} ticked, ${countOf(Object.keys(settings.visuals.songs).length, 'song')} with its own`],
   ['Sound', `volume ${Math.round(settings.volume * 100)} %, crossfade ${settings.crossfade} s, speed ${settings.rate}×`],
@@ -216,6 +240,21 @@ async function stop(): Promise<void> {
         The folders are kept with the player (<code>library.json</code>), also when ComfyUI starts it. Removed songs go to <code>{{ info?.retired ?? '_retired' }}</code> in their folder, which the player does not read.
       </p>
       <FolderBrowser v-if="browsing" @choose="addFolder" @close="browsing = false" />
+    </section>
+
+    <section class="block">
+      <h3><Icon name="tag" /> Tags</h3>
+      <p class="lead">Tags of your own: give them on a song's page, in a song's ⋯ menu, or to every song a filter shows (<b>Tag…</b> on the songs' page); find them with <code>#tag</code> or the filter row <i>Tags</i>. {{ allTags.length ? '' : 'None yet.' }}</p>
+      <ul v-if="allTags.length" class="tag-list">
+        <li v-for="[tag, count] in allTags" :key="tag">
+          <form v-if="renaming === tag" @submit.prevent="finishRename">
+            <input v-model="newName" maxlength="40" @keydown.esc="renaming = ''" @blur="finishRename" />
+          </form>
+          <button v-else class="name" title="The songs with this tag" @click="songsTagged(tag)">#{{ tag }} <small>{{ count }}</small></button>
+          <button class="icon-btn" title="Rename (into another tag: the two become one)" @click="startRename(tag)"><Icon name="edit" :size="14" /></button>
+          <button class="icon-btn" title="Take it off every song" @click="forgetTag(tag, count)"><Icon name="trash" :size="14" /></button>
+        </li>
+      </ul>
     </section>
 
     <section class="block">
@@ -445,6 +484,43 @@ code {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+.tag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.tag-list li {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.tag-list .name {
+  border: 0;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+  font: 600 13px var(--font);
+}
+.tag-list .name small {
+  color: var(--muted);
+  font-weight: 400;
+}
+.tag-list .icon-btn {
+  width: 26px;
+  height: 26px;
+}
+.tag-list input {
+  width: 160px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: #fff;
+  padding: 4px 8px;
+  font: 13px var(--font);
 }
 .error {
   color: #ff9a9a;

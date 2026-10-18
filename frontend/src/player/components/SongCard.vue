@@ -1,15 +1,16 @@
 <script setup lang="ts">
-/** A song in the library: its cover with a play button, the title, genre and length; playing, it moves. A click
- * opens the song's page (▶ plays, and so does a double click in the list). */
+/** A song in the library: its cover with a play button, the title, genre and length, its marks and your tags
+ * (a click on a tag shows the songs with it); playing, it moves. A click opens the song's page (▶ plays, and
+ * so does a double click in the list). */
 import type { SongSummary } from '../api'
 import { isNew } from '../live'
-import { current, go, isFavorite, playing } from '../store'
+import { current, go, isFavorite, playing, songTags } from '../store'
 import { formatTime } from '../timing'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 
 defineProps<{ song: SongSummary; snippet?: string | null; list?: boolean; index?: number }>()
-const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
+const emit = defineEmits<{ play: []; menu: [event: MouseEvent]; tag: [tag: string] }>()
 </script>
 
 <template>
@@ -37,6 +38,7 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
       </p>
       <p v-if="snippet" class="snippet">“{{ snippet }}”</p>
       <p class="tags">
+        <button v-for="t in songTags(song.id)" :key="t" class="tag mine" :title="`Your tag - the songs with #${t}`" @click.stop="emit('tag', t)">#{{ t }}</button>
         <span v-if="isNew(song.id)" class="tag new" title="Made while Live Play was on">new</span>
         <span v-if="song.other" class="tag other" title="Not made with Plenio: it plays with what its file has">other music</span>
         <span v-if="song.model" class="tag model">{{ song.model.replace('MiniMax Music 3', 'MiniMax') }}</span>
@@ -186,6 +188,17 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent] }>()
   color: #fff;
   border-color: transparent;
   background: #e5484d;
+}
+/* your own tags: the accent, and a click shows the songs with it */
+.tag.mine {
+  border: 0;
+  cursor: pointer;
+  font: 600 10px var(--font);
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.tag.mine:hover {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 .tag.other {
   color: #ffd9a0;

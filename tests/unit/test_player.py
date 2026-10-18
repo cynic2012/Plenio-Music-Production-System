@@ -224,13 +224,19 @@ def test_files_stream_in_ranges(server: tuple[str, int, Library]) -> None:
 
 def test_the_state_is_kept_outside_the_songs_folder(server: tuple[str, int, Library], songs: Path) -> None:
     before = sorted(p.name for p in songs.rglob("*"))
-    state = {"playlists": [{"id": "pl-1", "name": "Evening", "songs": ["a"]}], "favorites": ["a"], "junk": 1}
+    state = {
+        "playlists": [{"id": "pl-1", "name": "Evening", "songs": ["a"]}],
+        "favorites": ["a"],
+        "tags": {"a": ["party", "road trip"]},
+        "junk": 1,
+    }
     status, _, _ = request(
         server, "PUT", "/api/state", json.dumps(state).encode(), **{"Content-Type": "application/json"}
     )
     assert status == 200
     saved = json.loads(request(server, "GET", "/api/state")[2])
     assert saved["playlists"][0]["name"] == "Evening" and saved["favorites"] == ["a"] and "junk" not in saved
+    assert saved["tags"] == {"a": ["party", "road trip"]}
     assert request(server, "PUT", "/api/state", b"[1, 2]", **{"Content-Type": "application/json"})[0] == 400
     # only the player's own page changes the state: JSON, and from this origin when one is named
     assert request(server, "PUT", "/api/state", json.dumps(state).encode())[0] == 403

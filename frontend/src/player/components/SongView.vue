@@ -38,6 +38,7 @@ import Karaoke from './Karaoke.vue'
 import Notation from './Notation.vue'
 import SongCard from './SongCard.vue'
 import SongMenu from './SongMenu.vue'
+import TagEditor from './TagEditor.vue'
 import { isPortable } from '../portable'
 
 const props = defineProps<{ id: string }>()
@@ -147,6 +148,11 @@ function back(): void {
   if (window.history.length > 1) window.history.back()
   else go('/')
 }
+/** The songs with a tag: the songs' page filtered by it. */
+function songsTagged(tag: string): void {
+  settings.filters.all = { query: '', chips: [`tag:"${tag}"`] }
+  go('/')
+}
 function play(): void {
   if (isCurrent.value) {
     toggleCurrent()
@@ -196,6 +202,9 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
           <span>{{ plays }} {{ plays === 1 ? 'play' : 'plays' }}</span>
           <span v-if="lastPlayed">last {{ lastPlayed }}</span>
         </p>
+        <div class="tags-row" title="Tags of your own: type one, or choose one you gave before">
+          <TagEditor :ids="[song.id]" @filter="songsTagged" />
+        </div>
       </div>
     </section>
 
@@ -386,6 +395,9 @@ h1 {
   color: var(--muted);
   font: 12px var(--mono);
   margin: 16px 0 0;
+}
+.tags-row {
+  margin-top: 12px;
 }
 .sections {
   display: flex;

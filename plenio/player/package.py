@@ -118,6 +118,19 @@ def _page(static: Path) -> tuple[str, str, str]:
     return icon.group(0) if icon else "", js, css
 
 
+def tags_of(raw: Any, packed: set[str]) -> dict[str, list[str]]:
+    """The listener's tags of the songs packed: short texts, at most 40 a song."""
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, list[str]] = {}
+    for song_id, tags in raw.items():
+        if song_id in packed and isinstance(tags, list):
+            kept = [str(t).strip()[:40] for t in tags if isinstance(t, str) and t.strip()][:40]
+            if kept:
+                out[song_id] = kept
+    return out
+
+
 def file_name(title: str, folder: Path) -> Path:
     stem = re.sub(r'[\s<>:"/\\|?*\x00-\x1f]+', " ", title).strip().rstrip(".")[:80] or "Plenio songs"
     target = folder / f"{stem}.html"
@@ -140,7 +153,8 @@ def build(
 
     ``options``: ``title``, ``bitrate`` (128, 160, 192), ``pdf`` (the sheet music), ``settings`` (the
     visuals' and the lyrics' look to start with), ``presets`` (the listener's own visuals: name, text),
-    ``playlists`` (``[{"name", "songs"}]``, the songs among those packed)."""
+    ``playlists`` (``[{"name", "songs"}]``, the songs among those packed), ``tags`` (song id -> the
+    listener's tags of it)."""
     from .server import STATIC
 
     bitrate = int(options.get("bitrate") or 192)
@@ -234,6 +248,7 @@ def build(
             if isinstance(p, dict) and p.get("name") and p.get("text")
         ],
         "playlists": [p for p in playlists if p["songs"]],
+        "tags": tags_of(options.get("tags"), packed),
     }
     safe_title = html_escape(title)
     html = (

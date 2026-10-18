@@ -131,6 +131,8 @@ export interface PlayerState {
   favorites: string[]
   plays: Record<string, number>
   last_played: Record<string, string>
+  /** The listener's own tags per song (song id -> tags, in the order given). */
+  tags: Record<string, string[]>
   settings: Record<string, unknown>
 }
 
@@ -209,6 +211,8 @@ export interface PackageOptions {
   settings?: Record<string, unknown>
   presets?: { name: string; text: string }[]
   playlists?: { name: string; songs: string[] }[]
+  /** Your tags of the songs packed (song id -> tags). */
+  tags?: Record<string, string[]>
 }
 
 /** The guests' access to the live playlist (``plenio/player/guest.py``). */

@@ -1,8 +1,9 @@
 /**
- * The library's search: free words over title, genre, mood, style, lyrics and the brief, plus field filters -
- * ``genre:pop``, ``mood:warm``, ``bpm:>100``, ``bpm:90-120``, ``key:Am``, ``model:yue2``, ``year:2026``,
- * ``lang:german``, ``vocals:instrumental``, ``mode:jazz`` (the creative mode), ``len:<3`` (minutes),
- * ``is:fav``, ``has:pdf`` - and ``"quoted phrases"``. Every word must match; the best matches come first.
+ * The library's search: free words over title, genre, mood, style, lyrics, the brief and your tags, plus field
+ * filters - ``genre:pop``, ``mood:warm``, ``bpm:>100``, ``bpm:90-120``, ``key:Am``, ``model:yue2``,
+ * ``year:2026``, ``lang:german``, ``vocals:instrumental``, ``mode:jazz`` (the creative mode), ``len:<3``
+ * (minutes), ``tag:party`` (or ``#party``), ``is:fav``, ``is:unplayed``, ``has:pdf`` - and ``"quoted phrases"``;
+ * ``-`` in front keeps out what matches. Every word must match; the best matches come first.
  */
 import type { SongSummary } from './api'
 
@@ -17,7 +18,7 @@ const FIELDS: Record<string, string> = {
   year: 'year', lang: 'language', language: 'language', vocals: 'vocals', mode: 'mode', arrangement: 'mode',
   len: 'len', length: 'len', is: 'is', has: 'has', title: 'title', lyrics: 'lyrics', style: 'style', artist: 'artist', album: 'album',
   plenio: 'plenio', version: 'plenio',
-  template: 'template', writer: 'writer', meter: 'meter',
+  template: 'template', writer: 'writer', meter: 'meter', tag: 'tag', tags: 'tag', kind: 'kind',
 }  // prettier-ignore
 
 export function parseQuery(query: string): Term[] {
@@ -27,13 +28,18 @@ export function parseQuery(query: string): Term[] {
     const [, minus, rawField, quoted, bare] = match
     const value = (quoted ?? bare ?? '').trim()
     if (!value) continue
+    // #party: the tag "party"
+    if (!rawField && !quoted && value.length > 1 && value.startsWith('#')) {
+      terms.push({ field: 'tag', value: value.slice(1), negate: !!minus })
+      continue
+    }
     const field = rawField && FIELDS[rawField.toLowerCase()] ? FIELDS[rawField.toLowerCase()] : ''
     terms.push({ field, value: field ? value : rawField ? `${rawField}:${value}` : value, negate: !!minus })
   }
   return terms
 }
 
-const fold = (s: string): string =>
+export const fold = (s: string): string =>
   s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 function numberTest(value: string, actual: number | null | undefined): boolean {
@@ -54,6 +60,10 @@ function numberTest(value: string, actual: number | null | undefined): boolean {
 
 export interface Context {
   favorites: Set<string>
+  /** The listener's own tags per song (``tag:``, ``#``, and free words). */
+  tags?: Record<string, string[]>
+  /** Plays per song (``is:played``, ``is:unplayed``). */
+  plays?: Record<string, number>
 }
 
 /** How well ``song`` matches ``terms`` (0: not at all). Title hits weigh most, lyrics least. */
@@ -68,16 +78,25 @@ export function score(song: SongSummary, terms: Term[], context: Context): numbe
 }
 
 /** The filter chips facets offer one of: *from 0.8.0* already holds every newer version, so two make no
- * sense (owner's report 2026-10-16). */
-export const SINGLE_CHOICE_FACETS = new Set(['plenio'])
+ * sense (owner's report 2026-10-16); a tempo or a length is one range at a time. */
+export const SINGLE_CHOICE_FACETS = new Set(['plenio', 'bpm', 'len'])
 
 /** The filter chips after a click on ``key:"value"``: a chip that is on goes off; a new one is added - and in
- * a facet of one choice it takes the place of the one chosen before. */
-export function toggleFilterChip(chips: string[], key: string, value: string): string[] {
-  const chip = `${key}:"${value}"`
+ * a facet of one choice it takes the place of the one chosen before. ``exclude``: the chip keeps those songs
+ * out (``-key:"value"``); a chip of the other kind for the same value gives way to it. */
+export function toggleFilterChip(chips: string[], key: string, value: string, exclude = false): string[] {
+  const chip = `${exclude ? '-' : ''}${key}:"${value}"`
   if (chips.includes(chip)) return chips.filter((c) => c !== chip)
-  const kept = SINGLE_CHOICE_FACETS.has(key) ? chips.filter((c) => !c.startsWith(`${key}:"`)) : chips
+  const opposite = `${exclude ? '' : '-'}${key}:"${value}"`
+  let kept = chips.filter((c) => c !== opposite)
+  if (SINGLE_CHOICE_FACETS.has(key) && !exclude) kept = kept.filter((c) => !c.startsWith(`${key}:"`))
   return [...kept, chip]
+}
+
+/** A chip's parts: ``-genre:"jazz"`` -> ``{ key: 'genre', value: 'jazz', exclude: true }``. */
+export function chipParts(chip: string): { key: string; value: string; exclude: boolean } | null {
+  const match = /^(-)?(\w+):"(.*)"$/.exec(chip)
+  return match ? { key: match[2], value: match[3], exclude: !!match[1] } : null
 }
 
 /** ``1.0.0`` -> ``[1, 0, 0]`` (``null``: no version - other music, or a record from before versions). */
@@ -117,6 +136,31 @@ export function versionTest(query: string, version: string | undefined): boolean
   }
 } // prettier-ignore
 
+/** ``has:pdf`` (or ``sheet``), ``has:timing`` (timed lyrics, measured or from subtitle files), ``has:lyrics``,
+ * ``has:score``, ``has:original``, ``has:cover``, ``has:stems``. */
+function hasTest(song: SongSummary, v: string): boolean {
+  if (v === 'lyrics') return !!song.lyrics
+  if (v === 'timing') return song.has.timing || song.has.lines
+  return !!(song.has as Record<string, boolean>)[v === 'sheet' ? 'pdf' : v]
+}
+
+/** ``is:fav``, ``is:cover``, ``is:other``, ``is:plenio``, ``is:played``, ``is:unplayed``, ``is:tagged``,
+ * ``is:untagged``, ``is:instrumental``. */
+function isTest(song: SongSummary, v: string, context: Context): boolean {
+  switch (v) {
+    case 'fav': case 'favorite': case 'favourite': return context.favorites.has(song.id)
+    case 'cover': return song.kind === 'cover'
+    case 'other': return !!song.other
+    case 'plenio': return !song.other
+    case 'played': return (context.plays?.[song.id] ?? 0) > 0
+    case 'unplayed': case 'never': return !(context.plays?.[song.id] ?? 0)
+    case 'tagged': return (context.tags?.[song.id] ?? []).length > 0
+    case 'untagged': return !(context.tags?.[song.id] ?? []).length
+    case 'instrumental': return song.instrumental
+    default: return false
+  }
+} // prettier-ignore
+
 function matches(song: SongSummary, term: Term, context: Context): number {
   const v = fold(term.value)
   const has = (text: string | undefined): boolean => !!text && fold(text).includes(v)
@@ -132,19 +176,22 @@ function matches(song: SongSummary, term: Term, context: Context): number {
     case 'mode': return has(song.arrangement) ? 2 : 0
     case 'len': return numberTest(term.value, song.seconds / 60) ? 2 : 0
     case 'meter': return has(song.score_meter) || has(song.brief.meter) ? 2 : 0
-    case 'is': return v === 'fav' || v === 'favorite' ? (context.favorites.has(song.id) ? 2 : 0) : v === 'cover' ? (song.kind === 'cover' ? 2 : 0) : v === 'other' ? (song.other ? 2 : 0) : v === 'plenio' ? (song.other ? 0 : 2) : 0
+    case 'is': return isTest(song, v, context) ? 2 : 0
     case 'plenio': return versionTest(term.value, song.plenio) ? 2 : 0
     case 'artist': return has(song.artist) || has(song.tags.artist) ? 3 : 0
     case 'album': return has(song.album) || has(song.tags.album) ? 3 : 0
-    case 'has': return (song.has as Record<string, boolean>)[v] ? 2 : 0
+    case 'has': return hasTest(song, v) ? 2 : 0
     case 'title': return has(song.title) ? 5 : 0
     case 'lyrics': return has(song.lyrics) ? 2 : 0
     case 'style': return has(song.style) ? 2 : 0
     case 'template': return has(song.template) ? 2 : 0
     case 'writer': return has(song.writer) ? 2 : 0
+    case 'kind': return fold(song.other ? 'other' : song.kind) === v ? 2 : 0
+    case 'tag': return (context.tags?.[song.id] ?? []).some((t) => fold(t) === v) ? 4 : 0
     default: {
       if (has(song.title)) return 6
       if (has(song.genre) || has(song.mood) || has(song.artist) || has(song.album) || has(song.tags.artist) || has(song.tags.album)) return 4
+      if ((context.tags?.[song.id] ?? []).some((t) => fold(t).includes(v))) return 4
       if (has(song.style) || has(song.template) || has(song.brief.description) || has(song.brief.theme)) return 3
       if (has(song.language) || has(song.model) || has(song.arrangement)) return 2
       if (has(song.lyrics)) return 1
@@ -206,3 +253,153 @@ export const words = (text: string): string[] =>
     .split(/[,;/]+/)
     .map((w) => w.trim())
     .filter((w) => w.length > 1)
+
+// --- the filters: every value of a facet, with how many songs have it --------------------------------------
+
+/** A row of filter chips: the search field its chips set, how a song's values are read, how many show before
+ * *more* - and, for ranges and marks, fixed values with their labels, in their order. */
+export interface FacetDef {
+  id: string
+  key: string
+  label: string
+  values: (song: SongSummary, context: Context) => string[]
+  top: number
+  fixed?: [string, string][]
+}
+
+const TEMPOS: [string, string][] = [['<90', 'slow, below 90'], ['90-119', '90-119'], ['120-139', '120-139'], ['>=140', 'fast, 140 and up']]
+const LENGTHS: [string, string][] = [['<3', 'under 3 min'], ['3-5', '3-5 min'], ['>5', 'over 5 min']]
+const HAS: [string, string][] = [['timing', 'timed lyrics'], ['pdf', 'sheet music'], ['score', 'notation'], ['original', 'unmastered take'], ['cover', 'a cover picture']]
+const PLAYED: [string, string][] = [['fav', 'favourites'], ['played', 'played'], ['unplayed', 'never played'], ['untagged', 'no tags yet']]
+const MADE: [string, string][] = [['plenio', 'Plenio'], ['other', 'other music']]
+
+/** The filters' rows, in their order (Tags first when there are any). */
+export const FACETS: FacetDef[] = [
+  { id: 'tag', key: 'tag', label: 'Tags', top: 14, values: (s, c) => c.tags?.[s.id] ?? [] },
+  { id: 'genre', key: 'genre', label: 'Genre', top: 12, values: (s) => words(s.genre) },
+  { id: 'mood', key: 'mood', label: 'Mood', top: 8, values: (s) => words(s.mood) },
+  { id: 'made', key: 'is', label: 'Made with', top: 2, fixed: MADE, values: (s) => [s.other ? 'other' : 'plenio'] },
+  { id: 'model', key: 'model', label: 'Model', top: 4, values: (s) => [s.other ? '' : s.model ? s.model.toLowerCase().split(' ')[0] : 'master'] },
+  { id: 'vocals', key: 'vocals', label: 'Vocals', top: 3, values: (s) => [s.instrumental ? 'instrumental' : s.vocals ? 'sung' : ''] },
+  { id: 'lang', key: 'lang', label: 'Language', top: 6, values: (s) => [s.language.toLowerCase()] },
+  { id: 'bpm', key: 'bpm', label: 'Tempo (BPM)', top: 4, fixed: TEMPOS, values: (s) => TEMPOS.filter(([r]) => numberTest(r, s.bpm)).map(([r]) => r) },
+  { id: 'len', key: 'len', label: 'Length', top: 3, fixed: LENGTHS, values: (s) => LENGTHS.filter(([r]) => numberTest(r, s.seconds / 60)).map(([r]) => r) },
+  { id: 'key', key: 'key', label: 'Key', top: 10, values: (s) => [s.score_key || s.brief.key || ''] },
+  { id: 'mode', key: 'mode', label: 'Creative mode', top: 8, values: (s) => [s.arrangement && s.arrangement !== 'off' ? s.arrangement : ''] },
+  { id: 'template', key: 'template', label: 'Template', top: 6, values: (s) => [s.template] },
+  { id: 'year', key: 'year', label: 'Year', top: 4, values: (s) => [s.year] },
+  { id: 'has', key: 'has', label: 'Has', top: 5, fixed: HAS, values: (s) => HAS.filter(([v]) => hasTest(s, v)).map(([v]) => v) },
+  { id: 'played', key: 'is', label: 'Listening', top: 4, fixed: PLAYED, values: (s, c) => PLAYED.filter(([v]) => isTest(s, v, c)).map(([v]) => v) },
+]  // prettier-ignore
+
+/** Every value of a facet among ``songs`` with its count - the most common first, or a fixed facet in its
+ * own order; values none of them has are left out. */
+export function facetValues(songs: SongSummary[], facet: FacetDef, context: Context): [string, number][] {
+  // tags are one whatever their capitals (the first spelling shows)
+  const keyOf = facet.id === 'tag' ? (v: string) => v.toLowerCase() : (v: string) => v
+  const counts = new Map<string, [string, number]>()
+  for (const song of songs) {
+    for (const value of facet.values(song, context)) {
+      if (!value) continue
+      const known = counts.get(keyOf(value))
+      counts.set(keyOf(value), known ? [known[0], known[1] + 1] : [value, 1])
+    }
+  }
+  if (facet.fixed) return facet.fixed.filter(([v]) => counts.has(v)).map(([v]) => [v, counts.get(v)?.[1] ?? 0])
+  return [...counts.values()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+}
+
+/** How a chip reads: a range or a mark by its label, anything else as it is. */
+export function valueLabel(facet: FacetDef | undefined, value: string): string {
+  return facet?.fixed?.find(([v]) => v === value)?.[1] ?? value
+}
+
+/** The facet a chip belongs to (two rows set ``is:``). */
+export function facetOf(key: string, value: string): FacetDef | undefined {
+  return FACETS.find((f) => f.key === key && (!f.fixed || f.fixed.some(([v]) => v === value))) ?? FACETS.find((f) => f.key === key)
+}
+
+// --- suggestions while typing ------------------------------------------------------------------------------
+
+export interface Suggestion {
+  /** What the list shows, and a hint beside it (how many songs, what the field takes). */
+  label: string
+  hint: string
+  /** The whole search with the suggestion taken. */
+  query: string
+}
+
+const FIELD_HELP: [string, string][] = [
+  ['genre', 'a genre'], ['mood', 'a mood'], ['tag', 'one of your tags (or #tag)'], ['bpm', 'tempo: >120, 90-110'], ['key', 'Am, C, F#m'],
+  ['len', 'minutes: <3, 3-5'], ['lang', 'a language'], ['vocals', 'instrumental, sung'], ['model', 'yue2, minimax, master'],
+  ['mode', 'a creative mode'], ['template', 'a brief template'], ['is', 'fav, unplayed, played, tagged, cover, other'],
+  ['has', 'timing, pdf, score, original, cover'], ['year', '2026'], ['plenio', 'the Plenio version: >=1.0'], ['title', 'words in the title'],
+  ['lyrics', 'words in the lyrics'], ['artist', 'other music: the artist'], ['album', 'other music: the album'], ['meter', '4/4, 3/4'],
+  ['writer', 'the model that wrote it'], ['style', 'words in the style'],
+] // prettier-ignore
+
+const FIXED_VALUES: Record<string, [string, string][]> = {
+  is: [...PLAYED, ['tagged', 'with tags'], ['cover', 'cover songs'], ['other', 'other music'], ['plenio', 'made with Plenio'], ['instrumental', 'instrumentals']],
+  has: [...HAS, ['lyrics', 'lyrics'], ['stems', 'stems']],
+  bpm: TEMPOS,
+  len: LENGTHS,
+  vocals: [['instrumental', 'no singing'], ['sung', 'with singing']],
+}
+
+/** The values a field takes in this library, with counts. */
+function valuesOf(field: string, songs: SongSummary[], context: Context): [string, number][] {
+  const facet = FACETS.find((f) => f.key === field && !f.fixed)
+  if (facet) return facetValues(songs, facet, context)
+  const pick: Record<string, (s: SongSummary) => string[]> = {
+    artist: (s) => [s.artist || s.tags.artist || ''],
+    album: (s) => [s.album || s.tags.album || ''],
+    meter: (s) => [s.score_meter || s.brief.meter || ''],
+    writer: (s) => [s.writer],
+    plenio: (s) => [versionOf(s.plenio)?.slice(0, 2).join('.') ?? ''],
+  }
+  return pick[field] ? topValues(songs, pick[field], 400) : []
+}
+
+const quote = (value: string): string => (/^[\w.<>=#&+-]+$/.test(value) ? value : `"${value}"`)
+
+/** Suggestions for the word typed at the end of ``query``: a field and its values (``gen`` -> ``genre:``,
+ * ``genre:ja`` -> ``genre:jazz``), your tags after ``#``, and the tags, genres and moods with that word. */
+export function suggest(query: string, songs: SongSummary[], context: Context, limit = 8): Suggestion[] {
+  const match = /(^|\s)(-?)(?:(\w+):)?"?([^"\s]*)$/.exec(query)
+  if (!match || /\s$/.test(query)) return []
+  const [, space, minus, rawField, partial] = match
+  const head = query.slice(0, match.index) + space
+  const songsWord = (n: number): string => `${n} ${n === 1 ? 'song' : 'songs'}`
+  const want = fold(partial)
+  // a value typed in full is not offered again (nothing left to complete)
+  const rank = (list: [string, number][]): [string, number][] =>
+    list
+      .filter(([v]) => fold(v).includes(want) && fold(v) !== want)
+      .sort((a, b) => Number(fold(b[0]).startsWith(want)) - Number(fold(a[0]).startsWith(want)) || b[1] - a[1] || a[0].localeCompare(b[0]))
+  if (rawField !== undefined) {
+    const field = FIELDS[rawField.toLowerCase()]
+    if (!field) return []
+    const key = field === 'language' ? 'lang' : field
+    const fixed = FIXED_VALUES[key]
+    const list: [string, number][] = fixed ? fixed.map(([v]) => [v, 0]) : valuesOf(key, songs, context)
+    return rank(list)
+      .slice(0, limit)
+      .map(([v, n]) => ({ label: `${key}:${v}`, hint: fixed ? (fixed.find(([x]) => x === v)?.[1] ?? '') : songsWord(n), query: `${head}${minus}${key}:${quote(v)} ` }))
+  }
+  if (partial.startsWith('#')) {
+    const tagWant = fold(partial.slice(1))
+    return valuesOf('tag', songs, context)
+      .filter(([v]) => fold(v).includes(tagWant) && fold(v) !== tagWant)
+      .slice(0, limit)
+      .map(([v, n]) => ({ label: `#${v}`, hint: songsWord(n), query: `${head}${minus}tag:${quote(v)} ` }))
+  }
+  if (want.length < 2) return []
+  const fields = FIELD_HELP.filter(([name]) => name.startsWith(want) && name !== want).map(([name, help]) => ({ label: `${name}:`, hint: help, query: `${head}${minus}${name}:` }))
+  const values: Suggestion[] = []
+  for (const key of ['tag', 'genre', 'mood']) {
+    for (const [v, n] of rank(valuesOf(key, songs, context)).slice(0, 4)) {
+      values.push({ label: `${key === 'tag' ? '#' : `${key}:`}${v}`, hint: songsWord(n), query: `${head}${minus}${key}:${quote(v)} ` })
+    }
+  }
+  return [...fields, ...values].slice(0, limit)
+}

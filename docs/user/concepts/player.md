@@ -109,12 +109,14 @@ song's menu:
 - **Start a radio of songs alike**: the song, then up to 40 songs like it
 - **Add to favourites**, or add it to a playlist
 - **Open the song's page**
+- **Tags…**: your own tags for the song ([see below](#tags-of-your-own))
 - **Open in ComfyUI** ([see below](#continue-a-song-in-comfyui))
 - **Remove from the library…** ([see below](#remove-a-song))
 
-**Search** looks through titles, lyrics, genres, moods, styles and briefs; every word you type must match.
-A line from the lyrics shows on the card when a word matches there. You can also narrow the search with
-fields:
+**Search** looks through titles, lyrics, genres, moods, styles, briefs and your tags; every word you type must
+match. A line from the lyrics shows on the card when a word matches there. You can also narrow the search with
+fields - **as you type, the search suggests them**: `gen` offers `genre:`, `genre:blu` offers every genre with
+*blu* and how many songs have it, `#` your tags (↑ ↓ to choose, Enter or Tab to take one):
 
 | Type | Finds |
 |---|---|
@@ -126,16 +128,53 @@ fields:
 | `mode:dramatic` | the creative mode |
 | `len:<3` | length in minutes |
 | `year:2026` `template:jazz` `writer:gemma` | year, brief template, the model that wrote the lyrics |
+| `tag:party` `#party` `tag:"road trip"` | your own tags |
 | `is:fav` `is:cover` `is:other` `is:plenio` | favourites, covers, other music, Plenio's songs |
+| `is:unplayed` `is:played` `is:tagged` `is:untagged` | never played or played, with or without tags of yours |
 | `plenio:>=0.8` `plenio:0.7` `plenio:0.5-0.7` | songs made with a Plenio version: from 0.8 on, any 0.7.x, from 0.5 to 0.7 |
 | `artist:` `album:` | the tags of other music |
-| `has:pdf` `has:timing` `has:original` | songs with sheet music, timed lyrics, an unmastered take |
+| `has:pdf` `has:timing` `has:original` `has:score` | songs with sheet music, timed lyrics (measured or from subtitle files), an unmastered take, notation |
 | `"a phrase"` `-word` | an exact phrase; leave out songs with a word |
 
-The **chips** under the search are your most common genres, moods, models, languages and creative modes; a
-click filters, a second click removes the filter. When your archive holds songs of older Plenio versions,
-**Plenio version** offers *from 1.0.0*, *from 0.8.0* …: only the songs made with that version or a newer one, one choice at a time (a click on another replaces it). You can sort by newest, oldest, title, length, tempo,
-loudness, most played or recently played, and switch between a grid and a list.
+The **filters** under the search are rows of chips - your tags, genres, moods, what made the song (Plenio or
+other music) and the model; **More filters** opens vocals, language, tempo (slow, 90-119, 120-139, fast), length
+(under 3, 3-5, over 5 minutes), key, creative mode, template, year, Plenio version, what a song has (timed
+lyrics, sheet music, notation, an unmastered take, a cover picture) and listening (favourites, played, never
+played, no tags yet). A row shows its most common values first; **+ 113 more** opens it to every value - every
+genre a template gave, the rare ones too - with a field to find one in a long row.
+
+- **A click** on a chip keeps only the songs with it; a second click takes the filter off.
+- **A right click** (a long press on a phone) **leaves those songs out**: the chip turns red and struck
+  through, *not Genre: jazz* in the Filtered row.
+- **The numbers** on the chips are how many of the songs shown have that value - so with a filter on, every
+  chip says how many songs would stay. A row that could not narrow the songs further is left out.
+- **Plenio version** offers *from 1.0.0*, *from 0.8.0* … for an archive with songs of older versions: only the
+  songs made with that version or a newer one. Tempo, length and Plenio version take one choice at a time (a
+  click on another replaces it).
+
+You can sort by newest, oldest, title, length, tempo, loudness, most played or recently played, and switch
+between a grid and a list.
+
+**Saved filters**: *Save this filter…* in the Filtered row keeps the search and the filters under a name; the
+sidebar lists them under *Saved filters* - a click shows those songs again, × forgets one.
+
+### Tags of your own
+
+Every song can have tags of yours - *party*, *road trip*, *for Anna* …:
+
+- **On a song's page**, under its facts: type a tag and press Enter (or a comma). The tags you gave before are
+  offered as you type - choose one with ↑ ↓ or the mouse. × takes a tag off; Backspace in the empty field the
+  last one.
+- **In a song's menu** (right click or ⋯): **Tags…**, the same.
+- **For many songs at once**: **Tag…** on the songs' page gives a tag to every song shown - all of them, or the
+  ones a search or filter shows. It also lists the tags those songs have (*party 12/37*: 12 of the 37) to take
+  one off all of them.
+
+A tag is found with `#party` or `tag:party` and in the filter row **Tags**; the cards show their tags - a click
+on one shows the songs with it. Capitals do not make a new tag: *party* given after *Party* is *Party*.
+**Settings > Tags** lists every tag with how many songs have it, to rename one (into another tag: the two become
+one) or take it off every song; the filters that name it follow. Tags are kept with your playlists (in
+`state.json`, and in a backup), and *Share as a player* can take your tags of the songs along.
 
 **Your search and filters stay** - when you open a song's page, go to another view or another window and
 come back, or reload the page; the library also keeps its place in the list, and as many songs as *Show more*

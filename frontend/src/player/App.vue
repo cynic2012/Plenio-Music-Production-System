@@ -286,7 +286,7 @@ onBeforeUnmount(() => {
         <div class="keys" @click.stop>
           <h3>Keys</h3>
           <dl><template v-for="[k, what] in KEYS" :key="k"><dt><kbd>{{ k }}</kbd></dt><dd>{{ what }}</dd></template></dl>
-          <p class="hint">Search: words find titles, lyrics, genres, moods; fields narrow it - <code>genre:jazz</code> <code>bpm:&gt;110</code> <code>key:Am</code> <code>model:yue</code> <code>lang:german</code> <code>is:fav</code> <code>has:pdf</code> <code>-word</code> <code>"a phrase"</code>.</p>
+          <p class="hint">Search: words find titles, lyrics, genres, moods; fields narrow it - <code>genre:jazz</code> <code>bpm:&gt;110</code> <code>key:Am</code> <code>model:yue</code> <code>lang:german</code> <code>is:fav</code> <code>has:pdf</code> <code>#party</code> <code>is:unplayed</code> <code>-word</code> <code>"a phrase"</code>. A filter chip: click keeps only those songs, right-click leaves them out.</p>
         </div>
       </div>
     </Transition>

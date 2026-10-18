@@ -37,11 +37,20 @@ export interface Settings {
   lyrics: LyricsStyle
   /** Seconds the listener moved a song's notation cursor (song id -> seconds of score). */
   notationShift: Record<string, number>
+  /** Searches and filters kept under a name (the sidebar's *Saved filters*). */
+  savedFilters: SavedFilter[]
+  /** The filter rows past the first few are open. */
+  moreFilters: boolean
 }
 
 export interface LibraryFilter {
   query: string
   chips: string[]
+}
+
+export interface SavedFilter extends LibraryFilter {
+  id: string
+  name: string
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -63,6 +72,8 @@ const DEFAULT_SETTINGS: Settings = {
   video: {},
   lyrics: lyricsWithDefaults(null),
   notationShift: {},
+  savedFilters: [],
+  moreFilters: false,
 }
 
 /** Saved notation shifts, checked: numbers of at most a minute. */
@@ -73,6 +84,35 @@ function shiftsOf(raw: unknown): Record<string, number> {
     if (typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 60 && value !== 0) out[id] = value
   }
   return out
+}
+
+/** Saved searches, checked. */
+function savedFiltersOf(raw: unknown): SavedFilter[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((f): f is SavedFilter => !!f && typeof f === 'object' && typeof f.id === 'string' && typeof f.name === 'string')
+    .map((f) => ({ id: f.id, name: f.name.slice(0, 80), query: typeof f.query === 'string' ? f.query : '', chips: Array.isArray(f.chips) ? f.chips.filter((c): c is string => typeof c === 'string') : [] }))
+}
+
+/** Saved tags, checked: per song a list of short texts, each once. */
+export function tagsOf(raw: unknown): Record<string, string[]> {
+  const out: Record<string, string[]> = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const [id, list] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue
+    const kept: string[] = []
+    for (const value of list) {
+      const tag = typeof value === 'string' ? cleanTag(value) : ''
+      if (tag && !kept.some((k) => k.toLowerCase() === tag.toLowerCase())) kept.push(tag)
+    }
+    if (kept.length) out[id] = kept
+  }
+  return out
+}
+
+/** A tag as kept: no quotes, # or commas, spaces closed up, at most 40 characters. */
+export function cleanTag(text: string): string {
+  return text.replace(/["#,;]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40).trim()
 }
 
 /** Saved filters, checked (a file edited by hand or an older version may hold anything). */
@@ -95,7 +135,7 @@ export const folders = ref<string[]>([])
 export const loading = ref(true)
 export const loadError = ref('')
 
-export const state = reactive<PlayerState>({ playlists: [], favorites: [], plays: {}, last_played: {}, settings: {} })
+export const state = reactive<PlayerState>({ playlists: [], favorites: [], plays: {}, last_played: {}, tags: {}, settings: {} })
 export const settings = reactive<Settings>({ ...DEFAULT_SETTINGS })
 
 export const byId = computed(() => new Map(library.value.map((s) => [s.id, s])))
@@ -148,6 +188,11 @@ window.addEventListener('pagehide', () => {
   if (pending) void saveNow(true)
 })
 
+/** The settings as saved, checked and filled with the defaults. */
+function applySettings(stored: Partial<Settings>): void {
+  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), notationShift: shiftsOf(stored.notationShift), savedFilters: savedFiltersOf(stored.savedFilters), moreFilters: !!stored.moreFilters })
+}
+
 /** Replace everything the player keeps (a backup read back, or ``null``: start afresh). */
 export async function replaceState(data: Partial<PlayerState> | null): Promise<void> {
   const fresh = data ?? {}
@@ -155,8 +200,8 @@ export async function replaceState(data: Partial<PlayerState> | null): Promise<v
   state.favorites = Array.isArray(fresh.favorites) ? fresh.favorites : []
   state.plays = fresh.plays && typeof fresh.plays === 'object' ? fresh.plays : {}
   state.last_played = fresh.last_played && typeof fresh.last_played === 'object' ? fresh.last_played : {}
-  const stored = (fresh.settings ?? {}) as Partial<Settings>
-  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), notationShift: shiftsOf(stored.notationShift) })
+  state.tags = tagsOf(fresh.tags)
+  applySettings((fresh.settings ?? {}) as Partial<Settings>)
   engine.setVolume(settings.volume)
   engine.setRate(settings.rate)
   await saveNow()
@@ -170,8 +215,8 @@ export async function load(): Promise<void> {
     folders.value = answer.folders
     info.value = about
     Object.assign(state, saved)
-    const stored = (saved.settings ?? {}) as Partial<Settings>
-    Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), notationShift: shiftsOf(stored.notationShift) })
+    state.tags = tagsOf(saved.tags)
+    applySettings((saved.settings ?? {}) as Partial<Settings>)
     engine.setVolume(settings.volume)
     engine.setRate(settings.rate)
     loadError.value = ''
@@ -181,7 +226,7 @@ export async function load(): Promise<void> {
   } finally {
     loading.value = false
   }
-  watch([settings, () => state.playlists, () => state.favorites], save, { deep: true })
+  watch([settings, () => state.playlists, () => state.favorites, () => state.tags], save, { deep: true })
   lastSaved.value = null
 }
 
@@ -265,11 +310,107 @@ export async function removeSong(id: string, action: 'retire' | 'delete'): Promi
   for (const playlist of state.playlists) playlist.songs = playlist.songs.filter((x) => x !== id)
   delete state.plays[id]
   delete state.last_played[id]
+  delete state.tags[id]
   delete settings.visuals.songs[id]
   details.delete(id)
   const fresh = await api.library()
   library.value = fresh.songs
   return answer
+}
+
+// --- tags (owner's request 2026-10-18: tags of your own per song, chosen again from a list) -----------------
+
+/** Every tag given, with how many songs have it - the most used first. */
+export const allTags = computed<[string, number][]>(() => {
+  const counts = new Map<string, [string, number]>()
+  for (const list of Object.values(state.tags)) {
+    for (const tag of list) {
+      const key = tag.toLowerCase()
+      const known = counts.get(key)
+      counts.set(key, known ? [known[0], known[1] + 1] : [tag, 1])
+    }
+  }
+  return [...counts.values()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+})
+
+/** A tag as given before when there is one of the same letters (``party`` -> ``Party``), else as typed. */
+function spelled(tag: string): string {
+  const clean = cleanTag(tag)
+  return allTags.value.find(([known]) => known.toLowerCase() === clean.toLowerCase())?.[0] ?? clean
+}
+
+export const songTags = (id: string): string[] => state.tags[id] ?? []
+
+/** Give ``ids`` the tag (each song once); the tag as spelled. */
+export function addTag(ids: string[], text: string): string {
+  const tag = spelled(text)
+  if (!tag) return ''
+  for (const id of ids) {
+    const list = state.tags[id] ?? []
+    if (!list.some((t) => t.toLowerCase() === tag.toLowerCase())) state.tags[id] = [...list, tag]
+  }
+  return tag
+}
+
+export function removeTag(ids: string[], tag: string): void {
+  for (const id of ids) {
+    const list = (state.tags[id] ?? []).filter((t) => t.toLowerCase() !== tag.toLowerCase())
+    if (list.length) state.tags[id] = list
+    else delete state.tags[id]
+  }
+}
+
+/** The chips of the songs' page and the saved filters, each changed by ``change`` (``null``: taken out). */
+function changeChips(change: (chip: string) => string | null): void {
+  for (const filter of [...Object.values(settings.filters), ...settings.savedFilters]) {
+    const next = filter.chips.map(change).filter((c): c is string => c !== null)
+    filter.chips.splice(0, filter.chips.length, ...next.filter((c, k) => next.indexOf(c) === k))
+  }
+}
+
+/** Rename a tag on every song (into another tag: the two become one); the filters that name it follow. */
+export function renameTag(from: string, to: string): void {
+  const target = cleanTag(to)
+  if (!target || target === from) return
+  const old = from.toLowerCase()
+  const merged = allTags.value.find(([known]) => known.toLowerCase() === target.toLowerCase() && known.toLowerCase() !== old)?.[0] ?? target
+  for (const [id, list] of Object.entries(state.tags)) {
+    if (!list.some((t) => t.toLowerCase() === old)) continue
+    const next: string[] = []
+    for (const t of list) {
+      const name = t.toLowerCase() === old ? merged : t
+      if (!next.some((n) => n.toLowerCase() === name.toLowerCase())) next.push(name)
+    }
+    state.tags[id] = next
+  }
+  changeChips((c) => (c.toLowerCase() === `tag:"${old}"` ? `tag:"${merged}"` : c.toLowerCase() === `-tag:"${old}"` ? `-tag:"${merged}"` : c))
+}
+
+/** Take a tag off every song (and out of the filters). */
+export function deleteTag(tag: string): void {
+  removeTag(Object.keys(state.tags), tag)
+  const old = tag.toLowerCase()
+  changeChips((c) => (c.toLowerCase() === `tag:"${old}"` || c.toLowerCase() === `-tag:"${old}"` ? null : c))
+}
+
+// --- saved filters ------------------------------------------------------------------------------------
+
+/** Keep the songs' page's search and filters under a name (the sidebar lists them). */
+export function saveFilter(name: string, filter: LibraryFilter): SavedFilter {
+  const saved: SavedFilter = { id: `f-${Date.now().toString(36)}`, name: name.trim().slice(0, 80) || 'My filter', query: filter.query, chips: [...filter.chips] }
+  settings.savedFilters.push(saved)
+  return saved
+}
+
+/** The songs of a saved filter: the songs' page with its search and filters. */
+export function applySavedFilter(saved: SavedFilter): void {
+  settings.filters.all = { query: saved.query, chips: [...saved.chips] }
+  go('/')
+}
+
+export function deleteSavedFilter(id: string): void {
+  const at = settings.savedFilters.findIndex((f) => f.id === id)
+  if (at >= 0) settings.savedFilters.splice(at, 1)
 }
 
 // --- favourites and playlists -------------------------------------------------------------------------

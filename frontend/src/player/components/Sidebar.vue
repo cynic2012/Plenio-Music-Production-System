@@ -1,9 +1,10 @@
 <script setup lang="ts">
-/** The sidebar: the library and its smart lists, the playlists (a new one in place), the folder, a rescan. */
+/** The sidebar: the library and its smart lists, your saved filters, the playlists (a new one in place), the
+ * folder, a rescan. */
 import { computed, ref } from 'vue'
 
 import { vFocus } from '../focus'
-import { folders, go, lastSaved, library, newPlaylist, rescan, route, saveError, settings, shareFor, state } from '../store'
+import { applySavedFilter, deleteSavedFilter, folders, go, lastSaved, library, newPlaylist, rescan, route, saveError, settings, shareFor, state } from '../store'
 import Icon from './Icon.vue'
 import { isPortable, portable } from '../portable'
 
@@ -52,6 +53,14 @@ async function scan(): Promise<void> {
     <a v-for="[path, label, icon] in LINKS" :key="path" class="link" :class="{ on: route === path }" @click="go(path)">
       <Icon :name="icon" :size="18" /> {{ label }} <small v-if="path === '/live' && settings.live.on" class="on-air">LIVE</small><small v-else>{{ counts[path] || '' }}</small>
     </a>
+
+    <template v-if="settings.savedFilters.length">
+      <h4>Saved filters</h4>
+      <div v-for="f in settings.savedFilters" :key="f.id" class="link saved" :title="[f.query, ...f.chips].filter(Boolean).join('  ')" @click="applySavedFilter(f)">
+        <Icon name="filter" :size="16" /> <span>{{ f.name }}</span>
+        <button class="icon-btn forget" title="Forget this filter" @click.stop="deleteSavedFilter(f.id)"><Icon name="close" :size="13" /></button>
+      </div>
+    </template>
 
     <h4>Playlists <button class="icon-btn" title="New playlist" @click="naming = !naming"><Icon name="plus" :size="16" /></button></h4>
     <form v-if="naming" class="new" @submit.prevent="create">
@@ -199,10 +208,20 @@ h4 {
   flex: 1 0 auto;
   min-height: 40px;
 }
-.pl span {
+.pl span,
+.saved span {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+.saved .forget {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  opacity: 0;
+}
+.saved:hover .forget {
+  opacity: 1;
 }
 .dot {
   width: 9px;

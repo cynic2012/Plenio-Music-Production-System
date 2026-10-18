@@ -6,20 +6,23 @@ const shownBefore = new Map<string, { limit: number; list: string }>()
 
 <script setup lang="ts">
 /**
- * The library: a featured song, the search (free words and field filters), filter chips for the most
- * common genres, moods, models and more, the sort, and the songs as a grid or a list.
+ * The library: a featured song, the search (free words and field filters, with suggestions as you type), the
+ * filters - every genre, mood, tag, tempo, length … with how many of the songs shown have it, a click keeping
+ * only those, a right click leaving them out (owner's request 2026-10-18: the genres of the templates were
+ * missing) - saved filters, tags for the songs shown, the sort, and the songs as a grid or a list.
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 import type { SongSummary } from '../api'
 import { isPortable } from '../portable'
-import { current, library, playSongs, settings, shareFor, state, toggleCurrent } from '../store'
+import { current, library, playSongs, saveFilter, say, settings, shareFor, state, toggleCurrent } from '../store'
 import { countOf, formatTime } from '../timing'
-import { compareVersions, lyricsSnippet, parseQuery, score, sortSongs, toggleFilterChip, topValues, versionOf, words, type SortKey } from '../search'
+import { FACETS, chipParts, compareVersions, facetOf, facetValues, fold, lyricsSnippet, parseQuery, score, sortSongs, suggest, toggleFilterChip, valueLabel, versionOf, type SortKey } from '../search'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 import SongCard from './SongCard.vue'
 import SongMenu from './SongMenu.vue'
+import TagEditor from './TagEditor.vue'
 
 const props = defineProps<{ collection: 'all' | 'favorites' | 'top' | 'recent' }>()
 
@@ -49,11 +52,11 @@ const base = computed<SongSummary[]>(() => {
 })
 
 const terms = computed(() => parseQuery([query.value, ...chips.value].join(' ')))
+const context = computed(() => ({ favorites: new Set(state.favorites), tags: state.tags, plays: state.plays }))
 const scored = computed(() => {
-  const context = { favorites: new Set(state.favorites) }
   const map = new Map<string, number>()
   const found = base.value.filter((song) => {
-    const value = score(song, terms.value, context)
+    const value = score(song, terms.value, context.value)
     if (value > 0) map.set(song.id, value)
     return value > 0
   })
@@ -75,20 +78,45 @@ watch(list, () => (limit.value = FIRST))
 onBeforeUnmount(() => shownBefore.set(props.collection, { limit: limit.value, list: list.value }))
 const shown = computed(() => songs.value.slice(0, limit.value))
 
-const facets = computed(() => {
-  const all = base.value
-  return [
-    { key: 'genre', label: 'Genre', values: topValues(all, (s) => words(s.genre), 10) },
-    { key: 'mood', label: 'Mood', values: topValues(all, (s) => words(s.mood), 8) },
-    { key: 'is', label: 'Made with', values: topValues(all, (s) => [s.other ? 'other' : 'plenio'], 2) },
-    { key: 'model', label: 'Model', values: topValues(all, (s) => [s.other ? '' : s.model ? s.model.toLowerCase().split(' ')[0] : 'master'], 4) },
-    { key: 'vocals', label: 'Vocals', values: topValues(all, (s) => [s.instrumental ? 'instrumental' : s.vocals ? 'sung' : ''], 3) },
-    { key: 'lang', label: 'Language', values: topValues(all, (s) => [s.language.toLowerCase()], 6) },
-    { key: 'mode', label: 'Creative mode', values: topValues(all, (s) => [s.arrangement && s.arrangement !== 'off' ? s.arrangement : ''], 8) },
-    { key: 'year', label: 'Year', values: topValues(all, (s) => [s.year], 4) },
-    { key: 'plenio', label: 'Plenio version', values: versionSteps(all) },
-  ].filter((f) => f.values.length > 1 || f.key === 'model')
+// --- the filters ------------------------------------------------------------------------------------------
+/** The rows shown before *More filters* (and every row with a chip on). */
+const FIRST_ROWS = new Set(['tag', 'genre', 'mood', 'made', 'model'])
+/** Rows opened to every value, and the word to look for in one. */
+const opened = reactive<Record<string, boolean>>({})
+const lookFor = reactive<Record<string, string>>({})
+const chipState = (key: string, value: string): 'in' | 'out' | '' => (chips.value.includes(`${key}:"${value}"`) ? 'in' : chips.value.includes(`-${key}:"${value}"`) ? 'out' : '')
+
+interface FacetRow {
+  id: string
+  key: string
+  label: string
+  /** Every value among the songs shown (and every chip on), with how many have it. */
+  all: [string, number][]
+  shown: [string, number][]
+  top: number
+  on: boolean
+}
+const facets = computed<FacetRow[]>(() => {
+  // the counts are of the songs shown now: a chip says how many would stay
+  const pool = scored.value.found
+  const rows = [...FACETS.map((def) => ({ ...def, all: facetValues(pool, def, context.value) })), { id: 'plenio', key: 'plenio', label: 'Plenio version', top: 8, fixed: undefined, all: versionSteps(pool) }]
+  return rows
+    .map((row) => {
+      const all = [...row.all]
+      for (const chip of chips.value) {
+        const parts = chipParts(chip)
+        if (parts && parts.key === row.key && (facetOf(parts.key, parts.value)?.id ?? parts.key) === row.id && !all.some(([v]) => v === parts.value)) all.push([parts.value, 0])
+      }
+      const on = all.some(([v]) => chipState(row.key, v))
+      const want = fold(lookFor[row.id] ?? '')
+      const shown = opened[row.id] ? all.filter(([v]) => !want || fold(valueLabel(facetOf(row.key, v), v)).includes(want)) : all.filter(([v], k) => k < row.top || chipState(row.key, v))
+      return { id: row.id, key: row.key, label: row.label, all, shown, top: row.top, on }
+    })
+    .filter((row) => row.on || row.all.length > 1 || (row.all.length === 1 && row.all[0][1] < pool.length))
 })
+const firstRows = computed(() => facets.value.filter((f) => FIRST_ROWS.has(f.id) || f.on))
+const moreRows = computed(() => facets.value.filter((f) => !FIRST_ROWS.has(f.id) && !f.on))
+const shownRows = computed(() => (settings.moreFilters ? [...firstRows.value, ...moreRows.value] : firstRows.value))
 /** "from 1.0.0", "from 0.8.0" ...: the versions the songs were made with (newest first), each with how many
  * songs are that version or newer - for an archive that still holds songs of older versions. */
 function versionSteps(all: typeof base.value): [string, number][] {
@@ -103,18 +131,61 @@ function versionSteps(all: typeof base.value): [string, number][] {
     return have !== null && compareVersions(have, v) >= 0
   }).length])
 }
-const chipValue = (key: string, value: string): string => `${key}:"${value}"`
-/** ``genre:"dance-pop"`` -> ``Genre: dance-pop`` (the active filters' row). */
+/** ``genre:"dance-pop"`` -> ``Genre: dance-pop``, ``-tag:"x"`` -> ``not Tags: x`` (the active filters' row). */
 function chipLabel(chip: string): string {
-  const match = /^(\w+):"(.*)"$/.exec(chip)
-  if (!match) return chip
-  const facet = facets.value.find((f) => f.key === match[1])
-  return `${facet?.label ?? match[1]}: ${match[2]}`
+  const parts = chipParts(chip)
+  if (!parts) return chip
+  const facet = facetOf(parts.key, parts.value)
+  const label = parts.key === 'plenio' ? 'Plenio version' : (facet?.label ?? parts.key)
+  return `${parts.exclude ? 'not ' : ''}${label}: ${valueLabel(facet, parts.value)}`
 }
-function toggleChip(key: string, value: string): void {
+/** A click keeps only the songs with that value (again: off); ``exclude`` (a right click) leaves them out. */
+function toggleChip(key: string, value: string, exclude = false): void {
   // the kept array itself changes, so the settings save it
-  chips.value.splice(0, chips.value.length, ...toggleFilterChip(chips.value, key, value))
+  chips.value.splice(0, chips.value.length, ...toggleFilterChip(chips.value, key, value, exclude))
 }
+function filterByTag(tag: string): void {
+  if (!chips.value.includes(`tag:"${tag}"`)) toggleChip('tag', tag)
+}
+
+// --- suggestions while typing, a saved filter, tags for the songs shown ---------------------------------------
+const typing = ref(false)
+const pick = ref(-1)
+const suggestions = computed(() => (typing.value ? suggest(query.value, library.value, context.value) : []))
+watch(query, () => (pick.value = -1))
+function take(text: string): void {
+  query.value = text
+  pick.value = -1
+  void nextTick(() => {
+    input.value?.focus()
+    input.value?.setSelectionRange(text.length, text.length)
+  })
+}
+function onSearchKey(event: KeyboardEvent): void {
+  const list = suggestions.value
+  if (!list.length) return
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    pick.value = (pick.value + (event.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length
+  } else if ((event.key === 'Enter' || event.key === 'Tab') && pick.value >= 0) {
+    event.preventDefault()
+    take(list[pick.value].query)
+  } else if (event.key === 'Escape') {
+    typing.value = false
+  }
+}
+function stopTyping(): void {
+  window.setTimeout(() => (typing.value = false), 150)
+}
+const naming = ref(false)
+const filterName = ref('')
+function keepFilter(): void {
+  const saved = saveFilter(filterName.value || [query.value.trim(), ...chips.value.map(chipLabel)].filter(Boolean).join(', ').slice(0, 60), filter.value)
+  naming.value = false
+  filterName.value = ''
+  say(`Saved: “${saved.name}” - in the sidebar`, 3000)
+}
+const tagging = ref(false)
 
 // the featured song: one of the newest dozen, a different one each visit
 const featured = ref<SongSummary | null>(null)
@@ -152,7 +223,7 @@ async function cardOfCurrent(): Promise<HTMLElement | null> {
   await nextTick()
   return root.value?.querySelector<HTMLElement>(`[data-song="${CSS.escape(id)}"]`) ?? null
 }
-defineExpose({ focus: () => input.value?.focus(), cardOfCurrent })
+defineExpose({ focus: () => input.value?.focus(), cardOfCurrent, filterByTag })
 </script>
 
 <template>
@@ -176,8 +247,11 @@ defineExpose({ focus: () => input.value?.focus(), cardOfCurrent })
     <div class="tools">
       <label class="search">
         <Icon name="search" />
-        <input ref="input" v-model="query" placeholder="Search titles, lyrics, genres … try  bpm:>100  key:Am  is:fav" />
+        <input ref="input" v-model="query" placeholder="Search titles, lyrics, genres, #tags … try  bpm:>100  key:Am  is:fav" @focus="typing = true" @input="typing = true" @blur="stopTyping" @keydown="onSearchKey" />
         <button v-if="query" class="icon-btn" @click="query = ''"><Icon name="close" :size="16" /></button>
+        <div v-if="suggestions.length" class="suggest" @mousedown.prevent>
+          <button v-for="(s, k) in suggestions" :key="s.query" :class="{ on: k === pick }" @click="take(s.query)"><b>{{ s.label }}</b><small>{{ s.hint }}</small></button>
+        </div>
       </label>
       <select v-if="collection === 'all' || collection === 'favorites'" v-model="settings.sort" title="Sort">
         <option value="newest">Newest</option>
@@ -195,24 +269,53 @@ defineExpose({ focus: () => input.value?.focus(), cardOfCurrent })
       </div>
       <button class="ghost" :disabled="!songs.length" @click="playAll()"><Icon name="play" :size="16" /> Play {{ songs.length }}</button>
       <button v-if="!isPortable" class="ghost" :disabled="!songs.length" title="These songs as one HTML file that plays by itself - to send to others" @click="shareFor = { songs: songs.map((s) => s.id), title: '' }"><Icon name="download" :size="16" /> Share…</button>
+      <button class="ghost" :class="{ on: tagging }" :disabled="!songs.length" :title="`Give the ${songs.length} songs shown a tag, or take one off them`" @click="tagging = !tagging"><Icon name="tag" :size="16" /> Tag…</button>
       <button v-if="filtered" class="ghost reset" title="Clear the search and every filter" @click="resetFilters"><Icon name="close" :size="16" /> Reset filters</button>
+    </div>
+
+    <div v-if="tagging" class="tagging">
+      <p>Tags for the <b>{{ countOf(songs.length, 'song') }}</b> shown{{ filtered ? ' (as filtered)' : '' }}:</p>
+      <TagEditor :ids="songs.map((s) => s.id)" autofocus @filter="filterByTag" />
+      <button class="icon-btn" title="Close" @click="tagging = false"><Icon name="close" :size="16" /></button>
     </div>
 
     <div v-if="filtered" class="active">
       <span class="label">Filtered</span>
       <button v-if="query.trim()" class="chip on" title="Clear the search" @click="query = ''">“{{ query.trim() }}” <Icon name="close" :size="12" /></button>
-      <button v-for="chip in chips" :key="chip" class="chip on" title="Remove this filter" @click="chips.splice(chips.indexOf(chip), 1)">
+      <button v-for="chip in chips" :key="chip" class="chip on" :class="{ out: chip.startsWith('-') }" title="Remove this filter" @click="chips.splice(chips.indexOf(chip), 1)">
         {{ chipLabel(chip) }} <Icon name="close" :size="12" />
       </button>
       <small>{{ songs.length }} of {{ countOf(base.length, 'song') }}</small>
+      <form v-if="naming" class="keep" @submit.prevent="keepFilter">
+        <input v-model="filterName" maxlength="80" placeholder="A name for this filter" @keydown.esc="naming = false" />
+        <button class="ghost small" type="submit">Save</button>
+      </form>
+      <button v-else-if="collection === 'all'" class="link" title="Keep this search and these filters under a name - the sidebar lists them" @click="naming = true">Save this filter…</button>
     </div>
 
     <div class="facets">
-      <div v-for="facet in facets" :key="facet.key" class="facet">
+      <div v-for="facet in shownRows" :key="facet.id" class="facet" :class="{ wide: opened[facet.id] }">
         <span class="label">{{ facet.label }}</span>
-        <button v-for="[value, count] in facet.values" :key="value" class="chip" :class="{ on: chips.includes(chipValue(facet.key, value)) }" @click="toggleChip(facet.key, value)">
-          {{ value }} <small>{{ count }}</small>
-        </button>
+        <div class="values">
+          <input v-if="opened[facet.id] && facet.all.length > 16" v-model="lookFor[facet.id]" class="look" :placeholder="`Find a ${facet.label.toLowerCase().replace(/s$/, '')} …`" />
+          <button
+            v-for="[value, count] in facet.shown"
+            :key="value"
+            class="chip"
+            :class="{ on: chipState(facet.key, value) === 'in', out: chipState(facet.key, value) === 'out' }"
+            :title="chipState(facet.key, value) === 'out' ? 'Left out - click to stop leaving them out' : `Click: only these songs · right-click: leave them out`"
+            @click="toggleChip(facet.key, value, chipState(facet.key, value) === 'out')"
+            @contextmenu.prevent="toggleChip(facet.key, value, true)"
+          >
+            {{ valueLabel(facetOf(facet.key, value), value) }} <small v-if="chipState(facet.key, value) !== 'out'">{{ count }}</small>
+          </button>
+          <button v-if="!opened[facet.id] && facet.all.length > facet.shown.length" class="link more-values" @click="opened[facet.id] = true">+ {{ facet.all.length - facet.shown.length }} more</button>
+          <button v-else-if="opened[facet.id]" class="link more-values" @click="opened[facet.id] = false; lookFor[facet.id] = ''">fewer</button>
+        </div>
+      </div>
+      <div class="facet-foot">
+        <button v-if="moreRows.length" class="link" @click="settings.moreFilters = !settings.moreFilters">{{ settings.moreFilters ? 'Fewer filters' : `More filters: ${moreRows.map((f) => f.label.toLowerCase()).join(', ')}` }}</button>
+        <small>Click a chip to keep only those songs, right-click to leave them out. The numbers: how many of the songs shown.</small>
       </div>
     </div>
 
@@ -232,6 +335,7 @@ defineExpose({ focus: () => input.value?.focus(), cardOfCurrent })
         :style="{ animationDelay: `${Math.min(i, 24) * 25}ms` }"
         @play="play(song)"
         @menu="menu = { song, x: $event.clientX, y: $event.clientY }"
+        @tag="filterByTag"
       />
     </TransitionGroup>
     <button v-if="songs.length > shown.length" class="ghost more" @click="limit += MORE">Show {{ Math.min(MORE, songs.length - shown.length) }} more</button>
@@ -314,13 +418,131 @@ defineExpose({ focus: () => input.value?.focus(), cardOfCurrent })
   border-color: var(--accent);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
 }
+.search {
+  position: relative;
+}
 .search input {
   flex: 1;
+  min-width: 0;
   background: none;
   border: 0;
   outline: none;
   color: #fff;
   font: 14px var(--font);
+}
+.suggest {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: grid;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(20, 18, 30, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+.suggest button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #ddd;
+  cursor: pointer;
+  font: 13px var(--font);
+  text-align: left;
+}
+.suggest button b {
+  font: 600 13px var(--mono);
+  color: #fff;
+}
+.suggest button small {
+  color: var(--muted);
+}
+.suggest button:hover,
+.suggest button.on {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.tagging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+.tagging p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.tagging .tag-editor {
+  flex: 1;
+}
+.chip.out {
+  border-color: rgba(255, 120, 120, 0.7);
+  background: rgba(255, 90, 90, 0.12);
+  color: #ffb4b4;
+  text-decoration: line-through;
+}
+.link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: 12px var(--font);
+}
+.more-values {
+  margin-left: 4px;
+}
+.look {
+  width: 170px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font: 12px var(--font);
+}
+.facet-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  margin-top: 2px;
+  padding-left: 102px;
+}
+.facet-foot small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.keep {
+  display: flex;
+  gap: 6px;
+}
+.keep input {
+  height: 30px;
+  width: 220px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--accent);
+  color: #fff;
+  font: 13px var(--font);
+}
+.ghost.small {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
 }
 select {
   height: 38px;
@@ -342,13 +564,19 @@ select {
   margin-bottom: 20px;
 }
 .facet {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+}
+.facet .values {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
 }
 .facet .label {
-  width: 96px;
+  padding-top: 7px;
   font: 600 11px var(--font);
   color: var(--muted);
   text-transform: uppercase;
@@ -412,9 +640,24 @@ select {
 .cards-move {
   transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+/* a card that leaves goes at once (its entry animation made the list wait half a second, the old cards still
+   showing beside the new) */
+.cards-leave-active {
+  animation: none;
+  transition: none;
+}
 @media (max-width: 760px) {
   .hero {
     grid-template-columns: 1fr;
+  }
+  .facet {
+    grid-template-columns: 1fr;
+  }
+  .active .label {
+    width: 100%;
+  }
+  .facet-foot {
+    padding-left: 0;
   }
 }
 </style>
