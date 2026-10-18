@@ -17,7 +17,8 @@ import { formatTime, sectionName } from '../timing'
 import { CLASSIC, PRESETS, type Scheme } from '../visuals/presets'
 import { myPresets } from '../visuals/drop'
 import { FADE_STYLES } from '../visuals/mixer'
-import { SIZES, preview, videoWithDefaults, type VideoOptions } from '../video/make'
+import { COVER_PLACES, SIZES, preview, videoWithDefaults, type VideoOptions } from '../video/make'
+import { ENTRANCES } from '../video/overlay'
 import Icon from './Icon.vue'
 
 const props = defineProps<{ song: SongSummary }>()
@@ -54,6 +55,8 @@ const groups = computed(() => [
   ['My presets', myPresets.value],
 ] as const)
 const hasLines = computed(() => (detail.value?.lines.length ?? 0) > 0)
+const PLACE_NAMES: Record<string, string> = { 'top-left': 'top left', top: 'top', 'top-right': 'top right', left: 'left', center: 'in the middle', right: 'right', 'bottom-left': 'bottom left', bottom: 'bottom', 'bottom-right': 'bottom right', drift: 'drifting slowly' }
+const usesDrop = computed(() => !options.visual || options.visual.startsWith('drop-') || options.visual.startsWith('my-'))
 const hasNotation = computed(() => !!detail.value?.notation.abc)
 const sections = computed(() => {
   const d = detail.value
@@ -228,9 +231,26 @@ onBeforeUnmount(() => {
               <select v-model="options.lyrics" :disabled="!hasLines">
                 <option value="off">none</option>
                 <option value="subtitles">subtitles, lit up as they are sung</option>
-                <option value="karaoke">karaoke - large, in the middle</option>
+                <option value="karaoke">karaoke - large, the lines before and after</option>
+                <option value="words">word by word - each word large as it is sung</option>
               </select>
             </label>
+            <div v-if="options.lyrics !== 'off' && hasLines" class="row look">
+              <label>Where
+                <select v-model="options.lyricsPlace">
+                  <option value="bottom">{{ options.lyrics === 'karaoke' ? 'in the middle' : 'at the bottom' }}</option>
+                  <option value="middle">in the middle</option>
+                  <option value="top">at the top</option>
+                  <option value="random">a new place every line</option>
+                </select>
+              </label>
+              <label v-if="options.lyrics !== 'words'">A line comes in
+                <select v-model="options.lyricsIn">
+                  <option v-for="[id, label] in ENTRANCES" :key="id" :value="id">{{ label }}</option>
+                </select>
+              </label>
+              <label class="check beat" title="A line comes in in one beat of the song, and the lyrics pulse with the beat"><input v-model="options.onBeat" type="checkbox" /> on the beat</label>
+            </div>
             <p v-if="detail && !hasLines" class="hint">This song has no timed lyrics.</p>
             <template v-if="options.lyrics !== 'off' && hasLines">
               <div class="row look">
@@ -257,9 +277,37 @@ onBeforeUnmount(() => {
             </template>
             <label class="check"><input v-model="options.notation" type="checkbox" :disabled="!hasNotation" /> the notation, following the music</label>
             <label class="check"><input v-model="options.title" type="checkbox" /> a title card at the start (with the cover)</label>
+            <label class="check"><input v-model="options.cover.show" type="checkbox" :disabled="!song.has.cover" /> the cover, all the way through</label>
+            <div v-if="options.cover.show && song.has.cover" class="row look">
+              <label>Where
+                <select v-model="options.cover.place">
+                  <option v-for="place in COVER_PLACES" :key="place" :value="place">{{ PLACE_NAMES[place] }}</option>
+                </select>
+              </label>
+              <label>Shape
+                <select v-model="options.cover.shape">
+                  <option value="rounded">rounded</option>
+                  <option value="square">square</option>
+                  <option value="round">round</option>
+                  <option value="record">a spinning record</option>
+                </select>
+              </label>
+              <label class="check beat"><input v-model="options.cover.pulse" type="checkbox" /> pulses with the beat</label>
+            </div>
+            <label v-if="options.cover.show && song.has.cover" class="inline">Size <input v-model.number="options.cover.size" type="range" min="0.08" max="0.6" step="0.01" /> {{ Math.round(options.cover.size * 100) }} %</label>
             <label class="check"><input v-model="options.corner" type="checkbox" /> the song in the corner</label>
             <label class="check"><input v-model="options.progress" type="checkbox" /> a progress bar with the sections</label>
             <label class="check"><input v-model="options.credit" type="checkbox" /> “made with Plenio”</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Into the visual</legend>
+            <p class="hint">{{ usesDrop ? 'Drawn into the visual’s smoke: they melt and swirl with it.' : 'Over this visual as a soft glow (a Plenio Drop visual melts them into its smoke).' }} Five Drop visuals draw the song by themselves: Cover Galaxy, Title Smoke, Lyric Tunnel, Album Kaleido, Cover Echo.</p>
+            <div class="row">
+              <label class="check"><input v-model="options.into.title" type="checkbox" /> the title at the start</label>
+              <label class="check"><input v-model="options.into.lyrics" type="checkbox" :disabled="!hasLines" /> the line sung</label>
+              <label class="check"><input v-model="options.into.cover" type="checkbox" :disabled="!song.has.cover" /> the cover</label>
+            </div>
           </fieldset>
 
           <label v-if="song.has.original">Sound <select v-model="options.take"><option value="master">the master</option><option value="original">the unmastered take</option></select></label>
@@ -400,6 +448,10 @@ input.text {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
+}
+.look .beat {
+  align-self: end;
+  padding-bottom: 6px;
 }
 input[type='range'] {
   flex: 1;

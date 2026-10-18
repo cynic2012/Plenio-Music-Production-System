@@ -2,8 +2,9 @@
 
 The [Plenio Player](player.md) has two kinds of visuals. The *classic* ones (bars, oscilloscope, fire …)
 and **Plenio Drop**: visuals in the spirit of Winamp's MilkDrop, drawn by Plenio's own renderer on your
-graphics card. Plenio Drop comes with 16 presets and *Drop · Random*, which makes up a new one every time it
-is chosen. And you can write your own: a preset is a short text file.
+graphics card. Plenio Drop comes with 21 presets - five of them draw the song itself, its cover, its title and
+the words sung, into the picture - and *Drop · Random*, which makes up a new one every time it is chosen. And
+you can write your own: a preset is a short text file.
 
 This page explains how Plenio Drop draws, then the preset file, every value in it, and a few recipes. No
 programming is needed: a preset is a list of numbers and small formulas like `1.01 + 0.02 * bass`.
@@ -15,13 +16,16 @@ Every frame (60 times a second), Plenio Drop does three things:
 1. **Warp.** It takes the last frame and draws it again, a little changed: zoomed, turned, pushed, bent by
    one of six patterns, and a little darker. This is the feedback loop that makes MilkDrop look the way it
    does. Whatever was drawn becomes a trail of smoke, a tunnel, a swirl.
-2. **Draw.** On top it draws the music: waves (the waveform as a circle, a line, a spiral …), shapes
-   (polygons and glowing dots) and, if you like, a grid of strokes showing the motion.
+2. **Draw.** On top it draws pictures, if the preset wants them - the song's cover, its title, the line or the
+   word sung now - and the music: waves (the waveform as a circle, a line, a spiral …), shapes (polygons and
+   glowing dots) and, if you like, a grid of strokes showing the motion. What is drawn becomes part of the
+   smoke: a title melts, a cover is pulled into a swirl.
 3. **Show.** It puts the picture on the screen with brightness, an echo, mirrors and colour effects.
 
 A preset decides the values for each of these steps, every frame, from the music: how loud the bass is now,
 whether a beat just hit, the time. When the visual changes from one Drop preset to the next, the picture
-stays and the values glide from the old preset to the new one over two seconds.
+stays and the values glide from the old preset to the new one - over the crossfade's time set in the visuals'
+settings (3 seconds unless you change it).
 
 ## Your presets folder
 
@@ -86,8 +90,9 @@ A preset is a JSON object with these keys. Only `name` is required.
 | `frame` | lines worked out every frame, in order: each sets a parameter or one of your variables |
 | `waves` | the waves to draw: a list |
 | `shapes` | the shapes to draw: a list |
+| `sprites` | the pictures to draw - the cover, the title, the line or word sung: a list ([see below](#pictures-the-cover-the-title-the-lyrics)) |
 
-Every value in `base`, `frame`, `waves` and `shapes` can be a **number** (`0.97`), a **formula** in quotes
+Every value in `base`, `frame`, `waves`, `shapes` and `sprites` can be a **number** (`0.97`), a **formula** in quotes
 (`"1.01 + 0.02 * bass"`) or, where the value is one of a list, a **name** (`"swirl"`, `"circle"`,
 `"left-right"`). `true` and `false` count as 1 and 0.
 
@@ -97,7 +102,7 @@ Every value in `base`, `frame`, `waves` and `shapes` can be a **number** (`0.97`
 2. The lines of `frame` are worked out from top to bottom. A line can read everything set before it: the
    music, the parameters (so `"zoom": "zoom * 1.01"` builds on the value from `base`), and your variables.
 3. Your variables keep their values to the next frame. Parameters do not: they start again from `base`.
-4. The waves and shapes are worked out, each with the values of this frame.
+4. The waves, shapes and pictures are worked out, each with the values of this frame.
 
 ## Formulas
 
@@ -146,10 +151,13 @@ Dividing by zero gives 0, and so does anything that would not be a number. A for
 | `frame` | frames since the visual started |
 | `dt` `fps` | seconds since the last frame, frames per second |
 | `aspect` | the picture's width over its height (16:9 is 1.78) |
+| `songtime` | seconds into the song (for a title at the start: `clamp(1 - songtime / 8, 0, 1)`) |
+| `line_on` | 1 while a lyrics line is sung, else 0 |
+| `line_age` | seconds since the line sung now began |
 | `pi` `e` | 3.14159…, 2.71828… |
 | every parameter | its value so far this frame (`zoom`, `decay` …) |
 | your variables | the names in `init` and the new names in `frame` |
-| `i` `n` | in waves and shapes with `repeat`: which copy (0, 1, 2 …) and how many |
+| `i` `n` | in waves, shapes and pictures with `repeat`: which copy (0, 1, 2 …) and how many |
 
 **Your own variables** are the names in `init`, and any name in `frame` that is not a parameter. They start
 at their `init` value (or 0) and keep their value from frame to frame. A name is letters, digits and `_`,
@@ -263,6 +271,47 @@ With `repeat`, `i` counts the copies from 0 and `n` is how many there are. So fi
     "hue": "i / n", "inner": 1, "alpha": 0.2 }
 ]
 ```
+
+## Pictures: the cover, the title, the lyrics
+
+Each entry in `sprites` draws a picture into the feedback, before the waves - so it melts, swirls and trails
+with everything else. The pictures are the song's own:
+
+| `source` | The picture |
+|---|---|
+| `cover` | the song's cover (a song without one: nothing is drawn) |
+| `title` | the song's title, as white glowing text |
+| `line` | the lyrics line sung now (nothing between lines - use `line_on` to fade it) |
+| `word` | the word sung now |
+
+| Field | Default | What it does |
+|---|---|---|
+| `source` | `cover` | which picture (above) |
+| `x` `y` | 0 | where its middle is, as for waves |
+| `size` | 0.3 | its half height in screen heights: 0.3 is three tenths of the screen above and below the middle; the width follows the picture |
+| `angle` | 0 | turned by this many radians |
+| `alpha` | 0.8 | how strongly it shows (0 not at all) |
+| `tint` | 0 | 0 its own colours, 1 the colour scheme's colour at `hue` (a title in the song's colours) |
+| `hue` | 0 | the colour for `tint` |
+| `blend` | `add` | `add`: its light added (glowing, best for text); `over`: laid over what is there (best for the cover) |
+| `repeat` | 1 | how many copies, each with its own `i` |
+
+The title at the start of a song, fading after eight seconds, and the line sung rising as smoke:
+
+```json
+{
+  "name": "My title smoke",
+  "base": { "decay": 0.982, "dy": 0.0025, "warp": 0.9 },
+  "sprites": [
+    { "source": "title", "size": 0.12, "alpha": "clamp(1 - songtime / 8, 0, 1) * 0.5", "blend": "add" },
+    { "source": "line", "y": -0.45, "size": 0.075, "alpha": "line_on * 0.35", "blend": "add", "tint": 0.5, "hue": "time * 0.03" }
+  ]
+}
+```
+
+The built-in *Cover Galaxy*, *Title Smoke*, *Lyric Tunnel*, *Album Kaleido* and *Cover Echo* are made this way -
+*Edit a copy* shows how. In a song's video, *Into the visual* adds the title, the line and the cover to any Drop
+preset, without changing it.
 
 ## Colours
 

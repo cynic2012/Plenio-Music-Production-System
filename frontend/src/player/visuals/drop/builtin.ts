@@ -198,6 +198,58 @@ export const BUILTIN: PresetFile[] = [
     ],
     waves: [{ mode: 'circle', scale: '0.15 + 0.1 * bass_att', thick: 0.003, alpha: 0.4, hue: 'time * 0.05' }],
   },
+  // the song itself in the picture (owner's request 2026-10-18): its cover, its title, the line and word sung
+  {
+    name: 'Cover Galaxy',
+    blurb: 'The song’s cover at the heart of a slow galaxy - its colours pulled out into spiral arms.',
+    suits: ['calm', 'electronic', 'any'],
+    base: { decay: 0.978, family: 'swirl', famB: 1.1, zoom: 1.006, hueShift: 0.002, gamma: 1.5 },
+    frame: { famA: '0.14 + 0.08 * bass_att', rot: 0.006 },
+    sprites: [{ source: 'cover', size: '0.2 + 0.03 * pulse', angle: 'time * 0.15', alpha: 0.55, blend: 'over' }],
+    waves: [{ mode: 'circle', scale: '0.5 + 0.2 * bass_att', thick: 0.004, alpha: 0.5, hue: 'time * 0.03' }],
+  },
+  {
+    name: 'Title Smoke',
+    blurb: 'The song’s title at its start, then every line sung, rising as smoke.',
+    suits: ['calm', 'acoustic', 'any'],
+    base: { decay: 0.982, dy: 0.0025, warp: 0.9, warpScale: 0.7, zoom: 1.002, gamma: 1.6 },
+    sprites: [
+      { source: 'title', y: '-0.1 + 0.02 * sin(time)', size: 0.12, alpha: 'clamp(1 - songtime / 9, 0, 1) * 0.5', blend: 'add', tint: 0.35, hue: 'time * 0.02' },
+      { source: 'line', y: -0.45, size: 0.075, alpha: 'line_on * clamp(line_age * 2, 0, 1) * clamp(songtime / 6 - 0.5, 0, 1) * 0.35', blend: 'add', tint: 0.5, hue: 'time * 0.03 + 0.3' },
+    ],
+    waves: [{ mode: 'line', y: -0.85, scale: '0.3 + 0.2 * bass_att', thick: 0.004, alpha: 0.5, hue: 'time * 0.04' }],
+  },
+  {
+    name: 'Lyric Tunnel',
+    blurb: 'The words sung fly at you through a tunnel of light.',
+    suits: ['energetic', 'electronic'],
+    base: { decay: 0.955, family: 'tunnel', famB: 10, zoom: 1.03, gamma: 1.7, vignette: 0.45 },
+    frame: { zoom: '1.025 + 0.02 * bass', famA: '0.02 * bass_att', rot: '0.006 * sin(time * 0.3)' },
+    sprites: [
+      { source: 'word', size: '0.07 + 0.02 * pulse', alpha: 'line_on * 0.6', blend: 'add', tint: 0.4, hue: 'time * 0.05' },
+      { source: 'title', size: 0.09, alpha: 'clamp(1 - songtime / 7, 0, 1) * 0.6', blend: 'add', tint: 0.2 },
+    ],
+    waves: [{ mode: 'circle', scale: '0.25 + 0.15 * bass_att', thick: 0.005, alpha: 0.6, hue: 'time * 0.05 + 0.5' }],
+  },
+  {
+    name: 'Album Kaleido',
+    blurb: 'The cover folded into a turning mandala of eight mirrors.',
+    suits: ['electronic', 'energetic', 'calm'],
+    base: { decay: 0.96, family: 'kaleidoscope', famB: 8, famA: 0.3, gamma: 1.5 },
+    frame: { zoom: '1.008 + 0.01 * bass_att', rot: '0.008 * sin(time * 0.25)' },
+    sprites: [{ source: 'cover', x: '0.28 * cos(time * 0.3)', y: '0.28 * sin(time * 0.23)', size: '0.16 + 0.03 * pulse', angle: 'time * 0.4', alpha: 0.5, blend: 'over' }],
+    waves: [{ mode: 'dots', scale: '0.7 + 0.2 * mid_att', thick: 0.008, alpha: 0.4, hue: 'time * 0.04' }],
+  },
+  {
+    name: 'Cover Echo',
+    blurb: 'The cover thrown deep on every beat, its echoes falling away behind it.',
+    suits: ['energetic', 'dark'],
+    base: { decay: 0.95, zoomExp: 1.4, echoAlpha: 0.3, echoZoom: 1.3, gamma: 1.6 },
+    init: { kick: 0 },
+    frame: { kick: 'beat ? 1 : kick * 0.88', zoom: '0.985 - 0.02 * kick' },
+    sprites: [{ source: 'cover', size: '0.12 + 0.12 * kick', alpha: '0.25 + 0.4 * kick', blend: 'over' }],
+    waves: [{ mode: 'circle', scale: '0.3 + 0.4 * kick', thick: '0.004 + 0.01 * kick', alpha: 0.7, hue: 'time * 0.06' }],
+  },
 ]
 
 /** *Drop · Random*: a preset made up now - a warp family, motion, a wave or two, maybe shapes, maybe a

@@ -5,8 +5,9 @@
  *  1. warp - the last frame drawn again through a warp field: zoom (with a curve over the radius), rotation,
  *     one of six families (plain, swirl, waves, tunnel, kaleidoscope, ripple), a sine warp field, stretch and
  *     drift around a centre - and faded (decay), its colours slowly turning;
- *  2. draw - the waveform (circle, scope, line, spectrum, dots ...), shapes and motion vectors on top, as thick
- *     additive strips, so what is drawn now becomes tomorrow's smoke;
+ *  2. draw - pictures (sprites: the song's cover, its title, the line sung, the word sung - owner's request
+ *     2026-10-18: text and covers in the visual), then the waveform (circle, scope, line, spectrum, dots ...),
+ *     shapes and motion vectors on top, as thick additive strips, so what is drawn now becomes tomorrow's smoke;
  *  3. composite - to the screen with gamma, a video echo, symmetry and colour effects.
  * A preset (presets.ts) sets the parameters every frame from the music. A change of preset glides: the
  * feedback stays, the old and the new parameters are mixed over two seconds.
@@ -35,6 +36,11 @@ export interface Music {
   frame: number
   /** The picture's width over its height. */
   aspect: number
+  /** Seconds into the song; whether a lyrics line is sung now (0/1) and since when (seconds) - for pictures of
+   * the title at the start and of the line sung (``story``). */
+  songTime: number
+  lineOn: number
+  lineAge: number
   /** The waveform (the mix, left, right) as -1..1, and the spectrum in 128 log bins as 0..1. */
   wave: Float32Array
   left: Float32Array
@@ -66,6 +72,21 @@ export interface Shape {
   /** The edge's and the centre's alpha (a soft glow when the centre is brighter). */
   alpha: number
   inner: number
+}
+
+/** A picture drawn into the feedback: ``source`` names it (``cover``, ``title``, ``line``, ``word``); x, y in
+ * -1..1 across the screen, ``size`` its half height in screen heights, ``tint`` 0 (its own colours) .. 1 (the
+ * colour scheme's at ``hue``), ``additive``: light added (else laid over). */
+export interface Sprite {
+  source: string
+  x: number
+  y: number
+  size: number
+  angle: number
+  alpha: number
+  tint: number
+  hue: number
+  additive: number
 }
 
 export interface DropParams {
@@ -102,6 +123,7 @@ export interface DropParams {
   mvAlpha: number
   waves: Wave[]
   shapes: Shape[]
+  sprites: Sprite[]
 }
 
 export const DEFAULTS: DropParams = {
@@ -135,6 +157,7 @@ export const DEFAULTS: DropParams = {
   mvAlpha: 0.5,
   waves: [],
   shapes: [],
+  sprites: [],
 }
 
 /** A Drop preset: a name and what it does every frame (the per-frame equations, as code). ``vars`` keeps
@@ -247,17 +270,39 @@ in vec4 vc;
 out vec4 o;
 void main() { o = vc; }`
 
+const SPRITE_VS = `#version 300 es
+in vec2 pos;
+in vec2 tex;
+uniform float aspect;
+out vec2 st;
+void main() { st = tex; gl_Position = vec4(pos.x / aspect, pos.y, 0.0, 1.0); }`
+
+const SPRITE_FS = `#version 300 es
+precision mediump float;
+uniform sampler2D image;
+uniform vec4 tint;
+uniform float mixTint;
+in vec2 st;
+out vec4 o;
+void main() {
+  vec4 c = texture(image, st);
+  float light = max(max(c.r, c.g), c.b);
+  o = vec4(mix(c.rgb, tint.rgb * light, mixTint), c.a * tint.a);
+}`
+
 // --- the music, as the presets see it -----------------------------------------------------------------
 
 const SPEC_BINS = 128
 const WAVE_POINTS = 512
 
 class Listener {
+  /** What the song is doing now (set by the visual or the video every frame). */
+  story = { songTime: 0, lineOn: 0, lineAge: 0 }
   private avg = { bass: 0.25, mid: 0.2, treb: 0.15 }
   private att = { bass: 1, mid: 1, treb: 1 }
   private frames = 0
   readonly music: Music = {
-    bass: 1, mid: 1, treb: 1, bassAtt: 1, midAtt: 1, trebAtt: 1, vol: 0, beat: false, pulse: 0, time: 0, dt: 0.016, frame: 0, aspect: 16 / 9,
+    bass: 1, mid: 1, treb: 1, bassAtt: 1, midAtt: 1, trebAtt: 1, vol: 0, beat: false, pulse: 0, time: 0, dt: 0.016, frame: 0, aspect: 16 / 9, songTime: 0, lineOn: 0, lineAge: 0,
     wave: new Float32Array(WAVE_POINTS), left: new Float32Array(WAVE_POINTS), right: new Float32Array(WAVE_POINTS), spec: new Float32Array(SPEC_BINS),
   } // prettier-ignore
 
@@ -277,6 +322,9 @@ class Listener {
     m.midAtt = this.att.mid
     m.trebAtt = this.att.treb
     m.vol = f.level
+    m.songTime = this.story.songTime
+    m.lineOn = this.story.lineOn
+    m.lineAge = this.story.lineAge
     m.beat = f.beat
     m.pulse = f.pulse
     m.time = f.time
@@ -331,6 +379,7 @@ export function mixParams(a: DropParams, b: DropParams, t: number): DropParams {
   out.wrap = t < 0.5 ? a.wrap : b.wrap
   out.waves = [...a.waves.map((w) => ({ ...w, alpha: w.alpha * (1 - t) })), ...b.waves.map((w) => ({ ...w, alpha: w.alpha * t }))]
   out.shapes = [...a.shapes.map((s) => ({ ...s, alpha: s.alpha * (1 - t), inner: s.inner * (1 - t) })), ...b.shapes.map((s) => ({ ...s, alpha: s.alpha * t, inner: s.inner * t }))]
+  out.sprites = [...a.sprites.map((s) => ({ ...s, alpha: s.alpha * (1 - t) })), ...b.sprites.map((s) => ({ ...s, alpha: s.alpha * t }))]
   out.mvAlpha = a.mvec && b.mvec ? lerp(a.mvAlpha, b.mvAlpha, t) : b.mvec ? b.mvAlpha * t : a.mvAlpha * (1 - t)
   out.mvec = t < 0.5 ? a.mvec || b.mvec : b.mvec || a.mvec
   return out
@@ -390,6 +439,12 @@ export class DropRenderer {
   private lastTime = -1
   /** How long a change of preset glides (owner's request 2026-10-18: soft, and set with the crossfade). */
   blendSeconds = BLEND_SECONDS
+  /** Pictures drawn into every preset's feedback, besides its own (a video's title, lyrics and cover). */
+  extraSprites: Sprite[] = []
+  private sprite: WebGLProgram
+  private spriteVao: WebGLVertexArrayObject
+  private spriteBuffer: WebGLBuffer
+  private sources = new Map<string, { texture: WebGLTexture; aspect: number; key: string }>()
   private uniforms = new Map<WebGLProgram, Map<string, WebGLUniformLocation | null>>()
 
   constructor() {
@@ -424,6 +479,87 @@ export class DropRenderer {
     gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, FLOATS * 4, 0)
     gl.enableVertexAttribArray(color)
     gl.vertexAttribPointer(color, 4, gl.FLOAT, false, FLOATS * 4, 8)
+    // the pictures: a textured quad each
+    this.sprite = this.program(SPRITE_VS, SPRITE_FS)
+    this.spriteVao = gl.createVertexArray() as WebGLVertexArrayObject
+    gl.bindVertexArray(this.spriteVao)
+    this.spriteBuffer = gl.createBuffer() as WebGLBuffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.spriteBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, 16 * 4, gl.DYNAMIC_DRAW)
+    const spritePos = gl.getAttribLocation(this.sprite, 'pos')
+    const spriteTex = gl.getAttribLocation(this.sprite, 'tex')
+    gl.enableVertexAttribArray(spritePos)
+    gl.vertexAttribPointer(spritePos, 2, gl.FLOAT, false, 16, 0)
+    gl.enableVertexAttribArray(spriteTex)
+    gl.vertexAttribPointer(spriteTex, 2, gl.FLOAT, false, 16, 8)
+    gl.bindVertexArray(null)
+  }
+
+  /** What the song is doing now: seconds into it, whether a line is sung and since when (the formulas'
+   * ``songtime``, ``line_on``, ``line_age``). */
+  get story(): { songTime: number; lineOn: number; lineAge: number } {
+    return this.listener.story
+  }
+
+  /** A picture the presets may draw (``cover``, ``title``, ``line``, ``word``): uploaded again only when
+   * ``key`` changes; ``null`` takes it away. */
+  setSource(name: string, image: TexImageSource | null, key: string, aspect: number): void {
+    const gl = this.gl
+    const known = this.sources.get(name)
+    if (!image) {
+      if (known) gl.deleteTexture(known.texture)
+      this.sources.delete(name)
+      return
+    }
+    if (known?.key === key) return
+    const texture = known?.texture ?? (gl.createTexture() as WebGLTexture)
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    this.sources.set(name, { texture, aspect, key })
+  }
+
+  /** The pictures, into the feedback (before the strips: the waves stay on top). */
+  private drawSprites(sprites: Sprite[], aspect: number, lut: Uint8ClampedArray): void {
+    const gl = this.gl
+    const shown = sprites.filter((s) => s.alpha > 0.005 && s.size > 0 && this.sources.has(s.source))
+    if (!shown.length) return
+    gl.enable(gl.BLEND)
+    gl.useProgram(this.sprite)
+    gl.uniform1f(this.u(this.sprite, 'aspect'), aspect)
+    gl.uniform1i(this.u(this.sprite, 'image'), 0)
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindVertexArray(this.spriteVao)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.spriteBuffer)
+    const corners = new Float32Array(16)
+    for (const s of shown) {
+      const source = this.sources.get(s.source)!
+      const hh = s.size
+      const hw = s.size * source.aspect
+      const cos = Math.cos(s.angle)
+      const sin = Math.sin(s.angle)
+      const x = s.x * aspect
+      let k = 0
+      for (const [u, v, dx, dy] of [[0, 0, -hw, -hh], [1, 0, hw, -hh], [0, 1, -hw, hh], [1, 1, hw, hh]]) {
+        corners[k++] = x + dx * cos - dy * sin
+        corners[k++] = s.y + dx * sin + dy * cos
+        corners[k++] = u
+        corners[k++] = v
+      }
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, corners)
+      const c = this.colour(lut, s.hue)
+      gl.uniform4f(this.u(this.sprite, 'tint'), c[0], c[1], c[2], Math.min(1, s.alpha))
+      gl.uniform1f(this.u(this.sprite, 'mixTint'), Math.min(1, Math.max(0, s.tint)))
+      gl.blendFunc(gl.SRC_ALPHA, s.additive > 0.5 ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA)
+      gl.bindTexture(gl.TEXTURE_2D, source.texture)
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    }
+    gl.disable(gl.BLEND)
     gl.bindVertexArray(null)
   }
 
@@ -558,8 +694,9 @@ export class DropRenderer {
     gl.bindVertexArray(this.quad)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
-    // 2. draw on top: motion vectors, shapes, waves (additive)
+    // 2. draw on top: pictures, then motion vectors, shapes, waves (additive)
     const lut = colors.palette()
+    this.drawSprites([...p.sprites, ...this.extraSprites], aspect, lut)
     this.count = 0
     if (p.mvec > 0 && p.mvAlpha > 0.01) this.motionVectors(p, aspect, lut)
     for (const shape of p.shapes) this.shape(shape, aspect, lut)

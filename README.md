@@ -31,7 +31,7 @@ Plenio no longer stops at the exported file. The **Plenio Player** - one click f
 
 *Plenio Drop with the lyrics in neon · a frame of a song's video · Live Play as a song made in ComfyUI arrives · one file to share your songs.*
 
-- **Plenio Drop**: visuals like Winamp's MilkDrop, made anew - 16 presets drawn by Plenio's own renderer on the graphics card, one made up fresh each time, all moving with the music. **Write your own** as a short JSON file of numbers and formulas; it changes on screen as you save it ([guide](docs/user/concepts/player-visuals.md)).
+- **Plenio Drop**: visuals like Winamp's MilkDrop, made anew - 21 presets drawn by Plenio's own renderer on the graphics card (five draw the song's cover, title and words into the picture), one made up fresh each time, all moving with the music. **Write your own** as a short JSON file of numbers and formulas; it changes on screen as you save it ([guide](docs/user/concepts/player-visuals.md)).
 - **Live Play**: a playlist for a party that you change while it plays - and the songs you make in ComfyUI join it the moment they are exported: next, at the end or anywhere.
 - **A song as a video**: an MP4 of the visual with the lyrics (subtitles or karaoke), the notation following the music and a title card - Full HD, 4K, square, or upright for Shorts, Reels and TikTok - made on your graphics card, several times faster than the song lasts.
 - **Share your songs as a player**: one HTML file with the player and the songs you choose, as MP3 - anyone double-clicks it and listens, with the lyrics, the notation and the visuals. No install, no server, no account.

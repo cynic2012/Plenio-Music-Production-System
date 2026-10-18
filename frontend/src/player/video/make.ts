@@ -3,19 +3,25 @@
  * own sound (offline.ts), the lyrics, the notation, a title card, the song in a corner, a progress bar - then
  * encoded as H.264 by the browser (WebCodecs, on the graphics card where it can) and sent to the player's
  * server in pieces, which puts it together with the song's sound into an MP4 (plenio/player/video.py).
+ *
+ * And more to choose (owner's request 2026-10-18): the cover always in the picture - in its place, size and
+ * shape (also a spinning record), pulsing with the beat; the lyrics word by word, in a place of their own or a
+ * new place every line, coming in with a fade, a rise, a zoom, a drop, a blur, a wipe or a glitch - in one
+ * beat when they follow it; and the title, the lyrics and the cover drawn into a Plenio Drop visual's smoke.
  */
 import { api, media, type SongDetail, type SongSummary } from '../api'
 import { paletteFrom, songHue } from '../colors'
 import { fontOf, litColor, lyricsWithDefaults, type LyricsStyle } from '../lyricsStyle'
 import { settings } from '../store'
-import { sectionAt, sectionsInSong, songAnchors, type TimedSection } from '../timing'
+import { lineAt, sectionAt, sectionsInSong, songAnchors, type TimedSection } from '../timing'
 import { chooseVisual } from '../visuals/chooser'
 import { DropRenderer } from '../visuals/drop/renderer'
+import { storySprites, tellRenderer, textPicture } from '../visuals/drop/story'
 import { SceneMixer, fadeWithDefaults, type FadeStyle } from '../visuals/mixer'
 import { allPresets, makeColors, presetById, type Scheme } from '../visuals/presets'
 import { NotationStrip } from './notationStrip'
 import { OfflineAnalysis } from './offline'
-import { drawCorner, drawCredit, drawKaraoke, drawProgress, drawSubtitles, drawTitleCard, type LyricsLook, type TitleInfo } from './overlay'
+import { drawCorner, drawCoverBadge, drawCredit, drawMovingLyrics, drawProgress, drawTitleCard, drawWords, type CoverLook, type Entrance, type LyricsLook, type LyricsPlace, type TitleInfo } from './overlay'
 
 export interface VideoOptions {
   width: number
@@ -34,9 +40,19 @@ export interface VideoOptions {
   fade: FadeStyle
   fadeSeconds: number
   scheme: Scheme
-  lyrics: 'off' | 'subtitles' | 'karaoke'
+  lyrics: 'off' | 'subtitles' | 'karaoke' | 'words'
   /** The lyrics' font, colour, size and effect (at first the player's own). */
   lyricsStyle: LyricsStyle
+  /** Where the lyrics stand (``random``: a new place every line), how each line comes in, and whether it comes
+   * in one beat and pulses with the beat. */
+  lyricsPlace: LyricsPlace
+  lyricsIn: Entrance
+  onBeat: boolean
+  /** The cover always in the picture: whether, where, how large, its shape, a pulse on the beat. */
+  cover: CoverLook & { show: boolean }
+  /** Drawn into a Plenio Drop visual's smoke (melting and swirling with it): the title at the start, the line
+   * sung, the cover; over another visual, as a glow. */
+  into: { title: boolean; lyrics: boolean; cover: boolean }
   notation: boolean
   title: boolean
   corner: boolean
@@ -44,6 +60,9 @@ export interface VideoOptions {
   credit: boolean
   quality: 'standard' | 'high'
 }
+
+const ENTRANCE_IDS: Entrance[] = ['none', 'fade', 'rise', 'zoom', 'drop', 'blur', 'wipe', 'glitch', 'random']
+export const COVER_PLACES: CoverLook['place'][] = ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right', 'drift']
 
 export const SIZES: { id: string; label: string; width: number; height: number }[] = [
   { id: '1080p', label: '1920 × 1080 - Full HD, 16:9', width: 1920, height: 1080 },
@@ -68,6 +87,11 @@ export const DEFAULT_VIDEO: VideoOptions = {
   scheme: 'song',
   lyrics: 'subtitles',
   lyricsStyle: lyricsWithDefaults(null),
+  lyricsPlace: 'bottom',
+  lyricsIn: 'fade',
+  onBeat: true,
+  cover: { show: false, place: 'bottom-right', size: 0.2, shape: 'rounded', pulse: true },
+  into: { title: false, lyrics: false, cover: false },
   notation: false,
   title: true,
   corner: true,
@@ -91,7 +115,19 @@ export function videoWithDefaults(raw: unknown, lyrics?: unknown): VideoOptions 
   out.lyricsStyle = lyricsWithDefaults(given.lyricsStyle ?? lyrics)
   if (!SIZES.some((s) => s.width === out.width && s.height === out.height)) Object.assign(out, { width: 1920, height: 1080 })
   if (![24, 25, 30, 50, 60].includes(out.fps)) out.fps = 30
-  if (!['off', 'subtitles', 'karaoke'].includes(out.lyrics)) out.lyrics = 'subtitles'
+  if (!['off', 'subtitles', 'karaoke', 'words'].includes(out.lyrics)) out.lyrics = 'subtitles'
+  if (!['bottom', 'middle', 'top', 'random'].includes(out.lyricsPlace)) out.lyricsPlace = 'bottom'
+  if (!ENTRANCE_IDS.includes(out.lyricsIn)) out.lyricsIn = 'fade'
+  out.onBeat = out.onBeat !== false
+  const cover = { ...DEFAULT_VIDEO.cover, ...(given.cover && typeof given.cover === 'object' ? given.cover : {}) }
+  if (!COVER_PLACES.includes(cover.place)) cover.place = 'bottom-right'
+  if (!['square', 'rounded', 'round', 'record'].includes(cover.shape)) cover.shape = 'rounded'
+  cover.size = Math.min(0.6, Math.max(0.08, Number(cover.size) || 0.2))
+  cover.show = !!cover.show
+  cover.pulse = cover.pulse !== false
+  out.cover = cover
+  const into = (given.into && typeof given.into === 'object' ? given.into : {}) as Partial<VideoOptions['into']>
+  out.into = { title: !!into.title, lyrics: !!into.lyrics, cover: !!into.cover }
   if (!['standard', 'high'].includes(out.quality)) out.quality = 'standard'
   return out
 }
@@ -182,11 +218,12 @@ export class Composer {
     const height = Math.round((options.height * scale) / 2) * 2
     const upright = height > width * 1.2
     const strip = options.notation && detail.notation.abc ? await NotationStrip.create(detail.notation, detail.lines, upright ? 760 : 1100) : null
-    const cover = options.title && song.has.cover ? await loadImage(media(song.id, 'cover')) : null
+    // the cover for the title card, the corner, the visual's pictures
+    const cover = song.has.cover ? await loadImage(media(song.id, 'cover')) : null
     const subtitle = song.other
       ? [song.artist, song.album].filter(Boolean).join(' · ') || 'Other music'
       : [song.genre.split(',')[0], song.model || 'Plenio'].filter(Boolean).join(' · ')
-    const info: TitleInfo = { title: song.title, subtitle, cover, accent: paletteFrom(songHue(song.id, song.genre)).accent }
+    const info: TitleInfo = { title: song.title, subtitle, cover: options.title ? cover : null, accent: paletteFrom(songHue(song.id, song.genre)).accent, image: cover }
     return new Composer(song, detail, sound, options, strip, info, width, height)
   }
 
@@ -230,6 +267,36 @@ export class Composer {
     this.mixer.use(presetById(id) ?? allPresets()[0], { style: this.options.fade, seconds: this.options.fadeSeconds })
   }
 
+  /** Over a visual that is not Plenio Drop, the song's title, line and cover chosen into it - as a glow (the
+   * classic visuals draw no smoke to melt them into). */
+  private glowInto(ctx: CanvasRenderingContext2D, t: number, elapsed: number, w: number, h: number, pulse: number): void {
+    const unit = Math.min(w, h)
+    ctx.save()
+    ctx.globalCompositeOperation = 'screen'
+    if (this.options.into.cover && this.info.image) {
+      const s = unit * (0.34 + 0.04 * pulse)
+      ctx.globalAlpha = 0.28
+      ctx.drawImage(this.info.image, w / 2 - s / 2, h / 2 - s / 2, s, s)
+    }
+    const picture = (text: string, size: number, y: number, alpha: number) => {
+      const p = textPicture(text)
+      const ph = size
+      const pw = Math.min(w * 0.9, (p.width / p.height) * ph)
+      ctx.globalAlpha = alpha
+      ctx.drawImage(p, w / 2 - pw / 2, y - ph / 2, pw, (pw / ((p.width / p.height) * ph)) * ph)
+    }
+    if (this.options.into.title) {
+      const alpha = Math.min(1, elapsed / 0.8) * Math.max(0, 1 - elapsed / 8)
+      if (alpha > 0) picture(this.song.title, unit * 0.16, h * 0.42, alpha * 0.5)
+    }
+    if (this.options.into.lyrics) {
+      const i = lineAt(this.detail.lines, t)
+      const line = i >= 0 ? this.detail.lines[i] : null
+      if (line && t <= line.end + 0.3) picture(line.text, unit * 0.09, h * 0.72, 0.35)
+    }
+    ctx.restore()
+  }
+
   /** Draw frame ``k`` (``k / fps`` seconds into the part). */
   draw(k: number): void {
     const { fps } = this.options
@@ -241,20 +308,50 @@ export class Composer {
     const frame = this.analysis.frame(t, 1 / fps, elapsed)
     this.pick(t, elapsed)
     const colors = makeColors(this.hue, this.options.scheme, elapsed)
+    const into = this.options.into
+    const lines = this.detail.lines
+    if (this.mixer.preset?.kind === 'drop') {
+      // the song for the pictures of the Drop visual, and the title, line and cover chosen into its smoke
+      const renderer = this.dropRenderer()
+      if (renderer) {
+        tellRenderer(renderer, { id: this.song.id, title: this.song.title, cover: this.info.image ?? null, lines }, t)
+        renderer.extraSprites = storySprites(into, elapsed, frame.pulse, renderer.story.lineOn)
+      }
+    }
     this.mixer.draw(ctx, frame, w, h, colors)
+    if (this.mixer.preset?.kind !== 'drop' && (into.title || into.lyrics || into.cover)) this.glowInto(ctx, t, elapsed, w, h, frame.pulse)
     // what is drawn over it
     const upright = h > w * 1.2
     const stripH = Math.round(h * (upright ? 0.16 : 0.25))
     const stripY = h - stripH - Math.round(h * 0.045)
     if (this.strip) this.strip.draw(ctx, t, Math.round(w * 0.03), stripY, Math.round(w * 0.94), stripH, this.accent, settings.notationShift[this.song.id] ?? 0)
-    const lines = this.detail.lines
+    // after the title card: the cover in its place, the lyrics
+    const after = this.options.title ? Math.min(1, Math.max(0, (elapsed - 4) / 0.8)) : 1
+    const cover = this.options.cover
+    if (cover.show && this.info.image) drawCoverBadge(ctx, this.info.image, cover, w, h, elapsed, frame.pulse, this.accent, after)
     // the lyrics come in as the title card goes
     const lyricsAlpha = this.options.title ? Math.min(1, Math.max(0, (elapsed - 3.4) / 0.8)) : 1
-    const look: LyricsLook = { ...this.look, effect: this.options.lyricsStyle.effect, clock: elapsed, pulse: frame.pulse }
+    const look: LyricsLook = { ...this.look, effect: this.options.lyricsStyle.effect, clock: elapsed, pulse: this.options.onBeat ? frame.pulse : 0 }
     const size = this.options.lyricsStyle.size
-    if (this.options.lyrics === 'subtitles' && lines.length) drawSubtitles(ctx, lines, t, w, h, this.strip ? stripY - h * 0.02 : h * 0.9, lyricsAlpha, look, size)
-    if (this.options.lyrics === 'karaoke' && lines.length) drawKaraoke(ctx, lines, t, w, h, this.strip ? (stripY - h * 0.02) / 2 : h / 2, lyricsAlpha, look, size)
-    if (this.options.corner) drawCorner(ctx, this.info, w, h, this.options.title ? Math.min(1, Math.max(0, (elapsed - 4) / 0.8)) : 1)
+    // a line comes in in one beat when it follows the beat (the song's tempo), else in four tenths of a second
+    const beat = this.song.bpm ? 60 / this.song.bpm : 0.5
+    const span = this.options.onBeat ? Math.min(0.9, Math.max(0.25, beat)) : 0.4
+    const floor = this.strip ? stripY - h * 0.02 : h * 0.9
+    if (lines.length && lyricsAlpha > 0) {
+      if (this.options.lyrics === 'words') {
+        ctx.save()
+        ctx.globalAlpha = lyricsAlpha
+        const centre = this.options.lyricsPlace === 'top' ? h * 0.3 : this.options.lyricsPlace === 'bottom' ? Math.min(h * 0.7, floor - h * 0.12) : this.strip ? floor / 2 : h / 2
+        drawWords(ctx, lines, t, w, h, look, size, this.options.onBeat ? Math.min(0.32, beat / 2) : 0.22, centre)
+        ctx.restore()
+      } else if (this.options.lyrics !== 'off') {
+        const place = this.options.lyrics === 'karaoke' && this.options.lyricsPlace === 'bottom' ? 'middle' : this.options.lyricsPlace
+        drawMovingLyrics(ctx, this.options.lyrics, lines, t, w, h, place, this.options.lyricsIn, span, lyricsAlpha, look, size, this.options.lyrics === 'karaoke' && this.strip ? floor / 2 : floor, this.hue)
+      }
+    }
+    // the song's name in the corner keeps clear of a cover there
+    const nudge = cover.show && this.info.image && cover.place === 'top-left' ? Math.min(w, h) * (cover.size + 0.06) : 0
+    if (this.options.corner) drawCorner(ctx, this.info, w, h, after, nudge)
     if (this.options.credit) drawCredit(ctx, w, h)
     if (this.options.progress) drawProgress(ctx, t, this.sound.duration, this.sections, this.accent, w, h)
     if (this.options.title) drawTitleCard(ctx, this.info, elapsed, w, h)

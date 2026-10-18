@@ -6,14 +6,17 @@
  * the time set (visuals/mixer.ts; owner's request 2026-10-18). ``mini`` draws the player bar's little square
  * (``miniScene``).
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
+import { mediaReady } from '../api'
 import { songHue } from '../colors'
 import { engine } from '../engine'
+import { lines } from '../now'
 import { current, settings } from '../store'
 import { chooseVisual } from '../visuals/chooser'
 import { dropOptions, dropRenderer } from '../visuals/drop/renderer'
 import { myPresets } from '../visuals/drop'
+import { tellRenderer } from '../visuals/drop/story'
 import { SceneMixer } from '../visuals/mixer'
 import { makeColors, miniScene, presetById, type Scene } from '../visuals/presets'
 
@@ -31,6 +34,22 @@ let lastSwitch = performance.now()
 let quiet = 0
 
 const hue = computed(() => (current.value ? songHue(current.value.id, current.value.genre) : 200))
+/** The song's cover as a picture for the Drop visuals that draw it (owner's request 2026-10-18). */
+const cover = shallowRef<HTMLImageElement | null>(null)
+watch(
+  () => current.value?.id,
+  async () => {
+    cover.value = null
+    const song = current.value
+    if (props.mini || !song?.has.cover) return
+    const image = new Image()
+    image.onload = () => {
+      if (current.value?.id === song.id) cover.value = image
+    }
+    image.src = await mediaReady(song.id, 'cover')
+  },
+  { immediate: true }
+)
 
 /** Play a visual (``again``: the same one anew - a preset file saved while it plays): the change as the
  * visuals' settings say (a crossfade of so many seconds, a zoom, a slide, a flash on the beat, a cut). */
@@ -95,7 +114,12 @@ function loop(): void {
   }
   // a change of Drop preset glides as long as the crossfade
   const renderer = mixer.preset?.kind === 'drop' ? dropRenderer() : null
-  if (renderer) renderer.blendSeconds = settings.visuals.fade === 'cut' ? 0.05 : settings.visuals.fadeSeconds
+  if (renderer) {
+    renderer.blendSeconds = settings.visuals.fade === 'cut' ? 0.05 : settings.visuals.fadeSeconds
+    // the song for the pictures some presets draw: its cover, its title, the line and word sung
+    const song = current.value
+    tellRenderer(renderer, song ? { id: song.id, title: song.title, cover: cover.value, lines: lines.value } : null, engine.time)
+  }
   mixer.draw(ctx, frame, el.width, el.height, colors)
   if (props.force) return
   // the switches during a song: every N seconds, or when the music drops in after a quiet passage

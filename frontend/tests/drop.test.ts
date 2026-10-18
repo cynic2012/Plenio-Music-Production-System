@@ -19,7 +19,7 @@ const calc = (source: string, scope: Record<string, number> = {}) => compileForm
 
 function music(over: Partial<Music> = {}): Music {
   return {
-    bass: 1.2, mid: 0.9, treb: 1.1, bassAtt: 1.1, midAtt: 1, trebAtt: 1, vol: 0.5, beat: false, pulse: 0.3, time: 12.5, dt: 1 / 60, frame: 750, aspect: 16 / 9,
+    bass: 1.2, mid: 0.9, treb: 1.1, bassAtt: 1.1, midAtt: 1, trebAtt: 1, vol: 0.5, beat: false, pulse: 0.3, time: 12.5, dt: 1 / 60, frame: 750, aspect: 16 / 9, songTime: 3, lineOn: 1, lineAge: 0.5,
     wave: new Float32Array(512), left: new Float32Array(512), right: new Float32Array(512), spec: new Float32Array(128), ...over,
   } // prettier-ignore
 }

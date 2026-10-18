@@ -307,6 +307,11 @@ glides into the new one.
 | Drop · Ink in Water | colour spreading slowly, as ink in still water |
 | Drop · Shockwave | every kick hits the picture: a jolt of zoom, a ring, a flash |
 | Drop · Firefly Orbit | five lights circling, their trails woven into the dark |
+| Drop · Cover Galaxy | the song's cover at the heart of a slow galaxy, its colours pulled into spiral arms |
+| Drop · Title Smoke | the song's title at its start, then every line sung, rising as smoke |
+| Drop · Lyric Tunnel | the words sung fly at you through a tunnel of light |
+| Drop · Album Kaleido | the cover folded into a turning mandala of eight mirrors |
+| Drop · Cover Echo | the cover thrown deep on every beat, its echoes falling away |
 | Drop · Random | a preset made up now - a different one each time |
 
 **Write your own:** a Plenio Drop preset is a short text file of numbers and small formulas. *Edit a copy*
@@ -434,12 +439,27 @@ moving with the music, and over it what you choose.
 - **The part**: the whole song, or from - to (in seconds; the section chips set a section). A part cut out
   of the song fades in and out.
 - **The visual**: any visual - classic, Plenio Drop or your own presets - or *as the visuals' settings
-  choose for this song*; **a new visual** never, at every section, or **every few seconds**; the colours.
-- **Over the visual**: the **lyrics** as subtitles or as **karaoke** (large in the middle, the line before
-  and after it), lit up as they are sung - in the player's font, colour and effect, or another for the video
-  (*as in the player* brings the player's back); **the notation**, the line of music sounding with a cursor at the
-  notes and the notes aglow; a **title card** at the start with the cover; the song in the **corner**; a
-  **progress bar** with the sections; *made with Plenio*.
+  choose for this song*; **a new visual** never, at every section, or **every few seconds**, with its
+  **crossfade** (morph, melt, fade, zoom, slide, flash on the beat …) and how long it takes; the colours.
+- **Over the visual**: the **lyrics** as subtitles, as **karaoke** (large, the line before and after it) or
+  **word by word** (the word sung now large, popping in on a little tilt, the words before it smaller above),
+  lit up as they are sung - in the player's font, colour and effect, or another for the video (*as in the
+  player* brings the player's back).
+  - **Where**: at the bottom, in the middle, at the top - or **a new place every line** (one of nine spots,
+    never the one before, slightly tilted).
+  - **A line comes in**: fading, rising from below, zooming in (a little past, then back), dropping in with a
+    bounce, coming into focus, wiped in, glitching in - or a different one every line.
+  - **On the beat**: a line comes in in one beat of the song's tempo, and the lyrics pulse with the beat.
+- **The cover, all the way through**: in a corner, at a side, in the middle or **drifting slowly** over the
+  picture; its size; **rounded, square, round or a spinning record** (33 turns a minute, the cover as its
+  label); pulsing with the beat. The song's name in the corner keeps clear of it.
+- **Also over the visual**: **the notation**, the line of music sounding with a cursor at the notes and the
+  notes aglow; a **title card** at the start with the cover; the song in the **corner**; a **progress bar**
+  with the sections; *made with Plenio*.
+- **Into the visual**: the title at the start, the line sung and the cover drawn into a Plenio Drop visual's
+  smoke - they melt and swirl with it (over a classic visual: a soft glow). The Drop visuals *Cover Galaxy*,
+  *Title Smoke*, *Lyric Tunnel*, *Album Kaleido* and *Cover Echo* draw the song by themselves - also in the
+  player.
 - **Sound**: the master, or the unmastered take.
 
 **Preview** draws one frame as the video will show it. **Make the video** puts it in the queue ([In the

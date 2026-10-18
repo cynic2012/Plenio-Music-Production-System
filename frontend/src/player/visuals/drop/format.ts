@@ -9,34 +9,42 @@
  *     "init":   { "spin": 0 },
  *     "frame":  { "zoom": "1.004 + 0.012 * bass", "spin": "spin + 0.01 * mid", "rot": "0.004 * sin(spin)" },
  *     "waves":  [ { "mode": "circle", "scale": "0.55 + 0.25 * bass_att", "hue": "time * 0.05" } ],
- *     "shapes": [ { "repeat": 3, "sides": 6, "x": "0.5 * cos(time + i * 2.09)", "y": "0.5 * sin(time + i * 2.09)" } ]
+ *     "shapes": [ { "repeat": 3, "sides": 6, "x": "0.5 * cos(time + i * 2.09)", "y": "0.5 * sin(time + i * 2.09)" } ],
+ *     "sprites": [ { "source": "cover", "size": "0.3 + 0.05 * pulse", "angle": "time * 0.2" } ]
  *   }
  *
  * Every value may be a number or a formula - a small language of its own (numbers, names, + - * / % ^,
  * comparisons, && || !, ``a ? b : c``, and functions like sin, clamp, mix), evaluated here, never as script:
  * a preset someone shares can draw, and nothing else. Each frame starts from ``base``; ``frame`` is worked
  * through in order, every line setting a parameter or a variable of the preset's own (kept from frame to
- * frame, starting at ``init``); then the waves and shapes are worked out, each ``repeat`` times with ``i``
- * and ``n``.
+ * frame, starting at ``init``); then the waves, shapes and sprites are worked out, each ``repeat`` times with
+ * ``i`` and ``n``. A sprite is a picture drawn into the feedback - the song's ``cover``, its ``title``, the
+ * ``line`` sung now, the ``word`` sung now (owner's request 2026-10-18) - so it melts and swirls with the rest.
  */
-import { DEFAULTS, type DropDef, type DropParams, type Music, type Shape, type Wave } from './renderer'
+import { DEFAULTS, type DropDef, type DropParams, type Music, type Shape, type Sprite, type Wave } from './renderer'
 
 // --- names --------------------------------------------------------------------------------------------
 
 export const FAMILIES = ['plain', 'swirl', 'waves', 'tunnel', 'kaleidoscope', 'ripple'] as const
 export const WAVE_MODES = ['circle', 'scope', 'line', 'spectrum', 'stereo', 'dots', 'vertical', 'spiral'] as const
 export const MIRRORS = ['none', 'left-right', 'top-bottom', 'both'] as const
+/** What a sprite shows, and how it is laid on. */
+export const SOURCES = ['cover', 'title', 'line', 'word'] as const
+export const BLENDS = ['over', 'add'] as const
 
 /** The parameters a preset sets (``base``, ``frame``), with their defaults. */
 export const PARAMETERS = Object.keys(DEFAULTS).filter((k) => k !== 'waves' && k !== 'shapes') as (keyof DropParams)[]
 
 /** What every formula can read: the music, the time, and the screen. */
-export const MUSIC_NAMES = ['time', 'frame', 'dt', 'fps', 'bass', 'mid', 'treb', 'bass_att', 'mid_att', 'treb_att', 'vol', 'beat', 'pulse', 'aspect', 'pi', 'e'] as const
+export const MUSIC_NAMES = ['time', 'frame', 'dt', 'fps', 'bass', 'mid', 'treb', 'bass_att', 'mid_att', 'treb_att', 'vol', 'beat', 'pulse', 'aspect', 'songtime', 'line_on', 'line_age', 'pi', 'e'] as const
 
 const WAVE_FIELDS = ['mode', 'scale', 'x', 'y', 'thick', 'alpha', 'hue'] as const
 const SHAPE_FIELDS = ['sides', 'radius', 'x', 'y', 'angle', 'hue', 'alpha', 'inner'] as const
+const SPRITE_FIELDS = ['source', 'x', 'y', 'size', 'angle', 'alpha', 'tint', 'hue', 'blend'] as const
 const WAVE_DEFAULTS: Wave = { mode: 0, scale: 1, x: 0, y: 0, thick: 0.006, alpha: 0.9, hue: 0 }
 const SHAPE_DEFAULTS: Shape = { sides: 6, radius: 0.1, x: 0, y: 0, angle: 0, hue: 0.5, alpha: 0.4, inner: 0.8 }
+/** A sprite's fields as numbers while they are worked out (``source`` and ``blend`` as places in their lists). */
+const SPRITE_DEFAULTS = { source: 0, x: 0, y: 0, size: 0.3, angle: 0, alpha: 0.8, tint: 0, hue: 0, blend: 1 }
 
 // --- the formula language -----------------------------------------------------------------------------
 
@@ -192,6 +200,7 @@ export interface PresetFile {
   frame?: Record<string, Value>
   waves?: (Fields & { repeat?: number })[]
   shapes?: (Fields & { repeat?: number })[]
+  sprites?: (Fields & { repeat?: number })[]
 }
 
 /** A named value of a list (``"swirl"``, ``"circle"``) as its number; numbers and formulas pass. */
@@ -217,6 +226,8 @@ function listValue(field: string, value: Value): Value {
   if (field === 'family') return named(value, FAMILIES, field)
   if (field === 'mirror') return named(value, MIRRORS, field)
   if (field === 'mode') return named(value, WAVE_MODES, field)
+  if (field === 'source') return named(value, SOURCES, field)
+  if (field === 'blend') return named(value, BLENDS, field)
   return value
 }
 
@@ -250,6 +261,7 @@ export function compilePreset(file: PresetFile, id = `drop-${slug(file.name ?? '
     })
   const waves = parts(file.waves, WAVE_FIELDS, WAVE_DEFAULTS, 'waves')
   const shapes = parts(file.shapes, SHAPE_FIELDS, SHAPE_DEFAULTS, 'shapes')
+  const sprites = parts(file.sprites, SPRITE_FIELDS, SPRITE_DEFAULTS as unknown as Wave, 'sprites')
 
   return {
     id,
@@ -276,6 +288,9 @@ export function compilePreset(file: PresetFile, id = `drop-${slug(file.name ?? '
       vars.beat = m.beat ? 1 : 0
       vars.pulse = m.pulse
       vars.aspect = m.aspect
+      vars.songtime = m.songTime
+      vars.line_on = m.lineOn
+      vars.line_age = m.lineAge
       // every frame starts from the defaults and the preset's base
       for (const key of PARAMETERS) vars[key] = DEFAULTS[key] as number
       for (const [k, f] of base) vars[k] = f(vars)
@@ -297,6 +312,19 @@ export function compilePreset(file: PresetFile, id = `drop-${slug(file.name ?? '
       }
       out.waves = expand(waves, WAVE_DEFAULTS)
       out.shapes = expand(shapes, SHAPE_DEFAULTS)
+      out.sprites = expand(sprites, SPRITE_DEFAULTS as unknown as Record<string, number>).map(
+        (s): Sprite => ({
+          source: SOURCES[Math.max(0, Math.min(SOURCES.length - 1, Math.round(s.source)))],
+          x: s.x,
+          y: s.y,
+          size: s.size,
+          angle: s.angle,
+          alpha: s.alpha,
+          tint: s.tint,
+          hue: s.hue,
+          additive: s.blend >= 0.5 ? 1 : 0,
+        })
+      )
       return out
     },
   }
