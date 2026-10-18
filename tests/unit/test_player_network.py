@@ -5,6 +5,7 @@ change counter: two pages saving at once merge instead of one losing its changes
 
 from __future__ import annotations
 
+import functools
 import http.client
 import json
 import socket
@@ -16,9 +17,47 @@ from typing import Any
 
 import pytest
 
+from plenio.player import network as network_module
 from plenio.player.library import Library
 from plenio.player.network import COOKIE, NetworkAccess
 from plenio.player.server import State, serve
+
+PLAYER_PORTS = network_module.PORTS
+
+
+@functools.cache
+def free_ports(size: int = 4) -> range:
+    """Ports in a row that nothing on this computer answers on and that are free to take (found once: every
+    test closes its gateways)."""
+    for _ in range(50):
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            base = probe.getsockname()[1]
+        if base + size > 65535:
+            continue
+        try:
+            for port in range(base, base + size):
+                with socket.socket() as taken:
+                    taken.settimeout(0.2)  # a listener answers at once; a refusal takes Windows seconds
+                    if taken.connect_ex(("127.0.0.1", port)) == 0:
+                        raise OSError(f"{port} answers")
+                with socket.socket() as free:
+                    free.bind(("127.0.0.1", port))
+        except OSError:
+            continue
+        return range(base, base + size)
+    raise RuntimeError("no free ports in a row")
+
+
+@pytest.fixture(autouse=True)
+def gateway_ports(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Free ports for the gateways: a player running on this computer with its own access on holds 8780-8789,
+    and a connection to a door closed in a test would reach it."""
+    monkeypatch.setattr(network_module, "PORTS", free_ports())
+
+
+def test_the_gateways_listen_on_ports_8780_to_8789() -> None:
+    assert PLAYER_PORTS == range(8780, 8790)
 
 
 class Echo(BaseHTTPRequestHandler):
@@ -79,7 +118,7 @@ def test_only_a_browser_with_the_link_comes_in(access: NetworkAccess) -> None:
         and status["comfyui_url"]
     )
     port, token = status["port"], access.token
-    assert status["url"].endswith(f"/{token}/") and 8780 <= port < 8790
+    assert status["url"].endswith(f"/{token}/") and port in network_module.PORTS
     # without it: a page that says how to come in, and nothing passed on
     code, _, body = call(port, "GET", "/api/library")
     assert code == 401 and b"link" in body

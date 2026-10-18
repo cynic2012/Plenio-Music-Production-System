@@ -568,7 +568,7 @@ export async function seedsDemo(s, { draft = 'Draft seed', take = 'Take seed', w
   await s.click(toggle, { fx: 0.92, pause: 600 })
   await s.read(flip, 5200)
   if (plan) {
-    // YuE2 Song's plan seed (after 1.0.0): the melody and the form, kept or planned anew
+    // YuE2 Song's plan seed (1.0.1): the melody and the form, kept or planned anew
     const planned = 'The Plan seed under YuE2’s plan does the same for the melody and the form: 🎲 plans another melody for the same lyrics.'
     s.caption(planned)
     await s.flyNodes([plan], 1000, 0.9)

@@ -16,6 +16,31 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 
 **Free, open source - and now 1.0.** Plenio costs nothing: no subscription, no credits, no account, Apache 2.0 code. After fourteen releases in three weeks, 1.0.0 is the milestone where the whole way holds together - from the first idea to the song people listen to - and the version to build on: saved workflows and release records keep working in every 1.x version. What changed in each version is in the [changelog](CHANGELOG.md).
 
+## New in 1.0.1: the player at home and at the party
+
+Two days after 1.0, the Plenio Player leaves the desk. **In your network** a link opens the whole player on the phone, the tablet or the laptop - and ComfyUI with it, when it runs. At a party the guests see the live playlist on their phones and wish for songs, and **Show the visual** puts the music on the big screen with their QR code over it. Videos and shared players are made in the background while you listen, and a song's video now carries its cover all the way through and sings its words one by one, on the beat.
+
+<p align="center">
+  <img src="assets/branding/1.0.1/player-party.jpg" alt="Show the visual at a party: the Electric Lotus preset on the whole screen, the guests' QR code to join the live playlist in the corner" width="49%" />
+  <img src="assets/branding/1.0.1/player-video-words.jpg" alt="A frame of a song's video: the word sung now large in the middle, the words before it smaller above, the line sung drawn into the Electric Lotus visual, the cover as a spinning record in the corner" width="49%" />
+</p>
+<p align="center">
+  <img src="assets/branding/1.0.1/player-filters.jpg" alt="The library filtered: the tag party chosen and art pop left out, the tag and genre rows with numbers that follow the filters, the songs' tags on the cards, saved filters in the sidebar" width="49%" />
+  <img src="assets/branding/1.0.1/player-making.jpg" alt="In the making: a shared player of 24 songs being packed, a Full HD video being drawn at 8.6 times its speed, a finished video with Watch, Download and Folder" width="49%" />
+</p>
+
+*The party's big screen with the guests' QR code · a song's video, word by word, the cover as a record · filters and tags of your own · a video and a shared player in the making.*
+
+- **The player in your network**: Settings › *In your network* gives a link with a code of its own and a QR code - the whole player on every device at home, and ComfyUI too; a browser without the link does not get in.
+- **The party**: guests scan a QR code and see the live playlist on their phones - or change it and add songs; the visual on the big screen with the QR code over it.
+- **In the making**: *Make the video* and *Make the player* go into a queue and run in the background; a list shows how far each is, with *Stop*.
+- **Large shared players**: a player of 365 songs (2.6 GB) shows its songs in under a second - and parts of 250 MB to 1 GB open on a phone.
+- **Find any song**: every value in the filters, numbers that follow the filters, a right click that leaves songs out, suggestions as you type, saved filters - and **tags of your own**.
+- **Soft changes between visuals**: *Morph*, *Melt*, a fade, a zoom, a slide or a flash on the beat.
+- **More for a song's video**: the cover all the way through (also as a spinning record), the lyrics word by word, in places of their own and coming in on the beat; five new Plenio Drop presets draw the cover, the title and the words into the picture.
+
+Every change: [CHANGELOG](CHANGELOG.md).
+
 ## New in 1.0: from the finished song to the listener
 
 Plenio no longer stops at the exported file. The **Plenio Player** - one click from ComfyUI, or on its own without it - plays your songs in the browser, the lyrics lit up as they are sung and the sheet music following the music, and turns them into something to show and to give away.
@@ -278,15 +303,17 @@ New in 1.0: your songs in the browser - a program of its own, which runs without
 
 It finds every song Export Release wrote into ComfyUI's output folder. **Open in ComfyUI** on a song's page opens its workflow in ComfyUI again, to work on it. Your playlists and every setting are kept on this computer (with a backup on the Settings page); a song you no longer want goes to the retired songs, or is deleted.
 
-- **Find songs**: search titles, lyrics and briefs, or narrow it with fields like `genre:jazz`, `bpm:>110`, `key:Am` or `is:fav`; filter chips; eight sorts.
+- **Find songs**: search titles, lyrics and briefs, or narrow it with fields like `genre:jazz`, `bpm:>110`, `key:Am` or `is:fav`; every value of a song in the filters, with numbers that follow them, a right click that leaves songs out, suggestions as you type and saved filters; **tags of your own** (`#party`); eight sorts.
 - **A page per song**: the lyrics (click a line to hear it), the notation, the sheet music PDF, the brief and the seeds, every file, the other takes and songs alike.
 - **While it plays**: the lyrics light up syllable by syllable; on the sheet, the notes light up as they sound. The times are measured when the song is exported.
-- **Visuals after Winamp and MilkDrop**: 13 classic visuals and **Plenio Drop** - 16 MilkDrop-style presets drawn by Plenio's own renderer on the graphics card, and one made up anew each time - all moving with the music, on the whole screen if you like (Shift+F). Let the player match them to the music, pick at random from the ones you tick, cycle or fix one - or give a song or a playlist its own. **Write your own Drop presets**: a short JSON file of numbers and formulas, changed on screen as you save it ([guide](docs/user/concepts/player-visuals.md)).
+- **Visuals after Winamp and MilkDrop**: 13 classic visuals and **Plenio Drop** - 21 MilkDrop-style presets drawn by Plenio's own renderer on the graphics card (five draw the song's cover, title and words into the picture), and one made up anew each time - all moving with the music, changing softly from one to the next (morph, melt, fade …), on the whole screen if you like (Shift+F). Let the player match them to the music, pick at random from the ones you tick, cycle or fix one - or give a song or a playlist its own. **Write your own Drop presets**: a short JSON file of numbers and formulas, changed on screen as you save it ([guide](docs/user/concepts/player-visuals.md)).
 - **Playlists**: smart lists, your own lists, a radio of songs alike, crossfades, repeat (the playlist or the song), A/B with the unmastered take and a sleep timer.
-- **Live Play**: a playlist for a party that you change while it plays - and the songs you make in ComfyUI join it as soon as they are exported: next, at the end or anywhere.
-- **Guests in your network**: everyone on the party's Wi-Fi scans a QR code and sees the live playlist on the phone - and, if you allow it, moves songs, takes them out and adds songs from your library.
-- **A song as a video**: an MP4 of the song's visual with its lyrics (subtitles or karaoke), its notation following the music and a title card - Full HD, 4K, square or upright for Shorts.
-- **Share your songs as a player**: one HTML file with the player and the songs you choose (as MP3) - send it, and anyone can double-click it and listen, with the lyrics, the notation and the visuals, no install.
+- **Live Play**: a playlist for a party that you change while it plays - and the songs you make in ComfyUI join it as soon as they are exported: next, at the end or anywhere. **Show the visual** puts it on the big screen.
+- **Guests in your network**: everyone on the party's Wi-Fi scans a QR code and sees the live playlist on the phone - and, if you allow it, moves songs, takes them out and adds songs from your library. Their QR code can stand over the visual on the big screen.
+- **A song as a video**: an MP4 of the song's visual with its lyrics (subtitles, karaoke or word by word, in places of their own, coming in on the beat), the cover all the way through, its notation following the music and a title card - Full HD, 4K, square or upright for Shorts.
+- **Share your songs as a player**: one HTML file with the player and the songs you choose (as MP3) - send it, and anyone can double-click it and listen, with the lyrics, the notation and the visuals, no install. Also for hundreds of songs, in parts for a phone.
+- **In the making**: videos and shared players are made in the background while you listen; a list shows how far each is.
+- **In your network**: a link (and a QR code) opens the whole player on the phone, the tablet or another computer at home - ComfyUI too, when it runs.
 - **Your folders, and other music**: choose the folders in Settings; other music in them plays too, clearly marked, with its tags, cover and `.lrc` lyrics.
 
 <p align="center">

@@ -111,7 +111,7 @@ def test_the_seeds_of_a_record_made_before_0_8_1_land_on_the_new_seed_nodes() ->
 
 
 def test_a_seed_that_moved_out_of_its_block_keeps_an_older_records_number() -> None:
-    """After 1.0.0 the YuE2 plan's seed and the cover art's are Plenio · Seed nodes beside their blocks
+    """Since 1.0.1 the YuE2 plan's seed and the cover art's are Plenio · Seed nodes beside their blocks
     (owner's request 2026-10-17): a record made before keeps its plan and its cover - its numbers from inside
     the blocks land on the new seed nodes."""
     song = TEMPLATES[SONG]
