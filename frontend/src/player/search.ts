@@ -309,6 +309,70 @@ export function facetValues(songs: SongSummary[], facet: FacetDef, context: Cont
   return [...counts.values()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
 }
 
+/** "from 1.0.0", "from 0.8.0" ...: the versions the songs were made with (newest first), each with how many
+ * songs are that version or newer - for an archive that still holds songs of older versions. */
+export function versionSteps(songs: SongSummary[]): [string, number][] {
+  const versions = new Map<string, number[]>()
+  for (const song of songs) {
+    const v = versionOf(song.plenio)
+    if (v) versions.set(v.join('.'), v)
+  }
+  const sorted = [...versions.values()].sort((a, b) => compareVersions(b, a))
+  return sorted.slice(0, 8).map((v) => [
+    `from ${v.join('.')}`,
+    songs.filter((s) => {
+      const have = versionOf(s.plenio)
+      return have !== null && compareVersions(have, v) >= 0
+    }).length,
+  ])
+}
+
+/** A row of filters as the page shows it: every value the songs have with how many have it, and every chip
+ * that is on (with 0 when none of the songs has it - a value left out). */
+export interface FilterRow {
+  id: string
+  key: string
+  label: string
+  top: number
+  all: [string, number][]
+  /** The songs the counts are of. */
+  total: number
+}
+
+const PLENIO_ROW = { id: 'plenio', key: 'plenio', label: 'Plenio version', top: 8, values: null }
+
+/** The songs that match a search and chips. */
+export function matching(songs: SongSummary[], query: string, chips: string[], context: Context): SongSummary[] {
+  const terms = parseQuery([query, ...chips].join(' '))
+  return songs.filter((song) => score(song, terms, context) > 0)
+}
+
+/** The filter rows for ``songs`` with a search and chips on (owner's request 2026-10-18: the numbers follow the
+ * filters - after *from 1.0.0*, *instrumental* says how many of those songs are instrumental, and a value none
+ * of them has is gone). The counts are of the songs that match everything; a row of one choice (Plenio version,
+ * tempo, length) counts without its own chip, so its other choices stay to switch to. Rows that could not narrow
+ * the songs further are left out, unless a chip of theirs is on. ``found``: the songs that match, when known. */
+export function filterRows(songs: SongSummary[], query: string, chips: string[], context: Context, found = matching(songs, query, chips, context)): FilterRow[] {
+  const rows: FilterRow[] = []
+  for (const def of [...FACETS, PLENIO_ROW] as (FacetDef | typeof PLENIO_ROW)[]) {
+    const own = chips.filter((chip) => {
+      const parts = chipParts(chip)
+      return !!parts && parts.key === def.key && !parts.exclude && (facetOf(parts.key, parts.value)?.id ?? parts.key) === def.id
+    })
+    const pool = SINGLE_CHOICE_FACETS.has(def.key) && own.length ? matching(songs, query, chips.filter((c) => !own.includes(c)), context) : found
+    const all = def.values ? facetValues(pool, def as FacetDef, context) : versionSteps(pool)
+    let on = false
+    for (const chip of chips) {
+      const parts = chipParts(chip)
+      if (!parts || parts.key !== def.key || (facetOf(parts.key, parts.value)?.id ?? parts.key) !== def.id) continue
+      on = true
+      if (!all.some(([v]) => v === parts.value)) all.push([parts.value, 0])
+    }
+    if (on || all.length > 1 || (all.length === 1 && all[0][1] < pool.length)) rows.push({ id: def.id, key: def.key, label: def.label, top: def.top, all, total: pool.length })
+  }
+  return rows
+}
+
 /** How a chip reads: a range or a mark by its label, anything else as it is. */
 export function valueLabel(facet: FacetDef | undefined, value: string): string {
   return facet?.fixed?.find(([v]) => v === value)?.[1] ?? value

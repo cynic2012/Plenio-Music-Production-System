@@ -17,7 +17,7 @@ import type { SongSummary } from '../api'
 import { isPortable } from '../portable'
 import { current, library, playSongs, saveFilter, say, settings, shareFor, state, toggleCurrent } from '../store'
 import { countOf, formatTime } from '../timing'
-import { FACETS, chipParts, compareVersions, facetOf, facetValues, fold, lyricsSnippet, parseQuery, score, sortSongs, suggest, toggleFilterChip, valueLabel, versionOf, type SortKey } from '../search'
+import { chipParts, facetOf, filterRows, fold, lyricsSnippet, parseQuery, score, sortSongs, suggest, toggleFilterChip, valueLabel, type SortKey } from '../search'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 import SongCard from './SongCard.vue'
@@ -96,41 +96,18 @@ interface FacetRow {
   top: number
   on: boolean
 }
-const facets = computed<FacetRow[]>(() => {
-  // the counts are of the songs shown now: a chip says how many would stay
-  const pool = scored.value.found
-  const rows = [...FACETS.map((def) => ({ ...def, all: facetValues(pool, def, context.value) })), { id: 'plenio', key: 'plenio', label: 'Plenio version', top: 8, fixed: undefined, all: versionSteps(pool) }]
-  return rows
-    .map((row) => {
-      const all = [...row.all]
-      for (const chip of chips.value) {
-        const parts = chipParts(chip)
-        if (parts && parts.key === row.key && (facetOf(parts.key, parts.value)?.id ?? parts.key) === row.id && !all.some(([v]) => v === parts.value)) all.push([parts.value, 0])
-      }
-      const on = all.some(([v]) => chipState(row.key, v))
-      const want = fold(lookFor[row.id] ?? '')
-      const shown = opened[row.id] ? all.filter(([v]) => !want || fold(valueLabel(facetOf(row.key, v), v)).includes(want)) : all.filter(([v], k) => k < row.top || chipState(row.key, v))
-      return { id: row.id, key: row.key, label: row.label, all, shown, top: row.top, on }
-    })
-    .filter((row) => row.on || row.all.length > 1 || (row.all.length === 1 && row.all[0][1] < pool.length))
-})
+const facets = computed<FacetRow[]>(() =>
+  // the numbers are of the songs the search and the chips leave: a chip says how many would stay
+  filterRows(base.value, query.value, chips.value, context.value, scored.value.found).map((row) => {
+    const on = row.all.some(([v]) => chipState(row.key, v))
+    const want = fold(lookFor[row.id] ?? '')
+    const shown = opened[row.id] ? row.all.filter(([v]) => !want || fold(valueLabel(facetOf(row.key, v), v)).includes(want)) : row.all.filter(([v], k) => k < row.top || chipState(row.key, v))
+    return { id: row.id, key: row.key, label: row.label, all: row.all, shown, top: row.top, on }
+  })
+)
 const firstRows = computed(() => facets.value.filter((f) => FIRST_ROWS.has(f.id) || f.on))
 const moreRows = computed(() => facets.value.filter((f) => !FIRST_ROWS.has(f.id) && !f.on))
 const shownRows = computed(() => (settings.moreFilters ? [...firstRows.value, ...moreRows.value] : firstRows.value))
-/** "from 1.0.0", "from 0.8.0" ...: the versions the songs were made with (newest first), each with how many
- * songs are that version or newer - for an archive that still holds songs of older versions. */
-function versionSteps(all: typeof base.value): [string, number][] {
-  const versions = new Map<string, number[]>()
-  for (const song of all) {
-    const v = versionOf(song.plenio)
-    if (v) versions.set(v.join('.'), v)
-  }
-  const sorted = [...versions.values()].sort((a, b) => compareVersions(b, a))
-  return sorted.slice(0, 8).map((v) => [`from ${v.join('.')}`, all.filter((s) => {
-    const have = versionOf(s.plenio)
-    return have !== null && compareVersions(have, v) >= 0
-  }).length])
-}
 /** ``genre:"dance-pop"`` -> ``Genre: dance-pop``, ``-tag:"x"`` -> ``not Tags: x`` (the active filters' row). */
 function chipLabel(chip: string): string {
   const parts = chipParts(chip)

@@ -146,8 +146,10 @@ genre a template gave, the rare ones too - with a field to find one in a long ro
 - **A click** on a chip keeps only the songs with it; a second click takes the filter off.
 - **A right click** (a long press on a phone) **leaves those songs out**: the chip turns red and struck
   through, *not Genre: jazz* in the Filtered row.
-- **The numbers** on the chips are how many of the songs shown have that value - so with a filter on, every
-  chip says how many songs would stay. A row that could not narrow the songs further is left out.
+- **The numbers follow the filters**: they are how many of the songs shown have that value - after *from 1.0.0*,
+  *instrumental* says how many of the 1.0 songs are instrumentals, and a value none of them has is gone. So
+  every chip says how many songs would stay. A row that could not narrow the songs further is left out; a row
+  of one choice (Plenio version, tempo, length) keeps its other values to switch to.
 - **Plenio version** offers *from 1.0.0*, *from 0.8.0* … for an archive with songs of older versions: only the
   songs made with that version or a newer one. Tempo, length and Plenio version take one choice at a time (a
   click on another replaces it).

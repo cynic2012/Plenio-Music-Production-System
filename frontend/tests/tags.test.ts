@@ -4,7 +4,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import type { SongSummary } from '../src/player/api'
-import { FACETS, chipParts, facetOf, facetValues, parseQuery, score, suggest, toggleFilterChip, valueLabel } from '../src/player/search'
+import { FACETS, chipParts, facetOf, facetValues, filterRows, parseQuery, score, suggest, toggleFilterChip, valueLabel } from '../src/player/search'
 import { addTag, allTags, cleanTag, deleteTag, removeTag, renameTag, settings, songTags, state, tagsOf } from '../src/player/store'
 
 function song(over: Partial<SongSummary> & { id: string }): SongSummary {
@@ -59,6 +59,32 @@ describe('the filters', () => {
     // the two rows that set is: are told apart by their values
     expect(facetOf('is', 'other')?.id).toBe('made')
     expect(facetOf('is', 'unplayed')?.id).toBe('played')
+  })
+
+  it('count the songs the filters leave: after "from 1.0.0" instrumental says how many of those are instrumental', () => {
+    // owner's report 2026-10-18: the numbers were always of every song
+    const made = (id: string, plenio: string, instrumental: boolean, genre: string) => song({ id, plenio, instrumental, vocals: instrumental ? 'instrumental' : 'female', genre })
+    const archive = [
+      made('o1', '0.8.0', true, 'ambient'), made('o2', '0.8.0', true, 'ambient'), made('o3', '0.8.1', true, 'drone'),
+      made('n1', '1.0.0', true, 'jazz'), made('n2', '1.0.0', true, 'jazz'), made('n3', '1.0.0', false, 'jazz'),
+    ] // prettier-ignore
+    const row = (rows: ReturnType<typeof filterRows>, id: string) => rows.find((r) => r.id === id)
+    const before = filterRows(archive, '', [], context)
+    expect(row(before, 'vocals')?.all).toEqual([['instrumental', 5], ['sung', 1]])
+    expect(row(before, 'plenio')?.all).toEqual([['from 1.0.0', 3], ['from 0.8.1', 4], ['from 0.8.0', 6]])
+    const chips = toggleFilterChip([], 'plenio', 'from 1.0.0')
+    const after = filterRows(archive, '', chips, context)
+    expect(row(after, 'vocals')?.all).toEqual([['instrumental', 2], ['sung', 1]])
+    // a genre none of the songs left has is gone; a row that cannot narrow them is left out
+    expect(row(after, 'genre')).toBeUndefined()
+    // the version, one choice at a time, still offers the others to switch to
+    expect(row(after, 'plenio')?.all.map(([v]) => v)).toEqual(['from 1.0.0', 'from 0.8.1', 'from 0.8.0'])
+    // with a search and a chip that leaves songs out
+    const sung = filterRows(archive, '', [...chips, '-vocals:"instrumental"'], context)
+    expect(row(sung, 'vocals')?.all).toEqual([['sung', 1], ['instrumental', 0]])
+    // both ambient songs are 0.8.0: the version row could not narrow them
+    expect(row(filterRows(archive, 'genre:ambient', [], context), 'plenio')).toBeUndefined()
+    expect(row(filterRows(archive, 'genre:jazz', [], context), 'vocals')?.all).toEqual([['instrumental', 2], ['sung', 1]])
   })
 
   it('suggest fields, their values and your tags while you type', () => {
