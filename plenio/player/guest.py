@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import os
 import re
 import secrets
 import socket
@@ -441,6 +442,7 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
 
     class Server(ThreadingHTTPServer):
         daemon_threads = True
-        allow_reuse_address = False
+        # as the player's own server: the port free again at once after a restart, but never shared on Windows
+        allow_reuse_address = os.name != "nt"
 
     return Server((host, port), Handler)

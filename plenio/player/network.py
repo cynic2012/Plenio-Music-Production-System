@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import os
 import re
 import secrets
 import selectors
@@ -188,7 +189,10 @@ class Gateway(socketserver.ThreadingTCPServer):
     to - the page ``missing`` answers)."""
 
     daemon_threads = True
-    allow_reuse_address = False
+    # As the player's own server: elsewhere the port is free again at once after a restart (its last
+    # connections still waiting do not hold it, so the link keeps its port); on Windows SO_REUSEADDR would
+    # let a second gateway take a port in use.
+    allow_reuse_address = os.name != "nt"
 
     def __init__(
         self,

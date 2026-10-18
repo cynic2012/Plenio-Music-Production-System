@@ -5,7 +5,6 @@ change counter: two pages saving at once merge instead of one losing its changes
 
 from __future__ import annotations
 
-import functools
 import http.client
 import json
 import socket
@@ -25,10 +24,9 @@ from plenio.player.server import State, serve
 PLAYER_PORTS = network_module.PORTS
 
 
-@functools.cache
 def free_ports(size: int = 4) -> range:
-    """Ports in a row that nothing on this computer answers on and that are free to take (found once: every
-    test closes its gateways)."""
+    """Ports in a row that nothing on this computer answers on and that are free to take - new ones for every
+    test (a port a test closed can still be held by its last connections for a while)."""
     for _ in range(50):
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))

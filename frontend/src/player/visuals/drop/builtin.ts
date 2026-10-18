@@ -201,54 +201,98 @@ export const BUILTIN: PresetFile[] = [
   // the song itself in the picture (owner's request 2026-10-18): its cover, its title, the line and word sung
   {
     name: 'Cover Galaxy',
-    blurb: 'The song’s cover at the heart of a slow galaxy - its colours pulled out into spiral arms.',
+    blurb: 'The song’s cover at the heart of a slow galaxy - its colours pulled out into spiral arms that fill the sky.',
     suits: ['calm', 'electronic', 'any'],
-    base: { decay: 0.978, family: 'swirl', famB: 1.1, zoom: 1.006, hueShift: 0.002, gamma: 1.5 },
-    frame: { famA: '0.14 + 0.08 * bass_att', rot: 0.006 },
-    sprites: [{ source: 'cover', size: '0.2 + 0.03 * pulse', angle: 'time * 0.15', alpha: 0.55, blend: 'over' }],
-    waves: [{ mode: 'circle', scale: '0.5 + 0.2 * bass_att', thick: 0.004, alpha: 0.5, hue: 'time * 0.03' }],
+    // a long memory (decay) and a steady pull outward (zoom), so the swirl carries the cover's colours to the edges
+    base: { decay: 0.988, family: 'swirl', famB: 2, hueShift: 0.001, warp: 0.2, gamma: 1.4 },
+    frame: { zoom: '1.01 + 0.01 * bass_att', famA: '0.07 + 0.04 * bass_att', rot: 0.003 },
+    sprites: [{ source: 'cover', size: '0.19 + 0.03 * pulse', angle: 'time * 0.25', alpha: 0.55, blend: 'over' }],
+    // three lights circling the cover: their trails are the arms
+    shapes: [{ repeat: 3, sides: 16, radius: '0.018 + 0.02 * pulse', x: '0.3 * cos(time * 0.9 + i * 2.094) / aspect', y: '0.3 * sin(time * 0.9 + i * 2.094)', hue: 'i / n + time * 0.02', alpha: 0.35, inner: 1 }],
+    waves: [{ mode: 'dots', scale: '0.5 + 0.15 * mid_att', thick: 0.005, alpha: 0.3, hue: 'time * 0.03' }],
   },
   {
     name: 'Title Smoke',
     blurb: 'The song’s title at its start, then every line sung, rising as smoke.',
     suits: ['calm', 'acoustic', 'any'],
     base: { decay: 0.982, dy: 0.0025, warp: 0.9, warpScale: 0.7, zoom: 1.002, gamma: 1.6 },
+    // laid over (not added), so the words melt into the smoke without burning white
     sprites: [
-      { source: 'title', y: '-0.1 + 0.02 * sin(time)', size: 0.12, alpha: 'clamp(1 - songtime / 9, 0, 1) * 0.5', blend: 'add', tint: 0.35, hue: 'time * 0.02' },
-      { source: 'line', y: -0.45, size: 0.075, alpha: 'line_on * clamp(line_age * 2, 0, 1) * clamp(songtime / 6 - 0.5, 0, 1) * 0.35', blend: 'add', tint: 0.5, hue: 'time * 0.03 + 0.3' },
+      { source: 'title', y: '-0.1 + 0.02 * sin(time)', size: 0.12, alpha: 'clamp(1 - songtime / 9, 0, 1) * 0.3', blend: 'over', tint: 0.35, hue: 'time * 0.02' },
+      { source: 'line', y: -0.45, size: 0.075, alpha: 'line_on * clamp(line_age * 2, 0, 1) * clamp(songtime / 6 - 0.5, 0, 1) * 0.25', blend: 'over', tint: 0.5, hue: 'time * 0.03 + 0.3' },
     ],
     waves: [{ mode: 'line', y: -0.85, scale: '0.3 + 0.2 * bass_att', thick: 0.004, alpha: 0.5, hue: 'time * 0.04' }],
   },
   {
     name: 'Lyric Tunnel',
-    blurb: 'The words sung fly at you through a tunnel of light.',
+    blurb: 'The words sung fly at you on the beat, through a tunnel of light.',
     suits: ['energetic', 'electronic'],
-    base: { decay: 0.955, family: 'tunnel', famB: 10, zoom: 1.03, gamma: 1.7, vignette: 0.45 },
-    frame: { zoom: '1.025 + 0.02 * bass', famA: '0.02 * bass_att', rot: '0.006 * sin(time * 0.3)' },
+    base: { decay: 0.965, family: 'tunnel', famB: 10, hueShift: 0.006, gamma: 1.5, vignette: 0.2 },
+    init: { kick: 0, t0: 0 },
+    frame: {
+      // a beat - or, in a quiet stretch, a moment - throws the word sung now
+      kick: 'beat || time - t0 > 0.6 ? 1 : kick * 0.75',
+      t0: 'kick > 0.99 ? time : t0',
+      zoom: '1.035 + 0.02 * bass',
+      famA: '0.02 * bass_att',
+      rot: '0.006 * sin(time * 0.3)',
+    },
+    // drawn in bursts, not every frame: each copy flies off on its own instead of piling up into a blur
     sprites: [
-      { source: 'word', size: '0.07 + 0.02 * pulse', alpha: 'line_on * 0.6', blend: 'add', tint: 0.4, hue: 'time * 0.05' },
-      { source: 'title', size: 0.09, alpha: 'clamp(1 - songtime / 7, 0, 1) * 0.6', blend: 'add', tint: 0.2 },
+      { source: 'word', size: 0.11, alpha: 'line_on * clamp(kick * 2 - 1, 0, 1) * 0.9', blend: 'over', tint: 0.25, hue: 'time * 0.05' },
+      { source: 'title', size: 0.1, alpha: 'clamp(1 - songtime / 7, 0, 1) * clamp(kick * 2 - 1, 0, 1) * 0.9', blend: 'over', tint: 0.25 },
     ],
-    waves: [{ mode: 'circle', scale: '0.25 + 0.15 * bass_att', thick: 0.005, alpha: 0.6, hue: 'time * 0.05 + 0.5' }],
+    waves: [
+      { mode: 'circle', scale: '0.6 + 0.12 * bass_att', thick: 0.004, alpha: 0.4, hue: 'time * 0.05 + 0.5' },
+      { mode: 'circle', scale: '0.45 + 0.15 * kick', thick: '0.003 + 0.008 * kick', alpha: '0.7 * kick', hue: 'time * 0.05 + 0.25' },
+      { mode: 'dots', scale: '0.75 + 0.2 * mid_att', thick: 0.006, alpha: 0.5, hue: 'time * 0.05' },
+    ],
   },
   {
     name: 'Album Kaleido',
-    blurb: 'The cover folded into a turning mandala of eight mirrors.',
+    blurb: 'The cover folded into a turning mandala of ten mirrors, from the middle out to the edges.',
     suits: ['electronic', 'energetic', 'calm'],
-    base: { decay: 0.96, family: 'kaleidoscope', famB: 8, famA: 0.3, gamma: 1.5 },
-    frame: { zoom: '1.008 + 0.01 * bass_att', rot: '0.008 * sin(time * 0.25)' },
-    sprites: [{ source: 'cover', x: '0.28 * cos(time * 0.3)', y: '0.28 * sin(time * 0.23)', size: '0.16 + 0.03 * pulse', angle: 'time * 0.4', alpha: 0.5, blend: 'over' }],
-    waves: [{ mode: 'dots', scale: '0.7 + 0.2 * mid_att', thick: 0.008, alpha: 0.4, hue: 'time * 0.04' }],
+    base: { decay: 0.972, family: 'kaleidoscope', famB: 5, famA: 0, hueShift: 0.003, gamma: 1.5 },
+    frame: { zoom: '1.012 + 0.012 * bass_att', rot: '0.01 * sin(time * 0.17)' },
+    // the kaleidoscope copies only its first slice (from the right, 0 to 36 degrees up): the covers sit in it
+    sprites: [
+      { source: 'cover', x: '(0.42 + 0.08 * bass_att) * cos(0.314) / aspect', y: '(0.42 + 0.08 * bass_att) * sin(0.314)', size: '0.12 + 0.02 * pulse', angle: 'time * 0.6', alpha: 0.6, blend: 'over' },
+      { source: 'cover', x: '0.17 * cos(0.314) / aspect', y: '0.17 * sin(0.314)', size: 0.05, angle: '-time * 0.8', alpha: 0.6, blend: 'over' },
+    ],
+    waves: [{ mode: 'spectrum', y: 0, scale: '0.5 + 0.2 * mid_att', thick: 0.005, alpha: 0.5, hue: 'time * 0.03' }],
   },
   {
     name: 'Cover Echo',
-    blurb: 'The cover thrown deep on every beat, its echoes falling away behind it.',
+    blurb: 'The cover and its echoes falling away into the depth, thrown further on every beat, its light all around.',
     suits: ['energetic', 'dark'],
-    base: { decay: 0.95, zoomExp: 1.4, echoAlpha: 0.3, echoZoom: 1.3, gamma: 1.6 },
-    init: { kick: 0 },
-    frame: { kick: 'beat ? 1 : kick * 0.88', zoom: '0.985 - 0.02 * kick' },
-    sprites: [{ source: 'cover', size: '0.12 + 0.12 * kick', alpha: '0.25 + 0.4 * kick', blend: 'over' }],
-    waves: [{ mode: 'circle', scale: '0.3 + 0.4 * kick', thick: '0.004 + 0.01 * kick', alpha: 0.7, hue: 'time * 0.06' }],
+    base: { decay: 0.92, zoom: 0.992, warp: 1.2, warpScale: 0.5, gamma: 1.3 },
+    init: { kick: 0, t0: 0 },
+    frame: {
+      kick: 'beat || time - t0 > 1.2 ? 1 : kick * 0.9',
+      t0: 'kick > 0.99 ? time : t0',
+      // where the echoes fall to, wandering slowly
+      vx: '1.05 * cos(time * 0.3)',
+      vy: '0.75 * sin(time * 0.23)',
+    },
+    sprites: [
+      // the cover large and faint every frame: its light fills the picture, softened by the warp
+      { source: 'cover', size: 1.8, angle: 'time * 0.03', alpha: 0.05, blend: 'over' },
+      // seven covers, the farthest first: each smaller and nearer the point they fall to
+      {
+        source: 'cover',
+        repeat: 7,
+        size: '0.42 * pow(0.72, n - 1 - i)',
+        x: 'vx * (1 - pow(0.72, n - 1 - i)) * (1 + 0.35 * kick) / aspect',
+        y: 'vy * (1 - pow(0.72, n - 1 - i)) * (1 + 0.35 * kick)',
+        angle: '(n - 1 - i) * 0.1 * sin(time * 0.4)',
+        alpha: '0.3 + 0.6 * pow(0.78, n - 1 - i)',
+        blend: 'over',
+      },
+    ],
+    waves: [
+      { mode: 'dots', scale: '0.8 + 0.2 * mid_att', thick: 0.005, alpha: 0.25, hue: 'time * 0.04' },
+      { mode: 'circle', scale: '0.3 + 0.5 * kick', thick: '0.002 + 0.006 * kick', alpha: '0.5 * kick', hue: 'time * 0.06' },
+    ],
   },
 ]
 

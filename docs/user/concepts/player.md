@@ -307,11 +307,11 @@ glides into the new one.
 | Drop · Ink in Water | colour spreading slowly, as ink in still water |
 | Drop · Shockwave | every kick hits the picture: a jolt of zoom, a ring, a flash |
 | Drop · Firefly Orbit | five lights circling, their trails woven into the dark |
-| Drop · Cover Galaxy | the song's cover at the heart of a slow galaxy, its colours pulled into spiral arms |
+| Drop · Cover Galaxy | the song's cover at the heart of a slow galaxy, its colours pulled into spiral arms that fill the sky |
 | Drop · Title Smoke | the song's title at its start, then every line sung, rising as smoke |
-| Drop · Lyric Tunnel | the words sung fly at you through a tunnel of light |
-| Drop · Album Kaleido | the cover folded into a turning mandala of eight mirrors |
-| Drop · Cover Echo | the cover thrown deep on every beat, its echoes falling away |
+| Drop · Lyric Tunnel | the words sung fly at you on the beat, through a tunnel of light |
+| Drop · Album Kaleido | the cover folded into a turning mandala of ten mirrors, from the middle out to the edges |
+| Drop · Cover Echo | the cover and its echoes falling away into the depth, thrown further on every beat, its light all around |
 | Drop · Random | a preset made up now - a different one each time |
 
 **Write your own:** a Plenio Drop preset is a short text file of numbers and small formulas. *Edit a copy*

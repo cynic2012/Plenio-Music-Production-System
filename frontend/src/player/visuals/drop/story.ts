@@ -81,15 +81,16 @@ export function tellRenderer(renderer: DropRenderer, song: SongStory | null, t: 
 }
 
 /** A video's choice of the song in any Drop visual: the title at the start, the line sung, the cover - drawn
- * into the feedback, so they melt and swirl with it. */
+ * into the feedback, so they melt and swirl with it. Laid over, not added: a visual that zooms or keeps its
+ * picture long would add a picture drawn every frame up into a white streak. */
 export function storySprites(into: { title: boolean; lyrics: boolean; cover: boolean }, elapsed: number, pulse: number, lineOn: number): Sprite[] {
   const out: Sprite[] = []
   const base = { x: 0, angle: 0, hue: 0, tint: 0 }
   if (into.cover) out.push({ ...base, source: 'cover', y: 0, size: 0.17 + 0.03 * pulse, alpha: 0.32, additive: 0 })
   if (into.title) {
     const alpha = Math.min(1, elapsed / 0.8) * Math.max(0, 1 - elapsed / 8)
-    if (alpha > 0) out.push({ ...base, source: 'title', y: 0.08, size: 0.11, alpha: alpha * 0.55, tint: 0.25, additive: 1 })
+    if (alpha > 0) out.push({ ...base, source: 'title', y: 0.08, size: 0.11, alpha: alpha * 0.4, tint: 0.25, additive: 0 })
   }
-  if (into.lyrics && lineOn) out.push({ ...base, source: 'line', y: -0.5, size: 0.065, alpha: 0.38, tint: 0.35, additive: 1 })
+  if (into.lyrics && lineOn) out.push({ ...base, source: 'line', y: -0.5, size: 0.065, alpha: 0.3, tint: 0.35, additive: 0 })
   return out
 }

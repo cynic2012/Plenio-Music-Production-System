@@ -293,7 +293,7 @@ with everything else. The pictures are the song's own:
 | `alpha` | 0.8 | how strongly it shows (0 not at all) |
 | `tint` | 0 | 0 its own colours, 1 the colour scheme's colour at `hue` (a title in the song's colours) |
 | `hue` | 0 | the colour for `tint` |
-| `blend` | `add` | `add`: its light added (glowing, best for text); `over`: laid over what is there (best for the cover) |
+| `blend` | `add` | `add`: its light added (glowing); `over`: laid over what is there (the cover, and text that should stay readable) |
 | `repeat` | 1 | how many copies, each with its own `i` |
 
 The title at the start of a song, fading after eight seconds, and the line sung rising as smoke:
@@ -303,11 +303,26 @@ The title at the start of a song, fading after eight seconds, and the line sung 
   "name": "My title smoke",
   "base": { "decay": 0.982, "dy": 0.0025, "warp": 0.9 },
   "sprites": [
-    { "source": "title", "size": 0.12, "alpha": "clamp(1 - songtime / 8, 0, 1) * 0.5", "blend": "add" },
-    { "source": "line", "y": -0.45, "size": 0.075, "alpha": "line_on * 0.35", "blend": "add", "tint": 0.5, "hue": "time * 0.03" }
+    { "source": "title", "size": 0.12, "alpha": "clamp(1 - songtime / 8, 0, 1) * 0.3", "blend": "over" },
+    { "source": "line", "y": -0.45, "size": 0.075, "alpha": "line_on * 0.25", "blend": "over", "tint": 0.5, "hue": "time * 0.03" }
   ]
 }
 ```
+
+A picture is drawn every frame, into a picture the visual keeps:
+
+- **Text with `add` burns white**: its light is added again every frame, and where the visual keeps its picture
+  long (a `decay` near 1) or zooms slowly, it adds up to a white streak. Lay text `over` with a small `alpha`
+  (0.25 to 0.4) - it stays its own colour and melts into the rest.
+- **Draw in bursts** for pictures that should fly: a word drawn every frame while the visual zooms leaves a
+  smear; drawn only on the beat (`"alpha": "line_on * clamp(kick * 2 - 1, 0, 1)"` with a `kick` set to 1 on
+  a beat in `frame`), each copy flies off on its own - as in *Lyric Tunnel*.
+- **In a kaleidoscope** only half of the first slice is copied, mirrored into all the others: from the right,
+  going up, half of 360 degrees over `famB` (36 degrees for 5 slices). A picture outside it is drawn once and gone; put it
+  inside - at an angle in the middle of the slice, `"x": "0.42 * cos(0.314) / aspect", "y": "0.42 * sin(0.314)"`
+  for 5 slices - and it becomes the mandala, as in *Album Kaleido*.
+- **To fill the picture**, let it reach the edges before it fades: the farther the zoom carries it, the closer
+  to 1 `decay` must be (a zoom of 1.01 needs about 0.988 to reach the edge from the middle).
 
 The built-in *Cover Galaxy*, *Title Smoke*, *Lyric Tunnel*, *Album Kaleido* and *Cover Echo* are made this way -
 *Edit a copy* shows how. In a song's video, *Into the visual* adds the title, the line and the cover to any Drop
