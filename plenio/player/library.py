@@ -32,6 +32,10 @@ from . import other as other_music
 RECORD_SUFFIX = ".plenio.json"
 CACHE_VERSION = 6
 RETIRED_DIR = "_retired"
+CLOCK_SLACK = 1.0
+"""Seconds a file's time may run ahead of the clock read at a scan's start: on Windows a file written just
+before can carry a time a little after a coarse ``time.time()``. A file further ahead (a wrong clock, a copy from
+another time zone) is not taken for "now" - it would hide every song made until the clock caught up."""
 """Where removed songs go, below the library folder they were in; the library does not read it."""
 SKIP_DIRS = {".plenio-player", "__pycache__", ".git", RETIRED_DIR}
 AUDIO_KINDS = ("flac", "mp3", "wav")
@@ -795,7 +799,8 @@ class Library:
                     errors.append(f"{path.name}: {error}")
             self._songs, self._cache, self.errors = songs, cache, errors
             self._appeared = appeared
-            self.scan_started = started
+            # "now" for Live Play: no song seen in this scan may count as newer than it on the next question
+            self.scan_started = max([started, *(at for at in appeared.values() if at <= started + CLOCK_SLACK)])
             self._scanned = time.monotonic()
             if self.cache_path:
                 try:

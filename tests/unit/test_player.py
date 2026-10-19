@@ -607,6 +607,35 @@ def test_the_listeners_own_visuals_are_read_from_the_state_folder_and_a_copy_nev
     assert len(list(folder.glob("*.json"))) == 3
 
 
+def test_a_new_song_is_new_once_also_when_its_file_time_runs_ahead_of_the_clock(
+    songs: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Windows CI (2026-10-19): a file written just before a scan carried a time a little after the scan's
+    coarse clock, so it came again as new from the answer's "now". A file far in the future does not move "now"
+    (it would hide the songs made until the clock caught up)."""
+    import os
+
+    from plenio.player import library as library_module
+
+    folder = songs / "plenio"
+    library = Library([songs])
+    library.scan(force=True)
+    (folder / "Fresh.plenio.json").write_text(json.dumps(record("Fresh")), encoding="utf-8")
+    written = (folder / "Fresh.plenio.json").stat().st_mtime
+    real = library_module.time.time
+    monkeypatch.setattr(library_module.time, "time", lambda: written - 0.01)  # a coarse clock, a tick behind
+    library.scan(force=True)
+    assert library.scan_started >= written
+    assert library.newer(library.scan_started) == []
+    # a record from a clock an hour ahead: "now" stays near the real one
+    later = folder / "Later.plenio.json"
+    later.write_text(json.dumps(record("Later")), encoding="utf-8")
+    os.utime(later, (real() + 3600, real() + 3600))
+    monkeypatch.setattr(library_module.time, "time", real)
+    library.scan(force=True)
+    assert library.scan_started < real() + 5
+
+
 def test_live_play_hears_of_the_songs_made_while_it_plays(
     server: tuple[str, int, Library], songs: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
