@@ -800,7 +800,9 @@ class Library:
             self._songs, self._cache, self.errors = songs, cache, errors
             self._appeared = appeared
             # "now" for Live Play: no song seen in this scan may count as newer than it on the next question
-            self.scan_started = max([started, *(at for at in appeared.values() if at <= started + CLOCK_SLACK)])
+            self.scan_started = max(
+                [started, *(at for at in appeared.values() if at <= started + CLOCK_SLACK)]
+            )
             self._scanned = time.monotonic()
             if self.cache_path:
                 try:

@@ -16,6 +16,24 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 
 **Free, open source - and now 1.0.** Plenio costs nothing: no subscription, no credits, no account, Apache 2.0 code. After fourteen releases in three weeks, 1.0.0 is the milestone where the whole way holds together - from the first idea to the song people listen to - and the version to build on: saved workflows and release records keep working in every 1.x version. What changed in each version is in the [changelog](CHANGELOG.md).
 
+## New in 1.0.2: creativity, one slider
+
+One slider on the Song Brief and the Cover Brief, from *0 steady* to *100 experimental*. **At 50 everything stays exactly as before** - also in every workflow you saved earlier. Lower, the writer keeps the song plain with a repeated hook, and YuE2 plans and performs more predictably; higher, the lyrics get fresher images, the style more specific instruments and contrast, and YuE2 plans and performs more freely.
+
+<p align="center">
+  <img src="assets/branding/1.0.2/comfyui-creativity.jpg" alt="The 1 · YuE2 · Song template in ComfyUI: the Song Brief with its creativity slider at 75 and the new creativity output, linked to the YuE2 Plan block's creativity input" width="49%" />
+  <img src="assets/branding/1.0.2/player-creativity.jpg" alt="A song's details in the Plenio Player: creativity 75 - varied, the writer temperature 0.9, YuE2's plan and take sampling" width="49%" />
+</p>
+
+*The Song Brief with its creativity at 75 · a song's details in the Plenio Player: its creativity and the sampling it gave.*
+
+- **Steady to experimental**: 0-19 steady, 20-39 restrained, 40-60 balanced, 61-80 varied, 81-100 experimental. The writer's rules and temperature, a creative mode's plan and YuE2's plan and takes follow it - moderately: the repetition penalties stay as they are, and more surprises also bring more misses, so listen to a few takes.
+- **A more varied style without long prose**: YuE2 sings style prose, so its style stays one short line, made more specific; MiniMax Music 3's caption tells an arc of contrasts.
+- **In the player**: every song's creativity and sampling in its details, a *Creativity* filter and `creativity:>60` in the search.
+- **ComfyUI 0.41.0** is the version Plenio is tested against now; 0.37.0 still works.
+
+Every change: [CHANGELOG](CHANGELOG.md) · the slider in detail: [Creativity](docs/user/concepts/creativity.md).
+
 ## New in 1.0.1: the player at home and at the party
 
 Two days after 1.0, the Plenio Player leaves the desk. **In your network** a link opens the whole player on the phone, the tablet or the laptop - and ComfyUI with it, when it runs. At a party the guests see the live playlist on their phones and wish for songs, and **Show the visual** puts the music on the big screen with their QR code over it. Videos and shared players are made in the background while you listen, and a song's video now carries its cover all the way through and sings its words one by one, on the beat.
