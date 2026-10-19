@@ -225,9 +225,13 @@ async function adopt(theirs: StateAnswer, mine = snapshot()): Promise<boolean> {
   return JSON.stringify(merged) !== JSON.stringify(saved)
 }
 
+/** The page is gone (a test's page torn down while a timer of this module still runs): its timers stop. */
+const pageGone = (): boolean => typeof document === 'undefined'
+
 // another page's changes come in every few seconds (when this one has none waiting to be saved)
 if (!isPortable) {
-  window.setInterval(async () => {
+  const lookForChanges = window.setInterval(async () => {
+    if (pageGone()) return window.clearInterval(lookForChanges)
     if (pending || baseRev === undefined || document.visibilityState !== 'visible') return
     try {
       const { rev } = await api.stateRev()
@@ -787,7 +791,8 @@ engine.onEnded(() => {
   if (!fadingOut) toNext()
 })
 // in the background the page's frames stop, its timers do not (a page that plays sound is not held back)
-window.setInterval(() => {
+const backgroundTick = window.setInterval(() => {
+  if (pageGone()) return window.clearInterval(backgroundTick)
   if (document.hidden) {
     sleepTick()
     nearEnd()
