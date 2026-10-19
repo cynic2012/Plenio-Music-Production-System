@@ -26,7 +26,7 @@ jobs:
       - run: python -m pytest tests/unit tests/workflows tests/contract/test_data_schemas.py
 
   comfyui:
-    name: ComfyUI 0.37.0 contract + host tests (CPU)
+    name: ComfyUI 0.41.0 contract + host tests (CPU)
     runs-on: ubuntu-latest
     env:
       PLENIO_COMFYUI_ROOT: ${{ github.workspace }}/ComfyUI
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           repository: Comfy-Org/ComfyUI
-          ref: v0.37.0
+          ref: v0.41.0
           path: ComfyUI
       - uses: actions/setup-python@v6
         with:

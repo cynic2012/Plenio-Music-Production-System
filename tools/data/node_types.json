@@ -1,6 +1,6 @@
 {
- "comfyui_version": "0.37.0",
- "comfyui_ref": "v0.37.0",
+ "comfyui_version": "0.41.0",
+ "comfyui_ref": "v0.41.0",
  "nodes": {
   "AudioEncoderLoader": {
    "input": {
@@ -116,7 +116,8 @@
        "joyimage",
        "mage",
        "minimax",
-       "yue2"
+       "yue2",
+       "flux3"
       ]
      ]
     },
@@ -5572,6 +5573,14 @@
         "5"
        ]
       }
+     ],
+     "system_prompt": [
+      "STRING",
+      {
+       "tooltip": "Replaces the system prompt in the model's chat template. Ignored when the default template is not used.",
+       "forceInput": true,
+       "multiline": false
+      }
      ]
     }
    },
@@ -5588,16 +5597,20 @@
      "audio",
      "thinking",
      "use_default_template",
-     "mtp"
+     "mtp",
+     "system_prompt"
     ]
    },
    "output": [
+    "STRING",
     "STRING"
    ],
    "output_name": [
-    "generated_text"
+    "generated_text",
+    "thinking"
    ],
    "output_is_list": [
+    false,
     false
    ],
    "output_node": false,

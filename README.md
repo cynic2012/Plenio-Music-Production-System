@@ -355,7 +355,7 @@ YuE2 is measured on a 16 GB RTX 5060 Ti; the other rows come from model sizes an
 
 ## Installation
 
-Requires **ComfyUI 0.37.0 or newer**; it provides the native YuE2, SheetSage2, MiniMax Music 3, FLUX.2 and text-generation nodes Plenio builds on.
+Requires **ComfyUI 0.37.0 or newer** (tested with 0.41.0); it provides the native YuE2, SheetSage2, MiniMax Music 3, FLUX.2 and text-generation nodes Plenio builds on.
 
 **ComfyUI Manager:** open *Manager → Custom Nodes Manager*, search for **Plenio Music Production System** and install it. Restart ComfyUI.
 

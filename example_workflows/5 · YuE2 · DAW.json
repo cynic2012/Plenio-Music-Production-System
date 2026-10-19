@@ -3596,6 +3596,13 @@
         "link": null
        },
        {
+        "localized_name": "system_prompt",
+        "name": "system_prompt",
+        "shape": 7,
+        "type": "STRING",
+        "link": null
+       },
+       {
         "localized_name": "prompt",
         "name": "prompt",
         "type": "STRING",
@@ -3721,6 +3728,12 @@
         "links": [
          10
         ]
+       },
+       {
+        "localized_name": "thinking",
+        "name": "thinking",
+        "type": "STRING",
+        "links": null
        }
       ],
       "title": "Generate Text (ComfyUI)",
@@ -4521,6 +4534,13 @@
         "link": null
        },
        {
+        "localized_name": "system_prompt",
+        "name": "system_prompt",
+        "shape": 7,
+        "type": "STRING",
+        "link": null
+       },
+       {
         "localized_name": "prompt",
         "name": "prompt",
         "type": "STRING",
@@ -4646,6 +4666,12 @@
         "links": [
          23
         ]
+       },
+       {
+        "localized_name": "thinking",
+        "name": "thinking",
+        "type": "STRING",
+        "links": null
        }
       ],
       "title": "Repair (ComfyUI)",
@@ -4915,6 +4941,13 @@
         "link": null
        },
        {
+        "localized_name": "system_prompt",
+        "name": "system_prompt",
+        "shape": 7,
+        "type": "STRING",
+        "link": null
+       },
+       {
         "localized_name": "prompt",
         "name": "prompt",
         "type": "STRING",
@@ -5040,6 +5073,12 @@
         "links": [
          36
         ]
+       },
+       {
+        "localized_name": "thinking",
+        "name": "thinking",
+        "type": "STRING",
+        "links": null
        }
       ],
       "title": "Repair (ComfyUI)",
@@ -5282,7 +5321,7 @@
       "origin_id": 509,
       "origin_slot": 1,
       "target_id": 504,
-      "target_slot": 12,
+      "target_slot": 13,
       "type": "INT"
      },
      {
@@ -5298,7 +5337,7 @@
       "origin_id": 501,
       "origin_slot": 0,
       "target_id": 504,
-      "target_slot": 4,
+      "target_slot": 5,
       "type": "STRING"
      },
      {
@@ -5386,7 +5425,7 @@
       "origin_id": 510,
       "origin_slot": 1,
       "target_id": 513,
-      "target_slot": 4,
+      "target_slot": 5,
       "type": "STRING"
      },
      {
@@ -5410,7 +5449,7 @@
       "origin_id": 509,
       "origin_slot": 1,
       "target_id": 513,
-      "target_slot": 12,
+      "target_slot": 13,
       "type": "INT"
      },
      {
@@ -5490,7 +5529,7 @@
       "origin_id": 511,
       "origin_slot": 1,
       "target_id": 516,
-      "target_slot": 4,
+      "target_slot": 5,
       "type": "STRING"
      },
      {
@@ -5514,7 +5553,7 @@
       "origin_id": 509,
       "origin_slot": 1,
       "target_id": 516,
-      "target_slot": 12,
+      "target_slot": 13,
       "type": "INT"
      },
      {
@@ -5730,7 +5769,7 @@
       "origin_id": -10,
       "origin_slot": 8,
       "target_id": 504,
-      "target_slot": 14,
+      "target_slot": 15,
       "type": "BOOLEAN"
      },
      {
@@ -5746,7 +5785,7 @@
       "origin_id": -10,
       "origin_slot": 8,
       "target_id": 513,
-      "target_slot": 14,
+      "target_slot": 15,
       "type": "BOOLEAN"
      },
      {
@@ -5762,7 +5801,7 @@
       "origin_id": -10,
       "origin_slot": 8,
       "target_id": 516,
-      "target_slot": 14,
+      "target_slot": 15,
       "type": "BOOLEAN"
      },
      {

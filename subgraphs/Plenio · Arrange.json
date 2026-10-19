@@ -532,6 +532,13 @@
         "link": null
        },
        {
+        "localized_name": "system_prompt",
+        "name": "system_prompt",
+        "shape": 7,
+        "type": "STRING",
+        "link": null
+       },
+       {
         "localized_name": "prompt",
         "name": "prompt",
         "type": "STRING",
@@ -657,6 +664,12 @@
         "links": [
          12
         ]
+       },
+       {
+        "localized_name": "thinking",
+        "name": "thinking",
+        "type": "STRING",
+        "links": null
        }
       ],
       "title": "Generate Text (ComfyUI)",
@@ -1164,6 +1177,13 @@
         "link": null
        },
        {
+        "localized_name": "system_prompt",
+        "name": "system_prompt",
+        "shape": 7,
+        "type": "STRING",
+        "link": null
+       },
+       {
         "localized_name": "prompt",
         "name": "prompt",
         "type": "STRING",
@@ -1289,6 +1309,12 @@
         "links": [
          23
         ]
+       },
+       {
+        "localized_name": "thinking",
+        "name": "thinking",
+        "type": "STRING",
+        "links": null
        }
       ],
       "title": "Re-ask (ComfyUI)",
@@ -1648,7 +1674,7 @@
       "origin_id": 1309,
       "origin_slot": 1,
       "target_id": 1304,
-      "target_slot": 12,
+      "target_slot": 13,
       "type": "INT"
      },
      {
@@ -1672,7 +1698,7 @@
       "origin_id": 1301,
       "origin_slot": 0,
       "target_id": 1304,
-      "target_slot": 4,
+      "target_slot": 5,
       "type": "STRING"
      },
      {
@@ -1752,7 +1778,7 @@
       "origin_id": 1307,
       "origin_slot": 2,
       "target_id": 1310,
-      "target_slot": 4,
+      "target_slot": 5,
       "type": "STRING"
      },
      {
@@ -1776,7 +1802,7 @@
       "origin_id": 1309,
       "origin_slot": 1,
       "target_id": 1310,
-      "target_slot": 12,
+      "target_slot": 13,
       "type": "INT"
      },
      {

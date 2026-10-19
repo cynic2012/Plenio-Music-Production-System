@@ -74,7 +74,7 @@ def test_templates_ship() -> None:
 
 
 def test_snapshot_is_pinned_to_the_supported_comfyui() -> None:
-    assert SNAPSHOT["comfyui_version"] == "0.37.0"
+    assert SNAPSHOT["comfyui_version"] == "0.41.0"
     assert "PlenioSystemCheck" in SNAPSHOT["nodes"]
 
 

@@ -2,6 +2,12 @@
 
 All notable changes of the current version and the one before. Versions follow semantic versioning; published Registry versions are immutable. Earlier versions (0.2.0 to 0.8.0): the [changelog of 1.0.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.0.0/CHANGELOG.md) (0.8.0), the [changelog of 0.8.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.8.0/CHANGELOG.md) (0.7.0), the [changelog of 0.7.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.7.0/CHANGELOG.md) (0.6.1), the [changelog of 0.6.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.6.0/CHANGELOG.md) (0.5.0 and 0.6.0), the [changelog of 0.4.4](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.4.4/CHANGELOG.md) (0.2.0 to 0.4.4) and the [GitHub releases](https://github.com/jplenio/Plenio-Music-Production-System/releases).
 
+## Unreleased
+
+### Changed
+
+- **ComfyUI 0.41.0 is the reference** (owner's decision): the CI's contract and host tests run against it, the node snapshot is taken from it, and the templates carry its Generate Text with the new `system_prompt` input and `thinking` output (unused). 0.37.0 stays the minimum: the contract and host tests pass against it too.
+
 ## 1.0.1 - 2026-10-18
 
 **The player at home and at the party.** Two days after 1.0, the Plenio Player opens to every device in your home network - ComfyUI with it -, puts the live playlist on the guests' phones and the visual on the big screen, makes videos and shared players in the background while you listen, shares a library of any size (in parts for a phone), finds a song by every value it has and by tags of your own, and changes from one visual to the next softly. A song's video gets the cover all the way through, the lyrics word by word and lines that come in on the beat, and five new Plenio Drop presets draw the song itself. The song templates get a Plan seed and a Cover seed.

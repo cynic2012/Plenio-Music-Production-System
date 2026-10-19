@@ -4,7 +4,7 @@
 
 ## Requirements
 
-- ComfyUI **0.37.0** or newer (it provides the native YuE2, SheetSage2, MiniMax Music 3, FLUX.2 and text-generation nodes Plenio builds on)
+- ComfyUI **0.37.0** or newer, tested with 0.41.0 (it provides the native YuE2, SheetSage2, MiniMax Music 3, FLUX.2 and text-generation nodes Plenio builds on)
 - an NVIDIA GPU for the music models (Plenio is developed and measured on a 16 GB card; the System Check's rule table covers smaller and larger ones). *4 · Enhance & Master* runs on the CPU.
 
 ## Install
