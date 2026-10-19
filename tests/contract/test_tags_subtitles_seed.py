@@ -35,7 +35,7 @@ def song_brief(vocals: dict[str, Any] | None = None, **extra: Any) -> Any:
 
 
 def test_the_song_briefs_fields_come_out_one_by_one(comfy_path: Path) -> None:
-    output = song_brief(arrangement="hypnotic", genre_closeness=40, lines_under_singing=True)
+    output = song_brief(arrangement="hypnotic", genre_closeness=40, lines_under_singing=True, creativity=75)
     schema = node("PlenioSongBrief").GET_SCHEMA()
     names = [o.display_name for o in schema.outputs]
     assert names[:5] == [
@@ -61,9 +61,12 @@ def test_the_song_briefs_fields_come_out_one_by_one(comfy_path: Path) -> None:
         "arrangement": "hypnotic",
         "genre_closeness": 40,
         "lines_under_singing": True,
+        "creativity": 75,
     }
-    # the summary says what the chosen creative mode does (its tooltip names no modes any more)
-    assert "A steady repeating pattern" in output.ui["plenio_summary"][0]["markdown"]
+    # the summary says what the chosen creative mode does (its tooltip names no modes any more), and the creativity
+    summary = output.ui["plenio_summary"][0]["markdown"]
+    assert "A steady repeating pattern" in summary and "Creativity: **75 (varied)**" in summary
+    assert song_brief().result[0].creativity == 50  # without the slider (an older workflow): the reference
     instrumental = song_brief(
         {"vocals": "instrumental", "melody": "accompaniment only", "lead_instrument": ""}
     )

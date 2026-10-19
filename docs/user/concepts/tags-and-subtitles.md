@@ -18,7 +18,7 @@ wins over the typed one.
 | Group | Variables |
 |---|---|
 | song | `{title}`, `{lyrics}`, `{style}`, `{artwork_prompt}`, `{duration}`, `{bpm}`, `{score_key}` |
-| brief | `{description}`, `{template}`, `{mode}`, `{genre}`, `{mood}`, `{tempo}`, `{length}`, `{vocals}`, `{language}`, `{voice}`, `{theme}`, `{melody}`, `{lead_instrument}`, `{key}`, `{meter}`, `{arrangement}`, `{genre_closeness}`, `{lines_under_singing}`; a cover's `{harmony}`, `{song_flow_closeness}`, `{lyrics_closeness}` |
+| brief | `{description}`, `{template}`, `{mode}`, `{genre}`, `{mood}`, `{tempo}`, `{length}`, `{vocals}`, `{language}`, `{voice}`, `{theme}`, `{melody}`, `{lead_instrument}`, `{key}`, `{meter}`, `{arrangement}`, `{genre_closeness}`, `{lines_under_singing}`, `{creativity}`; a cover's `{harmony}`, `{song_flow_closeness}`, `{lyrics_closeness}` |
 | run | `{date}`, `{year}`, `{time}`, `{seed}` (= `{take_seed}`), `{draft_seed}`, `{arrangement_seed}` |
 | models | `{model}`, `{writer}` |
 | Plenio | `{plenio_version}` |

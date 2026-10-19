@@ -26,4 +26,5 @@ Concepts:
 - [Seeds](concepts/seeds.md) - one switch per seed: 🔒 keep a part (the draft, the take), 🎲 renew it every run
 - [Tags, variables and lyrics subtitles](concepts/tags-and-subtitles.md) - tags filled from the brief (`{genre}`, `{mood}` ...), file names, the lyrics as SRT timed by listening
 - [Plenio Player](concepts/player.md) - listen to your songs: one click from ComfyUI or a double click without it; search, a page per song, lyrics and sheet music following the music, playlists, Winamp-style visuals; settings kept; a song back into ComfyUI
+- [Creativity](concepts/creativity.md) - one slider from steady to experimental (50 as before): the writer's rules and temperature, YuE2's plan and takes
 - [Creative modes](concepts/creative-modes.md) - no arrangement (*off*) or planned arrangements (standard, varied, fantasy, sterile, many instruments, dramatic), the closeness sliders, which writer model

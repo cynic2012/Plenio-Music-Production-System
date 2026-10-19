@@ -167,6 +167,7 @@ def brief_variables(brief: Any) -> dict[str, str]:
         "arrangement": brief.arrangement,
         "lines_under_singing": bool(brief.lines_under_singing),
         "length": brief.length,
+        "creativity": brief.creativity,
     }
     if brief.kind == "cover":
         values["vocals"] = {v: k for k, v in COVER_VOCALS.items()}.get(brief.vocals, brief.vocals)

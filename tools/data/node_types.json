@@ -1948,6 +1948,17 @@
        "default": false
       }
      ],
+     "creativity": [
+      "INT",
+      {
+       "tooltip": "0 steady ... 50 the reference (as before) ... 100 experimental: how much the writer and YuE2 dare. More surprises also means more misses - try a few seeds.",
+       "default": 50,
+       "min": 0,
+       "max": 100,
+       "step": 1,
+       "display": "slider"
+      }
+     ],
      "source": [
       "AUDIO",
       {
@@ -1980,6 +1991,7 @@
      "song_flow_closeness",
      "lyrics_closeness",
      "lines_under_singing",
+     "creativity",
      "source"
     ],
     "hidden": [
@@ -2004,7 +2016,8 @@
     "STRING",
     "INT",
     "INT",
-    "BOOLEAN"
+    "BOOLEAN",
+    "INT"
    ],
    "output_name": [
     "brief",
@@ -2023,9 +2036,11 @@
     "arrangement",
     "song_flow_closeness",
     "lyrics_closeness",
-    "lines_under_singing"
+    "lines_under_singing",
+    "creativity"
    ],
    "output_is_list": [
+    false,
     false,
     false,
     false,
@@ -2047,6 +2062,72 @@
    "output_node": false,
    "category": "Plenio/Song",
    "display_name": "Cover Brief"
+  },
+  "PlenioCreativity": {
+   "input": {
+    "required": {
+     "stage": [
+      "COMBO",
+      {
+       "tooltip": "writer: the first draft's temperature; arrangement: a creative mode's plan; plan: YuE2's score (ABC); take: YuE2's performance (music tokens).",
+       "default": "take",
+       "multiselect": false,
+       "options": [
+        "writer",
+        "arrangement",
+        "plan",
+        "take"
+       ]
+      }
+     ],
+     "creativity": [
+      "INT",
+      {
+       "tooltip": "0 steady ... 50 the reference (the native defaults) ... 100 experimental. A connected brief's creativity takes its place.",
+       "default": 50,
+       "min": 0,
+       "max": 100,
+       "step": 1,
+       "display": "slider"
+      }
+     ]
+    },
+    "optional": {
+     "brief": [
+      "PLENIO_BRIEF",
+      {
+       "tooltip": "Optional: its creativity is used instead."
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "stage",
+     "creativity"
+    ],
+    "optional": [
+     "brief"
+    ]
+   },
+   "output": [
+    "FLOAT",
+    "FLOAT",
+    "INT"
+   ],
+   "output_name": [
+    "temperature",
+    "top_p",
+    "top_k"
+   ],
+   "output_is_list": [
+    false,
+    false,
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Song",
+   "display_name": "Creativity"
   },
   "PlenioEQ": {
    "input": {
@@ -4000,6 +4081,17 @@
        "tooltip": "Creative modes only (experimental): off - the instrument line plays where the voice rests, as in YuE2's own scores; on - it also sounds under the singing, calm and below the voice.",
        "default": false
       }
+     ],
+     "creativity": [
+      "INT",
+      {
+       "tooltip": "0 steady ... 50 the reference (as before) ... 100 experimental: how much the writer and YuE2 dare. More surprises also means more misses - try a few seeds.",
+       "default": 50,
+       "min": 0,
+       "max": 100,
+       "step": 1,
+       "display": "slider"
+      }
      ]
     }
    },
@@ -4019,7 +4111,8 @@
     "optional": [
      "arrangement",
      "genre_closeness",
-     "lines_under_singing"
+     "lines_under_singing",
+     "creativity"
     ]
    },
    "output": [
@@ -4041,7 +4134,8 @@
     "STRING",
     "STRING",
     "INT",
-    "BOOLEAN"
+    "BOOLEAN",
+    "INT"
    ],
    "output_name": [
     "brief",
@@ -4062,9 +4156,11 @@
     "meter",
     "arrangement",
     "genre_closeness",
-    "lines_under_singing"
+    "lines_under_singing",
+    "creativity"
    ],
    "output_is_list": [
+    false,
     false,
     false,
     false,

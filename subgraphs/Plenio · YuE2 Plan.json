@@ -78,6 +78,15 @@
       "name": "mode"
      },
      "link": null
+    },
+    {
+     "localized_name": "creativity",
+     "name": "creativity",
+     "type": "INT",
+     "widget": {
+      "name": "creativity"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -101,7 +110,8 @@
     null,
     0,
     true,
-    "full"
+    "full",
+    50
    ]
   }
  ],
@@ -114,8 +124,8 @@
     "version": 1,
     "state": {
      "lastGroupId": 0,
-     "lastNodeId": 708,
-     "lastLinkId": 22,
+     "lastNodeId": 709,
+     "lastLinkId": 29,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -127,7 +137,7 @@
       -260,
       0,
       160,
-      180
+      200
      ]
     },
     "outputNode": {
@@ -145,8 +155,8 @@
       "name": "clip",
       "type": "CLIP",
       "linkIds": [
-       9,
-       10
+       15,
+       16
       ],
       "pos": [
        0,
@@ -158,8 +168,8 @@
       "name": "style",
       "type": "STRING",
       "linkIds": [
-       11,
-       12
+       17,
+       18
       ],
       "pos": [
        0,
@@ -171,9 +181,9 @@
       "name": "lyrics",
       "type": "STRING",
       "linkIds": [
-       13,
-       14,
-       15
+       19,
+       20,
+       21
       ],
       "pos": [
        0,
@@ -185,7 +195,7 @@
       "name": "seed",
       "type": "INT",
       "linkIds": [
-       16
+       22
       ],
       "pos": [
        0,
@@ -198,7 +208,7 @@
       "name": "song_seed",
       "type": "INT",
       "linkIds": [
-       17
+       23
       ],
       "pos": [
        0,
@@ -211,7 +221,7 @@
       "name": "switch",
       "type": "BOOLEAN",
       "linkIds": [
-       18
+       24
       ],
       "pos": [
        0,
@@ -224,14 +234,26 @@
       "name": "mode",
       "type": "COMBO",
       "linkIds": [
-       19,
-       20
+       25,
+       26
       ],
       "pos": [
        0,
        120
       ],
       "label": "plan type"
+     },
+     {
+      "id": "e1e83d34-8b05-5a9a-bb0d-5b79b850e36e",
+      "name": "creativity",
+      "type": "INT",
+      "linkIds": [
+       27
+      ],
+      "pos": [
+       0,
+       140
+      ]
      }
     ],
     "outputs": [
@@ -240,7 +262,7 @@
       "name": "score",
       "type": "STRING",
       "linkIds": [
-       21
+       28
       ],
       "pos": [
        0,
@@ -252,7 +274,7 @@
       "name": "form_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       22
+       29
       ],
       "pos": [
        0,
@@ -281,7 +303,7 @@
         "localized_name": "clip",
         "name": "clip",
         "type": "CLIP",
-        "link": 9
+        "link": 15
        },
        {
         "localized_name": "style",
@@ -290,7 +312,7 @@
         "widget": {
          "name": "style"
         },
-        "link": 11
+        "link": 17
        },
        {
         "localized_name": "lyrics",
@@ -299,7 +321,7 @@
         "widget": {
          "name": "lyrics"
         },
-        "link": 13
+        "link": 19
        },
        {
         "localized_name": "seed",
@@ -308,7 +330,7 @@
         "widget": {
          "name": "seed"
         },
-        "link": 4
+        "link": 10
        },
        {
         "localized_name": "mode",
@@ -317,7 +339,7 @@
         "widget": {
          "name": "mode"
         },
-        "link": 19
+        "link": 25
        },
        {
         "localized_name": "max_abc_tokens",
@@ -335,7 +357,7 @@
         "widget": {
          "name": "temperature"
         },
-        "link": null
+        "link": 1
        },
        {
         "localized_name": "top_p",
@@ -344,7 +366,7 @@
         "widget": {
          "name": "top_p"
         },
-        "link": null
+        "link": 2
        },
        {
         "localized_name": "top_k",
@@ -353,7 +375,7 @@
         "widget": {
          "name": "top_k"
         },
-        "link": null
+        "link": 3
        },
        {
         "localized_name": "repetition_penalty",
@@ -380,7 +402,7 @@
         "name": "abc",
         "type": "STRING",
         "links": [
-         2
+         8
         ]
        }
       ],
@@ -432,7 +454,7 @@
         "name": "STRING",
         "type": "STRING",
         "links": [
-         1
+         7
         ]
        }
       ],
@@ -464,14 +486,14 @@
         "name": "on_false",
         "shape": 7,
         "type": "COMFY_MATCHTYPE_V3",
-        "link": 1
+        "link": 7
        },
        {
         "localized_name": "on_true",
         "name": "on_true",
         "shape": 7,
         "type": "COMFY_MATCHTYPE_V3",
-        "link": 2
+        "link": 8
        },
        {
         "localized_name": "switch",
@@ -480,7 +502,7 @@
         "widget": {
          "name": "switch"
         },
-        "link": 18
+        "link": 24
        }
       ],
       "outputs": [
@@ -489,7 +511,7 @@
         "name": "output",
         "type": "COMFY_MATCHTYPE_V3",
         "links": [
-         7
+         13
         ]
        }
       ],
@@ -522,7 +544,7 @@
         "widget": {
          "name": "value"
         },
-        "link": 16
+        "link": 22
        }
       ],
       "outputs": [
@@ -531,7 +553,7 @@
         "name": "INT",
         "type": "INT",
         "links": [
-         3
+         9
         ]
        }
       ],
@@ -565,7 +587,7 @@
         "label": "a",
         "shape": 7,
         "type": "FLOAT,INT,BOOLEAN",
-        "link": 3
+        "link": 9
        },
        {
         "localized_name": "values.b",
@@ -573,7 +595,7 @@
         "label": "b",
         "shape": 7,
         "type": "FLOAT,INT,BOOLEAN",
-        "link": 17
+        "link": 23
        },
        {
         "localized_name": "expression",
@@ -597,8 +619,8 @@
         "name": "INT",
         "type": "INT",
         "links": [
-         4,
-         5
+         10,
+         11
         ]
        },
        {
@@ -635,7 +657,7 @@
         "localized_name": "clip",
         "name": "clip",
         "type": "CLIP",
-        "link": 10
+        "link": 16
        },
        {
         "localized_name": "style",
@@ -644,7 +666,7 @@
         "widget": {
          "name": "style"
         },
-        "link": 12
+        "link": 18
        },
        {
         "localized_name": "lyrics",
@@ -653,7 +675,7 @@
         "widget": {
          "name": "lyrics"
         },
-        "link": 14
+        "link": 20
        },
        {
         "localized_name": "seed",
@@ -662,7 +684,7 @@
         "widget": {
          "name": "seed"
         },
-        "link": 6
+        "link": 12
        },
        {
         "localized_name": "mode",
@@ -671,7 +693,7 @@
         "widget": {
          "name": "mode"
         },
-        "link": 20
+        "link": 26
        },
        {
         "localized_name": "max_abc_tokens",
@@ -689,7 +711,7 @@
         "widget": {
          "name": "temperature"
         },
-        "link": null
+        "link": 4
        },
        {
         "localized_name": "top_p",
@@ -698,7 +720,7 @@
         "widget": {
          "name": "top_p"
         },
-        "link": null
+        "link": 5
        },
        {
         "localized_name": "top_k",
@@ -707,7 +729,7 @@
         "widget": {
          "name": "top_k"
         },
-        "link": null
+        "link": 6
        },
        {
         "localized_name": "repetition_penalty",
@@ -734,7 +756,7 @@
         "name": "abc",
         "type": "STRING",
         "links": [
-         8
+         14
         ]
        }
       ],
@@ -777,7 +799,7 @@
         "label": "a",
         "shape": 7,
         "type": "FLOAT,INT,BOOLEAN",
-        "link": 5
+        "link": 11
        },
        {
         "localized_name": "values.b",
@@ -809,7 +831,7 @@
         "name": "INT",
         "type": "INT",
         "links": [
-         6
+         12
         ]
        },
        {
@@ -846,20 +868,20 @@
         "localized_name": "score",
         "name": "score",
         "type": "STRING",
-        "link": 7
+        "link": 13
        },
        {
         "localized_name": "lyrics",
         "name": "lyrics",
         "type": "STRING",
-        "link": 15
+        "link": 21
        },
        {
         "localized_name": "alternative",
         "name": "alternative",
         "shape": 7,
         "type": "STRING",
-        "link": 8
+        "link": 14
        }
       ],
       "outputs": [
@@ -868,7 +890,7 @@
         "name": "score",
         "type": "STRING",
         "links": [
-         21
+         28
         ]
        },
        {
@@ -876,7 +898,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         22
+         29
         ]
        }
       ],
@@ -884,12 +906,139 @@
        "Node name for S&R": "PlenioMatchSongForm"
       },
       "widgets_values": []
+     },
+     {
+      "id": 709,
+      "type": "PlenioCreativity",
+      "pos": [
+       720,
+       330
+      ],
+      "size": [
+       320,
+       230
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "brief",
+        "name": "brief",
+        "shape": 7,
+        "type": "PLENIO_BRIEF",
+        "link": null
+       },
+       {
+        "localized_name": "stage",
+        "name": "stage",
+        "type": "COMBO",
+        "widget": {
+         "name": "stage"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "creativity",
+        "name": "creativity",
+        "type": "INT",
+        "widget": {
+         "name": "creativity"
+        },
+        "link": 27
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "temperature",
+        "name": "temperature",
+        "type": "FLOAT",
+        "links": [
+         1,
+         4
+        ]
+       },
+       {
+        "localized_name": "top_p",
+        "name": "top_p",
+        "type": "FLOAT",
+        "links": [
+         2,
+         5
+        ]
+       },
+       {
+        "localized_name": "top_k",
+        "name": "top_k",
+        "type": "INT",
+        "links": [
+         3,
+         6
+        ]
+       }
+      ],
+      "title": "Plan creativity",
+      "properties": {
+       "Node name for S&R": "PlenioCreativity"
+      },
+      "widgets_values": [
+       "plan",
+       50
+      ]
      }
     ],
     "groups": [],
     "links": [
      {
       "id": 1,
+      "origin_id": 709,
+      "origin_slot": 0,
+      "target_id": 701,
+      "target_slot": 6,
+      "type": "FLOAT"
+     },
+     {
+      "id": 2,
+      "origin_id": 709,
+      "origin_slot": 1,
+      "target_id": 701,
+      "target_slot": 7,
+      "type": "FLOAT"
+     },
+     {
+      "id": 3,
+      "origin_id": 709,
+      "origin_slot": 2,
+      "target_id": 701,
+      "target_slot": 8,
+      "type": "INT"
+     },
+     {
+      "id": 4,
+      "origin_id": 709,
+      "origin_slot": 0,
+      "target_id": 706,
+      "target_slot": 6,
+      "type": "FLOAT"
+     },
+     {
+      "id": 5,
+      "origin_id": 709,
+      "origin_slot": 1,
+      "target_id": 706,
+      "target_slot": 7,
+      "type": "FLOAT"
+     },
+     {
+      "id": 6,
+      "origin_id": 709,
+      "origin_slot": 2,
+      "target_id": 706,
+      "target_slot": 8,
+      "type": "INT"
+     },
+     {
+      "id": 7,
       "origin_id": 702,
       "origin_slot": 0,
       "target_id": 703,
@@ -897,7 +1046,7 @@
       "type": "STRING"
      },
      {
-      "id": 2,
+      "id": 8,
       "origin_id": 701,
       "origin_slot": 0,
       "target_id": 703,
@@ -905,7 +1054,7 @@
       "type": "STRING"
      },
      {
-      "id": 3,
+      "id": 9,
       "origin_id": 704,
       "origin_slot": 0,
       "target_id": 705,
@@ -913,7 +1062,7 @@
       "type": "INT"
      },
      {
-      "id": 4,
+      "id": 10,
       "origin_id": 705,
       "origin_slot": 1,
       "target_id": 701,
@@ -921,7 +1070,7 @@
       "type": "INT"
      },
      {
-      "id": 5,
+      "id": 11,
       "origin_id": 705,
       "origin_slot": 1,
       "target_id": 707,
@@ -929,7 +1078,7 @@
       "type": "INT"
      },
      {
-      "id": 6,
+      "id": 12,
       "origin_id": 707,
       "origin_slot": 1,
       "target_id": 706,
@@ -937,7 +1086,7 @@
       "type": "INT"
      },
      {
-      "id": 7,
+      "id": 13,
       "origin_id": 703,
       "origin_slot": 0,
       "target_id": 708,
@@ -945,7 +1094,7 @@
       "type": "COMFY_MATCHTYPE_V3"
      },
      {
-      "id": 8,
+      "id": 14,
       "origin_id": 706,
       "origin_slot": 0,
       "target_id": 708,
@@ -953,55 +1102,55 @@
       "type": "STRING"
      },
      {
-      "id": 9,
-      "origin_id": -10,
-      "origin_slot": 0,
-      "target_id": 701,
-      "target_slot": 0,
-      "type": "CLIP"
-     },
-     {
-      "id": 10,
-      "origin_id": -10,
-      "origin_slot": 0,
-      "target_id": 706,
-      "target_slot": 0,
-      "type": "CLIP"
-     },
-     {
-      "id": 11,
-      "origin_id": -10,
-      "origin_slot": 1,
-      "target_id": 701,
-      "target_slot": 1,
-      "type": "STRING"
-     },
-     {
-      "id": 12,
-      "origin_id": -10,
-      "origin_slot": 1,
-      "target_id": 706,
-      "target_slot": 1,
-      "type": "STRING"
-     },
-     {
-      "id": 13,
-      "origin_id": -10,
-      "origin_slot": 2,
-      "target_id": 701,
-      "target_slot": 2,
-      "type": "STRING"
-     },
-     {
-      "id": 14,
-      "origin_id": -10,
-      "origin_slot": 2,
-      "target_id": 706,
-      "target_slot": 2,
-      "type": "STRING"
-     },
-     {
       "id": 15,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 701,
+      "target_slot": 0,
+      "type": "CLIP"
+     },
+     {
+      "id": 16,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 706,
+      "target_slot": 0,
+      "type": "CLIP"
+     },
+     {
+      "id": 17,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 701,
+      "target_slot": 1,
+      "type": "STRING"
+     },
+     {
+      "id": 18,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 706,
+      "target_slot": 1,
+      "type": "STRING"
+     },
+     {
+      "id": 19,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 701,
+      "target_slot": 2,
+      "type": "STRING"
+     },
+     {
+      "id": 20,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 706,
+      "target_slot": 2,
+      "type": "STRING"
+     },
+     {
+      "id": 21,
       "origin_id": -10,
       "origin_slot": 2,
       "target_id": 708,
@@ -1009,7 +1158,7 @@
       "type": "STRING"
      },
      {
-      "id": 16,
+      "id": 22,
       "origin_id": -10,
       "origin_slot": 3,
       "target_id": 704,
@@ -1017,7 +1166,7 @@
       "type": "INT"
      },
      {
-      "id": 17,
+      "id": 23,
       "origin_id": -10,
       "origin_slot": 4,
       "target_id": 705,
@@ -1025,7 +1174,7 @@
       "type": "INT"
      },
      {
-      "id": 18,
+      "id": 24,
       "origin_id": -10,
       "origin_slot": 5,
       "target_id": 703,
@@ -1033,7 +1182,7 @@
       "type": "BOOLEAN"
      },
      {
-      "id": 19,
+      "id": 25,
       "origin_id": -10,
       "origin_slot": 6,
       "target_id": 701,
@@ -1041,7 +1190,7 @@
       "type": "COMBO"
      },
      {
-      "id": 20,
+      "id": 26,
       "origin_id": -10,
       "origin_slot": 6,
       "target_id": 706,
@@ -1049,7 +1198,15 @@
       "type": "COMBO"
      },
      {
-      "id": 21,
+      "id": 27,
+      "origin_id": -10,
+      "origin_slot": 7,
+      "target_id": 709,
+      "target_slot": 2,
+      "type": "INT"
+     },
+     {
+      "id": 28,
       "origin_id": 708,
       "origin_slot": 0,
       "target_id": -20,
@@ -1057,7 +1214,7 @@
       "type": "STRING"
      },
      {
-      "id": 22,
+      "id": 29,
       "origin_id": 708,
       "origin_slot": 1,
       "target_id": -20,

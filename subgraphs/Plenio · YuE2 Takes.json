@@ -99,6 +99,15 @@
       "name": "takes"
      },
      "link": null
+    },
+    {
+     "localized_name": "creativity",
+     "name": "creativity",
+     "type": "INT",
+     "widget": {
+      "name": "creativity"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -117,7 +126,8 @@
     "",
     "full",
     360.0,
-    1
+    1,
+    50
    ]
   }
  ],
@@ -130,8 +140,8 @@
     "version": 1,
     "state": {
      "lastGroupId": 0,
-     "lastNodeId": 908,
-     "lastLinkId": 22,
+     "lastNodeId": 909,
+     "lastLinkId": 26,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -143,7 +153,7 @@
       -260,
       0,
       160,
-      240
+      260
      ]
     },
     "outputNode": {
@@ -161,7 +171,7 @@
       "name": "model",
       "type": "MODEL",
       "linkIds": [
-       11
+       14
       ],
       "pos": [
        0,
@@ -173,7 +183,7 @@
       "name": "clip",
       "type": "CLIP",
       "linkIds": [
-       12
+       15
       ],
       "pos": [
        0,
@@ -185,7 +195,7 @@
       "name": "vae",
       "type": "VAE",
       "linkIds": [
-       13
+       16
       ],
       "pos": [
        0,
@@ -197,7 +207,7 @@
       "name": "style",
       "type": "STRING",
       "linkIds": [
-       14
+       17
       ],
       "pos": [
        0,
@@ -209,8 +219,8 @@
       "name": "lyrics",
       "type": "STRING",
       "linkIds": [
-       15,
-       16
+       18,
+       19
       ],
       "pos": [
        0,
@@ -222,7 +232,7 @@
       "name": "abc",
       "type": "STRING",
       "linkIds": [
-       17
+       20
       ],
       "pos": [
        0,
@@ -235,7 +245,7 @@
       "name": "mode",
       "type": "COMBO",
       "linkIds": [
-       18
+       21
       ],
       "pos": [
        0,
@@ -248,7 +258,7 @@
       "name": "seed",
       "type": "INT",
       "linkIds": [
-       19
+       22
       ],
       "pos": [
        0,
@@ -261,7 +271,7 @@
       "name": "max_duration",
       "type": "FLOAT",
       "linkIds": [
-       20
+       23
       ],
       "pos": [
        0,
@@ -274,11 +284,23 @@
       "name": "takes",
       "type": "INT",
       "linkIds": [
-       21
+       24
       ],
       "pos": [
        0,
        180
+      ]
+     },
+     {
+      "id": "8ad3292a-33c9-5401-bd17-9adcd98e758c",
+      "name": "creativity",
+      "type": "INT",
+      "linkIds": [
+       25
+      ],
+      "pos": [
+       0,
+       200
       ]
      }
     ],
@@ -288,7 +310,7 @@
       "name": "takes",
       "type": "AUDIO",
       "linkIds": [
-       22
+       26
       ],
       "pos": [
        0,
@@ -325,7 +347,7 @@
         "name": "initial_iteration_value",
         "shape": 7,
         "type": "COMFY_MATCHTYPE_V3",
-        "link": 16
+        "link": 19
        },
        {
         "localized_name": "mode",
@@ -343,7 +365,7 @@
         "widget": {
          "name": "mode.num_iterations"
         },
-        "link": 21
+        "link": 24
        },
        {
         "localized_name": "cache_iterations",
@@ -361,7 +383,7 @@
         "name": "iteration_index",
         "type": "INT",
         "links": [
-         1
+         4
         ]
        },
        {
@@ -419,7 +441,7 @@
         "label": "a",
         "shape": 7,
         "type": "FLOAT,INT,BOOLEAN",
-        "link": 1
+        "link": 4
        },
        {
         "localized_name": "values.b",
@@ -427,7 +449,7 @@
         "label": "b",
         "shape": 7,
         "type": "FLOAT,INT,BOOLEAN",
-        "link": 19
+        "link": 22
        },
        {
         "localized_name": "expression",
@@ -451,8 +473,8 @@
         "name": "INT",
         "type": "INT",
         "links": [
-         2,
-         3
+         5,
+         6
         ]
        },
        {
@@ -489,7 +511,7 @@
         "localized_name": "clip",
         "name": "clip",
         "type": "CLIP",
-        "link": 12
+        "link": 15
        },
        {
         "localized_name": "style",
@@ -498,7 +520,7 @@
         "widget": {
          "name": "style"
         },
-        "link": 14
+        "link": 17
        },
        {
         "localized_name": "lyrics",
@@ -507,7 +529,7 @@
         "widget": {
          "name": "lyrics"
         },
-        "link": 15
+        "link": 18
        },
        {
         "localized_name": "abc",
@@ -516,7 +538,7 @@
         "widget": {
          "name": "abc"
         },
-        "link": 17
+        "link": 20
        },
        {
         "localized_name": "seed",
@@ -525,7 +547,7 @@
         "widget": {
          "name": "seed"
         },
-        "link": 2
+        "link": 5
        },
        {
         "localized_name": "mode",
@@ -534,7 +556,7 @@
         "widget": {
          "name": "mode"
         },
-        "link": 18
+        "link": 21
        },
        {
         "localized_name": "max_duration",
@@ -543,7 +565,7 @@
         "widget": {
          "name": "max_duration"
         },
-        "link": 20
+        "link": 23
        },
        {
         "localized_name": "temperature",
@@ -552,7 +574,7 @@
         "widget": {
          "name": "temperature"
         },
-        "link": null
+        "link": 1
        },
        {
         "localized_name": "top_p",
@@ -561,7 +583,7 @@
         "widget": {
          "name": "top_p"
         },
-        "link": null
+        "link": 2
        },
        {
         "localized_name": "top_k",
@@ -570,7 +592,7 @@
         "widget": {
          "name": "top_k"
         },
-        "link": null
+        "link": 3
        },
        {
         "localized_name": "repetition_penalty",
@@ -597,8 +619,8 @@
         "name": "CONDITIONING",
         "type": "CONDITIONING",
         "links": [
-         5,
-         6
+         8,
+         9
         ]
        },
        {
@@ -606,7 +628,7 @@
         "name": "seconds",
         "type": "FLOAT",
         "links": [
-         4
+         7
         ]
        }
       ],
@@ -650,7 +672,7 @@
         "widget": {
          "name": "seconds"
         },
-        "link": 4
+        "link": 7
        },
        {
         "localized_name": "batch_size",
@@ -668,7 +690,7 @@
         "name": "LATENT",
         "type": "LATENT",
         "links": [
-         8
+         11
         ]
        }
       ],
@@ -699,7 +721,7 @@
         "localized_name": "conditioning",
         "name": "conditioning",
         "type": "CONDITIONING",
-        "link": 5
+        "link": 8
        }
       ],
       "outputs": [
@@ -708,7 +730,7 @@
         "name": "CONDITIONING",
         "type": "CONDITIONING",
         "links": [
-         7
+         10
         ]
        }
       ],
@@ -736,25 +758,25 @@
         "localized_name": "model",
         "name": "model",
         "type": "MODEL",
-        "link": 11
+        "link": 14
        },
        {
         "localized_name": "positive",
         "name": "positive",
         "type": "CONDITIONING",
-        "link": 6
+        "link": 9
        },
        {
         "localized_name": "negative",
         "name": "negative",
         "type": "CONDITIONING",
-        "link": 7
+        "link": 10
        },
        {
         "localized_name": "latent_image",
         "name": "latent_image",
         "type": "LATENT",
-        "link": 8
+        "link": 11
        },
        {
         "localized_name": "seed",
@@ -763,7 +785,7 @@
         "widget": {
          "name": "seed"
         },
-        "link": 3
+        "link": 6
        },
        {
         "localized_name": "steps",
@@ -817,7 +839,7 @@
         "name": "LATENT",
         "type": "LATENT",
         "links": [
-         9
+         12
         ]
        }
       ],
@@ -853,13 +875,13 @@
         "localized_name": "samples",
         "name": "samples",
         "type": "LATENT",
-        "link": 9
+        "link": 12
        },
        {
         "localized_name": "vae",
         "name": "vae",
         "type": "VAE",
-        "link": 13
+        "link": 16
        }
       ],
       "outputs": [
@@ -868,7 +890,7 @@
         "name": "AUDIO",
         "type": "AUDIO",
         "links": [
-         10
+         13
         ]
        }
       ],
@@ -897,7 +919,7 @@
         "name": "output_value",
         "shape": 7,
         "type": "COMFY_MATCHTYPE_V3",
-        "link": 10
+        "link": 13
        },
        {
         "localized_name": "next_iteration_value",
@@ -930,7 +952,7 @@
         "name": "outputs",
         "type": "COMFY_MATCHTYPE_V3",
         "links": [
-         22
+         26
         ]
        }
       ],
@@ -940,12 +962,112 @@
       "widgets_values": [
        true
       ]
+     },
+     {
+      "id": 909,
+      "type": "PlenioCreativity",
+      "pos": [
+       360,
+       440
+      ],
+      "size": [
+       320,
+       230
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "brief",
+        "name": "brief",
+        "shape": 7,
+        "type": "PLENIO_BRIEF",
+        "link": null
+       },
+       {
+        "localized_name": "stage",
+        "name": "stage",
+        "type": "COMBO",
+        "widget": {
+         "name": "stage"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "creativity",
+        "name": "creativity",
+        "type": "INT",
+        "widget": {
+         "name": "creativity"
+        },
+        "link": 25
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "temperature",
+        "name": "temperature",
+        "type": "FLOAT",
+        "links": [
+         1
+        ]
+       },
+       {
+        "localized_name": "top_p",
+        "name": "top_p",
+        "type": "FLOAT",
+        "links": [
+         2
+        ]
+       },
+       {
+        "localized_name": "top_k",
+        "name": "top_k",
+        "type": "INT",
+        "links": [
+         3
+        ]
+       }
+      ],
+      "title": "Take creativity",
+      "properties": {
+       "Node name for S&R": "PlenioCreativity"
+      },
+      "widgets_values": [
+       "take",
+       50
+      ]
      }
     ],
     "groups": [],
     "links": [
      {
       "id": 1,
+      "origin_id": 909,
+      "origin_slot": 0,
+      "target_id": 903,
+      "target_slot": 7,
+      "type": "FLOAT"
+     },
+     {
+      "id": 2,
+      "origin_id": 909,
+      "origin_slot": 1,
+      "target_id": 903,
+      "target_slot": 8,
+      "type": "FLOAT"
+     },
+     {
+      "id": 3,
+      "origin_id": 909,
+      "origin_slot": 2,
+      "target_id": 903,
+      "target_slot": 9,
+      "type": "INT"
+     },
+     {
+      "id": 4,
       "origin_id": 901,
       "origin_slot": 0,
       "target_id": 902,
@@ -953,7 +1075,7 @@
       "type": "INT"
      },
      {
-      "id": 2,
+      "id": 5,
       "origin_id": 902,
       "origin_slot": 1,
       "target_id": 903,
@@ -961,7 +1083,7 @@
       "type": "INT"
      },
      {
-      "id": 3,
+      "id": 6,
       "origin_id": 902,
       "origin_slot": 1,
       "target_id": 906,
@@ -969,7 +1091,7 @@
       "type": "INT"
      },
      {
-      "id": 4,
+      "id": 7,
       "origin_id": 903,
       "origin_slot": 1,
       "target_id": 904,
@@ -977,7 +1099,7 @@
       "type": "FLOAT"
      },
      {
-      "id": 5,
+      "id": 8,
       "origin_id": 903,
       "origin_slot": 0,
       "target_id": 905,
@@ -985,7 +1107,7 @@
       "type": "CONDITIONING"
      },
      {
-      "id": 6,
+      "id": 9,
       "origin_id": 903,
       "origin_slot": 0,
       "target_id": 906,
@@ -993,7 +1115,7 @@
       "type": "CONDITIONING"
      },
      {
-      "id": 7,
+      "id": 10,
       "origin_id": 905,
       "origin_slot": 0,
       "target_id": 906,
@@ -1001,7 +1123,7 @@
       "type": "CONDITIONING"
      },
      {
-      "id": 8,
+      "id": 11,
       "origin_id": 904,
       "origin_slot": 0,
       "target_id": 906,
@@ -1009,7 +1131,7 @@
       "type": "LATENT"
      },
      {
-      "id": 9,
+      "id": 12,
       "origin_id": 906,
       "origin_slot": 0,
       "target_id": 907,
@@ -1017,7 +1139,7 @@
       "type": "LATENT"
      },
      {
-      "id": 10,
+      "id": 13,
       "origin_id": 907,
       "origin_slot": 0,
       "target_id": 908,
@@ -1025,7 +1147,7 @@
       "type": "AUDIO"
      },
      {
-      "id": 11,
+      "id": 14,
       "origin_id": -10,
       "origin_slot": 0,
       "target_id": 906,
@@ -1033,7 +1155,7 @@
       "type": "MODEL"
      },
      {
-      "id": 12,
+      "id": 15,
       "origin_id": -10,
       "origin_slot": 1,
       "target_id": 903,
@@ -1041,7 +1163,7 @@
       "type": "CLIP"
      },
      {
-      "id": 13,
+      "id": 16,
       "origin_id": -10,
       "origin_slot": 2,
       "target_id": 907,
@@ -1049,7 +1171,7 @@
       "type": "VAE"
      },
      {
-      "id": 14,
+      "id": 17,
       "origin_id": -10,
       "origin_slot": 3,
       "target_id": 903,
@@ -1057,7 +1179,7 @@
       "type": "STRING"
      },
      {
-      "id": 15,
+      "id": 18,
       "origin_id": -10,
       "origin_slot": 4,
       "target_id": 903,
@@ -1065,7 +1187,7 @@
       "type": "STRING"
      },
      {
-      "id": 16,
+      "id": 19,
       "origin_id": -10,
       "origin_slot": 4,
       "target_id": 901,
@@ -1073,7 +1195,7 @@
       "type": "STRING"
      },
      {
-      "id": 17,
+      "id": 20,
       "origin_id": -10,
       "origin_slot": 5,
       "target_id": 903,
@@ -1081,7 +1203,7 @@
       "type": "STRING"
      },
      {
-      "id": 18,
+      "id": 21,
       "origin_id": -10,
       "origin_slot": 6,
       "target_id": 903,
@@ -1089,7 +1211,7 @@
       "type": "COMBO"
      },
      {
-      "id": 19,
+      "id": 22,
       "origin_id": -10,
       "origin_slot": 7,
       "target_id": 902,
@@ -1097,7 +1219,7 @@
       "type": "INT"
      },
      {
-      "id": 20,
+      "id": 23,
       "origin_id": -10,
       "origin_slot": 8,
       "target_id": 903,
@@ -1105,7 +1227,7 @@
       "type": "FLOAT"
      },
      {
-      "id": 21,
+      "id": 24,
       "origin_id": -10,
       "origin_slot": 9,
       "target_id": 901,
@@ -1113,7 +1235,15 @@
       "type": "INT"
      },
      {
-      "id": 22,
+      "id": 25,
+      "origin_id": -10,
+      "origin_slot": 10,
+      "target_id": 909,
+      "target_slot": 2,
+      "type": "INT"
+     },
+     {
+      "id": 26,
       "origin_id": 908,
       "origin_slot": 0,
       "target_id": -20,

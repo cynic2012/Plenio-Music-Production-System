@@ -4,6 +4,10 @@ All notable changes of the current version and the one before. Versions follow s
 
 ## Unreleased
 
+### Added
+
+- **Creativity** (owner's request: a very simple way to more creative songs): one slider on Song Brief and Cover Brief from **0 steady** to **100 experimental**; **50 is the reference** - the writer's prompt, every temperature and YuE2's sampling exactly as before, the brief's fingerprint too - and a workflow saved before the slider (or an older API prompt) keeps 50. Away from 40-60 the writer gets rules for the lyrics and the style by level (*steady*, *restrained*, *varied*, *experimental*): plain and typical at the low end; at the high end fresher images, varied lines, and a **more varied style** - for YuE2 the same short descriptor line made more specific (named instruments and playing styles, a production colour, words for contrast and movement; YuE2 sang longer style prose), for MiniMax Music 3 a caption whose *Arrangement* part tells an arc of contrasts; *experimental* adds one unexpected but fitting colour and may add one contrasting section. The temperature of the writer's first draft (0.6-0.8-1.0) and of a creative mode's plan (0.55-0.7-0.9) follow it, and in the templates YuE2's plan (temperature 0.55-0.7-0.92, top-p 0.85-0.9-0.95, top-k 20-30-50) and takes (0.9-1.0-1.1, 0.92-0.95-0.97, 60-100-150) - moderate ends, unchanged repetition penalties, MiniMax's own sampling unchanged. A new node **Plenio · Creativity** turns the value into one stage's sampling inside the template blocks; YuE2 Plan, Render and Takes have a *creativity* input linked from the brief; the slider is in App mode; `{creativity}` for tags. Guide: [Creativity](docs/user/concepts/creativity.md); research and decisions: [creativity.md](docs/design/creativity.md).
+
 ### Changed
 
 - **ComfyUI 0.41.0 is the reference** (owner's decision): the CI's contract and host tests run against it, the node snapshot is taken from it, and the templates carry its Generate Text with the new `system_prompt` input and `thinking` output (unused). 0.37.0 stays the minimum: the contract and host tests pass against it too.

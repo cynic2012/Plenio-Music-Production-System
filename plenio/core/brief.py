@@ -26,6 +26,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .creativity import CREATIVITY_DEFAULT, creativity_value
 from .errors import PlenioUserError
 from .files import atomic_write_text
 from .hashing import sha256_json
@@ -146,6 +147,16 @@ _FRONT_MATTER = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?(.*)\Z", re.DOTALL)
 _ID = re.compile(r"[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*)?")
 
 
+def _fingerprint(data: dict[str, Any]) -> str:
+    """A brief's content as a hash. The creativity counts only away from the reference, so a brief at 50 has
+    the fingerprint it had before the slider existed."""
+    data.pop("from_template")
+    data.pop("notes")
+    if data.get("creativity") == CREATIVITY_DEFAULT:
+        data.pop("creativity")
+    return sha256_json(data)
+
+
 @dataclass(frozen=True)
 class SongBrief:
     description: str = ""
@@ -167,6 +178,9 @@ class SongBrief:
     """How close the song stays to its genre (creative modes only): 0 free ... 100 strictly typical."""
     lines_under_singing: bool = False
     """Creative modes: instrument lines may also sound while the voice sings (default: only in its rests)."""
+    creativity: int = CREATIVITY_DEFAULT
+    """0 steady ... 50 the reference ... 100 experimental: the writer's rules and YuE2's sampling
+    (``core.creativity``)."""
     template: str = ""
     from_template: tuple[str, ...] = field(default=(), compare=False)
     notes: tuple[str, ...] = field(default=(), compare=False)
@@ -207,10 +221,7 @@ class SongBrief:
 
     @property
     def fingerprint(self) -> str:
-        data = self.to_dict()
-        data.pop("from_template")
-        data.pop("notes")
-        return sha256_json(data)
+        return _fingerprint(self.to_dict())
 
     def to_text(self) -> str:
         """Readable summary (used in the writing prompt and the release record)."""
@@ -289,6 +300,9 @@ class CoverBrief:
     """New lyrics only: 0 without the source's text, 1 only a hint of it ... 100 its meaning line by line."""
     lines_under_singing: bool = False
     """Creative modes: instrument lines may also sound while the voice sings (default: only in its rests)."""
+    creativity: int = CREATIVITY_DEFAULT
+    """0 steady ... 50 the reference ... 100 experimental: the writer's rules and YuE2's sampling
+    (``core.creativity``)."""
     template: str = ""
     from_template: tuple[str, ...] = field(default=(), compare=False)
     notes: tuple[str, ...] = field(default=(), compare=False)
@@ -354,10 +368,7 @@ class CoverBrief:
 
     @property
     def fingerprint(self) -> str:
-        data = self.to_dict()
-        data.pop("from_template")
-        data.pop("notes")
-        return sha256_json(data)
+        return _fingerprint(self.to_dict())
 
     def to_text(self) -> str:
         lines = ["Kind: cover of a recorded song (melody, form and tempo come from the source)"]
@@ -554,6 +565,7 @@ def build_cover_brief(
         arrangement=str(values.get("arrangement", "") or ARRANGEMENT_DEFAULT).strip(),
         closeness=closeness_value(values.get("closeness")),
         lines_under_singing=bool(values.get("lines_under_singing", False)),
+        creativity=creativity_value(values.get("creativity")),
         lyrics_closeness=(
             closeness_value(values.get("lyrics_closeness"), LYRICS_CLOSENESS_DEFAULT)
             if vocals == "new"
@@ -617,6 +629,7 @@ def build_song_brief(
         arrangement=str(values.get("arrangement", "") or ARRANGEMENT_DEFAULT).strip(),
         closeness=closeness_value(values.get("closeness")),
         lines_under_singing=bool(values.get("lines_under_singing", False)),
+        creativity=creativity_value(values.get("creativity")),
         template=template.id if template else "",
         from_template=tuple(from_template),
         notes=tuple(notes),

@@ -23,7 +23,7 @@
  "ec9ff305-6d52-5283-8543-6c063df4002b": {
   "inputs": {
    "brief": {
-    "tooltip": "The Song Brief or Cover Brief: what to write."
+    "tooltip": "The Song Brief or Cover Brief: what to write (and its creativity: the draft's temperature)."
    },
    "engine": {
     "tooltip": "From the music model block: the rules the writing follows."
@@ -77,7 +77,7 @@
     "tooltip": "The score to arrange: YuE2's plan, or a cover's transcription."
    },
    "brief": {
-    "tooltip": "The brief: the creative mode and its closeness (arrangement off: nothing runs here)."
+    "tooltip": "The brief: the creative mode and its closeness (arrangement off: nothing runs here), and its creativity (the plan's temperature)."
    },
    "engine": {
     "tooltip": "The music model: YuE2's context budget is checked with it."
@@ -129,6 +129,9 @@
    },
    "mode": {
     "tooltip": "full: melody and chords; melody: the melody only (YuE2 harmonises it when it renders)."
+   },
+   "creativity": {
+    "tooltip": "From the brief: 0 steady, 50 the reference (the native defaults), 100 experimental - the sampling of this block follows it. Here: the plan's temperature, top-p and top-k (how freely YuE2 picks notes, chords and rhythms)."
    }
   },
   "outputs": {
@@ -168,6 +171,9 @@
    },
    "max_duration": {
     "tooltip": "The longest the take may run (the Song Sheet derives it from the score's length); YuE2 may end earlier."
+   },
+   "creativity": {
+    "tooltip": "From the brief: 0 steady, 50 the reference (the native defaults), 100 experimental - the sampling of this block follows it. Here: the take's temperature, top-p and top-k (how freely YuE2 performs the score)."
    }
   },
   "outputs": {
@@ -231,6 +237,9 @@
    },
    "takes": {
     "tooltip": "How many takes: take seed, take seed + 1, ...; Check Vocals keeps the best. N takes cost N renders."
+   },
+   "creativity": {
+    "tooltip": "From the brief: 0 steady, 50 the reference (the native defaults), 100 experimental - the sampling of this block follows it. Here: the take's temperature, top-p and top-k (how freely YuE2 performs the score)."
    }
   },
   "outputs": {

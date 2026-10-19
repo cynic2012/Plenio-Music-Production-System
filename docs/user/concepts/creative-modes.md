@@ -9,6 +9,8 @@ How freely a song is written and arranged. Song Brief and Cover Brief have an **
 - **off** (default) - no arrangement: the writer drafts title, style and lyrics, and the music model plans melody, chords and instruments by itself.
 - **a creative mode** - the mode's hints go into the writing prompt (for example *many instruments*: a large ensemble in the style), and in *YuE2 Song* and *YuE2 Cover* the writer model also plans **every section of YuE2's score**: which chords, what the instrument line plays, how busy it is (and, in the mode *key change* only, where the key changes). Plenio turns that plan into notes, checks the result and shows it in *Song Sheet · Score*.
 
+The brief's **creativity** slider is a separate, simpler choice: it makes the writing and YuE2's sampling steadier or bolder whatever the mode, and with a mode on it also sets how freely the writer plans ([Creativity](creativity.md)).
+
 ## The modes
 
 From simple to rich - the list in the brief has the same order, and the line under the brief says what the chosen mode does (the Song Brief's help page lists them all). Only **key change** changes the key; every other mode keeps it from start to end.

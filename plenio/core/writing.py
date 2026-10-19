@@ -17,6 +17,7 @@ from . import lyrics as lyrics_rules
 from . import syllables
 from .arrangement import CreativeMode, writer_lines
 from .brief import CoverBrief, SongBrief
+from .creativity import writer_lines as creativity_lines
 from .engines import EngineInfo, rules_for
 from .engines.yue2 import melody_register, note_name
 from .errors import PlenioValidationError
@@ -164,7 +165,8 @@ def compose(
     Songs: the LLM writes title, style and lyrics; instrumental songs get the single tag
     ``[instrumental]`` from Plenio. Covers: the score defines the sections (see ``_compose_cover``).
     ``mode``: the brief's creative mode, whose writer hints (and, for a song, the genre closeness) are
-    added to the rules; ``off`` adds nothing.
+    added to the rules; ``off`` adds nothing. The brief's creativity adds its rules away from the reference
+    (``core.creativity``; 40-60 adds nothing).
     """
     if isinstance(brief, CoverBrief):
         return _compose_cover(
@@ -226,6 +228,13 @@ def compose(
         parts.append(f"- {DETAIL[detail]}")
     if mode is not None:
         parts += writer_lines(mode, kind="song", closeness=brief.closeness, genre=brief.genre)
+    parts += creativity_lines(
+        brief.creativity,
+        engine_id=engine.engine_id,
+        instrumental=brief.instrumental,
+        lyrics="none" if brief.instrumental else "write",
+        fixed_sections=bool(score_sections),
+    )
     example = lyrics_rules.tags_only(sections) if brief.instrumental else f"[{sections[0]}]\n<lines>\n..."
     parts += [*_example_style(rules), "", *_layout(example, multiline=bool(rules.get("style_multiline")))]
     return "\n".join(parts), request
@@ -429,6 +438,13 @@ def _compose_cover(
         parts.append(f"- {DETAIL[detail]}")
     if creative is not None:
         parts += writer_lines(creative, kind="cover", closeness=brief.closeness, genre=brief.genre)
+    parts += creativity_lines(
+        brief.creativity,
+        engine_id=engine.engine_id,
+        instrumental=brief.instrumental,
+        lyrics="melody" if mode == "write" else "none",
+        fixed_sections=True,
+    )
     parts += [*_example_style(rules), "", *_layout(example, multiline=bool(rules.get("style_multiline")))]
     return "\n".join(parts), request
 

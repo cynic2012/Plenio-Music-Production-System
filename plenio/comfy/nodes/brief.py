@@ -22,6 +22,16 @@ from ...core.brief import (
     resolve_length,
     resolve_mode,
 )
+from ...core.creativity import (
+    BALANCED,
+    CREATIVITY_DEFAULT,
+    EXPERIMENTAL,
+    RESTRAINED,
+    STEADY,
+    VARIED,
+    creativity_level,
+    describe,
+)
 from ...core.errors import PlenioError
 from ...core.series import series_key
 from ..shared import SERIES, mode_description, mode_library, mode_names, template_library
@@ -58,6 +68,17 @@ GENRE_CLOSENESS_TOOLTIP = (
     "Creative modes only (experimental): how close the song stays to its genre - 100 strictly typical, 70 "
     "typical with personal touches, 40 free within the genre, 0 any style."
 )
+CREATIVITY_TOOLTIP = (
+    "0 steady ... 50 the reference (as before) ... 100 experimental: how much the writer and YuE2 dare. More "
+    "surprises also means more misses - try a few seeds."
+)
+CREATIVITY_EFFECTS = {
+    STEADY: "simple, steady writing; YuE2 plans and performs more predictably",
+    RESTRAINED: "conventional writing; YuE2 a little more predictable",
+    BALANCED: "the writing of the reference; YuE2 close to its native sampling",
+    VARIED: "writing with more contrast and character; YuE2 plans and performs a little more freely",
+    EXPERIMENTAL: "bold writing; YuE2 plans and performs more freely - expect more misses, try a few seeds",
+}
 UNDER_SINGING_TOOLTIP = (
     "Creative modes only (experimental): off - the instrument line plays where the voice rests, as in YuE2's "
     "own scores; on - it also sounds under the singing, calm and below the voice."
@@ -87,6 +108,7 @@ SONG_FIELD_OUTPUTS: tuple[tuple[str, str, str], ...] = (
     ("arrangement", "STRING", "The creative mode."),
     ("genre_closeness", "INT", "The genre closeness (0-100)."),
     ("lines_under_singing", "BOOLEAN", "Whether instrument lines also sound under the singing."),
+    ("creativity", "INT", "The creativity (0-100, 50 the reference): for the YuE2 blocks' sampling."),
 )
 """The brief's fields as outputs (owner's request 2026-10-15): name, type, tooltip."""
 FIELD_ATTRIBUTES = {"genre_closeness": "closeness", "song_flow_closeness": "closeness"}
@@ -126,6 +148,14 @@ def arrangement_line(brief: Any) -> str:
     )
 
 
+def creativity_line(brief: Any) -> str:
+    """The summary line of the creativity (Song Brief and Cover Brief)."""
+    value = getattr(brief, "creativity", CREATIVITY_DEFAULT)
+    if value == CREATIVITY_DEFAULT:
+        return f"Creativity: {describe(value)}"
+    return f"Creativity: **{describe(value)}** - {CREATIVITY_EFFECTS[creativity_level(value)]}"
+
+
 def check_arrangement(name: Any) -> str | None:
     """Why ``name`` is not a creative mode (``None``: it is one)."""
     if name is None or canonical_name(str(name)) in mode_names():
@@ -162,7 +192,7 @@ def _summary(brief: Any) -> str:
     source = f" (from template: {', '.join(brief.from_template)})" if brief.from_template else ""
     return (
         f"**{'Instrumental' if brief.instrumental else 'Sung'} song**, {brief.length}{source}\n\n"
-        f"{mode_line(brief)}\n\n{arrangement_line(brief)}\n\n" + brief.to_text()
+        f"{mode_line(brief)}\n\n{arrangement_line(brief)}\n\n{creativity_line(brief)}\n\n" + brief.to_text()
     )
 
 
@@ -265,6 +295,17 @@ class PlenioSongBrief(io.ComfyNode):
                     optional=True,
                     tooltip=UNDER_SINGING_TOOLTIP,
                 ),
+                # appended last: a workflow saved without it gets the reference (50), as does an older API prompt
+                io.Int.Input(
+                    "creativity",
+                    default=CREATIVITY_DEFAULT,
+                    optional=True,
+                    min=0,
+                    max=100,
+                    step=1,
+                    display_mode=io.NumberDisplay.slider,
+                    tooltip=CREATIVITY_TOOLTIP,
+                ),
             ],
             outputs=[
                 Brief.Output(
@@ -323,6 +364,7 @@ class PlenioSongBrief(io.ComfyNode):
         arrangement: str = ARRANGEMENT_DEFAULT,
         genre_closeness: int = CLOSENESS_DEFAULT,
         lines_under_singing: bool = False,
+        creativity: int = CREATIVITY_DEFAULT,
     ) -> io.NodeOutput:
         chosen = None if template == "none" else template_library().get(template)
         # an unknown mode stops here, with the list to choose from; the pre-release name "simple" is read as "off"
@@ -346,6 +388,7 @@ class PlenioSongBrief(io.ComfyNode):
             "arrangement": arrangement,
             "closeness": genre_closeness,
             "lines_under_singing": bool(lines_under_singing),
+            "creativity": creativity,
         }
         inputs = dict(
             zip(

@@ -5,6 +5,7 @@ from .audio_model import PlenioAudioModelLoader
 from .brief import PlenioSongBrief
 from .compose import PlenioComposePrompt
 from .cover_brief import PlenioCoverBrief
+from .creativity import PlenioCreativity
 from .engine import PlenioEngine
 from .eq import PlenioEQ
 from .export import PlenioExportRelease
@@ -48,6 +49,7 @@ NODES = (
     PlenioExportRelease,
     PlenioSystemCheck,
     PlenioSeed,
+    PlenioCreativity,
     # experimental (next release): audio refinement and stems
     PlenioAudioModelLoader,
     PlenioRefine,

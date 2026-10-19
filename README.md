@@ -184,6 +184,7 @@ The cover template has the same choice (*one cover, stop to review* is its defau
 4. Queue. The writer (Gemma 4 through ComfyUI's native text generation) drafts title, style and lyrics; YuE2 plans a score; the Song Sheets show both.
 5. *New song every run:* every further run is the next song of the series (set the **Draft seed** to 🎲 *new seed* for even more variety). *One song, stop to review:* approve the sheets, then every further run is a new take - the take seed changes, the draft and the plan stay cached and your edits stay valid.
 6. Want more than YuE2's own plan? Choose a **creative mode** in the brief's *arrangement* (and its *genre closeness*): the writer then plans every section of the score, and **Song Sheet · Score** shows the arranged score and what was changed. *Arrangement seed* gives another arrangement of the same song ([Creative modes](docs/user/concepts/creative-modes.md)).
+7. Steadier or bolder? The brief's **creativity** slider goes from *0 steady* to *100 experimental*; *50* is the reference, exactly as before. It shapes the writer's rules and temperature and how freely YuE2 plans and performs ([Creativity](docs/user/concepts/creativity.md)).
 
 ### Make a cover
 

@@ -60,4 +60,4 @@ def test_a_series_holds_the_song_under_review(
 
     assert node.fingerprint_inputs(mode=one_mode, **inputs) == ""
     one = node.execute(mode=one_mode, **inputs).result
-    assert one[0].variation is None and one[-1] == 0
+    assert one[0].variation is None and one[4] == 0  # the song seed

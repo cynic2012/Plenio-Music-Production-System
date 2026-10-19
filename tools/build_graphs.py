@@ -33,6 +33,7 @@ from graph_builder import (  # noqa: E402
 sys.path.insert(0, str(PROJECT))
 
 from plenio.core import variables  # noqa: E402
+from plenio.core.creativity import CREATIVITY_DEFAULT  # noqa: E402
 from plenio.core.llm import CHOOSE  # noqa: E402
 from plenio.core.models import ModelFile, by_file, load_catalogue  # noqa: E402
 from workflow_validation import load_snapshot  # noqa: E402
@@ -69,6 +70,10 @@ FLUX_VAE = "flux2-vae.safetensors"
 
 
 FROM_MODEL_BLOCK = "From the music model block."
+CREATIVITY = (
+    "From the brief: 0 steady, 50 the reference (the native defaults), 100 experimental - the sampling of this "
+    "block follows it."
+)
 ENGINE_OUT = "The music model's rules and exact tokenizer, for Write Song and the Song Sheets."
 TAKE_SEED = (
     "The take seed: another seed, another take of the same documents. It drives both the token and the audio "
@@ -597,6 +602,25 @@ def stems() -> Blueprint:
     )
 
 
+def creativity_node(g: Graph, pos: tuple[float, float], stage: str, title: str) -> Node:
+    """The brief's creativity as one stage's sampling (``core.creativity``): 50 gives the values of before."""
+    return g.add(
+        "PlenioCreativity",
+        pos,
+        size=(320, 130 + SUMMARY_ROOM),
+        title=title,
+        widgets={"stage": stage, "creativity": CREATIVITY_DEFAULT},
+    )
+
+
+def link_sampling(
+    g: Graph, creativity: Node, target: Node, prefix: str = "", *, all_three: bool = True
+) -> None:
+    """The Creativity node's temperature (and top-p and top-k) into ``target``'s fields."""
+    for name in ("temperature", "top_p", "top_k") if all_three else ("temperature",):
+        g.link(creativity, name, target, prefix + name)
+
+
 def _repair_writer(
     g: Graph,
     x: int,
@@ -749,6 +773,10 @@ def write_song() -> Blueprint:
         title="draft seed + song seed",
         widgets={"expression": SEED_SUM},
     )
+    # the first draft follows the brief's creativity; the repair rounds keep their own temperature
+    creativity = creativity_node(g, (0, 680), "writer", "Writer creativity")
+    link_sampling(g, creativity, generate, "sampling_mode.", all_three=False)
+    link_sampling(g, creativity, local_llm, all_three=False)
     g.link(draft, "INT", seed, "values.a")
     g.link(seed, "INT", generate, "sampling_mode.seed")
     g.link(seed, "INT", local_llm, "seed")
@@ -798,8 +826,8 @@ def write_song() -> Blueprint:
             BlueprintInput(
                 "brief",
                 "PLENIO_BRIEF",
-                [(compose, "brief"), *[(fit, "brief") for fit in fits]],
-                tooltip="The Song Brief or Cover Brief: what to write.",
+                [(compose, "brief"), (creativity, "brief"), *[(fit, "brief") for fit in fits]],
+                tooltip="The Song Brief or Cover Brief: what to write (and its creativity: the draft's temperature).",
             ),
             BlueprintInput(
                 "engine",
@@ -981,6 +1009,10 @@ def arrange() -> Blueprint:
         title="arrangement seed + song seed",
         widgets={"expression": SEED_SUM},
     )
+    # the first plan follows the brief's creativity; the re-ask keeps its own temperature
+    creativity = creativity_node(g, (0, 730), "arrangement", "Arrangement creativity")
+    link_sampling(g, creativity, generate, "sampling_mode.", all_three=False)
+    link_sampling(g, creativity, local_llm, all_three=False)
     g.link(arrangement_seed, "INT", seed, "values.a")
     g.link(seed, "INT", generate, "sampling_mode.seed")
     g.link(seed, "INT", local_llm, "seed")
@@ -1041,8 +1073,9 @@ def arrange() -> Blueprint:
             BlueprintInput(
                 "brief",
                 "PLENIO_BRIEF",
-                [(compose, "brief"), (apply, "brief"), (second, "brief")],
-                tooltip="The brief: the creative mode and its closeness (arrangement off: nothing runs here).",
+                [(compose, "brief"), (apply, "brief"), (second, "brief"), (creativity, "brief")],
+                tooltip="The brief: the creative mode and its closeness (arrangement off: nothing runs here), and "
+                "its creativity (the plan's temperature).",
             ),
             BlueprintInput(
                 "engine",
@@ -1194,6 +1227,9 @@ def yue2_plan() -> Blueprint:
         widgets={"expression": "sum(values) + 1"},
     )
     form = g.add("PlenioMatchSongForm", (720, 0), size=(340, 160 + SUMMARY_ROOM))
+    creativity = creativity_node(g, (720, 330), "plan", "Plan creativity")
+    link_sampling(g, creativity, plan)
+    link_sampling(g, creativity, alternative)
     g.link(empty, "STRING", switch, "on_false")
     g.link(plan, "abc", switch, "on_true")
     g.link(plan_seed, "INT", seed, "values.a")
@@ -1262,6 +1298,16 @@ def yue2_plan() -> Blueprint:
                 label="plan type",
                 tooltip="full: melody and chords; melody: the melody only (YuE2 harmonises it when it renders).",
             ),
+            BlueprintInput(
+                "creativity",
+                "INT",
+                [(creativity, "creativity")],
+                widget=True,
+                default=CREATIVITY_DEFAULT,
+                tooltip=CREATIVITY
+                + " Here: the plan's temperature, top-p and top-k (how freely YuE2 picks notes, "
+                "chords and rhythms).",
+            ),
         ],
         [
             BlueprintOutput(
@@ -1300,6 +1346,8 @@ def yue2_render() -> Blueprint:
         },
     )
     decode = g.add("VAEDecodeAudio", (1060, 0), size=(220, 60))
+    creativity = creativity_node(g, (0, 440), "take", "Take creativity")
+    link_sampling(g, creativity, music)
     g.link(music, "seconds", latent, "seconds")
     g.link(music, "CONDITIONING", zero, "conditioning")
     g.link(music, "CONDITIONING", sampler, "positive")
@@ -1322,6 +1370,16 @@ def yue2_render() -> Blueprint:
             ),
             BlueprintInput(
                 "max_duration", "FLOAT", [(music, "max_duration")], label="max seconds", tooltip=MAX_SECONDS
+            ),
+            BlueprintInput(
+                "creativity",
+                "INT",
+                [(creativity, "creativity")],
+                widget=True,
+                default=CREATIVITY_DEFAULT,
+                tooltip=CREATIVITY
+                + " Here: the take's temperature, top-p and top-k (how freely YuE2 performs the "
+                "score).",
             ),
         ],
         [
@@ -1400,6 +1458,8 @@ def yue2_takes() -> Blueprint:
     )
     decode = g.add("VAEDecodeAudio", (1420, 0), size=(220, 60))
     end = g.add("EndLoop", (1700, 0), size=(260, 120), widgets={"accumulate": True})
+    creativity = creativity_node(g, (360, 440), "take", "Take creativity")
+    link_sampling(g, creativity, music)
     g.link(start, "iteration_index", seed, "values.a")
     g.link(seed, "INT", music, "seed")
     g.link(seed, "INT", sampler, "seed")
@@ -1441,6 +1501,16 @@ def yue2_takes() -> Blueprint:
                 default=1,
                 tooltip="How many takes: take seed, take seed + 1, ...; Check Vocals keeps the best. N takes cost "
                 "N renders.",
+            ),
+            BlueprintInput(
+                "creativity",
+                "INT",
+                [(creativity, "creativity")],
+                widget=True,
+                default=CREATIVITY_DEFAULT,
+                tooltip=CREATIVITY
+                + " Here: the take's temperature, top-p and top-k (how freely YuE2 performs the "
+                "score).",
             ),
         ],
         [BlueprintOutput("takes", "AUDIO", (end, "outputs"), tooltip="All takes, for Check Vocals.")],
@@ -1568,8 +1638,10 @@ BRIEF_WIDTH = 520
 (owner's report 2026-10-15: the inputs' text was cut)."""
 WIDEN = BRIEF_WIDTH - 380
 SLOT_HEIGHT = 20
-SONG_FIELD_ROWS = 14
-COVER_FIELD_ROWS = 12
+SONG_FIELD_ROWS = 15
+COVER_FIELD_ROWS = 13
+CREATIVITY_ROW = 30
+"""The creativity slider's row (owner's request 2026-10-19)."""
 """The briefs' field outputs (1.0.0): each takes a slot row above the widgets."""
 
 
@@ -1843,6 +1915,12 @@ REFINE_MINIMAX_TEXT = (
     "the REFINE group and press **Ctrl+B**. Experimental: the settings are provisional until the listening "
     "study."
 )
+CREATIVITY_TEXT = (
+    "**Creativity** (the brief's slider): 0 steady, 50 the reference - exactly as before -, 100 experimental. It "
+    "shapes the writer's rules and the temperature of its draft (and of a creative mode's plan) and, with YuE2, "
+    "how freely the plan and the takes are sampled. More surprises also bring more misses: try a few seeds. A "
+    "workflow saved before the slider keeps 50."
+)
 SEEDS_TEXT = (
     "**Seeds:** each seed node has one switch - **🔒 same seed**: the next run keeps that part (the same draft, "
     "the same take), so you can change other things; **🎲 new seed**: every run draws a new number - something "
@@ -1851,7 +1929,7 @@ SEEDS_TEXT = (
 )
 APP_TEXT = (
     "**App mode:** switch *Graph / App* at the top left for a simple form: the mode, the brief with its creative "
-    "mode and closeness, the writer model, the seeds, the Song Sheet buttons (review and edit, also in the app - "
+    "mode, closeness and creativity, the writer model, the seeds, the Song Sheet buttons (review and edit, also in the app - "
     "their status line says where the run stands: *stops here for review*, *waiting for your approval*, "
     "*approved*) and the results. *Number of runs* next to Run renders a series."
 )
@@ -1914,6 +1992,8 @@ ABOUT_YUE2 = f"""# 1 · YuE2 · Song
 
 {STATUS_TEXT}
 
+{CREATIVITY_TEXT}
+
 {SEEDS_TEXT}
 
 {FINISH_TEXT}
@@ -1936,7 +2016,10 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     brief = g.add(
         "PlenioSongBrief",
         (0, 0),
-        size=(BRIEF_WIDTH, 690 + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 1.0.0: field outputs
+        size=(
+            BRIEF_WIDTH,
+            690 + CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM,
+        ),  # + field outputs
         widgets={
             "mode": "new song every run",
             "template": "pop/singer-songwriter-acoustic-vocal",
@@ -1949,16 +2032,17 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     draft = draft_seed(g, write, (460, 280))
     writer = writer_model(g, (460, 520))
     text_sheet = song_sheet(g, (900, 0), "Song Sheet · Text")
-    plan = g.add_subgraph(bp["yue2_plan"], (1400, 0), size=(340, 220))
-    plan_seed_node = plan_seed(g, plan, (1400, 280))
+    # the plan block's inputs take a row more since the creativity (owner's request 2026-10-19)
+    plan = g.add_subgraph(bp["yue2_plan"], (1400, 0), size=(340, 250))
+    plan_seed_node = plan_seed(g, plan, (1400, 310))
     tools = g.add(
         "PlenioScoreTools",
-        (1400, 530),
+        (1400, 560),
         size=(340, 120 + SUMMARY_ROOM),
         widgets={"operation": "prepare from brief"},
     )
-    arrange_node = g.add_subgraph(bp["arrange"], (1400, 800), size=(340, 260), title="Arrange")
-    arrangement = arrangement_seed(g, arrange_node, (1400, 1110))
+    arrange_node = g.add_subgraph(bp["arrange"], (1400, 830), size=(340, 260), title="Arrange")
+    arrangement = arrangement_seed(g, arrange_node, (1400, 1140))
     score_sheet = song_sheet(g, (1820, 0), "Song Sheet · Score")
     seed = take_seed(g, (2320, 0))
     render = g.add_subgraph(bp["yue2_render"], (2320, 230), size=(320, 310))
@@ -1973,6 +2057,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(model_node, "engine", text_sheet, "engine")
     g.link(model_node, "CLIP", plan, "clip")
     g.link(brief, "song_seed", plan, "song_seed")
+    g.link(brief, "creativity", plan, "creativity")
     g.link(text_sheet, "style", plan, "style")
     g.link(text_sheet, "plan_lyrics", plan, "lyrics")
     g.link(plan, "score", tools, "score")
@@ -2000,6 +2085,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(score_sheet, "planning_mode", render, "mode")
     g.link(score_sheet, "score_seconds", render, "max_duration")
     g.link(seed, "seed", render, "seed")
+    g.link(brief, "creativity", render, "creativity")
     # Only the sheets' reports (and the master's): they hold the final documents, and wiring draft reports
     # here would force the writer and the planner to run even when the user replaced their documents manually.
     _master, preview, export = finish(
@@ -2027,7 +2113,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("4 · SCORE", [plan, plan_seed_node, tools, arrange_node, arrangement, score_sheet])
     g.group("5 · RENDER", [seed, render])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
-    make_room(g, brief, SONG_FIELD_ROWS * SLOT_HEIGHT)
+    make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
     return g, song_app(
         brief,
         seed,
@@ -2068,7 +2154,14 @@ def song_app(
         "length",
         "vocals",
     ]
-    controls += ["vocals.language", "vocals.voice", "vocals.theme", "arrangement", "genre_closeness"]
+    controls += [
+        "vocals.language",
+        "vocals.voice",
+        "vocals.theme",
+        "arrangement",
+        "genre_closeness",
+        "creativity",
+    ]
     inputs = [(brief, name) for name in controls] + [(writer, "model")]
     inputs += [(node, name) for node in (seed, draft) for name in SEED_CONTROLS]
     if arrangement is not None:
@@ -2096,6 +2189,8 @@ ABOUT_COVER = f"""# 2 · YuE2 · Cover
 
 {STATUS_TEXT}
 
+{CREATIVITY_TEXT}
+
 {SEEDS_TEXT}
 
 **Takes:** *YuE2 Takes* renders *takes* versions (seeds take seed, +1, ...); **Check Vocals** keeps the first instrumental take without vocal notes, the preview plays all takes. N takes cost N renders. **Instrumental adapter:** for instrumental covers YuE2 renders with the instrumental LoRA of the *Instrumental adapter* node (the optional adapter inside the model block stays bypassed here). **Check sung lyrics** (optional, bypassed) measures what a sung take actually sang.
@@ -2108,7 +2203,7 @@ ABOUT_COVER = f"""# 2 · YuE2 · Cover
 
 {REFINE_TEXT}
 
-**App mode:** switch *Graph / App* at the top left for a simple form: the source file, the mode, the cover style, the creative mode with both closeness sliders, the writer model, the seeds, the two Song Sheet buttons (the review stops work in the app; their status line says where the run stands) and the results. The other options of *original lyrics* and *new lyrics* are set in the graph.
+**App mode:** switch *Graph / App* at the top left for a simple form: the source file, the mode, the cover style, the creative mode with both closeness sliders, the creativity, the writer model, the seeds, the two Song Sheet buttons (the review stops work in the app; their status line says where the run stands) and the results. The other options of *original lyrics* and *new lyrics* are set in the graph.
 
 **Models** (downloaded on first use): YuE2 3B int8, SheetSage2, the instrumental adapter, the Gemma 4 E4B writer; the lyrics ASR (faster-whisper large-v3, 3.1 GB) is fetched by Plenio when first needed. YuE2, SheetSage2 and the adapter are **CC BY-NC 4.0 (non-commercial)**.
 """
@@ -2129,7 +2224,10 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     brief = g.add(
         "PlenioCoverBrief",
         (0, 480),
-        size=(BRIEF_WIDTH, 640 + COVER_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 1.0.0: field outputs
+        size=(
+            BRIEF_WIDTH,
+            640 + CREATIVITY_ROW + COVER_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM,
+        ),  # + field outputs
         # the owner's defaults since 0.4.3: a pop style template (genre and mood come from it), the
         # original lyrics in the language detected from the singing, the original chords
         widgets={
@@ -2249,6 +2347,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(score_sheet, "planning_mode", render, "mode")
     g.link(score_sheet, "score_seconds", render, "max_duration")
     g.link(seed, "seed", render, "seed")
+    g.link(brief, "creativity", render, "creativity")
     g.link(render, "takes", check_vocals, "audio")
     g.link(transcribe, "AUDIO_ENCODER", check_vocals, "audio_encoder")
     g.link(brief, "brief", check_vocals, "brief")
@@ -2304,12 +2403,12 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("6 · RENDER", [seed, render, check_vocals, takes_preview])
     g.group("CHECK SUNG LYRICS (optional)", [check_lyrics], color=OPTIONAL_GROUP)
     g.group("MUSIC MODEL", [model_node, adapter, adapter_switch], color=MODEL_GROUP)
-    make_room(g, brief, COVER_FIELD_ROWS * SLOT_HEIGHT)
+    make_room(g, brief, CREATIVITY_ROW + COVER_FIELD_ROWS * SLOT_HEIGHT)
     # The options of the default vocals (original lyrics) only, as in song_app; the two review stops use
     # the sheets' editor buttons.
     controls = ["mode", "template", "description", "genre", "mood", "vocals"]
     controls += ["vocals.language", "vocals.voice", "harmony", "arrangement", "song_flow_closeness"]
-    controls += ["lyrics_closeness"]
+    controls += ["lyrics_closeness", "creativity"]
     inputs = [(source, "audio"), *[(brief, name) for name in controls], (writer, "model")]
     inputs += [(node, name) for node in (seed, draft, arrangement) for name in SEED_CONTROLS]
     inputs += [(score_sheet, "sheet_state"), (text_sheet, "sheet_state")]
@@ -2324,6 +2423,8 @@ ABOUT_MINIMAX = f"""# 3 · MiniMax · Song
 3. Press **Run**. The writer model drafts title, a structured **caption** (Global Metadata, Vocal Details, Arrangement), lyrics and an artwork prompt; MiniMax Music 3 renders the song.
 
 {STATUS_TEXT}
+
+{CREATIVITY_TEXT}
 
 {SEEDS_TEXT}
 
@@ -2355,7 +2456,10 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     brief = g.add(
         "PlenioSongBrief",
         (0, 0),
-        size=(BRIEF_WIDTH, 690 + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 1.0.0: field outputs
+        size=(
+            BRIEF_WIDTH,
+            690 + CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM,
+        ),  # + field outputs
         widgets={
             "mode": "new song every run",
             "template": "pop/singer-songwriter-acoustic-vocal",
@@ -2423,7 +2527,7 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("3 · SHEET", [sheet])
     g.group("4 · RENDER", [seed, render])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
-    make_room(g, brief, SONG_FIELD_ROWS * SLOT_HEIGHT)
+    make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
     # Refine is on in this template: its preset is the one audio choice worth making in the app
     return g, song_app(
         brief, seed, draft, [sheet], preview, export, extra=[(refine_node, "preset")], writer=writer
@@ -2456,6 +2560,8 @@ How to work:
 
 {STATUS_TEXT}
 
+{CREATIVITY_TEXT}
+
 {SEEDS_TEXT}
 
 {FINISH_TEXT}
@@ -2478,7 +2584,10 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     brief = g.add(
         "PlenioSongBrief",
         (0, 0),
-        size=(BRIEF_WIDTH, 690 + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM),  # 1.0.0: field outputs
+        size=(
+            BRIEF_WIDTH,
+            690 + CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM,
+        ),  # + field outputs
         widgets={
             "mode": "one song, stop to review",
             "template": "pop/singer-songwriter-acoustic-vocal",
@@ -2535,6 +2644,7 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(score_sheet, "planning_mode", render, "mode")
     g.link(score_sheet, "score_seconds", render, "max_duration")
     g.link(seed, "seed", render, "seed")
+    g.link(brief, "creativity", render, "creativity")
     audio, stems_node = stems_stage(g, bp, 2320, audio=(render, "AUDIO"), y=670)
     audio, refine_node = refine_stage(g, 2320, audio=audio, y=820)
     _master, preview, export = finish(
@@ -2563,7 +2673,7 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("4 · DAW", [tools, score_sheet])
     g.group("5 · RENDER", [seed, render])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
-    make_room(g, brief, SONG_FIELD_ROWS * SLOT_HEIGHT)
+    make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
     return g, song_app(brief, seed, draft, [text_sheet, score_sheet], preview, export, writer=writer)
 
 
