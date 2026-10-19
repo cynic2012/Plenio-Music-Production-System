@@ -24,11 +24,13 @@ from pathlib import Path
 from typing import Any
 
 from ..core import brief as brief_rules
+from ..core import creativity as creativity_rules
 from ..core import subtitles as subtitle_rules
+from ..core.errors import PlenioError
 from . import other as other_music
 
 RECORD_SUFFIX = ".plenio.json"
-CACHE_VERSION = 5
+CACHE_VERSION = 6
 RETIRED_DIR = "_retired"
 """Where removed songs go, below the library folder they were in; the library does not read it."""
 SKIP_DIRS = {".plenio-player", "__pycache__", ".git", RETIRED_DIR}
@@ -119,7 +121,13 @@ def brief_facts(prompt: Mapping[str, Any]) -> dict[str, Any]:
         return value
 
     def number(name: str, key: str, default: int) -> int:
-        value = brief_rules.closeness_value(inputs.get(key), default)
+        raw = inputs.get(key)
+        try:
+            value = (
+                brief_rules.closeness_value(raw, default) if isinstance(raw, (int, float, str)) else default
+            )
+        except PlenioError:  # a record edited by hand
+            value = default
         sources[name] = "default" if value == default else "typed"
         return value
 
@@ -158,11 +166,99 @@ def brief_facts(prompt: Mapping[str, Any]) -> dict[str, Any]:
         if cover and vocals == "new lyrics"
         else None,
         "lines_under_singing": bool(inputs.get("lines_under_singing")),
+        # a song made before the slider was made as 50 makes it now (owner's request 2026-10-19)
+        "creativity": number("creativity", "creativity", creativity_rules.CREATIVITY_DEFAULT),
     }
     sources["lines_under_singing"] = "typed" if facts["lines_under_singing"] else "default"
     if template == "none" or not template:
         sources["template"] = "default"
     facts["sources"] = sources
+    return facts
+
+
+SAMPLING_NAMES = ("temperature", "top_p", "top_k")
+
+
+def _node_order(node_id: str) -> tuple[int, ...]:
+    """``"8:701"`` -> ``(8, 701)``: nodes in the order of the graph (inside a block after the block)."""
+    try:
+        return tuple(int(part) for part in str(node_id).split(":"))
+    except ValueError:
+        return (1 << 30,)
+
+
+def _sampling_value(prompt: Mapping[str, Any], value: Any, creativity: Any) -> float | int | None:
+    """A sampling field's value: the number written there, or what the Creativity node it is linked to gives
+    (from the brief's creativity, or its own)."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, float):
+        return round(value, 3)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, list) and len(value) == 2 and value[1] in (0, 1, 2):
+        node = prompt.get(str(value[0]))
+        if not (isinstance(node, Mapping) and node.get("class_type") == "PlenioCreativity"):
+            return None
+        inputs = node.get("inputs") or {}
+        own = inputs.get("creativity")
+        amount = creativity if "brief" in inputs or isinstance(own, list) else own
+        try:
+            chosen = creativity_rules.sampling(
+                creativity_rules.creativity_value(amount), str(inputs.get("stage") or "take")
+            )
+        except PlenioError:
+            return None
+        return (chosen.temperature, chosen.top_p, chosen.top_k)[int(value[1])]
+    return None
+
+
+def sampling_facts(prompt: Mapping[str, Any], creativity: Any = None) -> dict[str, dict[str, float | int]]:
+    """The sampling the song was made with (owner's request 2026-10-19: the creativity's values on the song's
+    page): the writer's first draft and a creative mode's plan (their temperature, from the branch the chosen
+    writer model ran), YuE2's plan and take (temperature, top-p, top-k). What a record does not have is left
+    out."""
+
+    def first(kind: str, prompt_from: str = "") -> Mapping[str, Any] | None:
+        for node_id in sorted(prompt, key=_node_order):
+            node = prompt[node_id]
+            if not isinstance(node, Mapping) or node.get("class_type") != kind:
+                continue
+            if _text((node.get("_meta") or {}).get("title")).lower().startswith("second plan"):
+                continue
+            if prompt_from:
+                link = (node.get("inputs") or {}).get("prompt")
+                source = prompt.get(str(link[0])) if isinstance(link, list) and link else None
+                if not (isinstance(source, Mapping) and source.get("class_type") == prompt_from):
+                    continue
+            return node
+        return None
+
+    facts: dict[str, dict[str, float | int]] = {}
+    writer = next(
+        (
+            _text((node.get("inputs") or {}).get("model"))
+            for node in prompt.values()
+            if isinstance(node, Mapping) and node.get("class_type") == "PlenioWriterChoice"
+        ),
+        "",
+    )
+    local = " · " in writer  # 'models/LLM · …', 'LM Studio · …': a Local LLM; a bare file name: Generate Text
+    for stage, compose in (("writer", "PlenioComposePrompt"), ("arrangement", "PlenioComposeArrangement")):
+        node = first("PlenioLocalLLM" if local else "TextGenerate", compose)
+        if node is not None:
+            key = "temperature" if local else "sampling_mode.temperature"
+            value = _sampling_value(prompt, (node.get("inputs") or {}).get(key), creativity)
+            if value is not None:
+                facts[stage] = {"temperature": value}
+    for stage, kind in (("plan", "YuE2GenerateABC"), ("take", "YuE2GenerateMusic")):
+        node = first(kind)
+        if node is None:
+            continue
+        inputs = node.get("inputs") or {}
+        values = {name: _sampling_value(prompt, inputs.get(name), creativity) for name in SAMPLING_NAMES}
+        if all(value is not None for value in values.values()):
+            facts[stage] = {name: value for name, value in values.items() if value is not None}
     return facts
 
 
@@ -366,6 +462,7 @@ def summarize(record: Mapping[str, Any], path: Path, root: Path) -> Song:
         },
         **score_facts(doc("score")),
         **prompt_facts(prompt),
+        "sampling": sampling_facts(prompt, brief.get("creativity")),
     }
     song = Song(song_id(path, root), path, root, summary, files)
     summary["id"] = song.id

@@ -62,7 +62,7 @@ JOBS_KEPT = 30
 DETAIL_KEYS = (
     "id", "title", "created", "year", "seconds", "model", "kind", "brief", "genre", "mood", "language", "vocals",
     "instrumental", "arrangement", "template", "style", "lyrics", "loudness", "tags", "plenio", "takes_key",
-    "bpm", "score_key", "score_meter", "seeds", "writer", "other", "artist", "album",
+    "bpm", "score_key", "score_meter", "seeds", "writer", "sampling", "other", "artist", "album",
     "documents", "lyrics_raw", "notation", "lines", "timing_source", "licences",
 )  # fmt: skip
 SUMMARY_KEYS = DETAIL_KEYS[: DETAIL_KEYS.index("documents")]

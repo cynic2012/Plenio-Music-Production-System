@@ -24,6 +24,7 @@ from plenio.player.library import (
     parse_srt,
     prompt_facts,
     remove_song,
+    sampling_facts,
     score_facts,
     song_detail,
 )
@@ -312,6 +313,105 @@ def test_the_song_page_knows_the_briefs_defaults() -> None:
         assert re.search(rf'"language",\s*default="{language}"', cover[start : start + 400])
     cues = parse_srt("1\r\n00:01:02,500 --> 00:01:04,000\r\nhello\r\nthere\r\n")
     assert cues == [{"start": 62.5, "end": 64.0, "text": "hello\nthere"}]
+
+
+def test_the_creativity_and_the_sampling_it_gave() -> None:
+    """Owner's request 2026-10-19: the song page shows the creativity and the sampling it gave. A song made
+    before the slider: 50 (the default) and the numbers written in its nodes; a song of today's templates: the
+    values its Creativity nodes gave."""
+    old = brief_facts(PROMPT)
+    assert (old["creativity"], old["sources"]["creativity"]) == (50, "default")
+    written = {
+        "1": {
+            "class_type": "PlenioWriterChoice",
+            "inputs": {"model": "gemma4_e4b_it_fp8_scaled.safetensors"},
+        },
+        "4:501": {"class_type": "PlenioComposePrompt", "inputs": {}},
+        "4:504": {
+            "class_type": "TextGenerate",
+            "inputs": {"prompt": ["4:501", 0], "sampling_mode.temperature": 0.8},
+        },
+        "4:513": {
+            "class_type": "TextGenerate",
+            "inputs": {"prompt": ["4:510", 1], "sampling_mode.temperature": 0.7},
+        },
+        "8:701": {
+            "class_type": "YuE2GenerateABC",
+            "inputs": {"temperature": 0.7, "top_p": 0.9, "top_k": 30},
+            "_meta": {"title": "YuE2 Generate ABC"},
+        },
+        "14:801": {
+            "class_type": "YuE2GenerateMusic",
+            "inputs": {"temperature": 1.0, "top_p": 0.95, "top_k": 100},
+        },
+    }
+    assert sampling_facts(written, 50) == {
+        "writer": {"temperature": 0.8},
+        "plan": {"temperature": 0.7, "top_p": 0.9, "top_k": 30},
+        "take": {"temperature": 1.0, "top_p": 0.95, "top_k": 100},
+    }
+    # today's templates: the fields linked to the blocks' Creativity nodes, which take the brief's value
+    brief = {
+        "class_type": "PlenioSongBrief",
+        "inputs": {"genre": "pop", "creativity": 75, "arrangement": "varied"},
+    }
+    linked = {
+        "2": brief,
+        "6": {"class_type": "PlenioWriterChoice", "inputs": {"model": "LM Studio · qwen3-14b"}},
+        "4:501": {"class_type": "PlenioComposePrompt", "inputs": {"brief": ["2", 0]}},
+        "4:530": {
+            "class_type": "PlenioCreativity",
+            "inputs": {"stage": "writer", "creativity": 50, "brief": ["2", 0]},
+        },
+        "4:504": {
+            "class_type": "TextGenerate",
+            "inputs": {"prompt": ["4:501", 0], "sampling_mode.temperature": ["4:530", 0]},
+        },
+        "4:505": {
+            "class_type": "PlenioLocalLLM",
+            "inputs": {"prompt": ["4:501", 0], "temperature": ["4:530", 0]},
+        },
+        "11:1301": {"class_type": "PlenioComposeArrangement", "inputs": {}},
+        "11:1330": {
+            "class_type": "PlenioCreativity",
+            "inputs": {"stage": "arrangement", "creativity": 50, "brief": ["2", 0]},
+        },
+        "11:1305": {
+            "class_type": "PlenioLocalLLM",
+            "inputs": {"prompt": ["11:1301", 0], "temperature": ["11:1330", 0]},
+        },
+        "8:720": {"class_type": "PlenioCreativity", "inputs": {"stage": "plan", "creativity": ["2", 19]}},
+        "8:701": {
+            "class_type": "YuE2GenerateABC",
+            "inputs": {"temperature": ["8:720", 0], "top_p": ["8:720", 1], "top_k": ["8:720", 2]},
+        },
+        "8:706": {
+            "class_type": "YuE2GenerateABC",
+            "inputs": {"temperature": 2.0, "top_p": 0.5, "top_k": 1},
+            "_meta": {"title": "Second plan (only when the form differs)"},
+        },
+        "15:806": {"class_type": "PlenioCreativity", "inputs": {"stage": "take", "creativity": 30}},
+        "15:801": {
+            "class_type": "YuE2GenerateMusic",
+            "inputs": {"temperature": ["15:806", 0], "top_p": ["15:806", 1], "top_k": ["15:806", 2]},
+        },
+    }
+    facts = brief_facts(linked)
+    assert (facts["creativity"], facts["sources"]["creativity"]) == (75, "typed")
+    assert sampling_facts(linked, facts["creativity"]) == {
+        "writer": {"temperature": 0.9},  # the Local LLM branch: the writer model is an LM Studio model
+        "arrangement": {"temperature": 0.8},
+        "plan": {"temperature": 0.81, "top_p": 0.925, "top_k": 40},  # the second plan is not the plan
+        "take": {"temperature": 0.96, "top_p": 0.938, "top_k": 84},  # its own value where no brief is linked
+    }
+    # a hand-edited record does not stop the library
+    broken = brief_facts(
+        {"2": {"class_type": "PlenioSongBrief", "inputs": {"genre": "pop", "creativity": "wild"}}}
+    )
+    assert broken["creativity"] == 50
+    assert (
+        sampling_facts({"9": {"class_type": "YuE2GenerateMusic", "inputs": {"temperature": ["7", 0]}}}) == {}
+    )
 
 
 def add_song_with_stems(songs: Path) -> None:

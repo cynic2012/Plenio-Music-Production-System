@@ -5,7 +5,8 @@
  * default value, says that the writer chose. A recording (Enhance & Master) and other music have no brief:
  * they show what there is.
  */
-import type { Brief, SongSummary } from './api'
+import type { Brief, SamplingStage, SongSummary } from './api'
+import { describeCreativity, describeSampling, isReference } from './creativity'
 import { formatTime } from './timing'
 
 export interface Fact {
@@ -61,9 +62,32 @@ export function songFacts(s: SongSummary): Fact[] {
   field(cover ? 'Song flow closeness' : 'Genre closeness', 'closeness', b.closeness === null || b.closeness === undefined ? '' : String(b.closeness))
   if (cover && b.lyrics_closeness !== null && b.lyrics_closeness !== undefined) field('Lyrics closeness', 'lyrics_closeness', String(b.lyrics_closeness))
   field('Lines under the singing', 'lines_under_singing', b.lines_under_singing ? 'on' : 'off')
+  if (b.creativity !== null && b.creativity !== undefined) field('Creativity', 'creativity', describeCreativity(b.creativity))
+  out.push(...samplingFacts(s))
   out.push({ label: 'Model', value: s.model || 'a recording (Enhance & Master)' })
   if (s.writer) out.push({ label: 'Lyrics and score by', value: s.writer })
   out.push({ label: 'Kind', value: s.kind })
+  return out
+}
+
+const SAMPLING_LABELS: [SamplingStage, string][] = [
+  ['writer', 'Writer temperature'],
+  ['arrangement', 'Arrangement temperature'],
+  ['plan', 'YuE2 plan sampling'],
+  ['take', 'YuE2 take sampling'],
+]
+
+/** The sampling the song was made with (owner's request 2026-10-19), marked where it is the reference (50);
+ * a creative mode's plan only when a mode was on. */
+export function samplingFacts(s: SongSummary): Fact[] {
+  const out: Fact[] = []
+  for (const [stage, label] of SAMPLING_LABELS) {
+    const values = s.sampling?.[stage]
+    if (!values) continue
+    if (stage === 'arrangement' && (!s.brief.arrangement || s.brief.arrangement === 'off')) continue
+    const value = stage === 'writer' || stage === 'arrangement' ? String(values.temperature) : describeSampling(values)
+    out.push({ label, value, note: isReference(stage, values) ? 'the reference' : '' })
+  }
   return out
 }
 

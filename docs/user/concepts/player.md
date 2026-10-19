@@ -126,6 +126,7 @@ fields - **as you type, the search suggests them**: `gen` offers `genre:`, `genr
 | `model:yue2` `model:minimax` `model:master` | the music model (*master*: recordings from Enhance & Master) |
 | `lang:german` `vocals:instrumental` | language, vocals |
 | `mode:dramatic` | the creative mode |
+| `creativity:>60` `creativity:40-60` `creativity:varied` | the brief's [creativity](creativity.md) (0-100) or its level: steady, restrained, balanced, varied, experimental |
 | `len:<3` | length in minutes |
 | `year:2026` `template:jazz` `writer:gemma` | year, brief template, the model that wrote the lyrics |
 | `tag:party` `#party` `tag:"road trip"` | your own tags |
@@ -138,7 +139,8 @@ fields - **as you type, the search suggests them**: `gen` offers `genre:`, `genr
 
 The **filters** under the search are rows of chips - your tags, genres, moods, what made the song (Plenio or
 other music) and the model; **More filters** opens vocals, language, tempo (slow, 90-119, 120-139, fast), length
-(under 3, 3-5, over 5 minutes), key, creative mode, template, year, Plenio version, what a song has (timed
+(under 3, 3-5, over 5 minutes), key, creative mode, creativity (steady 0-19, restrained 20-39, balanced 40-60,
+varied 61-80, experimental 81-100), template, year, Plenio version, what a song has (timed
 lyrics, sheet music, notation, an unmastered take, a cover picture) and listening (favourites, played, never
 played, no tags yet). A row shows its most common values first; **+ 113 more** opens it to every value - every
 genre a template gave, the rare ones too - with a field to find one in a long row.
@@ -149,10 +151,11 @@ genre a template gave, the rare ones too - with a field to find one in a long ro
 - **The numbers follow the filters**: they are how many of the songs shown have that value - after *from 1.0.0*,
   *instrumental* says how many of the 1.0 songs are instrumentals, and a value none of them has is gone. So
   every chip says how many songs would stay. A row that could not narrow the songs further is left out; a row
-  of one choice (Plenio version, tempo, length) keeps its other values to switch to.
+  of one choice (Plenio version, tempo, length, creativity) keeps its other values to switch to.
 - **Plenio version** offers *from 1.0.0*, *from 0.8.0* … for an archive with songs of older versions: only the
-  songs made with that version or a newer one. Tempo, length and Plenio version take one choice at a time (a
-  click on another replaces it).
+  songs made with that version or a newer one. Tempo, length, creativity and Plenio version take one choice at a
+  time (a click on another replaces it). A song made before the creativity slider counts as *balanced*: it was
+  made as 50 makes it now.
 
 You can sort by newest, oldest, title, length, tempo, loudness, most played or recently played, and switch
 between a grid and a list.
@@ -203,8 +206,10 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
 - **Sheet music**: the PDF from Export Release, in the browser's PDF viewer.
 - **Details**: *The song* lists every field of the brief the song was made with - work mode, template,
   genre, mood, tempo, key, meter, length and target length, vocals, language, voice, lyrics theme (or melody
-  and lead instrument), for a cover the harmony and the closeness sliders, the arrangement, genre closeness
-  and lines under the singing. A field you left empty shows the brief's default with *(default)*, or - for a
+  and lead instrument), for a cover the harmony and the closeness sliders, the arrangement, genre closeness,
+  lines under the singing and the **creativity** - and the sampling it gave: the writer's temperature (and a
+  creative mode's), YuE2's plan and take with temperature, top-p and top-k, *(the reference)* where they are
+  the values of 50. A field you left empty shows the brief's default with *(default)*, or - for a
   text field, which has none - *open - the writer chose*; a value the template filled says *(from the
   template)*. Then the model and the writer, loudness and true peak, the seeds (with a copy button, so you can make the take
   again), the tags in the file, the cover's prompt, and every file to download: FLAC, MP3, WAV, the

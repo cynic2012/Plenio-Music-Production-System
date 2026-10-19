@@ -30,9 +30,21 @@ export interface Brief {
   melody?: string
   lyrics_closeness?: number | null
   lines_under_singing?: boolean
+  /** 0 steady ... 50 the reference ... 100 experimental (a song made before the slider: 50). */
+  creativity?: number | null
   /** Per field where its value came from: ``typed``, ``template`` or ``default`` (left empty: the brief's
    * default, or for a text field the writer's choice). */
   sources?: Record<string, 'typed' | 'template' | 'default'>
+}
+
+export type SamplingStage = 'writer' | 'arrangement' | 'plan' | 'take'
+
+/** A stage's sampling as the song was made: the writer's and a creative mode's temperature, YuE2's plan and take
+ * with top-p and top-k. */
+export interface SamplingValues {
+  temperature: number
+  top_p?: number
+  top_k?: number
 }
 
 export interface SongSummary {
@@ -65,6 +77,8 @@ export interface SongSummary {
   score_meter?: string
   seeds: Partial<Record<'take' | 'draft' | 'arrangement', number>>
   writer: string
+  /** What the record shows of the sampling (older players' caches and other music: none). */
+  sampling?: Partial<Record<SamplingStage, SamplingValues>>
   /** Music not made with Plenio (a folder with *also other music*): what its file has, no more. */
   other?: boolean
   artist?: string

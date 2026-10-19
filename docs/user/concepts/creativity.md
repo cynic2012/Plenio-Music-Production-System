@@ -55,5 +55,8 @@ more varied style stays one line of about 40 words and swaps generic words for e
 - **Other ways to more variety:** another draft seed, *thinking* on Write Song with a model that reasons, a larger
   writer model, a key or meter in the brief (*D dorian*, *6/8*).
 - **Tags:** `{creativity}` puts the value into a tag or a file name (Export Release).
+- **In the Plenio Player** a song's *Details* show its creativity and the sampling it gave, and the filters
+  have a *Creativity* row; the search takes `creativity:>60` or `creativity:varied`. Songs made before the
+  slider count as 50.
 
 The research and the decisions behind the values: [docs/design/creativity.md](../../design/creativity.md).

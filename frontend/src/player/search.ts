@@ -2,10 +2,11 @@
  * The library's search: free words over title, genre, mood, style, lyrics, the brief and your tags, plus field
  * filters - ``genre:pop``, ``mood:warm``, ``bpm:>100``, ``bpm:90-120``, ``key:Am``, ``model:yue2``,
  * ``year:2026``, ``lang:german``, ``vocals:instrumental``, ``mode:jazz`` (the creative mode), ``len:<3``
- * (minutes), ``tag:party`` (or ``#party``), ``is:fav``, ``is:unplayed``, ``has:pdf`` - and ``"quoted phrases"``;
+ * (minutes), ``creativity:>60`` (or ``creativity:varied``), ``tag:party`` (or ``#party``), ``is:fav``, ``is:unplayed``, ``has:pdf`` - and ``"quoted phrases"``;
  * ``-`` in front keeps out what matches. Every word must match; the best matches come first.
  */
 import type { SongSummary } from './api'
+import { CREATIVITY_LEVELS, CREATIVITY_RANGES, creativityLevel } from './creativity'
 
 export interface Term {
   field: string
@@ -19,6 +20,7 @@ const FIELDS: Record<string, string> = {
   len: 'len', length: 'len', is: 'is', has: 'has', title: 'title', lyrics: 'lyrics', style: 'style', artist: 'artist', album: 'album',
   plenio: 'plenio', version: 'plenio',
   template: 'template', writer: 'writer', meter: 'meter', tag: 'tag', tags: 'tag', kind: 'kind',
+  creativity: 'creativity', creative: 'creativity',
 }  // prettier-ignore
 
 export function parseQuery(query: string): Term[] {
@@ -79,7 +81,7 @@ export function score(song: SongSummary, terms: Term[], context: Context): numbe
 
 /** The filter chips facets offer one of: *from 0.8.0* already holds every newer version, so two make no
  * sense (owner's report 2026-10-16); a tempo or a length is one range at a time. */
-export const SINGLE_CHOICE_FACETS = new Set(['plenio', 'bpm', 'len'])
+export const SINGLE_CHOICE_FACETS = new Set(['plenio', 'bpm', 'len', 'creativity'])
 
 /** The filter chips after a click on ``key:"value"``: a chip that is on goes off; a new one is added - and in
  * a facet of one choice it takes the place of the one chosen before. ``exclude``: the chip keeps those songs
@@ -161,6 +163,15 @@ function isTest(song: SongSummary, v: string, context: Context): boolean {
   }
 } // prettier-ignore
 
+/** ``creativity:>60``, ``creativity:40-60``, ``creativity:75`` or a level, ``creativity:varied`` (other music has
+ * none). */
+function creativityTest(value: string, creativity: number | null | undefined): boolean {
+  if (creativity === null || creativity === undefined) return false
+  const level = fold(value)
+  if (CREATIVITY_LEVELS.some(([, name]) => name === level)) return creativityLevel(creativity) === level
+  return numberTest(value, creativity)
+}
+
 function matches(song: SongSummary, term: Term, context: Context): number {
   const v = fold(term.value)
   const has = (text: string | undefined): boolean => !!text && fold(text).includes(v)
@@ -175,6 +186,7 @@ function matches(song: SongSummary, term: Term, context: Context): number {
     case 'vocals': return has(song.vocals) || (v === 'sung' && !song.instrumental && !!song.vocals) ? 2 : 0
     case 'mode': return has(song.arrangement) ? 2 : 0
     case 'len': return numberTest(term.value, song.seconds / 60) ? 2 : 0
+    case 'creativity': return creativityTest(term.value, song.brief.creativity) ? 2 : 0
     case 'meter': return has(song.score_meter) || has(song.brief.meter) ? 2 : 0
     case 'is': return isTest(song, v, context) ? 2 : 0
     case 'plenio': return versionTest(term.value, song.plenio) ? 2 : 0
@@ -286,6 +298,7 @@ export const FACETS: FacetDef[] = [
   { id: 'len', key: 'len', label: 'Length', top: 3, fixed: LENGTHS, values: (s) => LENGTHS.filter(([r]) => numberTest(r, s.seconds / 60)).map(([r]) => r) },
   { id: 'key', key: 'key', label: 'Key', top: 10, values: (s) => [s.score_key || s.brief.key || ''] },
   { id: 'mode', key: 'mode', label: 'Creative mode', top: 8, values: (s) => [s.arrangement && s.arrangement !== 'off' ? s.arrangement : ''] },
+  { id: 'creativity', key: 'creativity', label: 'Creativity', top: 5, fixed: CREATIVITY_RANGES, values: (s) => CREATIVITY_RANGES.filter(([r]) => numberTest(r, s.brief.creativity)).map(([r]) => r) },
   { id: 'template', key: 'template', label: 'Template', top: 6, values: (s) => [s.template] },
   { id: 'year', key: 'year', label: 'Year', top: 4, values: (s) => [s.year] },
   { id: 'has', key: 'has', label: 'Has', top: 5, fixed: HAS, values: (s) => HAS.filter(([v]) => hasTest(s, v)).map(([v]) => v) },
@@ -399,7 +412,7 @@ const FIELD_HELP: [string, string][] = [
   ['mode', 'a creative mode'], ['template', 'a brief template'], ['is', 'fav, unplayed, played, tagged, cover, other'],
   ['has', 'timing, pdf, score, original, cover'], ['year', '2026'], ['plenio', 'the Plenio version: >=1.0'], ['title', 'words in the title'],
   ['lyrics', 'words in the lyrics'], ['artist', 'other music: the artist'], ['album', 'other music: the album'], ['meter', '4/4, 3/4'],
-  ['writer', 'the model that wrote it'], ['style', 'words in the style'],
+  ['writer', 'the model that wrote it'], ['style', 'words in the style'], ['creativity', '0-100: >60, 40-60, varied'],
 ] // prettier-ignore
 
 const FIXED_VALUES: Record<string, [string, string][]> = {
@@ -407,6 +420,7 @@ const FIXED_VALUES: Record<string, [string, string][]> = {
   has: [...HAS, ['lyrics', 'lyrics'], ['stems', 'stems']],
   bpm: TEMPOS,
   len: LENGTHS,
+  creativity: CREATIVITY_RANGES,
   vocals: [['instrumental', 'no singing'], ['sung', 'with singing']],
 }
 
