@@ -13,3 +13,4 @@
 # Windows batch files need CRLF line endings; shell scripts LF
 *.bat text eol=crlf
 *.sh text eol=lf
+*.gz binary

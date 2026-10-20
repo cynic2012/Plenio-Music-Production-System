@@ -2,7 +2,7 @@
  * Plenio frontend extension entry (built to web/js/plenio.js).
  *
  * Uses documented hooks only: registerExtension (with commands and menu commands), getCustomWidgets,
- * beforeRegisterNodeDef, node callbacks, api events and app.loadGraphData.
+ * beforeRegisterNodeDef, beforeConfigureGraph, node callbacks, api events and app.loadGraphData.
  */
 // @ts-expect-error - provided by ComfyUI at runtime (scripts shim), kept external by the build
 import { api } from '../../../scripts/api.js'
@@ -12,6 +12,7 @@ import { app } from '../../../scripts/app.js'
 import { type Fetcher, PlenioApiError } from '../api/client'
 import { chain, type ComfyApp, type ComfyNode } from '../shared/comfy'
 import type { AsrNote, SheetPayload } from '../shared/sheetSession'
+import { blocksMessages, bringBlocksUpToDate } from './blocks'
 import { BRIEF_NODES, installBriefTemplatePanel } from './briefTemplate'
 import { CONTINUE_COMMAND, type ContinueHost, installRecordDrop, openContinueSong } from './continueSong'
 import { dynamicComboNames, restoreWidgetValues, savedWidgetValues } from './dynamicCombo'
@@ -157,6 +158,23 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
       onClick: () => void openPlayer(playerHost)
     }
   ],
+  // a workflow saved before its blocks followed the brief's creativity: they are brought up to date before
+  // the frontend configures it (blocks.ts); loading goes on as it was when that fails
+  async beforeConfigureGraph(graphData) {
+    try {
+      const answer = await bringBlocksUpToDate(graphData, comfyApi)
+      for (const message of blocksMessages(answer)) comfyApp.extensionManager?.toast?.add({ ...message, life: 20000 })
+    } catch (error) {
+      console.error('Plenio: the blocks of this workflow could not be brought up to date', error)
+      const detail = error instanceof PlenioApiError && error.hint ? `${error.message} ${error.hint}` : String(error instanceof Error ? error.message : error)
+      comfyApp.extensionManager?.toast?.add({
+        severity: 'warn',
+        summary: "Plenio blocks not brought up to date - the brief's creativity may not reach their sampling",
+        detail,
+        life: 20000
+      })
+    }
+  },
   // the sheets' review stops depend on the linked brief's mode: known once the links are in place
   afterConfigureGraph: () => refreshRunStatus(),
   beforeRegisterNodeDef(nodeType, nodeData) {

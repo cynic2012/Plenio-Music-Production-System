@@ -45,6 +45,8 @@ export interface SamplingValues {
   temperature: number
   top_p?: number
   top_k?: number
+  /** The numbers were written in the workflow, not given by the creativity (a block saved before 1.0.2, or set by hand). */
+  fixed?: boolean
 }
 
 export interface SongSummary {

@@ -14,6 +14,7 @@ from typing import Any
 from ..core.arrangement import ModeLibrary
 from ..core.assets import Asset, load_catalogue
 from ..core.audio.presets import Library
+from ..core.blocks import Block, brief_outputs, current_blocks
 from ..core.brief import TemplateLibrary
 from ..core.config import PlenioConfig
 from ..core.errors import PlenioError
@@ -29,6 +30,7 @@ SERIES = Series(lambda: secrets.randbelow(9999) + 1)
 """The songs of the 'new song/cover every run' series of this server (``core.series``)."""
 RESOURCES = PACKAGE_ROOT / "resources"
 WORKFLOW_TEMPLATES = PACKAGE_ROOT / "example_workflows"
+BLUEPRINTS = PACKAGE_ROOT / "subgraphs"
 
 
 @lru_cache(maxsize=1)
@@ -44,6 +46,27 @@ def template_workflows() -> dict[str, dict[str, Any]]:
         if isinstance(data, dict) and isinstance(data.get("nodes"), list):
             workflows[path.stem] = data
     return workflows
+
+
+@lru_cache(maxsize=1)
+def shipped_blocks() -> dict[str, Block]:
+    """The package's blocks that follow the brief's creativity (``subgraphs/``): a workflow saved before
+    keeps older ones, brought up to date when it opens (``core.blocks``)."""
+    files: list[dict[str, Any]] = []
+    for path in sorted(BLUEPRINTS.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict):
+            files.append(data)
+    return current_blocks(files)
+
+
+@lru_cache(maxsize=1)
+def template_briefs() -> dict[str, list[Any]]:
+    """The briefs' outputs as the shipped templates have them (``core.blocks.brief_outputs``)."""
+    return brief_outputs(template_workflows().values())
 
 
 @lru_cache(maxsize=1)

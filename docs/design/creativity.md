@@ -30,7 +30,7 @@ User guide: [Creativity](../user/concepts/creativity.md).
 | What does it change? | (1) **The writer's rules** by level: *steady* 0-19, *restrained* 20-39, *balanced* 40-60 (nothing), *varied* 61-80, *experimental* 81-100. (2) **The temperature of the writer's first draft** (0.6 - 0.8 - 1.0) and of a creative mode's **arrangement plan** (0.55 - 0.7 - 0.9); the repairs and re-asks keep 0.7, they fix a form. (3) **YuE2's plan** (ABC) and **take** (music tokens) sampling - temperature, top-p, top-k - see §3. |
 | What does it not change? | The repetition penalties (music needs its repetitions; a penalty below 1 invites loops), YuE2's CFG, the audio sampler (steps, sampler, scheduler), the genre closeness, the creative mode, the seeds, MiniMax Music 3's own sampling (no evidence for other values; its writing follows the slider). |
 | How do the values reach the native nodes? | A small node **Plenio · Creativity** (`PlenioCreativity`) inside the template blocks turns the creativity into the sampling of one stage (writer, arrangement, plan, take) and is linked to the native nodes' fields. *Write Song* and *Arrange* read it from the brief they already get; *YuE2 Plan*, *YuE2 Render* and *YuE2 Takes* have a new input **creativity**, linked from the brief (unlinked: a slider on the block, 50). |
-| Older saved workflows? | They keep their blocks: the slider (new on their brief) acts on the writing - rules and nothing else, since their blocks have fixed sampling values. At 50 they run exactly as before. The new templates wire everything. |
+| Older saved workflows? | ~~They keep their blocks~~ (superseded 2026-10-20, owner's report: creativity 100 through the player on another device, a browser tab restored from before 1.0.2 - the plan and take sampling stayed 50's; the owner: the brief's settings must always count). When a workflow opens, its Plenio blocks without a Creativity node become the current ones and the YuE2 blocks' *creativity* is linked from the brief (`core.blocks`, before the frontend configures the graph - visible in the graph, R3; §5). At 50 they give the numbers they had. |
 | Shown and filtered in the player (the owner's follow-up) | The library reads the brief's creativity from the record's prompt (a song made before the slider: 50, marked as the default - it was made as 50 makes it now) and the sampling the song was made with: numbers as written in older records, the Creativity nodes' values (from the brief's creativity) in today's; the writer's temperature from the branch of the chosen writer model. *Details* show both, marked *the reference* at 50's values; a single-choice *Creativity* filter row (the five levels) and `creativity:` in the search. |
 | A "more varied prompt" (the owner's point) | Engine-aware. YuE2: **not** the long prose style of the analysis (it would be sung and exceeds the budget), but a *more specific* descriptor line of the same length - named instruments and playing styles, a production colour, one or two descriptors of movement and contrast ("dynamic build-ups", "sparse-to-full contrast", "instrumental fills between phrases") and no stock words; *experimental* adds one unexpected but fitting colour. MiniMax: the caption's *Arrangement* part tells a clear arc of contrasts (an intimate start, a build, a full high point, a contrasting bridge or a breakdown before the last chorus, instruments answering the voice); *experimental* allows one surprising turn (a key lift, a change of rhythm feel, an unusual solo). Lyrics: fresher, concrete images, varied line lengths between sections, a hook that stays; *experimental* may add one contrasting section ([Bridge], or [Break] before the last chorus) when the sections are not fixed by a score. Steady: plain words, regular lines, a chorus that repeats word for word, the genre's usual sound. |
 
@@ -64,11 +64,29 @@ matters - the score is the plan; the take's sampling still does.
 | Another audio sampler or more steps, the instrumental adapter on sung songs | No: Plenio renders with upstream's reference (32 steps); unverified changes are not defaults. |
 | CFG above 1.0 | No: changes the conditioning, costs a second pass, no evidence for better variety. |
 
-## 5. Tests
+## 5. Workflows saved before 1.0.2 (2026-10-20)
+
+ComfyUI keeps each block's inner graph in the workflow (`definitions.subgraphs`); updating the package changes
+the blueprints in `subgraphs/`, not the copies in saved workflows. A Song Brief is a node of the package, so an
+older workflow shows the slider - and its blocks still had fixed numbers. Measured on the owner's songs of
+2026-10-20: creativity 100 on the brief, the record's prompt with the plan at 0.7/0.9/30 and the take at
+1.0/0.95/100, the blocks without Creativity nodes and inputs (frontend 1.55.17).
+
+| Question | Decision |
+|---|---|
+| Where? | In the frontend's `beforeConfigureGraph` (a documented extension hook, R11): the workflow's JSON goes to `/plenio/workflow/blocks` only when it has a Plenio block that samples without a Creativity node; the answer replaces the JSON in place, and the frontend configures that. Checked in frontend 1.55.17: an instance takes the replaced definition, and the API prompt has the Creativity nodes linked to the brief. Not a rewrite of the prompt on the server: the graph would show other numbers than the run uses (R3, R6). |
+| What changes? | Each such block becomes the current one, under the id its instances use; the instances get the new inputs (after theirs) and the widget value of the blueprint; the YuE2 blocks' *creativity* is linked from the single brief's *creativity* output (a brief saved before it had one gets the outputs the templates' brief has). A toast names the blocks. |
+| What is kept? | A block whose inputs are not the start of the current one's, whose outputs differ, or whose nodes behind the sampling differ from the current block's (a value set by hand inside it, or another layout of a native node) - named in a warning; its numbers stay fixed. Without a single brief the YuE2 blocks keep their own slider (50), also named. |
+| 50 | The blocks are only replaced where their sampling nodes equal the current block's, whose Creativity nodes give exactly those numbers at 50 - so an older workflow at 50 runs as before. |
+| Shown in the player | `sampling_facts` marks a stage `fixed` when its numbers were written in the workflow; away from 50 the song's page says *fixed in the workflow, not from the creativity* instead of *the reference*. |
+
+## 6. Tests
 
 `tests/unit/test_creativity.py`: 50 gives the reference values exactly; the values rise with the slider and stay
 within their ends; levels and clamping; the writer adds nothing at 40-60, its YuE2 rules keep the style's
 rules (no section words, no vocal words for an instrumental), lyrics on a melody keep their syllable counts;
-the brief's fingerprint at 50 is the one of before. `tests/workflows`: the templates link the brief's
+the brief's fingerprint at 50 is the one of before. `tests/unit/test_blocks.py`: the 1.0.1 song (as frontend
+1.55.17 saved it) and cover template get the current blocks and the brief's creativity, a block changed inside
+is kept, nothing more to do afterwards. `tests/workflows`: the templates link the brief's
 creativity to every YuE2 block and the blocks' Creativity nodes to the native fields; the App mode shows the
 slider.

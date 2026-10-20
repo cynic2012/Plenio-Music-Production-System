@@ -83,6 +83,8 @@ export interface ComfyExtension {
   beforeRegisterNodeDef?: (nodeType: ComfyNodeType, nodeData: ComfyNodeDef, app: ComfyApp) => void | Promise<void>
   nodeCreated?: (node: ComfyNode, app: ComfyApp) => void
   setup?: (app: ComfyApp) => void | Promise<void>
+  /** Before a workflow is configured: its JSON, which the extension may change in place. */
+  beforeConfigureGraph?: (graphData: unknown) => void | Promise<void>
   /** After a workflow was loaded (nodes, links and widget values are in place). */
   afterConfigureGraph?: () => void | Promise<void>
   /** Commands of the extension (the command palette, keybindings and ``menuCommands``). */

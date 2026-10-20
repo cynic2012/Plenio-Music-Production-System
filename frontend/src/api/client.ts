@@ -289,3 +289,17 @@ export function continueRecord(
 ): Promise<Continuation> {
   return post<Continuation>(fetcher, '/plenio/records/continue', request)
 }
+
+/** A workflow's blocks brought up to date (``core.blocks.upgrade``): the blocks by name, ``[name, why]`` pairs. */
+export interface BlocksUpgrade {
+  /** The workflow to load instead; ``null``: nothing changed. */
+  workflow: Record<string, unknown> | null
+  updated: string[]
+  kept: [string, string][]
+  linked: string[]
+  unlinked: [string, string][]
+}
+
+export function upgradeBlocks(fetcher: Fetcher, workflow: unknown): Promise<BlocksUpgrade> {
+  return post<BlocksUpgrade>(fetcher, '/plenio/workflow/blocks', { workflow })
+}

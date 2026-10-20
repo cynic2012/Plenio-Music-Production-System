@@ -345,10 +345,11 @@ def test_the_creativity_and_the_sampling_it_gave() -> None:
             "inputs": {"temperature": 1.0, "top_p": 0.95, "top_k": 100},
         },
     }
+    # numbers written in the workflow are marked: they did not follow the creativity (owner's report 2026-10-20)
     assert sampling_facts(written, 50) == {
-        "writer": {"temperature": 0.8},
-        "plan": {"temperature": 0.7, "top_p": 0.9, "top_k": 30},
-        "take": {"temperature": 1.0, "top_p": 0.95, "top_k": 100},
+        "writer": {"temperature": 0.8, "fixed": True},
+        "plan": {"temperature": 0.7, "top_p": 0.9, "top_k": 30, "fixed": True},
+        "take": {"temperature": 1.0, "top_p": 0.95, "top_k": 100, "fixed": True},
     }
     # today's templates: the fields linked to the blocks' Creativity nodes, which take the brief's value
     brief = {

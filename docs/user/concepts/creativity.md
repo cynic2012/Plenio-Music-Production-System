@@ -49,9 +49,13 @@ more varied style stays one line of about 40 words and swaps generic words for e
   does not switch them on; with one on, it sets how freely the writer plans.
 - **When a finished score reaches YuE2** - a creative mode's arrangement, a score you edited, the DAW template -
   YuE2 does not plan any more, so only the take's sampling follows the slider.
-- **A workflow saved before the slider:** the slider appears on its brief and changes the writing. Its YuE2
-  blocks keep their fixed values; for the full effect, start from the current template and copy your brief's
-  fields.
+- **A workflow saved before the slider:** when it opens, Plenio gives it the current blocks - Write Song,
+  Arrange and the YuE2 blocks - and links the YuE2 blocks' *creativity* to the brief, so the slider reaches the
+  sampling as in the current template; a message names the blocks. At 50 they work exactly as before. Save the
+  workflow to keep it. A block whose sampling you changed inside it stays as it was (the message says so); its
+  numbers stay fixed.
+- **In the player** a song whose workflow had its sampling fixed while the brief asked for another creativity
+  says so beside the numbers: *fixed in the workflow, not from the creativity*.
 - **Other ways to more variety:** another draft seed, *thinking* on Write Song with a model that reasons, a larger
   writer model, a key or meter in the brief (*D dorian*, *6/8*).
 - **Tags:** `{creativity}` puts the value into a tag or a file name (Export Release).

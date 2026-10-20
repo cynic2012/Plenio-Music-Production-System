@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import type { SongSummary } from '../src/player/api'
 import { CREATIVITY_RANGES, creativityLevel, describeCreativity, describeSampling, isReference } from '../src/player/creativity'
 import { FACETS, facetValues, filterRows, parseQuery, score, suggest, toggleFilterChip } from '../src/player/search'
-import { samplingFacts, songFacts } from '../src/player/songFacts'
+import { FIXED_NOTE, samplingFacts, songFacts } from '../src/player/songFacts'
 
 function song(over: Partial<SongSummary> & { id: string }): SongSummary {
   return {
@@ -71,6 +71,23 @@ describe('the creativity', () => {
     expect(describeSampling({ temperature: 0.9 })).toBe('temperature 0.9')
     // other music and recordings: nothing of it
     expect(songFacts(SONGS[4]).some((f) => f.label === 'Creativity')).toBe(false)
+  })
+
+  it('says where the workflow had the sampling fixed while the brief asked for another creativity', () => {
+    // owner's report 2026-10-20: a workflow saved before 1.0.2 - the slider at 100, its blocks' numbers fixed
+    const fixed = {
+      writer: { temperature: 0.8, fixed: true },
+      plan: { temperature: 0.7, top_p: 0.9, top_k: 30, fixed: true },
+      take: { temperature: 1.05, top_p: 0.96, top_k: 125 },
+    }
+    const notes = samplingFacts(made('f', 100, { sampling: fixed })).map((f) => [f.label, f.note])
+    expect(notes).toEqual([
+      ['Writer temperature', FIXED_NOTE],
+      ['YuE2 plan sampling', FIXED_NOTE],
+      ['YuE2 take sampling', ''],
+    ])
+    // at 50 the fixed numbers are the reference: a song made before the slider was made as 50 makes it now
+    expect(samplingFacts(made('o', 50, { sampling: fixed })).map((f) => f.note)).toEqual(['the reference', 'the reference', ''])
   })
 
   it('filters by a level, by numbers and by name; other music is never in it', () => {

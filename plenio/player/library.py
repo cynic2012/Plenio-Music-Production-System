@@ -30,7 +30,7 @@ from ..core.errors import PlenioError
 from . import other as other_music
 
 RECORD_SUFFIX = ".plenio.json"
-CACHE_VERSION = 6
+CACHE_VERSION = 7
 RETIRED_DIR = "_retired"
 CLOCK_SLACK = 1.0
 """Seconds a file's time may run ahead of the clock read at a scan's start: on Windows a file written just
@@ -217,11 +217,14 @@ def _sampling_value(prompt: Mapping[str, Any], value: Any, creativity: Any) -> f
     return None
 
 
-def sampling_facts(prompt: Mapping[str, Any], creativity: Any = None) -> dict[str, dict[str, float | int]]:
+def sampling_facts(
+    prompt: Mapping[str, Any], creativity: Any = None
+) -> dict[str, dict[str, float | int | bool]]:
     """The sampling the song was made with (owner's request 2026-10-19: the creativity's values on the song's
     page): the writer's first draft and a creative mode's plan (their temperature, from the branch the chosen
     writer model ran), YuE2's plan and take (temperature, top-p, top-k). What a record does not have is left
-    out."""
+    out. ``fixed``: the numbers were written in the workflow, not given by a Creativity node - a block saved
+    before it followed the brief's creativity, or a value set by hand (owner's report 2026-10-20)."""
 
     def first(kind: str, prompt_from: str = "") -> Mapping[str, Any] | None:
         for node_id in sorted(prompt, key=_node_order):
@@ -238,7 +241,10 @@ def sampling_facts(prompt: Mapping[str, Any], creativity: Any = None) -> dict[st
             return node
         return None
 
-    facts: dict[str, dict[str, float | int]] = {}
+    def written(*raw: Any) -> dict[str, bool]:
+        return {} if any(isinstance(value, list) for value in raw) else {"fixed": True}
+
+    facts: dict[str, dict[str, float | int | bool]] = {}
     writer = next(
         (
             _text((node.get("inputs") or {}).get("model"))
@@ -252,9 +258,10 @@ def sampling_facts(prompt: Mapping[str, Any], creativity: Any = None) -> dict[st
         node = first("PlenioLocalLLM" if local else "TextGenerate", compose)
         if node is not None:
             key = "temperature" if local else "sampling_mode.temperature"
-            value = _sampling_value(prompt, (node.get("inputs") or {}).get(key), creativity)
+            raw = (node.get("inputs") or {}).get(key)
+            value = _sampling_value(prompt, raw, creativity)
             if value is not None:
-                facts[stage] = {"temperature": value}
+                facts[stage] = {"temperature": value, **written(raw)}
     for stage, kind in (("plan", "YuE2GenerateABC"), ("take", "YuE2GenerateMusic")):
         node = first(kind)
         if node is None:
@@ -263,6 +270,7 @@ def sampling_facts(prompt: Mapping[str, Any], creativity: Any = None) -> dict[st
         values = {name: _sampling_value(prompt, inputs.get(name), creativity) for name in SAMPLING_NAMES}
         if all(value is not None for value in values.values()):
             facts[stage] = {name: value for name, value in values.items() if value is not None}
+            facts[stage].update(written(*(inputs.get(name) for name in SAMPLING_NAMES)))
     return facts
 
 

@@ -6,7 +6,7 @@
  * they show what there is.
  */
 import type { Brief, SamplingStage, SongSummary } from './api'
-import { describeCreativity, describeSampling, isReference } from './creativity'
+import { CREATIVITY_REFERENCE, describeCreativity, describeSampling, isReference } from './creativity'
 import { formatTime } from './timing'
 
 export interface Fact {
@@ -77,16 +77,22 @@ const SAMPLING_LABELS: [SamplingStage, string][] = [
   ['take', 'YuE2 take sampling'],
 ]
 
-/** The sampling the song was made with (owner's request 2026-10-19), marked where it is the reference (50);
- * a creative mode's plan only when a mode was on. */
+/** Numbers written in the workflow while the brief asked for another creativity (owner's report 2026-10-20). */
+export const FIXED_NOTE = 'fixed in the workflow, not from the creativity'
+
+/** The sampling the song was made with (owner's request 2026-10-19), marked where it is the reference (50) -
+ * or, away from 50, where the workflow had it fixed (a block saved before 1.0.2); a creative mode's plan only
+ * when a mode was on. */
 export function samplingFacts(s: SongSummary): Fact[] {
   const out: Fact[] = []
+  const away = s.brief.creativity !== null && s.brief.creativity !== undefined && s.brief.creativity !== CREATIVITY_REFERENCE
   for (const [stage, label] of SAMPLING_LABELS) {
     const values = s.sampling?.[stage]
     if (!values) continue
     if (stage === 'arrangement' && (!s.brief.arrangement || s.brief.arrangement === 'off')) continue
     const value = stage === 'writer' || stage === 'arrangement' ? String(values.temperature) : describeSampling(values)
-    out.push({ label, value, note: isReference(stage, values) ? 'the reference' : '' })
+    const note = away && values.fixed ? FIXED_NOTE : isReference(stage, values) ? 'the reference' : ''
+    out.push({ label, value, note })
   }
   return out
 }

@@ -16,7 +16,7 @@ from typing import Any
 
 from aiohttp import web
 
-from ..core import continuation, song_form, syllables
+from ..core import blocks, continuation, song_form, syllables
 from ..core import lyrics as lyrics_rules
 from ..core import score as score_rules
 from ..core.engines import rules_for
@@ -25,7 +25,14 @@ from ..core.sheet import DOCUMENT_KINDS, REVIEW_MODES, evaluate_sheet, parse_she
 from ..player.launch import ensure_player
 from ..player.paths import state_dir
 from . import host
-from .shared import preset_library, system_report, template_library, template_workflows
+from .shared import (
+    preset_library,
+    shipped_blocks,
+    system_report,
+    template_briefs,
+    template_library,
+    template_workflows,
+)
 from .sheet_music import JOBS, MAX_BYTES
 
 log = logging.getLogger("plenio")
@@ -443,6 +450,26 @@ async def records_continue(request: web.Request) -> web.StreamResponse:
     return web.json_response(continuation.continuation(record, template_workflows(), source=source))
 
 
+async def workflow_blocks(request: web.Request) -> web.StreamResponse:
+    """A workflow's blocks saved before they followed the brief's creativity, brought up to date
+    (``core.blocks``; the frontend asks when such a workflow opens). ``workflow`` is ``null`` when nothing
+    changed."""
+    data = await read_json(request)
+    workflow = data.get("workflow")
+    if not isinstance(workflow, dict):
+        raise PlenioUserError("The request needs the 'workflow' to bring up to date.")
+    found = blocks.upgrade(workflow, shipped_blocks(), template_briefs())
+    return web.json_response(
+        {
+            "workflow": found.workflow if found.updated or found.linked else None,
+            "updated": list(found.updated),
+            "kept": [list(entry) for entry in found.kept],
+            "linked": list(found.linked),
+            "unlinked": [list(entry) for entry in found.unlinked],
+        }
+    )
+
+
 async def player_open(request: web.Request) -> web.StreamResponse:
     """The *Plenio Player* button (owner's request 2026-10-16): the address of the Plenio Player running on
     this computer - started now when none runs, as a program of its own that plays ComfyUI's output folder
@@ -478,6 +505,7 @@ ROUTES: tuple[tuple[str, str, Handler], ...] = (
     ("GET", "/plenio/export/sheet-music/pending", export_sheet_music_pending),
     ("GET", "/plenio/records", records_list),
     ("POST", "/plenio/records/continue", records_continue),
+    ("POST", "/plenio/workflow/blocks", workflow_blocks),
     ("POST", "/plenio/player/open", player_open),
 )
 
