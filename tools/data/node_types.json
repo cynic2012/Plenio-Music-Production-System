@@ -1271,7 +1271,7 @@
      "kind": [
       "COMFY_DYNAMICCOMBO_V3",
       {
-       "tooltip": "super-resolution: for Refine (48 kHz); separation: for Separate Stems.",
+       "tooltip": "super-resolution: for HQ 2 · Regenerate Highs and Refine (48 kHz); separation: for Separate Stems.",
        "options": [
         {
          "key": "super-resolution",
@@ -2734,6 +2734,371 @@
    "output_node": false,
    "category": "Plenio/Writing",
    "display_name": "Fit Lyrics"
+  },
+  "PlenioHQDeReverb": {
+   "input": {
+    "required": {
+     "audio": [
+      "AUDIO",
+      {
+       "tooltip": "The song (every item of a batch)."
+      }
+     ],
+     "preset": [
+      "COMFY_DYNAMICCOMBO_V3",
+      {
+       "tooltip": "auto: the profile that fits the song's genre (from the connected brief; standard without one). standard, gentle, strong and wide are the same four profiles in HQ 1, 2 and 3; custom shows the fields.",
+       "options": [
+        {
+         "key": "auto - from the song's genre",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "standard - pop, hip-hop, soul, world",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "gentle - acoustic, classical, jazz, folk",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "strong - rock, metal, punk",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "wide - electronic, dance, ambient",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "custom - the fields below",
+         "inputs": {
+          "required": {
+           "dereverb": [
+            "FLOAT",
+            {
+             "tooltip": "0 off ... 1: how much of the late, diffuse room above 600 Hz is taken out.",
+             "default": 0.45,
+             "min": 0.0,
+             "max": 1.0,
+             "step": 0.05
+            }
+           ],
+           "phase_lock": [
+            "FLOAT",
+            {
+             "tooltip": "0 off ... 1: how far the phase above 2 kHz follows its strong neighbours.",
+             "default": 0.55,
+             "min": 0.0,
+             "max": 1.0,
+             "step": 0.05
+            }
+           ]
+          }
+         }
+        }
+       ]
+      }
+     ]
+    },
+    "optional": {
+     "brief": [
+      "PLENIO_BRIEF",
+      {
+       "tooltip": "Optional: Song Brief or Cover Brief - its genre chooses the profile for 'auto'."
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "audio",
+     "preset"
+    ],
+    "optional": [
+     "brief"
+    ]
+   },
+   "output": [
+    "AUDIO",
+    "PLENIO_REPORT"
+   ],
+   "output_name": [
+    "audio",
+    "report"
+   ],
+   "output_is_list": [
+    false,
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Mastering",
+   "display_name": "HQ 3 · De-Reverb"
+  },
+  "PlenioHQRegenerateHighs": {
+   "input": {
+    "required": {
+     "audio": [
+      "AUDIO",
+      {
+       "tooltip": "The song (every item of a batch)."
+      }
+     ],
+     "model": [
+      "PLENIO_AUDIO_MODEL",
+      {
+       "tooltip": "Load Audio Model (super-resolution)."
+      }
+     ],
+     "preset": [
+      "COMFY_DYNAMICCOMBO_V3",
+      {
+       "tooltip": "auto: the profile that fits the song's genre (from the connected brief; standard without one). standard, gentle, strong and wide are the same four profiles in HQ 1, 2 and 3; custom shows the fields.",
+       "options": [
+        {
+         "key": "auto - from the song's genre",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "standard - pop, hip-hop, soul, world",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "gentle - acoustic, classical, jazz, folk",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "strong - rock, metal, punk",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "wide - electronic, dance, ambient",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "custom - the fields below",
+         "inputs": {
+          "required": {
+           "from_hz": [
+            "FLOAT",
+            {
+             "tooltip": "New highs from (Hz): the crossover. The model sees the song up to its nearest input edge below it (UniverSR: 4, 6, 8 or 12 kHz).",
+             "default": 8200.0,
+             "min": 4500.0,
+             "max": 20000.0,
+             "step": 100.0
+            }
+           ],
+           "new_share": [
+            "FLOAT",
+            {
+             "tooltip": "Share of the new highs above the crossover; the rest stays the original's.",
+             "default": 0.85,
+             "min": 0.0,
+             "max": 1.0,
+             "step": 0.05
+            }
+           ],
+           "level_match": [
+            "FLOAT",
+            {
+             "tooltip": "The new highs follow the original's level (40 ms envelope) times this.",
+             "default": 0.9,
+             "min": 0.3,
+             "max": 1.5,
+             "step": 0.05
+            }
+           ]
+          }
+         }
+        }
+       ]
+      }
+     ]
+    },
+    "optional": {
+     "brief": [
+      "PLENIO_BRIEF",
+      {
+       "tooltip": "Optional: Song Brief or Cover Brief - its genre chooses the profile for 'auto'."
+      }
+     ],
+     "seed": [
+      "INT",
+      {
+       "tooltip": "Seed of the model: the same seed gives the same highs.",
+       "default": 0,
+       "min": 0,
+       "max": 4294967295,
+       "control_after_generate": "fixed"
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "audio",
+     "model",
+     "preset"
+    ],
+    "optional": [
+     "brief",
+     "seed"
+    ]
+   },
+   "output": [
+    "AUDIO",
+    "PLENIO_REPORT"
+   ],
+   "output_name": [
+    "audio",
+    "report"
+   ],
+   "output_is_list": [
+    false,
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Mastering",
+   "display_name": "HQ 2 · Regenerate Highs"
+  },
+  "PlenioHQStereoCleanup": {
+   "input": {
+    "required": {
+     "audio": [
+      "AUDIO",
+      {
+       "tooltip": "The song (every item of a batch)."
+      }
+     ],
+     "preset": [
+      "COMFY_DYNAMICCOMBO_V3",
+      {
+       "tooltip": "auto: the profile that fits the song's genre (from the connected brief; standard without one). standard, gentle, strong and wide are the same four profiles in HQ 1, 2 and 3; custom shows the fields.",
+       "options": [
+        {
+         "key": "auto - from the song's genre",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "standard - pop, hip-hop, soul, world",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "gentle - acoustic, classical, jazz, folk",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "strong - rock, metal, punk",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "wide - electronic, dance, ambient",
+         "inputs": {
+          "required": {}
+         }
+        },
+        {
+         "key": "custom - the fields below",
+         "inputs": {
+          "required": {
+           "side_highcut_hz": [
+            "FLOAT",
+            {
+             "tooltip": "Above this the side signal is cut (Hz, zero-phase).",
+             "default": 10500.0,
+             "min": 4000.0,
+             "max": 20000.0,
+             "step": 250.0
+            }
+           ],
+           "side_cleanup": [
+            "FLOAT",
+            {
+             "tooltip": "0 off ... 1 strongest: the high-cut's share and the cleanup of the side's diffuse highs.",
+             "default": 0.65,
+             "min": 0.0,
+             "max": 1.0,
+             "step": 0.05
+            }
+           ],
+           "warmth": [
+            "FLOAT",
+            {
+             "tooltip": "0 off ... 0.8: saturation above 400 Hz (2nd and 3rd harmonics).",
+             "default": 0.18,
+             "min": 0.0,
+             "max": 0.8,
+             "step": 0.02
+            }
+           ]
+          }
+         }
+        }
+       ]
+      }
+     ]
+    },
+    "optional": {
+     "brief": [
+      "PLENIO_BRIEF",
+      {
+       "tooltip": "Optional: Song Brief or Cover Brief - its genre chooses the profile for 'auto'."
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "audio",
+     "preset"
+    ],
+    "optional": [
+     "brief"
+    ]
+   },
+   "output": [
+    "AUDIO",
+    "PLENIO_REPORT"
+   ],
+   "output_name": [
+    "audio",
+    "report"
+   ],
+   "output_is_list": [
+    false,
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Mastering",
+   "display_name": "HQ 1 · Stereo Cleanup"
   },
   "PlenioLocalLLM": {
    "input": {

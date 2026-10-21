@@ -5,7 +5,7 @@ Finishes an existing recording - a take you rendered earlier, or any song file -
 ▶ **Video:** *Tutorial 4 · Enhance & Master* in the [tutorial playlist](https://www.youtube.com/playlist?list=PLAFqTtP59fgE) - the whole path in ComfyUI, narrated, with chapters.
 
 ```text
-Load Audio -> EQ -> Loudness & Dynamics -> Preview
+Load Audio -> Audio HQ 1-3 -> EQ -> Loudness & Dynamics -> Preview
                                         -> Export Release (FLAC 24-bit + MP3 V0, tags copied, original kept)
 ```
 
@@ -13,13 +13,15 @@ Load Audio -> EQ -> Loudness & Dynamics -> Preview
 
 1. Open **4 · Enhance & Master** from the template browser.
 2. Upload the file in **Load Audio** (FLAC, WAV, MP3, OGG, M4A ...).
-3. Press **Run**. The defaults: a *warm, gentle* tone match, -14 LUFS with a true peak of at most -1 dBTP (streaming), *Balanced - gentle glue* compression, the source's sample rate.
+3. Press **Run**. The defaults: Audio HQ 1 and 2 with the *standard* preset, a *warm, gentle* tone match, -14 LUFS with a true peak of at most -1 dBTP (streaming), *Balanced - gentle glue* compression, the source's sample rate.
 4. The result plays in the preview; the files are in `output/plenio/enhanced/`:
    - `<title>.flac` and `<title>.mp3` - the master, with the source file's tags and cover,
    - `<title> (original).flac` - the unmastered source, for comparison,
    - `<title>.plenio.json` - the release record (settings, measured loudness, reports).
 
-## The three stages
+## The stages
+
+**Audio HQ** ([guide](../concepts/audio-hq.md)) - three nodes before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer of AI renders in the highs; *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 2.7 s per second of music on a 16 GB GPU) - also the cure for a band-limited source such as an old MP3; *HQ 3 · De-Reverb* (bypassed) dries a short metallic room but also dulls the highs. There is no brief here, so their presets are *standard*; choose *gentle* (acoustic, classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) to match your music.
 
 **EQ** ([help](../../../web/docs/PlenioEQ.md)) - *flat* (no change), *manual* (drag bands on the curve under the node; double-click adds a band, the wheel changes Q), *match preset* (Plenio measures the audio and proposes up to a few gentle peak bands towards a **warm** or **bright** tilt, or towards a **reference** recording you connect), *custom match* (the same with your own strength and limits). The EQ does not normalise: a boost can raise the peak - the next stage takes care of level.
 
@@ -29,7 +31,7 @@ Load Audio -> EQ -> Loudness & Dynamics -> Preview
 
 ## Using it after a song path
 
-The song templates 1-3 finish with the same stages as the **Plenio · Master** block (node library, *Plenio/Mastering*): it sits between the render and **Export Release**, and Export keeps the unmastered take as `(original).flac`. Use this template to master a take again with other settings.
+The song templates 1-3 and 5 finish with the same stages as the **Plenio · Master** block (node library, *Plenio/Mastering*): it sits between the render and **Export Release**, and Export keeps the unmastered take as `(original).flac`. Use this template to master a take again with other settings.
 
 ## Skipping a stage
 
@@ -37,7 +39,7 @@ Bypass a node (Ctrl+B) or choose *flat* in the EQ: the audio then passes through
 
 ## App mode
 
-Switch **Graph / App** at the top left: the app asks for the file, the EQ mode, the loudness target and the compression style ([App mode](../concepts/app-mode.md)).
+Switch **Graph / App** at the top left: the app asks for the file, the presets of HQ 1 and HQ 2, the EQ mode, the loudness target and the compression style ([App mode](../concepts/app-mode.md)).
 
 ## Good to know
 

@@ -7,8 +7,7 @@ Arms (plan §4.4):
 
 - ``resample only`` - the pure resampler, the baseline;
 - ``universr`` - the released checkpoint through Plenio's own adapter (``models/audio_sr``);
-- ``external:<name>=<dir>`` - files another tool already produced (for example the legacy toolkit's
-  FlashSR node, which stays installed side by side), so FlashSR is evaluated without vendoring it.
+- ``external:<name>=<dir>`` - files another tool already produced, compared without vendoring its code.
 
 Material (plan §4.5):
 

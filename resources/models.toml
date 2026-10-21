@@ -61,7 +61,7 @@ role = "SheetSage2 transcription (score of the source, Check Vocals)"
 default = true
 templates = ["2 · YuE2 · Cover"]
 
-# --- Refine: audio super-resolution (optional stage; MiniMax renders it by default) --------------
+# --- Audio HQ 2 and Refine: audio super-resolution (HQ 2 runs in every template) -----------------
 
 [[model]]
 id = "universr-audio"
@@ -70,10 +70,10 @@ folder = "audio_sr"
 url = "https://huggingface.co/woongzip1/universr-audio/resolve/main/pytorch_model.bin"
 bytes = 229072395
 licence = "CC BY 4.0 (weights); MIT (inference code)"
-role = "UniverSR audio super-resolution (8/12/16/24 kHz -> 48 kHz, vocoder-free flow matching)"
+role = "UniverSR audio super-resolution (8/12/16/24 kHz -> 48 kHz, vocoder-free flow matching): HQ 2 · Regenerate Highs in every template's Master, and Refine"
 default = true
-templates = ["3 · MiniMax · Song"]
-optional_templates = ["1 · YuE2 · Song", "2 · YuE2 · Cover", "4 · Enhance & Master", "5 · YuE2 · DAW"]
+templates = ["1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "4 · Enhance & Master", "5 · YuE2 · DAW"]
+optional_templates = []
 
 # --- Stems: BS-RoFormer 4-stem separation (optional stage, bypassed everywhere by default) ------
 

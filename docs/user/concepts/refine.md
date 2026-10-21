@@ -2,28 +2,17 @@
 
 **Refine (48 kHz)** brings a rendered song to 48 kHz and extends the missing top octave with a super-resolution model. It is one node with an optional model behind it, and it never touches the band the render already delivered.
 
-Where it sits:
-
-```
-YuE2 Render ─► Refine (optional there) ─► Plenio · Master ─► Export
-MiniMax Render ─► Refine (on by default) ─► Plenio · Master ─► Export
-```
-
-| Template | Refine | Why |
-|---|---|---|
-| 1 · YuE2 · Song, 2 · YuE2 · Cover, 5 · YuE2 · DAW | bypassed | YuE2 decodes at 48 kHz already; press **Ctrl+B** to switch it on |
-| 3 · MiniMax · Song | **on** (engine *model*, preset *3 - MiniMax*: pre 10 kHz, crossover 9.5 kHz, post 19 kHz) | the owner's default for MiniMax renders |
-| 4 · Enhance & Master | bypassed | switch it on for band-limited uploads (old MP3s, phone recordings) |
+**No template uses Refine since 2026-10-21.** All audio work after the render lives in the *Plenio · Master*
+block now, and its [Audio HQ](audio-hq.md) stage **HQ 2 · Regenerate Highs** regenerates the highs (with the same
+UniverSR model). Until then Refine ran in *3 · MiniMax · Song* (preset *3 - MiniMax*: pre 10 kHz, crossover 9.5 kHz,
+post 19 kHz) and sat bypassed in the other templates. The node stays in the library - **Plenio · Refine (48 kHz)**
+in the node library is the loader and the stage as one block - for a plain 48 kHz conversion (*resample only*) or
+your own experiments. The rest of this page describes the node.
 
 The model **always runs when it is connected** - also for an input that already reaches the top of the band
 (the owner's decision, 2026-09-28). PRE shapes only what the model sees, the crossover decides what the model may
 replace, and POST rolls its result off; nothing below the crossover changes. The report says so when the input was
 already full band.
-
-In every template the block is two plain nodes in a **REFINE** group - the super-resolution model loader and
-*Refine (48 kHz)* itself - so all fields stay editable on the node. Where the block is bypassed, both nodes are
-collapsed like the other optional blocks: select the group, press **Ctrl+B**, then click the dot at the left of each
-title to expand them and see the settings.
 
 The **seed** starts as *fixed* (its *control after generate*): the same seed gives the same result, and ComfyUI
 reuses the refined audio when nothing before it changed. Set it to *randomize* only to compare the model's variations.

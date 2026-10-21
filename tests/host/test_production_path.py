@@ -325,7 +325,7 @@ def test_preset_and_eq_routes(server: ComfyServer) -> None:
 
 
 def test_enhance_template_contains_the_chain(server: ComfyServer, log: Log) -> None:
-    """The shipped template is the graph the tests above run (Load Audio, Refine, EQ, Loudness, Export)."""
+    """The shipped template is the graph the tests above run (Load Audio, Audio HQ, EQ, Loudness, Export)."""
     template = json.loads(
         (Path(__file__).resolve().parents[2] / "example_workflows" / "4 · Enhance & Master.json").read_text(
             encoding="utf-8"
@@ -333,17 +333,19 @@ def test_enhance_template_contains_the_chain(server: ComfyServer, log: Log) -> N
     )
     types = sorted(n["type"] for n in template["nodes"])
     wrappers = {sub["name"]: sub["id"] for sub in template["definitions"]["subgraphs"]}
-    # Refine (M5/D10) is a pair of plain nodes (its fields stay editable); Stems (M6/D11-D12) a wrapper
+    # Audio HQ 1-3 are plain nodes here (their presets stay at hand); Stems (M6/D11-D12) is a wrapper
     assert set(wrappers) == {"Plenio · Stems"}
     assert types == sorted(
         [
             "LoadAudio",
             "MarkdownNote",
             "PlenioAudioModelLoader",
+            "PlenioHQStereoCleanup",
+            "PlenioHQRegenerateHighs",
+            "PlenioHQDeReverb",
             "PlenioEQ",
             "PlenioExportRelease",
             "PlenioLoudness",
-            "PlenioRefine",
             "PreviewAudio",
             wrappers["Plenio · Stems"],
         ]

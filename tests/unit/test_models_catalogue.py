@@ -102,6 +102,7 @@ def test_inventory_and_readiness(tmp_path: Path) -> None:
         "yue2_3b_int8_convrot.safetensors": 3960938800,
         "gemma4_e4b_it_fp8_scaled.safetensors": 1234,  # size not recorded: any size counts
         "minimax_music3_dav.safetensors": 5,  # wrong size
+        "pytorch_model.bin": 229072395,  # UniverSR: HQ 2 runs in every template's Master (2026-10-21)
     }
 
     def locate(folder: str, file: str) -> Path | None:
@@ -128,24 +129,20 @@ def test_inventory_and_readiness(tmp_path: Path) -> None:
     assert {m.file for m in minimax.missing} == {
         "minimax_music3_dit_fp16.safetensors",
         "minimax_music3_text_encoder_pruned_int8_convrot.safetensors",
-        "pytorch_model.bin",  # Refine runs with UniverSR by default in this template (plan §4.6)
     }  # a file of the wrong size is reported as incomplete, not as missing
     assert {m.file for m in minimax.incomplete} == {"minimax_music3_dav.safetensors"}
-    assert minimax.missing_bytes == 4914197682 + 9196611886 + 229072395  # ... and the UniverSR weights
+    assert minimax.missing_bytes == 4914197682 + 9196611886
     # the DAW template needs the same music model and writer as the song template
     assert daw.template == "5 · YuE2 · DAW" and daw.ready
     assert {m.file for m in daw.optional_missing} >= {
         "flux-2-klein-4b.safetensors",
         "ar_lora_inst_v3abc_comfyui.safetensors",
-        "pytorch_model.bin",  # Refine, bypassed in this template
     }
-    # Enhance & Master ships Refine (bypassed) for band-limited uploads and Stems (bypassed):
-    # nothing else is optional there
-    assert {m.file for m in enhance.optional_missing} == {
-        "pytorch_model.bin",
-        "model_bs_roformer_ep_17_sdr_9.6568.ckpt",
-    }
-    assert readiness(CATALOGUE, Inventory({}), ["4 · Enhance & Master"])[0].ready
+    # Enhance & Master runs HQ 2 (UniverSR) and ships Stems bypassed: nothing else is optional there
+    assert enhance.ready
+    assert {m.file for m in enhance.optional_missing} == {"model_bs_roformer_ep_17_sdr_9.6568.ckpt"}
+    nothing = readiness(CATALOGUE, Inventory({}), ["4 · Enhance & Master"])[0]
+    assert not nothing.ready and {m.file for m in nothing.missing} == {"pytorch_model.bin"}
 
 
 def test_size_text() -> None:

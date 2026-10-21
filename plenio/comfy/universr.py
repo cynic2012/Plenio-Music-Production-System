@@ -18,7 +18,7 @@ The defaults are **provisional** until the owner's measurement study (L1, plan Â
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -99,6 +99,20 @@ class UniverSREngine:
     def condition_hz(self) -> float:
         """The input bandwidth the model was trained for: half the input rate (Refine's PRE edge)."""
         return self.input_rate_hz / 2
+
+    @property
+    def input_rates(self) -> tuple[int, ...]:
+        """Every input condition of the released model (HQ 2 picks the one under its crossover)."""
+        return CONDITIONS_HZ
+
+    def at_input_rate(self, rate: int) -> UniverSREngine:
+        """The same loaded model at another input condition (a copy; the shared engine keeps its own)."""
+        if int(rate) not in CONDITIONS_HZ:
+            raise PlenioModelError(
+                f"{NAME} has no {rate} Hz input condition.",
+                hint=f"Use one of {', '.join(str(r) for r in CONDITIONS_HZ)} Hz.",
+            )
+        return replace(self, input_rate_hz=int(rate))
 
     @property
     def chunk_seconds(self) -> float:

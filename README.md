@@ -94,7 +94,7 @@ Nothing else to buy, sign up for or glue together - every step is in the box, an
 | **Compose** | A real score editor: notation, piano roll, chords, a MIDI keyboard, arranging like in a DAW, MIDI, MusicXML and PDF - or write the whole melody yourself (*YuE2 · DAW*) |
 | **Perform** | YuE2 for songs, covers and your own melody; MiniMax Music 3 for songs |
 | **Cover** | Any recording becomes a new version: its score read by SheetSage2, its words by faster-whisper, new lyrics fitted to the melody |
-| **Polish** | Stems with a mixer, Refine to 48 kHz, an EQ on the curve, loudness to -14 LUFS / -1 dBTP with a true-peak limiter |
+| **Polish** | Stems with a mixer, Audio HQ (stereo cleanup, regenerated highs), an EQ on the curve, loudness to -14 LUFS / -1 dBTP with a true-peak limiter |
 | **Release** | FLAC, MP3 or WAV with tags and cover art (FLUX.2 Klein), lyrics subtitles, the sheet music as PDF, and the whole project inside the FLAC |
 | **Go on** | Drop a song's FLAC onto ComfyUI and you are back in its workflow - new takes, a changed score, new lyrics |
 | **Listen & share** | The Plenio Player: visuals, Live Play, videos and a player in one file to send |
@@ -140,8 +140,8 @@ The demos were made with the same music models by Plenio's predecessor, the [Mus
 - **Arrange like in a DAW.** Copy, move and delete whole sections in the section list, as on Cubase's arranger track - or single bars in the bar strip under it. A **cursor** in the ruler sets where playback and paste start, and **Ctrl+V** / **Ctrl+Shift+V** paste at it, overwriting or inserting time. The Guide track, the lyrics and, in covers, the original words and the source recording's times follow every arrangement. The **lyrics** stand over the notes they are sung on and are edited right there - their lines are moved, made longer or shorter, copied and pasted like notes, and chord symbols move by semitones with the notes. The sheet music goes out as **MusicXML**, and a **project file** keeps the score, the Guide notes and the lyrics to go on later.
 - **Or write the score yourself.** **5 · YuE2 · DAW** is the song template for composing: an all-rest score is built from the brief, you draw the melody and the chords - play them in with a **MIDI keyboard** or bring a sketch from your DAW with **Import MIDI…** - and YuE2 renders exactly what you approved. The **Guide** track plays with the sheet but is never sent to the model.
 - **Covers from the actual music.** SheetSage2 reads the score out of your recording and keeps its beat grid. faster-whisper transcribes the sung words and places them into the score's sections. You choose *instrumental*, *original lyrics* or *new lyrics* (written to the phrasing of the original and fitted to its melody line by line), and whether the harmony stays; the cover is named after its source (`<title>-cover`). In the score editor the source recording plays under the notes, bar by bar, and the **sung pitch** is drawn over them, so you hear and see where the transcription is off.
-- **After the render, before the master.** **Refine (48 kHz)** can extend a band-limited render with a super-resolution model or just resample it; **Stems** splits a song into vocals, drums, bass and other and mixes them back with a **residual** that keeps a neutral mix exact. Both are optional blocks in every template, bypassed until you switch them on.
-- **Finishing built in.** Every song template ends in **Plenio · Master**: a gentle tone match, compression and a true-peak limiter to **-14 LUFS / -1 dBTP**. Export writes FLAC 24-bit, MP3 V0 or WAV 32-bit float with tags and embedded cover art, the unmastered take, a **release record** of the documents, seeds, settings, loudness and model licences - and, for YuE2, the **sheet music as a PDF**.
+- **After the render, before the master.** **Stems** splits a song into vocals, drums, bass and other and mixes them back with a **residual** that keeps a neutral mix exact - an optional block in every template, bypassed until you switch it on.
+- **Finishing built in.** Every song template ends in **Plenio · Master**: **Audio HQ** first - *Stereo Cleanup* calms the unsteady stereo shimmer of AI renders, *Regenerate Highs* lets UniverSR generate new highs above 8.2 kHz, presets that follow the song's genre ([guide](docs/user/concepts/audio-hq.md)) - then a gentle tone match, compression and a true-peak limiter to **-14 LUFS / -1 dBTP**. Export writes FLAC 24-bit, MP3 V0 or WAV 32-bit float with tags and embedded cover art, the unmastered take, a **release record** of the documents, seeds, settings, loudness and model licences - and, for YuE2, the **sheet music as a PDF**.
 - **Lyrics subtitles, timed by listening.** Export writes every song's lyrics as `(lines).srt` - whole lines - and `(notes).srt` - the lines painted on note by note. The times are measured: the lyrics ASR listens to the song and, for YuE2, the score puts every syllable on its note (half the words within 0.16 s of where they are sung). Ready for a lyric video in DaVinci Resolve or for YouTube ([guide](docs/user/concepts/tags-and-subtitles.md)).
 - **Tags from the brief.** Tag fields and file names take variables - `Genre: {genre}[, mood: {mood}]`, `{artist} - {title}`, `{lyrics}` as the lyrics tag - or any connected text, and every field of the brief is an output of its own.
 - **Seeds you can read.** One switch per seed: 🔒 keeps a part (the lyrics, the take), 🎲 renews it every run - and the number shown is always the one that made what you just heard ([guide](docs/user/concepts/seeds.md)).
@@ -184,7 +184,7 @@ The cover template has the same choice (*one cover, stop to review* is its defau
   <img src="assets/branding/0.4.5/Screenshot%20YuE2-graph.png" alt="The 1 · YuE2 · Song template in ComfyUI: brief, writer, Song Sheets, render and finish in numbered groups" width="100%" />
 </p>
 
-*1 · YuE2 · Song: the brief on the left, the writer and the Song Sheets in the middle, render, mastering and export on the right; the model block and the optional Stems, Refine and Cover Art blocks sit below.*
+*1 · YuE2 · Song: the brief on the left, the writer and the Song Sheets in the middle, render, mastering and export on the right; the model block and the optional Stems and Cover Art blocks sit below.*
 
 **App mode** - the same templates as a simple form, without the graph:
 
@@ -286,12 +286,13 @@ The same brief and writer, one Song Sheet with the structured caption (Global Me
 
 *4 · Enhance & Master: load a file, shape it with the EQ (manual bands with the curve, or tone match), set the loudness target and export with the file's own tags and cover.*
 
-## Stems and Refine (optional blocks)
+## Stems, Audio HQ and Refine
 
-Both blocks sit between the render and the master and are bypassed until you switch them on (**Ctrl+B** selects a block).
+**Stems** sits between the render and the master and is bypassed until you switch it on (**Ctrl+B** on the block); **Audio HQ** runs inside the master.
 
 - **Stems**: *Separate Stems* splits the song into up to four stems (vocals, drums, bass, other) and keeps the **residual** as the strip *rest*, so a neutral **Stem Mixer** returns the song unchanged - separation errors can only affect what you change yourself. The mixer has a fader, mute/solo, compression and reverb/delay sends per strip, you drag **muted time ranges** directly on the strip's waveform, and **save** writes a strip as its own 24-bit FLAC. The mixer is inside the block: open it with the icon at the top right of the node. The mixdown is not normalised; *Plenio · Master* sets the loudness. Needs the BS-RoFormer checkpoint (527 MB, `models/audio_separation`). [Details](docs/user/concepts/stems.md)
-- **Refine (48 kHz)**: brings a render to 48 kHz and extends the top octaves with a super-resolution model (UniverSR, 229 MB, `models/audio_sr`), keeping everything below the crossover from the original. A **preset** sets what the model sees, where it takes over and how its result is rolled off in one go; the model runs whenever it is connected, and for material that already reaches the top of the band the report says that only the content above the crossover changed. On by default in *3 · MiniMax · Song*, bypassed elsewhere - switch it on for old MP3s or phone recordings in *4 · Enhance & Master*. Both stages are **experimental**: the measurements are in, the owner's listening verdicts are open (see the [status](docs/design/CURRENT_STATUS.md) §5). [Details](docs/user/concepts/refine.md)
+- **Audio HQ**: three stages before the EQ inside *Plenio · Master* - **HQ 1 · Stereo Cleanup** (on) cleans the side signal above 2 kHz and adds a little warmth, **HQ 2 · Regenerate Highs** (on) lets UniverSR (229 MB, `models/audio_sr`) generate new highs above 8.2 kHz at the original's level, **HQ 3 · De-Reverb** (bypassed) dries a short metallic room but dulls the highs. Presets *auto* (from the brief's genre), *standard*, *gentle*, *strong*, *wide* and *custom*; HQ 2 takes about 2.7 s per second of music on a 16 GB GPU. HQ 3 is **experimental**. [Details](docs/user/concepts/audio-hq.md)
+- **Refine (48 kHz)**: in no template since Audio HQ - the node library keeps it for a plain 48 kHz conversion or super-resolution with a crossover of your own. [Details](docs/user/concepts/refine.md)
 
 <p align="center">
   <img src="assets/branding/0.4.1/Screenshot%20Stems.png" alt="The Stem Mixer node: a strip per stem and the residual rest with fader, mute/solo, compression, reverb and delay sends and save, and the two effect buses" width="80%" />
@@ -412,9 +413,9 @@ Plenio is the successor of the [Music Production Toolkit](https://github.com/jpl
 
 - YuE2 sometimes renders a take to the length ceiling and stops mid-phrase; render another take. *Instrumental* is a strong request, not a guarantee: the optional *Check Vocals* measures the take and keeps the cleanest one.
 - The ASR can mishear words. A cover shows unsure words highlighted so you can correct them before rendering.
-- Mastering is whole-song loudness with a gentle tone match. There is no restoration, no fades and no multiband processing.
+- Mastering is whole-song loudness with a gentle tone match after Audio HQ. There are no fades and no multiband processing.
 - The player's videos need a browser that can encode video (current Chrome or Edge), and Plenio Drop needs WebGL2; the other visuals draw everywhere.
-- **Stems** and **Refine** are experimental: their guarantees (a neutral mix returns the input, solo/mute rules, bandwidth before/after, no normalisation) are tested, but how the models *sound* is decided by the owner's listening checks (L1/L2), not yet done. On the two real takes measured so far, Refine's bandwidth rule counts both as full band: the model runs, but only the content above the crossover changes - see the [status](docs/design/CURRENT_STATUS.md) §5.
+- **Stems**, **Audio HQ 3** and **Refine** are experimental: their guarantees (a neutral mix returns the input, same rate and length, no normalisation) are tested, but how the models *sound* is decided by the owner's listening checks. Audio HQ 1 and 2 (UniverSR) passed the owner's listening test; their profiles other than *standard* are not listened to yet ([test report](docs/test-reports/2026-10-21-audio-hq.md)).
 
 ## Licences
 

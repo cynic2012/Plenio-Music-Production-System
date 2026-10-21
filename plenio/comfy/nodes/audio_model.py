@@ -1,4 +1,4 @@
-"""Load Audio Model: a super-resolution or separation model for Refine and Separate Stems (experimental)."""
+"""Load Audio Model: a super-resolution or separation model for HQ 2, Refine and Separate Stems (experimental)."""
 
 from __future__ import annotations
 
@@ -21,9 +21,9 @@ class PlenioAudioModelLoader(io.ComfyNode):
             category="Plenio/Audio",
             is_experimental=True,
             description=(
-                "Loads a super-resolution model (for Refine) from models/audio_sr or a separation model "
-                "(for Separate Stems) from models/audio_separation. A file of another architecture is "
-                "refused with a message; Refine's 'resample only' engine needs no model at all."
+                "Loads a super-resolution model (for HQ 2 · Regenerate Highs and Refine) from models/audio_sr "
+                "or a separation model (for Separate Stems) from models/audio_separation. A file of another "
+                "architecture is refused with a message; Refine's 'resample only' engine needs no model at all."
             ),
             inputs=[
                 io.DynamicCombo.Input(
@@ -41,13 +41,16 @@ class PlenioAudioModelLoader(io.ComfyNode):
                         )
                         for kind, folder in AUDIO_MODEL_FOLDERS.items()
                     ],
-                    tooltip="super-resolution: for Refine (48 kHz); separation: for Separate Stems.",
+                    tooltip=(
+                        "super-resolution: for HQ 2 · Regenerate Highs and Refine (48 kHz); separation: for "
+                        "Separate Stems."
+                    ),
                 )
             ],
             outputs=[
                 AudioModelType.Output(
                     display_name="model",
-                    tooltip="The loaded model, for Refine (super-resolution) or Separate Stems.",
+                    tooltip="The loaded model, for HQ 2 and Refine (super-resolution) or Separate Stems.",
                 )
             ],
         )

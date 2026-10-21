@@ -319,6 +319,9 @@
    "reference": {
     "tooltip": "Optional: a recording whose tone the EQ matches (with a reference recipe in the block)."
    },
+   "brief": {
+    "tooltip": "Optional: Song Brief or Cover Brief - the HQ presets on auto follow its genre."
+   },
    "sample_rate": {
     "tooltip": "keep, 44100 or 48000 Hz; converted before the limiter, so the true-peak ceiling holds."
    }
@@ -332,6 +335,15 @@
    },
    "2": {
     "tooltip": "Loudness and true peak before and after."
+   },
+   "3": {
+    "tooltip": "HQ 1: profile, settings and the side level before/after."
+   },
+   "4": {
+    "tooltip": "HQ 2: profile, engine and the highs before/after."
+   },
+   "5": {
+    "tooltip": "HQ 3 (bypassed in the templates): profile and the highs before/after."
    }
   }
  },

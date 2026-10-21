@@ -33,6 +33,7 @@ from graph_builder import (  # noqa: E402
 sys.path.insert(0, str(PROJECT))
 
 from plenio.core import variables  # noqa: E402
+from plenio.core.audio import hq  # noqa: E402
 from plenio.core.creativity import CREATIVITY_DEFAULT  # noqa: E402
 from plenio.core.llm import CHOOSE  # noqa: E402
 from plenio.core.models import ModelFile, by_file, load_catalogue  # noqa: E402
@@ -339,40 +340,82 @@ def minimax_render() -> Blueprint:
 WARM_GENTLE = "Warm - gentle (workflow default)"
 MASTER_TARGET = "streaming (-14 LUFS, -1 dBTP)"
 MASTER_STYLE = "Balanced - gentle glue"
-REFINE_MODEL = "pytorch_model.bin"
-"""The UniverSR weights as the catalogue names them (Hugging Face serves that file name)."""
+SR_MODEL = "pytorch_model.bin"
+"""The UniverSR weights as the catalogue names them (Hugging Face serves that file name): HQ 2 and Refine."""
 SEPARATION_MODEL = "model_bs_roformer_ep_17_sdr_9.6568.ckpt"
 """The BS-RoFormer 4-stem checkpoint of the MSST release (the catalogue names the same file)."""
 
 
 def master() -> Blueprint:
+    """Audio HQ 1-3 (the owner's request, 2026-10-21: before the first EQ), EQ and Loudness.
+
+    HQ 1 and HQ 2 run, HQ 3 is bypassed (the owner's listening test: it dulls the highs); their presets are on
+    *auto*, so the brief's genre picks the profile. The super-resolution model of HQ 2 is a collapsed loader
+    inside the block - all audio work after the render lives in this block now (the REFINE block is gone).
+    """
     g = Graph(first_id=401)
+    hq_size = (380, 250 + SUMMARY_ROOM)  # the preset (custom adds three fields) and the run summary
+    stereo = g.add("PlenioHQStereoCleanup", (0, 0), size=hq_size, widgets={"preset": hq.AUTO})
+    loader = g.add(
+        "PlenioAudioModelLoader",
+        (440, 0),
+        size=(340, 110),
+        collapsed=True,
+        title="Super-resolution model (HQ 2)",
+        widgets={"kind": "super-resolution", "kind.model": SR_MODEL},
+        properties=model(SR_MODEL),
+    )
+    highs = g.add(
+        "PlenioHQRegenerateHighs", (440, 80), size=(380, 300 + SUMMARY_ROOM), widgets={"preset": hq.AUTO}
+    )
+    dereverb = g.add(
+        "PlenioHQDeReverb",
+        (880, 0),
+        size=hq_size,
+        title="HQ 3 · De-Reverb (optional)",
+        widgets={"preset": hq.AUTO},
+        mode=4,
+    )
     eq = g.add(
         "PlenioEQ",
-        (0, 0),
+        (1360, 0),
         size=(620, 320),
         widgets={"mode": "match preset", "mode.preset": WARM_GENTLE},
     )
     loudness = g.add(
         "PlenioLoudness",
-        (680, 0),
+        (2040, 0),
         size=(360, 220),
         widgets={"target": MASTER_TARGET, "compression": MASTER_STYLE, "sample_rate": "keep"},
     )
+    g.link(loader, "model", highs, "model")
+    g.link(stereo, "audio", highs, "audio")
+    g.link(highs, "audio", dereverb, "audio")
+    g.link(dereverb, "audio", eq, "audio")
     g.link(eq, "audio", loudness, "audio")
+    g.group("AUDIO HQ (before the EQ)", [stereo, loader, highs, dereverb])
+    g.group("MASTER", [eq, loudness])
     return Blueprint(
         "Plenio · Master",
         "Plenio/Mastering",
-        "Finishes a song: a gentle tone match (EQ) and loudness for streaming (-14 LUFS, -1 dBTP true peak) with "
-        "gentle compression. Open the block to change the EQ curve or the compression style.",
+        "Finishes a song: Audio HQ - HQ 1 · Stereo Cleanup and HQ 2 · Regenerate Highs (UniverSR) run, "
+        "HQ 3 · De-Reverb is bypassed; their presets follow the brief's genre - then a gentle tone match (EQ) "
+        "and loudness for streaming (-14 LUFS, -1 dBTP true peak) with gentle compression. Open the block to "
+        "change a preset, bypass a stage (Ctrl+B), the EQ curve or the compression style.",
         g,
         [
-            BlueprintInput("audio", "AUDIO", [(eq, "audio")], tooltip="The song to master."),
+            BlueprintInput("audio", "AUDIO", [(stereo, "audio")], tooltip="The song to master."),
             BlueprintInput(
                 "reference",
                 "AUDIO",
                 [(eq, "reference")],
                 tooltip="Optional: a recording whose tone the EQ matches (with a reference recipe in the block).",
+            ),
+            BlueprintInput(
+                "brief",
+                "PLENIO_BRIEF",
+                [(stereo, "brief"), (highs, "brief"), (dereverb, "brief")],
+                tooltip="Optional: Song Brief or Cover Brief - the HQ presets on auto follow its genre.",
             ),
             BlueprintInput(
                 "sample_rate",
@@ -400,6 +443,24 @@ def master() -> Blueprint:
                 (loudness, "report"),
                 tooltip="Loudness and true peak before and after.",
             ),
+            BlueprintOutput(
+                "hq1_report",
+                "PLENIO_REPORT",
+                (stereo, "report"),
+                tooltip="HQ 1: profile, settings and the side level before/after.",
+            ),
+            BlueprintOutput(
+                "hq2_report",
+                "PLENIO_REPORT",
+                (highs, "report"),
+                tooltip="HQ 2: profile, engine and the highs before/after.",
+            ),
+            BlueprintOutput(
+                "hq3_report",
+                "PLENIO_REPORT",
+                (dereverb, "report"),
+                tooltip="HQ 3 (bypassed in the templates): profile and the highs before/after.",
+            ),
         ],
     )
 
@@ -417,8 +478,8 @@ def refine() -> Blueprint:
         size=(340, 130),
         collapsed=True,
         title="Super-resolution model",
-        widgets={"kind": "super-resolution", "kind.model": REFINE_MODEL},
-        properties=model(REFINE_MODEL),
+        widgets={"kind": "super-resolution", "kind.model": SR_MODEL},
+        properties=model(SR_MODEL),
     )
     stage = g.add(
         "PlenioRefine",
@@ -479,65 +540,6 @@ def stems_stage(
     g.link(audio[0], audio[1], node, "audio")
     g.group("STEMS (optional)", [node], color=OPTIONAL_GROUP)
     return (node, "audio"), node
-
-
-REFINE_HEIGHT = 380
-"""The stage's eight widgets, its two sockets and a report summary of about four lines."""
-
-
-def refine_stage(
-    g: Graph,
-    x: float,
-    *,
-    audio: tuple[Node, str],
-    active: bool = False,
-    y: float = 430,
-    widgets: dict[str, object] | None = None,
-) -> tuple[tuple[Node, str], Node]:
-    """The REFINE block: the model loader and Refine as **plain nodes** in one group (plan §11).
-
-    Not a subgraph: the ComfyUI frontend renders the promoted widgets of a subgraph node as a
-    read-only preview and draws no editable widget rows for them, so the four stage widgets (the
-    preset and the three numbers) could not be touched there - the owner's reports of 2026-09-28
-    and 2026-09-29. Plain nodes behave like every other node in the templates.
-
-    ``widgets`` are Refine's own widget values (the MiniMax template: preset 3 and the matching
-    numbers, the owner's choice); elsewhere the node keeps its defaults (preset *custom*, pre 0 =
-    the engine's condition, post 0 = off, crossover 0 = the measured bandwidth minus 500 Hz).
-
-    Active (MiniMax), both nodes are expanded with room for the stage's report summary; bypassed,
-    both are collapsed like the Stems block (Ctrl+B on the group, then expand them to see the fields).
-
-    Returns the audio source and the stage node, so the caller can pass both to ``finish`` (its
-    report).
-    """
-    loader = g.add(
-        "PlenioAudioModelLoader",
-        (x, y),
-        size=(320, 110),
-        title="Super-resolution model" if active else "Super-resolution model (optional)",
-        widgets={"kind": "super-resolution", "kind.model": REFINE_MODEL},
-        properties=model(REFINE_MODEL),
-        mode=0 if active else 4,
-        collapsed=not active,
-    )
-    stage = g.add(
-        "PlenioRefine",
-        (x, y + (160 if active else 50)),
-        size=(360, REFINE_HEIGHT),
-        title="Refine (48 kHz)" if active else "Refine (optional)",
-        widgets=widgets,
-        mode=0 if active else 4,
-        collapsed=not active,
-    )
-    g.link(loader, "model", stage, "model")
-    g.link(audio[0], audio[1], stage, "audio")
-    g.group(
-        "REFINE (48 kHz)" if active else "REFINE (optional)",
-        [loader, stage],
-        color=GROUP if active else OPTIONAL_GROUP,
-    )
-    return (stage, "audio"), stage
 
 
 def stems() -> Blueprint:
@@ -1791,8 +1793,16 @@ def finish(
     """
     master = g.add_subgraph(blueprints["master"], (x, 0), size=(340, 170))
     preview = g.add("PreviewAudio", (x, 230), size=(340, 120), title="Preview (mastered)")
-    all_reports = [*reports, (master, "eq_report"), (master, "loudness_report")]
-    export_size = (export_size[0] + EXPORT_WIDER, export_size[1] + EXPORT_TALLER)
+    all_reports = [
+        *reports,
+        (master, "hq1_report"),
+        (master, "hq2_report"),
+        (master, "hq3_report"),
+        (master, "eq_report"),
+        (master, "loudness_report"),
+    ]
+    # + the three HQ report slots of the Master block (2026-10-21)
+    export_size = (export_size[0] + EXPORT_WIDER, export_size[1] + EXPORT_TALLER + 3 * SLOT_HEIGHT)
     cover_y = max(cover_y, export_size[1] + 120)
     export = g.add(
         "PlenioExportRelease",
@@ -1803,6 +1813,7 @@ def finish(
     )
     if brief is not None:
         g.link(brief, "brief", export, "brief")
+        g.link(brief, "brief", master, "brief")  # the HQ presets on auto follow the genre
     tags_note(g, (x + 400 + export_size[0] + 40, 0))
     cover = g.add_subgraph(
         blueprints["cover"], (x, cover_y), size=(340, 170), mode=4, title="Cover Art (optional)"
@@ -1881,8 +1892,8 @@ def tags_note(g: Graph, pos: tuple[float, float]) -> Node:
 
 
 FINISH_TEXT = (
-    "**Finish:** *Plenio · Master* brings the take to -14 LUFS / -1 dBTP with a gentle tone match (open the "
-    "block to change the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered "
+    "**Finish:** *Plenio · Master* refines the take (*Audio HQ*, below) and brings it to -14 LUFS / -1 dBTP "
+    "with a gentle tone match (open the block to change a stage, the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered "
     "take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the "
     "**sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music "
     "size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export), "
@@ -1902,18 +1913,15 @@ STEMS_TEXT = (
     "and press **Ctrl+B**; the mixer is inside it - open the block with the icon at the top right of the "
     "node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it."
 )
-REFINE_TEXT = (
-    "**Refine (optional, bypassed):** brings the take to 48 kHz and extends the top octaves with the "
-    "UniverSR model (229 MB); nothing below the crossover changes. YuE2 renders at 48 kHz already, so this "
-    "is for experiments. Select the REFINE group, press **Ctrl+B** and expand its two nodes to pick a "
-    "*preset*. The user guide *Refine (48 kHz)* covers it."
-)
-REFINE_MINIMAX_TEXT = (
-    "**Refine (48 kHz, on):** extends the top octaves of the render with the UniverSR model (229 MB) and "
-    "keeps everything below the crossover. The *preset* is *3 - MiniMax* (pre 10 kHz, crossover 9.5 kHz, "
-    "post 19 kHz); pick another preset (also in App mode), or *custom* for the three number fields. For the plain render select "
-    "the REFINE group and press **Ctrl+B**. Experimental: the settings are provisional until the listening "
-    "study."
+HQ_TEXT = (
+    "**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer "
+    "in the render's highs; *HQ 2 · Regenerate Highs* lets the UniverSR model (229 MB) generate new highs above "
+    "8.2 kHz and blends them in at the original's level - on a 16 GB GPU it takes about 2-3 minutes per minute "
+    "of music; *HQ 3 · De-Reverb* (bypassed) dries the short metallic room but also dulls the highs. Their "
+    "presets are on **auto**: the brief's genre picks *standard*, *gentle* (acoustic, classical, jazz, folk), "
+    "*strong* (rock, metal, punk) or *wide* (electronic, dance, ambient). Open the block (the icon at the top "
+    "right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). The user guide *Audio HQ* "
+    "covers it."
 )
 CREATIVITY_TEXT = (
     "**Creativity** (the brief's slider): 0 steady, 50 the reference - exactly as before -, 100 experimental. It "
@@ -2002,7 +2010,7 @@ ABOUT_YUE2 = f"""# 1 · YuE2 · Song
 
 {STEMS_TEXT}
 
-{REFINE_TEXT}
+{HQ_TEXT}
 
 {APP_TEXT}
 
@@ -2047,7 +2055,6 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     seed = take_seed(g, (2320, 0))
     render = g.add_subgraph(bp["yue2_render"], (2320, 230), size=(320, 310))
     audio, stems_node = stems_stage(g, bp, 2320, audio=(render, "AUDIO"), y=665)
-    audio, refine_node = refine_stage(g, 2320, audio=audio, y=815)
     g.link(brief, "brief", write, "brief")
     g.link(brief, "song_seed", write, "song_seed")
     g.link(model_node, "engine", write, "engine")
@@ -2100,7 +2107,6 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             (score_sheet, "report"),
             (stems_node, "report"),
             (stems_node, "separation_report"),
-            (refine_node, "report"),
         ],
         group="6 · FINISH",
         cover_y=700,
@@ -2201,7 +2207,7 @@ ABOUT_COVER = f"""# 2 · YuE2 · Cover
 
 {STEMS_TEXT}
 
-{REFINE_TEXT}
+{HQ_TEXT}
 
 **App mode:** switch *Graph / App* at the top left for a simple form: the source file, the mode, the cover style, the creative mode with both closeness sliders, the creativity, the writer model, the seeds, the two Song Sheet buttons (the review stops work in the app; their status line says where the run stands) and the results. The other options of *original lyrics* and *new lyrics* are set in the graph.
 
@@ -2355,7 +2361,6 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(check_vocals, "audio", check_lyrics, "audio")
     g.link(text_sheet, "lyrics", check_lyrics, "expected_lyrics")
     audio, stems_node = stems_stage(g, bp, 3420, audio=(check_vocals, "audio"), y=715)
-    audio, refine_node = refine_stage(g, 3420, audio=audio, y=905)
     _master, preview, export = finish(
         g,
         bp,
@@ -2371,7 +2376,6 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             (check_lyrics, "report"),
             (stems_node, "report"),
             (stems_node, "separation_report"),
-            (refine_node, "report"),
         ],
         group="7 · FINISH",
         cover_y=804,
@@ -2417,7 +2421,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
 
 ABOUT_MINIMAX = f"""# 3 · MiniMax · Song
 
-**Brief -> Write Song -> Song Sheet -> MiniMax Render -> Refine (48 kHz) -> Master -> Export**
+**Brief -> Write Song -> Song Sheet -> MiniMax Render -> Master (Audio HQ, EQ, loudness) -> Export**
 
 {SONG_MODES_TEXT.format(sheets="")}
 3. Press **Run**. The writer model drafts title, a structured **caption** (Global Metadata, Vocal Details, Arrangement), lyrics and an artwork prompt; MiniMax Music 3 renders the song.
@@ -2438,7 +2442,7 @@ ABOUT_MINIMAX = f"""# 3 · MiniMax · Song
 
 {FINISH_TEXT}
 
-{REFINE_MINIMAX_TEXT}
+{HQ_TEXT}
 
 {COVER_TEXT}
 
@@ -2488,23 +2492,9 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(sheet, "lyrics", render, "lyrics")
     g.link(sheet, "score_seconds", render, "max_duration")
     g.link(seed, "seed", render, "seed")
-    # MiniMax renders a band-limited signal: Refine runs with UniverSR by default (plan §4.6) and
-    # carries the owner's preset (pre 10 kHz, post 19 kHz, crossover 14.5 kHz; 2026-09-28)
+    # the band-limited MiniMax highs are regenerated by HQ 2 inside the Master block (2026-10-21; until then
+    # a REFINE block with UniverSR ran here)
     audio, stems_node = stems_stage(g, bp, 1800, audio=(render, "AUDIO"), y=430)
-    audio, refine_node = refine_stage(
-        g,
-        1800,
-        audio=audio,
-        active=True,
-        y=620,
-        widgets={
-            "engine": "model",
-            "preset": "3 - MiniMax: pre 10 kHz / post 19 kHz",
-            "pre_hz": 10000.0,
-            "post_hz": 19000.0,
-            "crossover_hz": 9500.0,
-        },
-    )
     _master, preview, export = finish(
         g,
         bp,
@@ -2516,7 +2506,6 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             (sheet, "report"),
             (stems_node, "report"),
             (stems_node, "separation_report"),
-            (refine_node, "report"),
         ],
         group="5 · FINISH",
         cover_y=700,
@@ -2528,10 +2517,7 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("4 · RENDER", [seed, render])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
-    # Refine is on in this template: its preset is the one audio choice worth making in the app
-    return g, song_app(
-        brief, seed, draft, [sheet], preview, export, extra=[(refine_node, "preset")], writer=writer
-    )
+    return g, song_app(brief, seed, draft, [sheet], preview, export, writer=writer)
 
 
 ABOUT_DAW = f"""# 5 · YuE2 · DAW
@@ -2570,7 +2556,7 @@ How to work:
 
 {STEMS_TEXT}
 
-{REFINE_TEXT}
+{HQ_TEXT}
 
 **App mode:** the mode, the brief (with key and meter - the empty score follows them), the writer model, the seeds, both Song Sheet buttons with their status line and the results - the app is usable for a first run, but the score is drawn in the graph's sheet editor.
 
@@ -2646,7 +2632,6 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(seed, "seed", render, "seed")
     g.link(brief, "creativity", render, "creativity")
     audio, stems_node = stems_stage(g, bp, 2320, audio=(render, "AUDIO"), y=670)
-    audio, refine_node = refine_stage(g, 2320, audio=audio, y=820)
     _master, preview, export = finish(
         g,
         bp,
@@ -2659,7 +2644,6 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             (score_sheet, "report"),
             (stems_node, "report"),
             (stems_node, "separation_report"),
-            (refine_node, "report"),
         ],
         group="6 · FINISH",
         cover_y=755,
@@ -2679,30 +2663,53 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
 
 ABOUT_ENHANCE = """# 4 · Enhance & Master
 
-**Load Audio -> Stems (optional) -> Refine (optional) -> EQ -> Loudness & Dynamics -> Export**
+**Load Audio -> Stems (optional) -> Audio HQ 1-3 -> EQ -> Loudness & Dynamics -> Export**
 
 Finishes an existing recording (for example a take you rendered earlier) without any music model.
 
 1. Upload the file in **Load Audio**.
-2. For a **band-limited** source (an old MP3, a phone recording) select the *Refine (optional)* block and press **Ctrl+B**: it brings the file to 48 kHz and extends the missing top octave with UniverSR (the user guide *Refine (48 kHz)* covers the settings).
-3. To rebalance a finished mix, select *Stems (optional)* and press **Ctrl+B**: *Separate Stems* splits the file into vocals, drums, bass and other, the *Stem Mixer* balances them (the residual *rest* keeps a neutral mix exact; the user guide *Stems* covers it). Both blocks are bypassed by default.
+2. **Audio HQ** runs before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the highs, *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 2-3 minutes per minute of music on a 16 GB GPU) - also the cure for a **band-limited** source such as an old MP3. *HQ 3 · De-Reverb* is bypassed (select it, **Ctrl+B**). There is no brief here, so the presets are *standard*; pick *gentle* (acoustic, classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) for your music (the user guide *Audio HQ* covers them).
+3. To rebalance a finished mix, select *Stems (optional)* and press **Ctrl+B**: *Separate Stems* splits the file into vocals, drums, bass and other, the *Stem Mixer* balances them (the residual *rest* keeps a neutral mix exact; the user guide *Stems* covers it). It is bypassed by default.
 4. **EQ** starts with a gentle warm tone match (*match preset*). Choose *manual* to draw your own curve, *flat* for no EQ, or connect a **reference** recording and pick a reference recipe.
 5. **Loudness & Dynamics** brings the song to -14 LUFS with a true peak of at most -1 dBTP (streaming); pick another target or compression style if you like.
 6. Press **Run**. Export writes FLAC 24-bit and MP3 V0 to `output/plenio/enhanced`, copies the source file's tags and cover, keeps the unmastered source as `(original).flac`, and writes a release record with the measured loudness.
 
-The preview plays the result; compare it with the source in Load Audio. Nothing here needs a GPU. After a run, a badge above each Plenio node shows its result (✓ done, ⚠ warning, ✖ error).
+The preview plays the result; compare it with the source in Load Audio. After a run, a badge above each Plenio node shows its result (✓ done, ⚠ warning, ✖ error).
 
-**App mode:** switch *Graph / App* at the top left for a simple form (file, EQ, target, compression).
+**App mode:** switch *Graph / App* at the top left for a simple form (file, HQ presets, EQ, target, compression).
 """
 
 
 def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
+    """Plain nodes (the EQ curve and the HQ presets stay at hand): Audio HQ 1-3 before the EQ, like the Master
+    block. No brief here, so the HQ presets are *standard* (auto would say so and take standard too)."""
     g = Graph()
-    about_note(g, ABOUT_ENHANCE, height=640)
+    about_note(g, ABOUT_ENHANCE, height=760)
     source = g.add("LoadAudio", (0, 0), size=(340, 140), title="Source")
-    # for band-limited uploads (old MP3s): Refine is available, bypassed (plan §11)
-    audio, stems_node = stems_stage(g, bp, 420, audio=(source, "AUDIO"), y=200)
-    audio, refine_node = refine_stage(g, 420, audio=audio, y=380)
+    audio, stems_node = stems_stage(g, bp, 0, audio=(source, "AUDIO"), y=260)
+    standard = hq.PRESET_LABELS[hq.STANDARD]
+    hq_size = (380, 250 + SUMMARY_ROOM)
+    stereo = g.add("PlenioHQStereoCleanup", (420, 0), size=hq_size, widgets={"preset": standard})
+    loader = g.add(
+        "PlenioAudioModelLoader",
+        (420, 430),
+        size=(340, 110),
+        collapsed=True,
+        title="Super-resolution model (HQ 2)",
+        widgets={"kind": "super-resolution", "kind.model": SR_MODEL},
+        properties=model(SR_MODEL),
+    )
+    highs = g.add(
+        "PlenioHQRegenerateHighs", (420, 500), size=(380, 300 + SUMMARY_ROOM), widgets={"preset": standard}
+    )
+    dereverb = g.add(
+        "PlenioHQDeReverb",
+        (420, 980),
+        size=hq_size,
+        title="HQ 3 · De-Reverb (optional)",
+        widgets={"preset": standard},
+        mode=4,
+    )
     eq = g.add(
         "PlenioEQ",
         (880, 0),
@@ -2722,8 +2729,9 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     export = g.add(
         "PlenioExportRelease",
         (2490, 180),
-        size=(380, 490 + SUMMARY_ROOM),  # 1.0.0: the brief socket and lyrics subtitles (SRT)
-        autogrow={"reports": 5},
+        # 1.0.0: the brief socket and lyrics subtitles (SRT); 2026-10-21: two more report slots (Audio HQ)
+        size=(380, 490 + SUMMARY_ROOM + 2 * SLOT_HEIGHT),
+        autogrow={"reports": 7},
         widgets={
             "folder": "plenio/enhanced",
             "naming": "{title}",
@@ -2731,21 +2739,40 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             "tags": "copy from loaded file",
         },
     )
-    g.link(audio[0], audio[1], eq, "audio")
+    g.link(audio[0], audio[1], stereo, "audio")
+    g.link(stereo, "audio", highs, "audio")
+    g.link(loader, "model", highs, "model")
+    g.link(highs, "audio", dereverb, "audio")
+    g.link(dereverb, "audio", eq, "audio")
     g.link(eq, "audio", loudness, "audio")
     g.link(loudness, "audio", preview, "audio")
     g.link(loudness, "audio", export, "audio")
     g.link(source, "AUDIO", export, "original")
-    g.link(stems_node, "report", export, "reports.report_0")
-    g.link(stems_node, "separation_report", export, "reports.report_1")
-    g.link(refine_node, "report", export, "reports.report_2")
-    g.link(eq, "report", export, "reports.report_3")
-    g.link(loudness, "report", export, "reports.report_4")
+    reports = [
+        (stems_node, "report"),
+        (stems_node, "separation_report"),
+        (stereo, "report"),
+        (highs, "report"),
+        (dereverb, "report"),
+        (eq, "report"),
+        (loudness, "report"),
+    ]
+    for index, (node, output) in enumerate(reports):
+        g.link(node, output, export, f"reports.report_{index}")
     g.group("1 · SOURCE", [source])
-    g.group("2 · MASTER", [eq, loudness])
-    g.group("3 · FINISH", [preview, export])
+    g.group("2 · AUDIO HQ (before the EQ)", [stereo, loader, highs, dereverb])
+    g.group("3 · MASTER", [eq, loudness])
+    g.group("4 · FINISH", [preview, export])
     app = App(
-        [(source, "audio"), (eq, "mode"), (loudness, "target"), (loudness, "compression")], [preview, export]
+        [
+            (source, "audio"),
+            (stereo, "preset"),
+            (highs, "preset"),
+            (eq, "mode"),
+            (loudness, "target"),
+            (loudness, "compression"),
+        ],
+        [preview, export],
     )
     return g, app
 
@@ -2840,8 +2867,8 @@ def templates(bp: dict[str, Blueprint]) -> list[tuple[str, Graph, list[Blueprint
     daw, daw_app = yue2_daw(bp)
     enhance, enhance_app = enhance_master(bp)
     check, check_app = system_check()
-    # the REFINE block is plain nodes in every template (``refine_stage``): its blueprint ships in
-    # subgraphs/ for the node library only, so no template embeds its definition
+    # Refine is in no template since Audio HQ (2026-10-21): its blueprint ships in subgraphs/ for the node
+    # library only
     finish_bps = [bp["master"], bp["cover"], bp["stems"]]
     return [
         ("0 · System Check", check, [], check_app),

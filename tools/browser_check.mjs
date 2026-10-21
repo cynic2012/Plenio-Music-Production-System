@@ -4,7 +4,8 @@
 //   1. load    - loads like the template browser does; Plenio errors in the console fail the check
 //   2. reload  - serialize -> load -> serialize: widget values and the API prompt stay identical
 //   3. options - each optional block on/off (and Master bypassed): the frontend's API prompt has the
-//                expected shape and the server validates it (dummy model files, see below)
+//                expected shape and the server validates it (dummy model files, see below); Audio HQ 1
+//                and 2 run before the EQ and the bypassed HQ 3 is not in the prompt
 //   4. app     - App Mode shows the configured controls and outputs
 //   5. summaries - after a run: every node's summary shows at least four lines, no text field
 //                shrinks below 60 px to make room, and no two nodes overlap once the nodes grew
@@ -61,6 +62,7 @@ const SUMMARY_TYPES = [
   'PlenioSongBrief', 'PlenioComposePrompt', 'PlenioCoverBrief', 'PlenioEngine', 'PlenioEQ', 'PlenioExportRelease',
   'PlenioLoudness', 'PlenioParseDraft', 'PlenioRefine', 'PlenioScoreTools', 'PlenioSongSheet', 'PlenioSeparateStems',
   'PlenioStemMixer', 'PlenioSystemCheck', 'PlenioTranscribeLyrics', 'PlenioTranscribeScore', 'PlenioVocalCheck',
+  'PlenioHQStereoCleanup', 'PlenioHQRegenerateHighs', 'PlenioHQDeReverb',
 ]
 /** JSON with sorted keys: the frontend's autogrow may list the same inputs in another order after a reload. */
 const canonical = (value) =>
@@ -195,6 +197,18 @@ for (const name of names) {
   const defaults = await snapshot()
   const problem = await validate(defaults.output)
   record(name, 'options: defaults validate on the server', problem === '', problem)
+  if (name !== '0 · System Check') {
+    // Audio HQ (2026-10-21): HQ 1 -> HQ 2 -> (HQ 3 bypassed) -> EQ, in the Master block or as plain nodes
+    const hq1 = byType(defaults.output, 'PlenioHQStereoCleanup')
+    const hq2 = byType(defaults.output, 'PlenioHQRegenerateHighs')
+    const hq3 = byType(defaults.output, 'PlenioHQDeReverb')
+    const eqNode = byType(defaults.output, 'PlenioEQ')[0]?.[1]
+    const chained =
+      hq1.length === 1 && hq2.length === 1 && hq3.length === 0 &&
+      eqNode?.inputs?.audio?.[0] === hq2[0][0] && hq2[0][1].inputs.audio?.[0] === hq1[0][0] &&
+      Array.isArray(hq2[0][1].inputs.model)
+    record(name, 'options: Audio HQ 1 and 2 run before the EQ, HQ 3 is bypassed', chained)
+  }
   const optional = OPTIONAL[name] ?? []
   if (optional.length) {
     const flux = byType(defaults.output, 'Flux2Scheduler').length

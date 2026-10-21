@@ -7,7 +7,7 @@ Compose the score yourself - the writer drafts the words, you write the music, a
 ```
 Song Brief ─► Write Song ─► Song Sheet · Text        (title, style, lyrics)
 Song Brief ─► Score Tools ─► Song Sheet · DAW        (the score you compose)
-Song Sheet · DAW ─► YuE2 Render ─► Plenio · Master ─► Export Release
+Song Sheet · DAW ─► YuE2 Render ─► Plenio · Master (Audio HQ, EQ, loudness) ─► Export Release
 ```
 
 ## What YuE2 reads

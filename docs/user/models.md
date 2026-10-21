@@ -34,16 +34,16 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 | `minimax_music3_text_encoder_pruned_int8_convrot.safetensors` | `text_encoders` | 9.2 GB | MiniMax-Music3 Community License | needed |
 | `minimax_music3_dav.safetensors` | `vae` | 217 MB | MiniMax-Music3 Community License | needed |
 | `gemma4_e4b_it_fp8_scaled.safetensors` | `text_encoders` | (see the model card) | Apache-2.0 | needed (writer) |
-| `pytorch_model.bin` (UniverSR) | `audio_sr` | 229 MB | CC BY 4.0 (weights); MIT (code) | **needed**: Refine (48 kHz) runs by default in this template |
+| `pytorch_model.bin` (UniverSR) | `audio_sr` | 229 MB | CC BY 4.0 (weights); MIT (code) | **needed**: HQ 2 · Regenerate Highs in the Master block |
 | FLUX.2 Klein files (below) | | 16.1 GB | Apache-2.0 | optional: Cover Art, bypassed |
 
-### Refine (48 kHz), the optional block of templates 1, 2, 4 and 5
+### Audio HQ 2 (UniverSR), in the Master block of templates 1-5
 
 | File | Folder | Size | Licence |
 |---|---|---|---|
 | `pytorch_model.bin` (UniverSR audio) | `audio_sr` | 229 MB | CC BY 4.0 (weights), MIT (inference code; vendored in `plenio/third_party/universr`) |
 
-The block stays bypassed there until you turn it on; the one file serves every template. Plenio's *resample only* engine needs no model at all.
+**Needed by every template** since 2026-10-21: [HQ 2 · Regenerate Highs](concepts/audio-hq.md) runs in the Master block (in 4 · Enhance & Master as a plain node) - ComfyUI offers the download when a template opens. The one file serves every template, and the *Refine (48 kHz)* node of the library uses it too (its *resample only* engine needs no model at all). To run a template without it, bypass HQ 2 (open the Master block, select the node, **Ctrl+B**).
 
 ### Stems (BS-RoFormer), the optional block of templates 1-5
 
@@ -65,9 +65,9 @@ The block is **experimental** until its listening check (L2) is accepted: the se
 
 The block stays bypassed until you turn it on, so a template runs without these files.
 
-### 0 · System Check and 4 · Enhance & Master
+### 0 · System Check and 4 · Enhance & Master (the other files)
 
-No model file is required. 4 · Enhance & Master carries the optional Refine and Stems blocks (both bypassed) for material you upload.
+0 · System Check needs no model file. 4 · Enhance & Master needs the UniverSR file of HQ 2 (above) and carries the optional Stems block (bypassed) for material you upload.
 
 ## Download sources
 
@@ -77,7 +77,7 @@ No model file is required. 4 · Enhance & Master carries the optional Refine and
 | instrumental adapter | [Mothersuperior/YuE2-instrumental-cot-full-loras](https://huggingface.co/Mothersuperior/YuE2-instrumental-cot-full-loras) (pinned revision in the template) |
 | writer | [Comfy-Org/gemma-4](https://huggingface.co/Comfy-Org/gemma-4) |
 | MiniMax Music 3 | [Comfy-Org/MiniMax-Music-3](https://huggingface.co/Comfy-Org/MiniMax-Music-3) |
-| UniverSR audio (Refine) | [woongzip1/universr-audio](https://huggingface.co/woongzip1/universr-audio) - released as `pytorch_model.bin` (CC BY 4.0; the inference code is MIT and vendored) |
+| UniverSR audio (HQ 2, Refine) | [woongzip1/universr-audio](https://huggingface.co/woongzip1/universr-audio) - released as `pytorch_model.bin` (CC BY 4.0; the inference code is MIT and vendored) |
 | BS-RoFormer 4-stem (Stems) | [ZFTurbo/Music-Source-Separation-Training](https://github.com/ZFTurbo/Music-Source-Separation-Training) release v1.0.12 - `model_bs_roformer_ep_17_sdr_9.6568.ckpt` (MIT training code; the inference code is MIT and vendored) |
 | FLUX.2 Klein 4B, its text encoder | [Comfy-Org/flux2-klein](https://huggingface.co/Comfy-Org/flux2-klein) |
 | FLUX.2 VAE | [Comfy-Org/flux2-dev](https://huggingface.co/Comfy-Org/flux2-dev) |

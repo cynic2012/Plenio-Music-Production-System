@@ -43,7 +43,7 @@ def test_every_blueprint_owns_its_node_ids() -> None:
 SUMMARY_TYPES = {
     "PlenioSongBrief", "PlenioCoverBrief", "PlenioEQ", "PlenioExportRelease", "PlenioLoudness", "PlenioRefine",
     "PlenioScoreTools", "PlenioSongSheet", "PlenioStemMixer", "PlenioSystemCheck", "PlenioTranscribeLyrics",
-    "PlenioVocalCheck",
+    "PlenioVocalCheck", "PlenioHQStereoCleanup", "PlenioHQRegenerateHighs", "PlenioHQDeReverb",
 }  # fmt: skip
 """Node classes in the templates that show a run summary under their widgets."""
 
@@ -165,7 +165,7 @@ LOADER_WIDGETS = {
     "CLIPLoader": "clip_name",
     "VAELoader": "vae_name",
     "AudioEncoderLoader": "audio_encoder_name",
-    # Plenio's own audio model loader (Refine's UniverSR, later the separator); its file widget
+    # Plenio's own audio model loader (UniverSR for HQ 2, the separator for Stems); its file widget
     # lives inside the 'kind' dynamic combo.
     "PlenioAudioModelLoader": "kind.model",
 }
@@ -238,8 +238,7 @@ def test_app_configurations() -> None:
         brief = [widget for kind, widget in shown if kind.endswith("Brief")]
         assert brief[0] == "mode", name
         assert [kind for kind, widget in shown if widget == "sheet_state"] == ["PlenioSongSheet"] * count
-        # MiniMax has Refine on: its preset is the one audio choice in the app (review before 0.3.0)
-        refine = {"PlenioRefine"} if name == "3 · MiniMax · Song" else set()
+        # the audio stages live in the Master block since Audio HQ (2026-10-21): none in the song apps
         assert {kind for kind, _ in shown} <= {
             "PlenioSongBrief",
             "PlenioCoverBrief",
@@ -247,9 +246,7 @@ def test_app_configurations() -> None:
             "PlenioSeed",
             "PlenioSongSheet",
             "LoadAudio",
-            *refine,
         }
-        assert [widget for kind, widget in shown if kind == "PlenioRefine"] == (["preset"] if refine else [])
         # the creative mode and its sliders, and the one writer model of every writing step (0.5.0)
         assert [widget for kind, widget in shown if kind == "PlenioWriterChoice"] == ["model"], name
         assert "arrangement" in brief, name
@@ -357,56 +354,109 @@ def test_the_daw_template_composes_its_own_score() -> None:
     assert any(n.get("title") == "Plenio · Master" for n in nodes)
 
 
-def test_refine_runs_in_minimax_and_stays_bypassed_elsewhere() -> None:
-    """M5/D10: Refine (48 kHz) with UniverSR is on in MiniMax and bypassed elsewhere (plan §4.6).
+HQ_CHAIN = [
+    "PlenioHQStereoCleanup",
+    "PlenioHQRegenerateHighs",
+    "PlenioHQDeReverb",
+    "PlenioEQ",
+    "PlenioLoudness",
+]
 
-    The block is a pair of **plain nodes** (loader + stage), not a subgraph: the frontend renders the
-    promoted widgets of a subgraph node as a read-only preview, so the stage widgets (the preset and
-    the three numbers) could not be edited there (the owner's reports of 2026-09-28/29).
-    """
-    from plenio.core.audio.refine import CUSTOM_PRESET, PREPARED_STAGES, prepared_stages
 
-    presets = {CUSTOM_PRESET, *(option for option, _pre, _post in PREPARED_STAGES)}
-    for name, active in (
-        ("1 · YuE2 · Song", False),
-        ("2 · YuE2 · Cover", False),
-        ("3 · MiniMax · Song", True),
-        ("4 · Enhance & Master", False),
-        ("5 · YuE2 · DAW", False),
-    ):
+def audio_chain(nodes: list[dict[str, Any]], links: list[Any], first: dict[str, Any]) -> list[dict[str, Any]]:
+    """The HQ/master nodes the AUDIO output leads through from ``first`` on (links in either stored form)."""
+    by_id = {n["id"]: n for n in nodes}
+    rows = [
+        [
+            link["id"],
+            link["origin_id"],
+            link["origin_slot"],
+            link["target_id"],
+            link["target_slot"],
+            link["type"],
+        ]
+        if isinstance(link, dict)
+        else link
+        for link in links
+    ]
+    path = [first]
+    while True:
+        here = path[-1]
+        nexts = [
+            by_id[row[3]]
+            for row in rows
+            if row[1] == here["id"]
+            and row[5] == "AUDIO"
+            and row[3] in by_id
+            and by_id[row[3]]["type"] in HQ_CHAIN
+        ]
+        if not nexts:
+            return path
+        path.append(nexts[0])
+
+
+def test_audio_hq_runs_in_the_master_block_before_the_eq() -> None:
+    """Owner's request (2026-10-21): HQ 1 and HQ 2 on, HQ 3 bypassed, before the first EQ, inside the Master
+    block; the presets follow the brief's genre (auto); the REFINE block outside it is gone."""
+    from plenio.core.audio import hq
+
+    for name in ("1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"):
         template = TEMPLATES[name]
-        stage = next(n for n in template["nodes"] if n.get("type") == "PlenioRefine")
-        loader = next(n for n in template["nodes"] if n.get("type") == "PlenioAudioModelLoader")
-        assert (stage.get("mode") != 4) is active, name
-        assert (loader.get("mode") != 4) is active, name
-        # on (MiniMax): expanded, its fields in view; bypassed: collapsed like the other optional blocks
-        for node in (stage, loader):
-            assert bool(node.get("flags", {}).get("collapsed", False)) is not active, name
-        if not active:
-            assert "(optional)" in str(stage["title"]) and "(optional)" in str(loader["title"]), name
-        group = next(g for g in template["groups"] if "REFINE" in g["title"])
-        assert ("48 kHz" in group["title"]) is active, name
-        assert loader["widgets_values"][1] == "pytorch_model.bin"
-        assert loader["properties"]["models"][0]["directory"] == "audio_sr"
-        # the widget order: engine, crossover_hz, sr_gain, preset, pre_hz, post_hz, seed + its control
-        engine, crossover, _gain, preset, pre, post, _seed, control = stage["widgets_values"]
-        # fixed: the frontend's default for an input named seed is randomize, which re-ran the model on
-        # every queue with a new seed (no cache, a different result)
-        assert control == "fixed", name
-        assert engine == ("model" if active else "resample only"), name
-        assert all(isinstance(value, (int, float)) for value in (crossover, pre, post)), name  # free numbers
-        assert preset in presets, name
-        if active:  # the MiniMax template: template 3 and its matching numbers (custom keeps the sound)
-            assert preset.startswith("3 - MiniMax") and prepared_stages(preset) == (pre, post, crossover)
-        else:
-            assert preset == CUSTOM_PRESET and (crossover, pre, post) == (0.0, 0.0, 0.0), name
-        # no template embeds the Refine blueprint: the block is plain nodes
+        assert not any(n["type"] == "PlenioRefine" for n in template["nodes"]), name
+        assert not any("REFINE" in g["title"] for g in template["groups"]), name
         assert all("Refine" not in sub["name"] for sub in template["definitions"]["subgraphs"]), name
-        # the stage's report reaches the release record
+        master_def = next(d for d in template["definitions"]["subgraphs"] if d["name"] == "Plenio · Master")
+        nodes = master_def["nodes"]
+        first = next(n for n in nodes if n["type"] == "PlenioHQStereoCleanup")
+        path = audio_chain(nodes, master_def["links"], first)
+        assert [n["type"] for n in path] == HQ_CHAIN, name
+        modes = {n["type"]: n.get("mode", 0) for n in path}
+        assert modes["PlenioHQDeReverb"] == 4, name
+        assert all(modes[kind] == 0 for kind in HQ_CHAIN if kind != "PlenioHQDeReverb"), name
+        for node in path[:3]:
+            assert node["widgets_values"][0] == hq.AUTO, name
+        highs = path[1]
+        assert highs["widgets_values"][-1] == "fixed", name  # the seed must not change on every queue
+        loader = next(n for n in nodes if n["type"] == "PlenioAudioModelLoader")
+        assert loader["widgets_values"][:2] == ["super-resolution", "pytorch_model.bin"]
+        assert loader["properties"]["models"][0]["directory"] == "audio_sr"
+        inner = audio_chain(nodes, master_def["links"], loader)  # the loader feeds no AUDIO
+        assert inner == [loader]
+        assert any(
+            link["origin_id"] == loader["id"] and link["target_id"] == highs["id"]
+            for link in master_def["links"]
+        ), name
+        # the brief reaches the block (auto), and the three HQ reports reach the release record
+        wrapper = next(n for n in template["nodes"] if n["type"] == master_def["id"])
+        brief_slot = next(slot for slot in wrapper["inputs"] if slot["name"] == "brief")
+        brief_link = next(link for link in template["links"] if link[0] == brief_slot["link"])
+        assert next(n for n in template["nodes"] if n["id"] == brief_link[1])["type"].endswith("Brief"), name
+        outputs = [out["name"] for out in master_def["outputs"]]
         export = next(n for n in template["nodes"] if n["type"] == "PlenioExportRelease")
-        reports = [slot for slot in export["inputs"] if slot["name"].startswith("reports.")]
-        sources = {link[1] for link in template["links"] if link[0] in {s["link"] for s in reports}}
-        assert stage["id"] in sources, name
+        report_links = {slot["link"] for slot in export["inputs"] if slot["name"].startswith("reports.")}
+        from_master = {
+            outputs[link[2]]
+            for link in template["links"]
+            if link[0] in report_links and link[1] == wrapper["id"]
+        }
+        assert {"hq1_report", "hq2_report", "hq3_report", "eq_report", "loudness_report"} <= from_master, name
+
+
+def test_enhance_runs_audio_hq_as_plain_nodes_with_standard_presets() -> None:
+    from plenio.core.audio import hq
+
+    template = TEMPLATES["4 · Enhance & Master"]
+    nodes = template["nodes"]
+    assert not any(n["type"] == "PlenioRefine" for n in nodes)
+    first = next(n for n in nodes if n["type"] == "PlenioHQStereoCleanup")
+    path = audio_chain(nodes, template["links"], first)
+    assert [n["type"] for n in path] == HQ_CHAIN
+    assert [n.get("mode", 0) for n in path[:3]] == [0, 0, 4]
+    # no brief in this template: the presets say what they are
+    assert [n["widgets_values"][0] for n in path[:3]] == [hq.PRESET_LABELS[hq.STANDARD]] * 3
+    app = template["extra"]["linearData"]["inputs"]
+    shown = [(next(n for n in nodes if n["id"] == i)["type"], widget) for i, widget in app]
+    assert ("PlenioHQStereoCleanup", "preset") in shown and ("PlenioHQRegenerateHighs", "preset") in shown
 
 
 def test_stems_is_bypassed_everywhere_and_mixes_neutrally() -> None:
@@ -443,20 +493,16 @@ def test_stems_is_bypassed_everywhere_and_mixes_neutrally() -> None:
 
 
 def test_the_stems_block_sits_after_the_render_and_before_master() -> None:
-    """Stems (optional) -> Refine -> Master: the audio path of every template."""
+    """Stems (optional) -> Master (Audio HQ, EQ, Loudness): the audio path of every song template."""
     for name in ("1 · YuE2 · Song", "3 · MiniMax · Song"):
         template = TEMPLATES[name]
         titles = {n["id"]: n.get("title") or n["type"] for n in template["nodes"]}
         stems = next(n for n in template["nodes"] if "Stems" in str(n.get("title", "")))
-        refine = next(n for n in template["nodes"] if "Refine" in str(n.get("title", "")))
         master = next(n for n in template["nodes"] if titles[n["id"]] == "Plenio · Master")
-        assert any(link[1] == stems["id"] and link[3] == refine["id"] for link in template["links"]), (
-            name
-        )  # Stems -> Refine
-        refine_from = {
+        master_from = {
             tuple(link[1:3]) for link in template["links"] if link[3] == master["id"] and link[5] == "AUDIO"
         }
-        assert (refine["id"], 0) in refine_from, name  # Refine -> Master
+        assert (stems["id"], 0) in master_from, name  # Stems -> Master
 
 
 def test_thumbnails_are_400px_jpegs() -> None:
