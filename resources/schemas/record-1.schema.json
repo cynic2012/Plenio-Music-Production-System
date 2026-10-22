@@ -53,8 +53,9 @@
           "name": { "type": "string", "minLength": 1 },
           "bytes": { "type": "integer", "minimum": 0 },
           "sha256": { "$ref": "#/$defs/sha256" },
-          "role": { "enum": ["original", "cover", "sheet_music", "stem", "subtitles"] },
+          "role": { "enum": ["original", "cover", "sheet_music", "stem", "stem_midi", "subtitles"] },
           "stem": { "type": "string", "minLength": 1 },
+          "notes": { "type": "integer", "minimum": 0 },
           "subtitles": { "enum": ["lines", "notes"] },
           "timing": { "enum": ["measured", "heard"] },
           "format": { "enum": ["flac", "mp3", "wav"] },
@@ -82,6 +83,17 @@
           "warp": { "type": ["array", "null"] },
           "lines": { "type": "array", "items": { "type": "object", "required": ["text", "start", "end", "units"] } }
         }
+      }
+    },
+    "subtitles": {
+      "description": "Since 1.1.0: whether lyrics subtitles were asked for, for how many takes they were made, and why not for the others.",
+      "type": "object",
+      "required": ["wanted", "takes"],
+      "additionalProperties": false,
+      "properties": {
+        "wanted": { "type": "boolean" },
+        "takes": { "type": "integer", "minimum": 0 },
+        "why": { "type": "array", "items": { "type": "string" } }
       }
     },
     "sheet_music": {

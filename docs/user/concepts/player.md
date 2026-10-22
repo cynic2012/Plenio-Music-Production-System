@@ -86,6 +86,12 @@ Choose them on the **Settings** page under **Songs**:
 The folders are kept with the player (`library.json` in `~/.plenio/player`), so the player started from
 ComfyUI reads them too.
 
+**Songs of one title are told apart**: since 1.1.0 Export Release numbers a title another song of its folder
+already has - the second cover of *Yesterday* is *Yesterday (2)*, in its tags and file name too (as file
+names were always numbered). Songs exported before keep their title in their files; the player shows them as
+*(2)*, *(3)* … in the order they were made, and their page names the recorded title. They stay **takes** of
+one song when their lyrics and score are one.
+
 **Other music is clearly marked**: *other music* on its card, **Other music** on its page, *Made with: other*
 among the library's filters, `is:other` in the search (`is:plenio` for the rest, `artist:` and `album:` for
 their tags). It has what its file has, no more: the title, artist, album, genre and year from its tags, the
@@ -215,7 +221,7 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
   again), the tags in the file, the cover's prompt, and every file to download: FLAC, MP3, WAV, the
   unmastered take, the PDF, both subtitle files, the cover and the release record. The record's path is
   shown with a copy button, ready for *File > Continue a Plenio song…* in ComfyUI.
-- **Takes**: the song's other takes (same title, lyrics and score, rendered again). Play them one after the
+- **Takes**: the song's other takes (same title - its number left out -, lyrics and score, rendered again). Play them one after the
   other to compare.
 - **Alike**: songs with a similar genre, mood, tempo, key and language.
 
@@ -655,9 +661,14 @@ syllable is sung into the release record and into the [subtitle files](tags-and-
 with a score, where each syllable sits in the score. The player reads these times. On the songs measured
 for 1.0.0, half the words were within 0.16 seconds and 82 % within half a second.
 
-- **Songs exported before 1.0.0** have no times. The player shows their lyrics as plain text, and the sheet's
-  cursor follows the score's tempo. Open the song with *File > Continue a Plenio song…* and export it again
-  to add the times.
+- **Songs without measured times** - exported before 1.0.0, with *lyrics subtitles (SRT)* off, or when the
+  lyrics ASR could not run - follow the **score's** times instead (since 1.1.0): where the player finds the
+  score in the recording (as for the sheet's cursor, above), the lyrics lines light up as the score sings them,
+  and the page says *Times estimated from the score and the music, not measured* and why the song has no times
+  of its own (the record of a song exported since 1.1.0 says it). On songs whose times were measured, the
+  estimate starts half the lines within 0.15 seconds and 83 % within a second. Where the player cannot find
+  the score in the recording, or the song has no score, the lyrics stay plain text and the page says why.
+  Open the song with *File > Continue a Plenio song…* and export it again to measure the times.
 - **Songs with subtitle files but no times in the record** (a record edited by hand) take the times from the
   `.srt` files.
 - **Recordings** from Enhance & Master have no score. They play with their waveform and visuals, without

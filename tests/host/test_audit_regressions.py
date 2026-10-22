@@ -107,6 +107,37 @@ def test_routes_answer_bad_input_with_400(server: ComfyServer, path: str, body: 
     assert message in answer["error"]["message"] + str(answer["error"].get("hint"))
 
 
+def test_musicxml_goes_out_and_comes_back_through_the_routes(server: ComfyServer) -> None:
+    """Export MusicXML -> Import MusicXML… (feature request 2026-10-22): the score and the lyrics with their
+    places come back; MusicXML Plenio did not write is a clear 400."""
+    abc = (
+        "X:1\nT:\nM:4/4\nL:1/8\nQ:1/4=120\n"
+        'V: Vocal clef=treble name="Vocal Melody" snm="Vocal"\n'
+        'V: Ins clef=treble name="Ins Melody" snm="Inst."\n'
+        "K:C\n% verse\nV: Vocal\nCDEF GABc|c8|\nV: Ins\nC8|C8|\n"
+    )
+    lyrics = "[Verse]\nwalking down the river side\n"
+    status, exported = server.request(
+        "POST", "/plenio/score/musicxml/export", {"abc": abc, "title": "River", "lyrics": lyrics}
+    )
+    assert status == 200, exported
+    status, back = server.request(
+        "POST", "/plenio/score/musicxml/import", {"text": exported["data"], "abc": abc, "lyrics": lyrics}
+    )
+    assert status == 200, back
+    assert back["abc"] == abc and back["lyrics"] == lyrics
+    assert back["lyric_spans"] and len(back["lyric_spans"][0]) > 4  # the syllables' onsets
+    assert back["analysis"]["ok"] and back["report"][0].startswith("2 bars at 120 BPM")
+    foreign = exported["data"].replace("Plenio Music Production System", "MuseScore 4")
+    status, answer = server.request("POST", "/plenio/score/musicxml/import", {"text": foreign, "abc": abc})
+    assert status == 400 and "not by Plenio" in answer["error"]["message"]
+    # a span with the onsets of its syllables passes the routes' check
+    status, view = server.request(
+        "POST", "/plenio/score/analyze", {"abc": abc, "lyrics": lyrics, "lyric_spans": back["lyric_spans"]}
+    )
+    assert status == 200 and view["ok"]
+
+
 def test_tag_copy_accepts_an_annotated_load_audio_value(server: ComfyServer) -> None:
     """AUD-17: 'copy from loaded file' did not resolve Load Audio values like 'x.flac [input]'."""
     import uuid
@@ -186,6 +217,68 @@ def test_a_loud_unmastered_take_is_a_note_not_a_warning(server: ComfyServer) -> 
     assert "limiter" not in quiet_song["markdown"]
     loud_song = export(f"loud-{tag}.wav", None)  # the released file itself clips: still a warning
     assert loud_song["status"] == "warning" and "a limiter before the export" in loud_song["markdown"]
+
+
+def test_a_repeated_title_gets_a_number_and_the_record_says_why_there_are_no_times(
+    server: ComfyServer,
+) -> None:
+    """Every cover of one song had the same title in the Plenio Player (a user's report 2026-10-22): the second
+    song of a title in the export folder is titled ``(2)``, in its tags, its record and its file name. And the
+    record says why a song has no lyrics times (offline here: the ASR model is missing)."""
+    import json
+    import uuid
+
+    import numpy as np
+
+    from plenio.core.release import read_tags, write_audio
+
+    tag = uuid.uuid4().hex[:8]
+    (server.base / "input").mkdir(exist_ok=True)
+    t = np.arange(44100) / 44100
+    write_audio(
+        server.base / "input" / f"song-{tag}.flac",
+        0.3 * np.vstack([np.sin(2 * np.pi * 330 * t)] * 2),
+        44100,
+        "flac",
+        {},
+    )
+    folder = f"plenio-titles/{tag}"
+
+    def export(collision: str, embed: bool = True) -> tuple[dict, dict]:
+        prompt = {
+            "1": {"class_type": "LoadAudio", "inputs": {"audio": f"song-{tag}.flac"}},
+            "3": {
+                "class_type": "PlenioExportRelease",
+                "inputs": {
+                    "audio": ["1", 0],
+                    "folder": folder,
+                    "naming": "{title}",
+                    "collision": collision,
+                    "tags": "title only",
+                    "title": "Yesterday",
+                    "project_in_flac": embed,  # another input: ComfyUI runs the export again
+                },
+            },
+        }
+        outputs = server.run(prompt)["outputs"]["3"]
+        record = json.loads(Path(outputs["plenio_player"][0]["record"]).read_text(encoding="utf-8"))
+        return outputs["plenio_summary"][0], record
+
+    first, record = export("number")
+    assert record["title"] == "Yesterday" and "title:" not in first["markdown"]
+    assert record["subtitles"]["wanted"] is True and record["subtitles"]["takes"] == 0
+    assert record["subtitles"]["why"][0].startswith("the lyrics ASR could not run")
+    second, record = export("number", embed=False)
+    assert record["title"] == "Yesterday (2)"
+    assert (
+        "another song in this folder is titled 'Yesterday' - this one is 'Yesterday (2)'"
+        in second["markdown"]
+    )
+    tags, _cover = read_tags(server.output_dir / folder / "Yesterday (2).flac")
+    assert tags["title"] == "Yesterday (2)"
+    # overwrite replaces the song of that title: no number
+    _third, record = export("overwrite")
+    assert record["title"] == "Yesterday"
 
 
 def test_a_free_form_length_passes_validation_with_a_note(server: ComfyServer) -> None:

@@ -35,7 +35,14 @@ holds no other block's lines, when there is one: the lyrics lane can give it wor
 A line placed by hand (the piano roll's lyrics lane: moved, made longer or shorter, pasted) has a **span**
 - ``[start, end, block, line]`` in units of L, kept with the sheet: line ``line`` of block ``block`` is
 sung on the notes that start inside ``[start, end)``, and the lines between the lines placed by hand take
-the notes between them by the rules above. Spans that would put lines out of their order are left out. A
+the notes between them by the rules above. A span may name the notes its line's words or syllables are sung
+on - ``[start, end, block, line, onset, onset, ...]``, one onset per syllable (``syllables_of``) or one per
+word (``words_of``), as the MusicXML import places them (feature request 2026-10-22: lyrics put on their
+notes by a script, brought back exactly): each syllable (word) then sings from its note up to the next one's,
+holding over the notes between; syllables of one onset share its note, and a word's syllables share notes
+when it has fewer than syllables. Onsets that do not fit the line (another number, not in order, no note
+there) are ignored and the line is placed as without them. Spans that would put lines out of their order are
+left out. A
 span without its line (``[start, end]``, as Plenio 0.4.4 and 0.4.5 kept them) belongs to the section it
 starts in, whose lyrics block takes that section's spans in order (by order of the sections, by tag when
 the lyrics have another number of blocks), as it did then.
@@ -165,6 +172,21 @@ def syllables_of(line: str, language: str = "") -> list[tuple[str, bool]]:
         pieces = [piece for part in parts for piece in split_word(part, language)]
         result += [(piece, index == len(pieces) - 1) for index, piece in enumerate(pieces)]
     return result
+
+
+def words_of(line: str, language: str = "") -> list[list[tuple[str, bool]]]:
+    """The words of a sung line as the layout counts them - each with its syllables (``syllables_of``): what
+    the word onsets of a span are given for."""
+    words: list[list[tuple[str, bool]]] = []
+    current: list[tuple[str, bool]] = []
+    for piece in syllables_of(line, language):
+        current.append(piece)
+        if piece[1]:
+            words.append(current)
+            current = []
+    if current:
+        words.append(current)
+    return words
 
 
 def _join(pieces: Sequence[tuple[str, bool]]) -> tuple[str, bool]:
@@ -367,6 +389,43 @@ def _spread(
     return Line(block_index, j, line, region[0].onset, region[-1].end, tuple(placed), tuple(holds))
 
 
+def _by_onsets(
+    block_index: int,
+    j: int,
+    line: str,
+    pieces: Sequence[tuple[str, bool]],
+    region: Sequence[canonical.Note],
+    onsets: Sequence[int],
+) -> Line | None:
+    """``line`` with every syllable - or every word - on its note (``onsets``: one per syllable or one per
+    word): each sings up to the next one's note, a syllable a note, sharing when there are fewer notes, the
+    last held over the rest. ``None`` when the onsets do not fit the line (see the module)."""
+    words: list[list[tuple[str, bool]]] = []
+    for piece in pieces:
+        if not words or words[-1][-1][1]:
+            words.append([])
+        words[-1].append(piece)
+    units = [[piece] for piece in pieces] if len(onsets) == len(pieces) else words
+    at = {note.onset: index for index, note in enumerate(region)}
+    if (
+        len(units) != len(onsets)
+        or any(b < a for a, b in zip(onsets, onsets[1:], strict=False))
+        or any(onset not in at for onset in onsets)
+    ):
+        return None
+    placed: list[Syllable] = []
+    holds: list[int] = []
+    starts = sorted(set(onsets))
+    for k, onset in enumerate(starts):
+        notes = region[at[onset] : at[starts[k + 1]] if k + 1 < len(starts) else len(region)]
+        sung = [piece for unit, first in zip(units, onsets, strict=True) if first == onset for piece in unit]
+        if len(sung) > len(notes):
+            sung = _fit(sung, len(notes))
+        placed += [Syllable(n.onset, text, end) for n, (text, end) in zip(notes, sung, strict=False)]
+        holds += [n.onset for n in notes[len(sung) :]]
+    return Line(block_index, j, line, region[0].onset, region[-1].end, tuple(placed), tuple(holds))
+
+
 # --- the flow: every line on its run of notes ----------------------------------------------------
 
 
@@ -499,10 +558,12 @@ def _flow(lines: Sequence[_Sung], seen: _Notes, start: int, stop: int) -> list[t
 
 def _pins(
     score: canonical.Score, parsed: lyrics_rules.Lyrics, spans: Sequence[Sequence[int]] | None
-) -> dict[tuple[int, int], tuple[int, int]]:
+) -> tuple[dict[tuple[int, int], tuple[int, int]], dict[tuple[int, int], tuple[int, ...]]]:
     """``(block, line) -> (start, end)`` of the lines placed by hand (see the module), in the lyrics' order
-    and one after the other (a span that would put a line before the one ahead of it is left out)."""
+    and one after the other (a span that would put a line before the one ahead of it is left out) - and the
+    word onsets the spans give, by line."""
     found: dict[tuple[int, int], tuple[int, int]] = {}
+    words: dict[tuple[int, int], tuple[int, ...]] = {}
     legacy: list[tuple[int, int]] = []
     for span in spans or ():
         start, end = int(span[0]), int(span[1])
@@ -512,6 +573,8 @@ def _pins(
             block, line = int(span[2]), int(span[3])
             if 0 <= block < len(parsed.sections) and 0 <= line < len(parsed.sections[block].lines):
                 found.setdefault((block, line), (start, end))
+                if len(span) > 4:
+                    words.setdefault((block, line), tuple(int(x) for x in span[4:]))
         else:
             legacy.append((start, end))
     if legacy:
@@ -534,7 +597,7 @@ def _pins(
         if start >= reached:
             pins[key] = (start, end)
             reached = end
-    return pins
+    return pins, {key: onsets for key, onsets in words.items() if key in pins}
 
 
 def layout(score: canonical.Score, text: str, spans: Sequence[Sequence[int]] | None = None) -> LyricLayout:
@@ -553,7 +616,7 @@ def layout(score: canonical.Score, text: str, spans: Sequence[Sequence[int]] | N
             if pieces:
                 sung[(b, j)] = _Sung(b, j, text_line, pieces, opens, _key(block.tag))
                 opens = False
-    pins = _pins(score, parsed, spans)
+    pins, word_onsets = _pins(score, parsed, spans)
     placed: dict[tuple[int, int], Line] = {}
     taken: set[int] = set()
     for key, (start, end) in pins.items():
@@ -562,7 +625,12 @@ def layout(score: canonical.Score, text: str, spans: Sequence[Sequence[int]] | N
         region = [k for k, n in enumerate(notes) if start <= n.onset < end and k not in taken]
         if key in sung and region:
             taken.update(region)
-            on_notes = _placed(b, j, text_line, sung[key].pieces, [notes[k] for k in region])
+            on_region = [notes[k] for k in region]
+            on_notes = (
+                _by_onsets(b, j, text_line, sung[key].pieces, on_region, word_onsets[key])
+                if key in word_onsets
+                else None
+            ) or _placed(b, j, text_line, sung[key].pieces, on_region)
             placed[key] = replace(on_notes, start=start, end=end, pinned=True)
         else:
             placed[key] = Line(b, j, text_line, start, end, (), pinned=True)

@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from .errors import PlenioUserError
-from .release import RECORD_SCHEMA, redact, secret_inputs
+from .release import RECORD_SCHEMA, RECORD_SUFFIX, redact, secret_inputs
 from .sheet import DOCUMENT_KINDS, SHEET_STATE_SCHEMA
 
 CONTINUATION_SCHEMA = "plenio.continuation/1"
@@ -520,7 +520,6 @@ def continuation(
 
 # --- the records of the output folder ------------------------------------------------------
 
-RECORD_SUFFIX = ".plenio.json"
 MAX_RECORD_BYTES = 32 * 2**20
 _SUMMARIES: dict[str, tuple[tuple[int, int], dict[str, Any] | None]] = {}
 

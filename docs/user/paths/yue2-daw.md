@@ -44,7 +44,9 @@ Patterns of a DAW workflow:
 - Import a MIDI file with a *Chords* track: switch on *read chords from the notes* and the chord symbols are written into the score (best effort, reported).
 - Keep the drums or the piano of your sketch on the Guide track: they will not colour what YuE2 sings, but you hear them while you work.
 - **Save project** keeps the score, the Guide notes and the lyrics in one file (`<title>.plenio.json`); **Open project…** brings them back in any DAW sheet, so you can go on where you stopped - in another workflow or on another machine.
-- **Export MusicXML** gives the sheet music, with the lyrics under the notes, to a notation program (MuseScore, Sibelius, Dorico, Cubase).
+- **Export MusicXML** gives the sheet music, with the lyrics under the notes, to a notation program (MuseScore, Sibelius, Dorico, Cubase). **Import MusicXML…** brings such a file back - also after a script put the lyrics on their notes or changed notes in bulk ([MusicXML round trip](../concepts/score-editor.md#musicxml-round-trip)).
+- A whole track an octave down or up: **−8va / +8va** next to *Vocal* and *Instrument* in the track headers (and under *Whole score* in the palette); the chord symbols and keys stay.
+- **The stems in your DAW:** with the Stems block on, the Stem Mixer's strips marked *save* go next to the song (`<name>-stems/`), and the **bass** and the **vocals** also as **MIDI** (`bass.mid`, `vocals.mid`): the notes where the stem plays them, at the song's tempo - experimental, see [Stems](../concepts/stems.md#the-bass-and-the-vocals-as-midi).
 
 ## Honest limits
 

@@ -7,12 +7,18 @@ meters and keys. Notes that cross a bar line or last a length no single note val
 as tied notes; pitches are spelled for the key (the editor's speller). The Guide track is playback
 only and stays in the MIDI export.
 
+The lyrics keep their lines: the last syllable of a line has ``<end-line/>``, of a lyrics block also
+``<end-paragraph/>``, and the first syllable of a block names its tag (``<lyric name="Verse 1">``); the
+identification keeps the score's line groups and section names as they are (``plenio-layout``,
+``plenio-sections``) - the MusicXML import (``musicxml_import``) reads them back.
+
 Plain text, no dependencies; the file opens without a DTD download (the DOCTYPE is informational).
 """
 
 from __future__ import annotations
 
 import datetime as _dt
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from xml.sax.saxutils import escape
@@ -22,6 +28,10 @@ from . import canonical, lyric_layout, ops
 from .native import _spell
 
 MUSICXML_MIME = "application/vnd.recordare.musicxml+xml"
+SOFTWARE = "Plenio Music Production System"
+"""The ``<software>`` of the files Plenio writes - the import reads only those."""
+LAYOUT_FIELD = "plenio-layout"
+SECTIONS_FIELD = "plenio-sections"
 
 # note values in quarters (with dots), largest first
 _VALUES: tuple[tuple[float, str, int], ...] = (
@@ -187,12 +197,45 @@ def _syllabic(syllables: dict[int, lyric_layout.Syllable]) -> dict[int, str]:
     return result
 
 
+@dataclass(frozen=True)
+class _Marks:
+    """What a syllable's ``<lyric>`` says besides its text: the block tag it opens, a line's or block's end."""
+
+    tag: str = ""
+    end_line: bool = False
+    end_block: bool = False
+
+
+def _marks(layout: lyric_layout.LyricLayout) -> dict[int, _Marks]:
+    """The marks of the syllables of ``layout`` by the onset of their note."""
+    found: dict[int, _Marks] = {}
+    for part in layout.parts:
+        sung = [line for line in part.lines if line.syllables]
+        for index, line in enumerate(sung):
+            first, last = line.syllables[0].onset, line.syllables[-1].onset
+            if index == 0:
+                found[first] = _Marks(tag=part.tag.strip("[] ").strip())
+            ending = found.get(last, _Marks())
+            found[last] = _Marks(ending.tag, True, index == len(sung) - 1)
+    return found
+
+
+def _lyric_xml(syllable: lyric_layout.Syllable, syllabic: str, marks: _Marks) -> str:
+    name = f' name="{escape(marks.tag, {chr(34): "&quot;"})}"' if marks.tag else ""
+    ends = "<end-line/>" * marks.end_line + "<end-paragraph/>" * marks.end_block
+    return (
+        f'<lyric number="1"{name}><syllabic>{syllabic}</syllabic>'
+        f"<text>{escape(syllable.text)}</text>{ends}</lyric>"
+    )
+
+
 def _part(
     score: canonical.Score,
     track: str,
     *,
     lead: bool,
     syllables: dict[int, lyric_layout.Syllable],
+    marks: dict[int, _Marks] | None = None,
 ) -> list[str]:
     notes = score.track(track)
     per_quarter = score.units_per_quarter
@@ -211,7 +254,7 @@ def _part(
         key_changes = [k for k in score.keys if start <= k.onset < end and (k.onset > 0 or index == 0)]
         if index == 0:
             attributes.append(_key_xml(score.key_at(0)))
-        elif key_changes and key_changes[0].onset == start and score.key_at(start) != score.key_at(start - 1):
+        elif key_changes and key_changes[0].onset == start:
             attributes.append(_key_xml(score.key_at(start)))
         if meter != previous_meter:
             attributes.append(f"<time><beats>{meter[0]}</beats><beat-type>{meter[1]}</beat-type></time>")
@@ -234,8 +277,11 @@ def _part(
             )
         cuts = [k.onset for k in key_changes if start < k.onset]
         pieces = _pieces(notes, start, end, cuts)
-        if all(p.pitch is None for p in pieces) and not (
-            lead and any(start <= c.onset < end for c in chords)
+        # a bar of rests is one whole-bar rest - unless a chord symbol or a key change stands inside it
+        if (
+            all(p.pitch is None for p in pieces)
+            and not cuts
+            and not (lead and any(start <= c.onset < end for c in chords))
         ):
             lines.append(
                 f'<note><rest measure="yes"/><duration>{end - start}</duration><voice>1</voice></note>'
@@ -271,10 +317,8 @@ def _part(
                     body.append("<notations>" + "".join(tied) + "</notations>")
                 attack = piece.attack
                 if lead and first and not piece.tie_in and attack is not None and attack in syllables:
-                    syllable = syllables[attack]
                     body.append(
-                        f'<lyric number="1"><syllabic>{syllabic[attack]}</syllabic>'
-                        f"<text>{escape(syllable.text)}</text></lyric>"
+                        _lyric_xml(syllables[attack], syllabic[attack], (marks or {}).get(attack, _Marks()))
                     )
                 lines.append("<note>" + "".join(body) + "</note>")
         lines.append("</measure>")
@@ -290,9 +334,9 @@ def export_musicxml(
 ) -> str:
     """The score (and its lyrics, placed by ``lyric_layout`` - by hand where ``lyric_spans`` say) as a
     MusicXML 4.0 partwise document."""
-    syllables = (
-        lyric_layout.layout(score, lyrics, lyric_spans).syllables() if lyrics and lyrics.strip() else {}
-    )
+    placed = lyric_layout.layout(score, lyrics, lyric_spans) if lyrics and lyrics.strip() else None
+    syllables = placed.syllables() if placed is not None else {}
+    marks = _marks(placed) if placed is not None else {}
     today = _dt.date.today().isoformat()
     name = escape(title.strip()) or "Score"
     head = [
@@ -301,14 +345,18 @@ def export_musicxml(
         '"http://www.musicxml.org/dtds/partwise.dtd">',
         '<score-partwise version="4.0">',
         f"<work><work-title>{name}</work-title></work>",
-        "<identification><encoding><software>Plenio Music Production System</software>"
-        f"<encoding-date>{today}</encoding-date></encoding></identification>",
+        f"<identification><encoding><software>{SOFTWARE}</software>"
+        f"<encoding-date>{today}</encoding-date></encoding>"
+        f'<miscellaneous><miscellaneous-field name="{LAYOUT_FIELD}">{" ".join(map(str, score.layout))}'
+        f'</miscellaneous-field><miscellaneous-field name="{SECTIONS_FIELD}">'
+        f"{escape(json.dumps([[s.measure, s.label] for s in score.sections], ensure_ascii=False))}"
+        "</miscellaneous-field></miscellaneous></identification>",
         "<part-list>",
         '<score-part id="P1"><part-name>Vocal</part-name><part-abbreviation>Voc.</part-abbreviation></score-part>',
         '<score-part id="P2"><part-name>Instrument</part-name><part-abbreviation>Inst.</part-abbreviation></score-part>',
         "</part-list>",
     ]
-    vocal = _part(score, "vocal", lead=True, syllables=syllables)
+    vocal = _part(score, "vocal", lead=True, syllables=syllables, marks=marks)
     ins = _part(score, "ins", lead=False, syllables={})
     body = ['<part id="P1">', *vocal, "</part>", '<part id="P2">', *ins, "</part>", "</score-partwise>"]
     return "\n".join(head + body) + "\n"

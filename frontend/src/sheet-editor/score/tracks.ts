@@ -31,6 +31,21 @@ export const TRACK_COLORS: Record<TrackVoice, string> = {
   guide: '#9aa4b2'
 }
 
+/** The score tracks a whole-track octave moves (canonical ``shift_track``), by their name. */
+export const SHIFTABLE: Record<string, { track: 'vocal' | 'ins'; name: string }> = {
+  Vocal: { track: 'vocal', name: 'Vocal' },
+  Ins: { track: 'ins', name: 'Instrument' }
+}
+
+/** Why the whole ``track`` cannot move by ``semitones`` (``null``: it can). */
+export function shiftBlock(view: ScoreView | null, track: 'vocal' | 'ins', semitones: number): string | null {
+  const notes = view?.model?.tracks[track] ?? []
+  const name = track === 'vocal' ? 'Vocal' : 'Instrument'
+  if (!notes.length) return `The ${name} track has no notes`
+  if (notes.some((n) => n.pitch + semitones < 0 || n.pitch + semitones > 127)) return `A ${name} note would leave the MIDI range`
+  return null
+}
+
 /** The four tracks of the DAW workflow, in the order YuE2 and the roll show them. */
 export function trackRows(view: ScoreView | null, guideCount = 0): TrackRow[] {
   const tracks = view?.model?.tracks

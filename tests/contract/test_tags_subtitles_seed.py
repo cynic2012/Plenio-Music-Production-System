@@ -177,15 +177,20 @@ def test_subtitles_from_what_the_asr_heard(comfy_path: Path, monkeypatch: pytest
     samples = np.zeros((2, 48000 * 10))
     sheet = {"lyrics": "[Verse]\nHold on to the light\nNever let it go", "score": "", "engine": ""}
     notes: list[str] = []
-    timed = export._subtitles(samples, 48000, sheet, [], None, notes)
-    assert timed is not None and notes == [] and asked[0].language == "en"  # guessed from the lyrics
+    timed, why = export._subtitles(samples, 48000, sheet, [], None, notes)
+    assert (
+        timed is not None and why == "" and notes == [] and asked[0].language == "en"
+    )  # guessed from the lyrics
     assert [line.text for line in timed.lines] == ["Hold on to the light", "Never let it go"]
     assert timed.lines_srt().startswith("1\n00:00:0")
     # an instrumental has no words: no ASR, no subtitles
     instrumental = song_brief(
         {"vocals": "instrumental", "melody": "accompaniment only", "lead_instrument": ""}
     )
-    assert export._subtitles(samples, 48000, sheet, [], instrumental.result[0], notes) is None
+    assert export._subtitles(samples, 48000, sheet, [], instrumental.result[0], notes) == (
+        None,
+        "an instrumental: no words",
+    )
     assert len(asked) == 1
 
 
@@ -203,7 +208,10 @@ def test_subtitles_are_left_out_with_a_note_when_the_asr_cannot_run(
     monkeypatch.setattr(export, "run_asr", offline)
     notes: list[str] = []
     sheet = {"lyrics": "[Verse]\nHold on", "score": "", "engine": ""}
-    assert export._subtitles(np.zeros((1, 4800)), 48000, sheet, [], None, notes) is None
+    timed, why = export._subtitles(np.zeros((1, 4800)), 48000, sheet, [], None, notes)
+    assert (
+        timed is None and why == "the lyrics ASR could not run: The asset is missing and offline mode is on."
+    )
     assert notes and notes[0].startswith("subtitles: not written")
 
 

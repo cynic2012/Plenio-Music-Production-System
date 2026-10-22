@@ -32,8 +32,10 @@
  * properties (``lyricSpans``) and move with the bars like the Guide notes.
  *
  * Files: *Export MIDI* and *Import MIDI…* (the score and the Guide notes), *Export MusicXML* (the sheet
- * music with the lyrics, for notation programs) and the project file - *Save project* writes the score,
- * the Guide notes and the lyrics into one file, *Open project…* brings them back (one undo step).
+ * music with the lyrics, for notation programs) and *Import MusicXML…* (such a file back - also after a
+ * script changed it: the score, the lyrics and where they are sung, one undo step; other MusicXML is
+ * refused) and the project file - *Save project* writes the score, the Guide notes and the lyrics into one
+ * file, *Open project…* brings them back (one undo step).
  */
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 
@@ -44,6 +46,7 @@ import {
   type ScoreOperation,
   exportMidi,
   exportMusicXml,
+  importMusicXml,
   viewUrl
 } from '../../api/client'
 import type { VoiceSwitches } from '../../shared/playback'
@@ -98,6 +101,7 @@ import {
   lineKey,
   parseLineKey,
   partAt,
+  parseSpans,
   partOf,
   placedLines,
   remapSpans,
@@ -1195,6 +1199,49 @@ function openProject(project: ScoreProject, name: string): void {
   ]
 }
 
+// --- MusicXML back: a file Plenio's export wrote, changed by a script or not (feature request 2026-10-22) ---
+const musicXmlFile = ref<HTMLInputElement | null>(null)
+
+function chooseMusicXml(): void {
+  midiError.value = null
+  musicXmlFile.value?.click()
+}
+
+/**
+ * The file's score replaces this one, with its lyrics and where they are sung - one undo step, as a project
+ * opens (the Guide notes stay: MusicXML has none). The backend refuses MusicXML Plenio did not write.
+ */
+async function onMusicXmlFile(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file || props.readonly || recordingBlocks()) return
+  midiBusy.value = true
+  midiError.value = null
+  try {
+    const result = await importMusicXml(props.fetcher, {
+      text: await file.text(),
+      abc: props.doc.text,
+      lyrics: lyricsNow.value ?? props.lyrics ?? null
+    })
+    const lyrics = result.lyrics ?? lyricsNow.value ?? props.lyrics ?? null
+    const project = buildProject({
+      title: props.title,
+      score: result.abc,
+      guide: props.guide ?? [],
+      lyrics,
+      lyricSpans: parseSpans(result.lyric_spans)
+    })
+    if (result.lyrics === null) project.lyric_spans = []
+    openProject(project, file.name)
+    session.notes = [`imported ${file.name}`, ...result.report]
+  } catch (e) {
+    midiError.value = describeError(e)
+  } finally {
+    midiBusy.value = false
+  }
+}
+
 function chooseMidi(): void {
   midiError.value = null
   midiFile.value?.click()
@@ -1462,12 +1509,27 @@ function onKey(event: KeyboardEvent): void {
           Import MIDI…
         </button>
         <button
+          :disabled="readonly || midiBusy"
+          :title="readonly ? 'This score belongs to the other sheet.' : 'Read a MusicXML file that Export MusicXML wrote - also after a script changed it: its score, lyrics and where they are sung replace these (one undo step). Other MusicXML is refused; use Import MIDI for it.'"
+          @click="chooseMusicXml"
+        >
+          Import MusicXML…
+        </button>
+        <button
           :disabled="readonly"
           :title="readonly ? 'This score belongs to the other sheet.' : 'Open a project file: its score, Guide notes and lyrics replace these (one undo step)'"
           @click="chooseProject"
         >
           Open project…
         </button>
+        <input
+          ref="musicXmlFile"
+          class="hidden-file"
+          type="file"
+          accept=".musicxml,.xml,application/vnd.recordare.musicxml+xml,application/xml,text/xml"
+          aria-label="MusicXML file"
+          @change="onMusicXmlFile"
+        />
         <input
           ref="midiFile"
           class="hidden-file"
@@ -1609,6 +1671,7 @@ function onKey(event: KeyboardEvent): void {
           :keeps-guide="keepsGuide"
           :readonly="readonly"
           @clear-guide="clearGuide"
+          @shift-track="(track: 'vocal' | 'ins', semitones: number) => operate({ op: 'shift_track', track, semitones })"
         />
         <ScoreNavigator
           :view="shown"

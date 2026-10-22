@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue'
 import type { ScoreOperation } from '../../api/client'
 import { type ScoreElement, type ScoreView, nextDuration } from '../../shared/scoreView'
 import { selectedChordIds, selectedNoteIds } from './pianoRoll'
+import { SHIFTABLE, shiftBlock } from './tracks'
 
 const props = defineProps<{
   view: ScoreView | null
@@ -47,6 +48,10 @@ watch(
 watch(chordAtSelection, (chord) => {
   chordName.value = chord?.name ?? ''
 })
+
+/** The two tracks a whole-track octave moves (feature request 2026-10-22: until then only selected notes). */
+const TRACKS = Object.values(SHIFTABLE).map(({ track, name }) => [track, name] as const)
+const trackBlock = (track: 'vocal' | 'ins', semitones: number): string | null => shiftBlock(props.view, track, semitones)
 
 function shift(semitones: number): void {
   if (chords.value.length) {
@@ -127,6 +132,23 @@ function shift(semitones: number): void {
         <button :disabled="busy" title="Transpose everything a semitone up" @click="emit('operate', { op: 'transpose', semitones: 1 })">
           transpose +1
         </button>
+        <span v-for="[track, name] in TRACKS" :key="track" class="track-octave" role="group" :aria-label="`${name} track octave`">
+          {{ name }}
+          <button
+            :disabled="busy || !!trackBlock(track, -12)"
+            :title="trackBlock(track, -12) ?? `Every ${name} note an octave down (chord symbols and keys stay)`"
+            @click="emit('operate', { op: 'shift_track', track, semitones: -12 })"
+          >
+            −8va
+          </button>
+          <button
+            :disabled="busy || !!trackBlock(track, 12)"
+            :title="trackBlock(track, 12) ?? `Every ${name} note an octave up (chord symbols and keys stay)`"
+            @click="emit('operate', { op: 'shift_track', track, semitones: 12 })"
+          >
+            +8va
+          </button>
+        </span>
         <label>
           tempo
           <input v-model.number="tempo" type="number" min="20" max="300" class="tempo" aria-label="Tempo in BPM" />

@@ -158,6 +158,29 @@ describe('lyricPlacement', () => {
     ])
   })
 
+  it('keeps the syllable onsets of a line the MusicXML import placed, while the line stays where it is', () => {
+    // [start, end, block, line, ...onsets]: onsets out of order or outside the span are left out
+    expect(parseSpans([[32, 64, 1, 0, 32, 40, 48], [64, 96, 1, 1, 70, 66], [96, 128, 1, 2, 130]])).toEqual([
+      [32, 64, 1, 0, 32, 40, 48],
+      [64, 96, 1, 1],
+      [96, 128, 1, 2]
+    ])
+    // the onsets move with their bars; a span cut by the move loses them
+    expect(remapSpans([[32, 64, 1, 0, 32, 48]], [[0, 160, 64]])).toEqual([[96, 128, 1, 0, 96, 112]])
+    expect(remapSpans([[32, 64, 1, 0, 32, 48]], [[0, 40, 0], [40, 160, 80]])).toEqual([[32, 40, 1, 0]])
+    // an edit of the block: the line left where it was keeps them, the moved one is placed anew
+    const lines = [
+      { id: '0', text: 'a', start: 32, end: 64 },
+      { id: '1', text: 'b', start: 72, end: 96 }
+    ]
+    expect(withBlockSpans([[32, 64, 1, 0, 32, 48], [64, 96, 1, 1, 64, 80]], LAYOUT, new Map([[1, lines]]))).toEqual([
+      [32, 64, 1, 0, 32, 48],
+      [72, 96, 1, 1]
+    ])
+    // the lyrics following the sections keep them too
+    expect(followSpans([[32, 64, 1, 0, 32, 48]], [0, 1, 2], [0, 1, 2], [0, 1, 2], [0, 32, 160])).toEqual([[32, 64, 1, 0, 32, 48]])
+  })
+
   it('gives a span the block of the section that took its words when the lyrics follow the sections', () => {
     // the verse (section 1) copied after itself: the sections are intro, verse, verse, chorus
     const after: ScoreModelView = {

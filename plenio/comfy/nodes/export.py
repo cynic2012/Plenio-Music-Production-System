@@ -20,6 +20,7 @@ from ...core import syllables, variables
 from ...core.asr import AsrSettings, weak_segments
 from ...core.audio import measure
 from ...core.audio.stems import SavedStems
+from ...core.audio.transcribe import write_stem_midi
 from ...core.brief import COVER_MODES, COVER_VOCALS, HARMONY_OPTIONS, MELODY_OPTIONS, SONG_MODES
 from ...core.continuation import workflow_for_record
 from ...core.engines import ENGINES
@@ -28,6 +29,7 @@ from ...core.files import atomic_write_bytes, atomic_write_text
 from ...core.release import (
     FORMATS,
     PROJECT_EMBEDDED,
+    RECORD_SUFFIX,
     STEMS_SUFFIX,
     TAG_FIELDS,
     RecordInput,
@@ -38,9 +40,11 @@ from ...core.release import (
     embed_project,
     expand_pattern,
     file_facts,
+    numbered_title,
     plan_release,
     project_block,
     read_tags,
+    release_titles,
     safe_filename,
     workflow_licences,
     write_audio,
@@ -55,7 +59,6 @@ from .stems import write_saved_stems
 
 COLLISIONS = ("number", "overwrite", "error")
 ORIGINAL_SUFFIX = " (original).flac"
-RECORD_SUFFIX = ".plenio.json"
 TAG_MODES = ("title only", "tags", "copy from loaded file")
 EXTRA_TAGS = tuple(field for field in TAG_FIELDS if field != "title")
 # what the *tags* mode writes as the comment unless the user changes it
@@ -338,7 +341,8 @@ class PlenioExportRelease(io.ComfyNode):
                     options=list(COLLISIONS),
                     default="number",
                     advanced=True,
-                    tooltip="When the file exists: number (add ' (2)'), overwrite, or stop with an error.",
+                    tooltip="When the file exists: number (add ' (2)' - also to a title another song of the folder "
+                    "has), overwrite, or stop with an error.",
                 ),
                 # appended: a saved workflow's values are assigned by position, new widgets go last
                 io.Combo.Input(
@@ -440,6 +444,17 @@ class PlenioExportRelease(io.ComfyNode):
             tags or {"tags": "title only"}, title, cover, cls.hidden.prompt, values
         )
         song_title = metadata.get("title") or "Untitled"
+        if collision == "number":
+            # a title another song of the folder has gets a number, as a file name does (owner's request
+            # 2026-10-22: every cover of one song had the same title in the Plenio Player)
+            numbered = numbered_title(
+                song_title, release_titles(target_folder, recursive=target_folder != base)
+            )
+            if numbered != song_title:
+                notes.append(
+                    f"title: another song in this folder is titled {song_title!r} - this one is {numbered!r}"
+                )
+                song_title = metadata["title"] = numbered
         values.update({"title": song_title, **{k: metadata.get(k, "") for k in variables.TAG_VARIABLES}})
         relative = expand_pattern(naming, {**values, "title": safe_filename(song_title)})
         takes = ["" if len(items) == 1 else f" take {index + 1}" for index in range(len(items))]
@@ -497,10 +512,13 @@ class PlenioExportRelease(io.ComfyNode):
             written.append(path)
         subtitle_lines: list[str] = []
         timings: list[dict[str, Any]] = []
+        # why a take has no subtitles: the Plenio Player says it instead of guessing (GitHub report 2026-10-22)
+        untimed: list[str] = []
         if lyrics_srt:
             for take, samples in zip(takes, items, strict=True):
-                timed = _subtitles(samples, rate, sheet, spans, brief, notes)
+                timed, why = _subtitles(samples, rate, sheet, spans, brief, notes)
                 if timed is None:
+                    untimed.append(why)
                     continue
                 for kind, text in (("lines", timed.lines_srt()), ("notes", timed.notes_srt())):
                     path = file(take + SUBTITLE_SUFFIXES[kind])
@@ -529,6 +547,7 @@ class PlenioExportRelease(io.ComfyNode):
             facts.append({**file_facts(cover_path), "role": "cover"})
         stems_folder = file(STEMS_SUFFIX)
         stem_names: list[str] = []
+        stem_midi_lines: list[str] = []
         for saved in saved_stems:
             for name, path, audio_facts in write_saved_stems(
                 stems_folder,
@@ -547,6 +566,22 @@ class PlenioExportRelease(io.ComfyNode):
                 )
                 written.append(path)
                 stem_names.append(name)
+            # the bass and the vocals also as notes, for a DAW (a user's request 2026-10-22; experimental)
+            tempo, meter = _song_tempo(values, sheet)
+            for name, path, count in write_stem_midi(
+                stems_folder, saved, tempo=tempo, meter=meter, number=collision != "overwrite"
+            ):
+                facts.append(
+                    {
+                        **file_facts(path),
+                        "name": f"{stems_folder.name}/{path.name}",
+                        "role": "stem_midi",
+                        "stem": name,
+                        "notes": count,
+                    }
+                )
+                written.append(path)
+                stem_midi_lines.append(f"{path.name} ({count} notes)")
         licences = sorted(
             {
                 ENGINES[r["data"]["engine"]].LICENCE
@@ -571,6 +606,11 @@ class PlenioExportRelease(io.ComfyNode):
             prompt=cls.hidden.prompt,
             workflow=workflow_for_record((cls.hidden.extra_pnginfo or {}).get("workflow"), cls.hidden.prompt),
             timing=timings or None,
+            subtitles={
+                "wanted": lyrics_srt,
+                "takes": len(timings),
+                **({"why": list(dict.fromkeys(untimed))} if untimed else {}),
+            },
             reports=report_dicts,
             files=facts,
             audio={
@@ -667,6 +707,11 @@ class PlenioExportRelease(io.ComfyNode):
                     if stem_names
                     else []
                 ),
+                *(
+                    [f"- stems as MIDI (experimental): {', '.join(stem_midi_lines)}"]
+                    if stem_midi_lines
+                    else []
+                ),
                 f"- record: {record_path.name}"
                 + (" (also inside the FLAC: File > Continue a Plenio song... opens it)" if carriers else ""),
                 *(
@@ -706,6 +751,26 @@ class PlenioExportRelease(io.ComfyNode):
         )
 
 
+def _song_tempo(values: dict[str, str], sheet: dict[str, Any]) -> tuple[float, tuple[int, int]]:
+    """The song's tempo and meter for the stems' MIDI files: the score's, else the brief's tempo, else 120 BPM
+    in 4/4."""
+    meter = (4, 4)
+    if str(sheet.get("score") or "").strip():
+        try:
+            score = canonical.from_abc(sheet["score"])
+            return float(score.tempo), score.meters[0]
+        except PlenioError:
+            pass
+    for key in ("bpm", "tempo"):
+        try:
+            tempo = float(str(values.get(key) or "").split()[0])
+        except (ValueError, IndexError):
+            continue
+        if 20 <= tempo <= 400:
+            return tempo, meter
+    return 120.0, meter
+
+
 def asr_language(brief: Any, lyrics: str) -> str:
     """The language the ASR is told: the brief's, else the lyrics' (English or German), else detected."""
     for candidate in (str(getattr(brief, "language", "") or ""), syllables.guess_language(lyrics)):
@@ -722,11 +787,12 @@ def asr_language(brief: Any, lyrics: str) -> str:
 
 def _subtitles(
     samples: Any, rate: int, sheet: dict[str, Any], spans: list[list[int]], brief: Any, notes: list[str]
-) -> subtitle_rules.Subtitles | None:
-    """The lyrics subtitles of one take, timed by listening (``None``: nothing to subtitle, or no ASR - noted)."""
+) -> tuple[subtitle_rules.Subtitles | None, str]:
+    """The lyrics subtitles of one take, timed by listening - or ``None`` and why (nothing to subtitle, or no
+    ASR - noted)."""
     lyrics = str(sheet.get("lyrics") or "")
     if getattr(brief, "instrumental", False) or (lyrics.strip() and not subtitle_rules.sung_lines(lyrics)):
-        return None  # an instrumental: no words
+        return None, "an instrumental: no words"
     audio = host.make_audio([samples], rate)
     settings = AsrSettings(language=asr_language(brief, lyrics))
     progress = host.Progress()
@@ -737,7 +803,7 @@ def _subtitles(
         raise
     except PlenioError as error:
         notes.append(f"subtitles: not written - the lyrics ASR could not run ({error.message})")
-        return None
+        return None, f"the lyrics ASR could not run: {error.message}"
     finally:
         progress.update(1.0)
     weak = weak_segments(result)
@@ -750,8 +816,8 @@ def _subtitles(
         timed = subtitle_rules.time_heard(words, duration=seconds, timing=timing)
         if not timed.lines:
             notes.append("subtitles: not written - no lyrics given and no singing heard")
-            return None
-        return timed
+            return None, "no lyrics given and no singing heard"
+        return timed, ""
     score = layout = None
     if str(sheet.get("score") or "").strip():
         try:
@@ -759,8 +825,11 @@ def _subtitles(
             layout = lyric_layout.layout(score, lyrics, spans or None)
         except PlenioError:
             score = layout = None
-    return subtitle_rules.time_lyrics(
-        lyrics, words, duration=seconds, score=score, layout=layout, timing=timing
+    return (
+        subtitle_rules.time_lyrics(
+            lyrics, words, duration=seconds, score=score, layout=layout, timing=timing
+        ),
+        "",
     )
 
 

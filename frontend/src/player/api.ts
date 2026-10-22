@@ -120,6 +120,8 @@ export interface SongDetail extends SongSummary {
   notation: Notation
   lines: TimedLine[]
   timing_source: string
+  /** Why the song has no measured lyrics times (empty when it has them). */
+  timing_note?: string
   files: Record<string, string>
   record_path: string
   /** Other music: the audio file's path. */

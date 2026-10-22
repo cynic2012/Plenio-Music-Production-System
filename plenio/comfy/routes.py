@@ -114,10 +114,12 @@ def _lyrics(data: dict[str, Any]) -> str | None:
 
 
 _MAX_SPANS = 4096
+_MAX_SPAN_ONSETS = 512
 
 
 def _spans(data: dict[str, Any]) -> list[tuple[int, ...]] | None:
-    """The lyrics lines placed by hand (``lyric_spans``: ``[[start, end, block, line], ...]`` in units of L,
+    """The lyrics lines placed by hand (``lyric_spans``: ``[[start, end, block, line], ...]`` in units of L -
+    with the onsets of the line's syllables or words after them, as the MusicXML import places them -, or
     ``[start, end]`` as Plenio 0.4.4 and 0.4.5 kept them; see ``lyric_layout``), optional."""
     value = data.get("lyric_spans")
     if value is None:
@@ -128,11 +130,12 @@ def _spans(data: dict[str, Any]) -> list[tuple[int, ...]] | None:
     for item in value:
         if (
             not isinstance(item, list)
-            or len(item) not in (2, 4)
+            or not (len(item) == 2 or 4 <= len(item) <= 4 + _MAX_SPAN_ONSETS)
             or not all(isinstance(x, int) and not isinstance(x, bool) and x >= 0 for x in item)
         ):
             raise PlenioUserError(
-                "Every lyrics span must be [start, end, block, line] in whole numbers (not negative)."
+                "Every lyrics span must be [start, end, block, line] (and the onsets of its syllables) in "
+                "whole numbers (not negative)."
             )
         spans.append(tuple(item))
     return spans
@@ -186,6 +189,39 @@ async def score_musicxml_export(request: web.Request) -> web.StreamResponse:
     text = musicxml.export_musicxml(score, title=title, lyrics=_lyrics(data), lyric_spans=_spans(data))
     return web.json_response(
         {"filename": musicxml.filename_for(title), "data": text, "type": musicxml.MUSICXML_MIME}
+    )
+
+
+async def score_musicxml_import(request: web.Request) -> web.StreamResponse:
+    """A MusicXML file Plenio's export wrote (``text``) as the score, with the lyrics and their places: the ABC,
+    the lyrics (``null``: the file has none), the lyrics spans and the import report. ``abc`` and ``lyrics``:
+    the sheet's score and lyrics now (kept where the file leaves them as they were)."""
+    from ..core.score import canonical, musicxml_import
+
+    data = await read_json(request)
+    text = _text(data, "text")
+    if len(text) > musicxml_import.MAX_BYTES:
+        raise PlenioUserError(
+            f"The MusicXML file is too large ({musicxml_import.MAX_BYTES // 2**20} MB at most)."
+        )
+    current_text = _text(data, "abc", required=False)
+    try:
+        current = canonical.from_abc(current_text) if current_text.strip() else None
+    except PlenioError:
+        current = None  # a sheet that does not read now: the file alone decides
+    result = musicxml_import.import_musicxml(text, lyrics=_lyrics(data), current=current)
+    abc = canonical.to_abc(result.score)
+    spans = [list(span) for span in result.spans]
+    return web.json_response(
+        {
+            "abc": abc,
+            "lyrics": result.lyrics,
+            "lyric_spans": spans,
+            "report": list(result.report),
+            "analysis": score_rules.editor_view(
+                abc, result.lyrics if result.lyrics is not None else _lyrics(data), spans or None
+            ),
+        }
     )
 
 
@@ -491,6 +527,7 @@ ROUTES: tuple[tuple[str, str, Handler], ...] = (
     ("POST", "/plenio/score/transform", score_transform),
     ("POST", "/plenio/score/midi/export", score_midi_export),
     ("POST", "/plenio/score/midi/import", score_midi_import),
+    ("POST", "/plenio/score/musicxml/import", score_musicxml_import),
     ("POST", "/plenio/score/musicxml/export", score_musicxml_export),
     ("POST", "/plenio/lyrics/analyze", lyrics_analyze),
     ("POST", "/plenio/sheet/resolve", sheet_resolve),

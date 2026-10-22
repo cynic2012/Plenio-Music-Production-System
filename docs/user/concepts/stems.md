@@ -81,6 +81,28 @@ muted ranges are applied; mute/solo and the shared buses belong to the mixdown, 
 Muted ranges cut a stem's content in that window with a 10 ms fade and are merged and clipped to the song. The song
 keeps its length - cutting time out of the song would misalign the stems, so it is not offered.
 
+### The bass and the vocals as MIDI
+
+A saved **bass** or **vocals** strip is also written as a standard MIDI file next to its FLAC - `bass.mid`,
+`vocals.mid` (a batch: `bass take 1.mid` ...) - for a DAW (a user's request, October 2026: "more MIDI tracks - bass or
+other lead instruments"). *Experimental.*
+
+- The notes come from the stem itself: its pitch (the YIN tracker of *Sung Pitch*, in the bass's or the voice's
+  range) and its attacks - a note played again on the same pitch is a note of its own, a vibrato is not. The
+  velocity follows the level.
+- The notes stay **where the stem plays them** - no grid: a YuE2 render runs a little ahead of or behind its score,
+  and the stems in the DAW are at the recording's times too. The file's tempo and meter are the song's (its score's;
+  else the brief's tempo; else 120 BPM in 4/4), so in a DAW at that tempo every note sounds with its stem. Quantise
+  there if you want the grid.
+- Measured on five renders (pop, electronic, rock, hip-hop, singer-songwriter): **93-100 %** of the bass notes' time
+  lies on a tone of the score's chord there - the pitches are right; the rhythm is the stem's, including its
+  looseness. About 2 s per stem for a 3-minute song.
+- Only one voice at a time can be transcribed: the **drums** and the **other** stem (guitars, keys, pads - several
+  notes at once) have no MIDI file. The score's own MIDI (*Song Sheet* → *Export MIDI*: Vocal, Instrument, Chords)
+  is the plan the render followed; the stems' MIDI is what the render played.
+- Without an Export Release taking the mixer's report, the files go to `output/plenio/stems` at 120 BPM (the notes
+  keep their times all the same).
+
 ### The effect buses
 
 | Bus | Model |
@@ -131,6 +153,12 @@ refused with a message rather than guessed at.
 
 - Separation quality is the model's, not Plenio's: dense mixes with wide stereo vocals are the hard case, and
   "other" holds whatever did not fit the three named stems.
+- **A perfectly clean vocal is not possible this way.** YuE2 renders one mixed track - there is no vocal track of
+  its own to export - so the vocals are always separated, and a separation always leaves traces (measured,
+  October 2026: separating the vocal stem a second time with the same model changes it by -46 dB, i.e. not at all;
+  muting it between the sung lyrics lines would also cut ad-libs and backing vocals - what the vocal stem holds
+  there is as pitched as the singing). What would help is a separation model made for vocals alone; that needs a
+  new download and is not part of this release.
 - The residual keeps a neutral mix exact - it does **not** repair a separation error once you change gains.
 - Separate files are written only for the strips you switch to **save**; *Export* always takes the mixdown (and the
   reports). The saved file carries the strip's gain, compression and muted ranges, not the mute/solo decision and

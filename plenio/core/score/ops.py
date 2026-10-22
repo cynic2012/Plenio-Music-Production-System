@@ -1341,6 +1341,37 @@ def transpose_by(score: Score, semitones: int) -> OpResult:
     return _commit(new, [f"transposed by {semitones:+d} semitones; key {score.keys[0].key} -> {keys[0].key}"])
 
 
+TRACK_NAMES = {"vocal": "Vocal", "ins": "Instrument"}
+
+
+def shift_track(score: Score, track: str, semitones: int) -> OpResult:
+    """Every note of one track moved by ``semitones`` - a whole Vocal or Instrument track an octave up or down
+    (feature request 2026-10-22; until then only the selected notes moved). The keys and the chord symbols
+    stay: they belong to both tracks."""
+    kind = _track(track)
+    step = _whole(semitones, "semitones", -24, 24)
+    notes = score.track(kind)
+    if not notes:
+        return _unchanged(score, f"the {TRACK_NAMES[kind]} track has no notes")
+    if step == 0:
+        return _unchanged(score, "no pitch changed")
+    outside = next((n for n in notes if not 0 <= n.pitch + step <= 127), None)
+    if outside is not None:
+        raise PlenioValidationError(
+            f"Moving the track moves {_describe(score, kind, outside)} outside the MIDI range."
+        )
+    moved = tuple(Note(n.onset, n.duration, n.pitch + step) for n in notes)
+    octaves = (
+        f"{abs(step) // 12} octave{'s' if abs(step) > 12 else ''}"
+        if step % 12 == 0
+        else f"{abs(step)} semitones"
+    )
+    return _commit(
+        score.with_track(kind, moved),
+        [f"{TRACK_NAMES[kind]}: all {len(notes)} notes {octaves} {'up' if step > 0 else 'down'}"],
+    )
+
+
 # --- sections ---------------------------------------------------------------------------
 
 
@@ -1535,6 +1566,7 @@ OPERATIONS: dict[str, Operation] = {
     "delete_key": lambda s, op: delete_key(s, _int(op, "onset")),
     "change_tempo": lambda s, op: change_tempo(s, _int(op, "bpm")),
     "transpose_by": lambda s, op: transpose_by(s, _int(op, "semitones")),
+    "shift_track": lambda s, op: shift_track(s, _str(op, "track"), _int(op, "semitones")),
     # sections
     "rename_section_at": lambda s, op: rename_section_at(s, _int(op, "bar"), _str(op, "label")),
     "start_section": lambda s, op: start_section(s, _int(op, "bar"), _str(op, "label")),
@@ -1597,6 +1629,7 @@ __all__ = [
     "rename_section_at",
     "resize_note",
     "set_note_pitch",
+    "shift_track",
     "split_note",
     "start_section",
     "transform",

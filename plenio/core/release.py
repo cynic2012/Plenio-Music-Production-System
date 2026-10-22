@@ -4,10 +4,11 @@ and secret redaction.
 
 from __future__ import annotations
 
+import json
 import re
 import time
 import unicodedata
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,7 @@ from .files import atomic_write_bytes
 from .hashing import canonical_json, sha256_text
 
 RECORD_SCHEMA = "plenio.record/1"
+RECORD_SUFFIX = ".plenio.json"
 _RESERVED = {
     "CON",
     "PRN",
@@ -70,6 +72,50 @@ def naming_values(title: str, seed: int | None, now: time.struct_time | None = N
         "time": time.strftime("%H%M%S", moment),
         "seed": "" if seed is None else str(seed),
     }
+
+
+_NUMBERED = re.compile(r"^(.*\S) \((\d+)\)$")
+_TITLE_FIELD = re.compile(r'"title":\s*("(?:[^"\\]|\\.)*")')
+TITLE_HEAD_BYTES = 4096
+"""A record starts with its schema, its time and its title (``build_record``): this much of it holds the title."""
+
+
+def base_title(title: str) -> str:
+    """A title without the number a repeated title got (``Yesterday (2)`` -> ``Yesterday``)."""
+    match = _NUMBERED.match(title.strip())
+    return match.group(1) if match else title.strip()
+
+
+def numbered_title(title: str, taken: Iterable[str]) -> str:
+    """``title``, or ``title (2)``, ``title (3)`` ... - the first no song of ``taken`` has (case does not count),
+    as file names are numbered (owner's request 2026-10-22: covers of one song all had the same title)."""
+    used = {t.strip().casefold() for t in taken}
+    if title.strip().casefold() not in used:
+        return title
+    for number in range(2, 10000):
+        candidate = f"{title} ({number})"
+        if candidate.casefold() not in used:
+            return candidate
+    raise PlenioUserError(f"Too many songs titled {title!r}.")
+
+
+def release_titles(folder: Path, *, recursive: bool = True) -> set[str]:
+    """The titles of the release records in ``folder`` (and below it with ``recursive``), read from the start
+    of each record - a library of thousands of songs takes a fraction of a second."""
+    if not folder.is_dir():
+        return set()
+    found: set[str] = set()
+    paths = folder.rglob(f"*{RECORD_SUFFIX}") if recursive else folder.glob(f"*{RECORD_SUFFIX}")
+    for path in paths:
+        try:
+            with path.open("rb") as handle:
+                head = handle.read(TITLE_HEAD_BYTES).decode("utf-8", "ignore")
+            match = _TITLE_FIELD.search(head)
+            if match:
+                found.add(str(json.loads(match.group(1))))
+        except (OSError, ValueError):
+            continue
+    return found
 
 
 def plan_release(folder: Path, relative: str, suffixes: Sequence[str], *, collision: str = "number") -> Path:
@@ -748,6 +794,9 @@ class RecordInput:
     timing: Sequence[Mapping[str, Any]] | None = field(default=None)
     """Per take, when each lyrics line and syllable is sung (``subtitles.Subtitles.to_timing``) - the Plenio
     Player shows the lyrics and the notation in time with it. ``None``: no subtitles were made."""
+    subtitles: Mapping[str, Any] | None = field(default=None)
+    """Whether lyrics subtitles were asked for (``wanted``), for how many takes they were made (``takes``) and
+    why not for the others (``why``) - the Plenio Player tells a song without times by it (since 1.1.0)."""
 
 
 def record_fingerprint(record: Mapping[str, Any]) -> str:
@@ -791,5 +840,7 @@ def build_record(data: RecordInput) -> dict[str, Any]:
         record["workflow"] = dict(data.workflow)
     if data.timing:
         record["timing"] = [dict(t) for t in data.timing]
+    if data.subtitles is not None:
+        record["subtitles"] = dict(data.subtitles)
     record["fingerprint"] = record_fingerprint(record)
     return record

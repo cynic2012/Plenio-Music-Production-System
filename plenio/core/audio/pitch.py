@@ -90,11 +90,14 @@ def _frames(samples: np.ndarray) -> np.ndarray:
     return view[:count]
 
 
-def _yin(frames: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """``(period in samples, dip depth, rms)`` of every frame (period ``nan`` where nothing was found)."""
+def _yin(
+    frames: np.ndarray, fmin: float = FMIN, fmax: float = FMAX
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """``(period in samples, dip depth, rms)`` of every frame (period ``nan`` where nothing was found); periods
+    from ``fmin`` to ``fmax`` Hz (the frame holds periods down to 31 Hz)."""
     width = FRAME // 2
-    tau_min = int(RATE / FMAX)
-    tau_max = min(width, int(math.ceil(RATE / FMIN)))
+    tau_min = int(RATE / fmax)
+    tau_max = min(width, int(math.ceil(RATE / fmin)))
     size = 2 * FRAME
     periods = np.full(len(frames), np.nan)
     depths = np.ones(len(frames))
@@ -190,20 +193,31 @@ def _despike(curve: np.ndarray) -> np.ndarray:
     return out
 
 
-def track(samples: Any, sample_rate: Any, *, source: str = "") -> SungPitch:
-    """The sung pitch of ``samples`` (``[channels, frames]`` or mono; best a vocal stem)."""
+def mono_16k(samples: Any, sample_rate: Any) -> np.ndarray:
+    """``samples`` (``[channels, frames]`` or mono) as one channel at the tracker's rate."""
     rate = check_rate(sample_rate)
     data = as_channels(samples, label="audio").astype(np.float64).mean(axis=0)
-    if not len(data):
-        return missing("The recording is empty.")
-    mono = resample(data[None, :], rate, RATE)[0] if rate != RATE else data
-    periods, depths, rms = _yin(_frames(mono))
+    mono: np.ndarray = resample(data[None, :], rate, RATE)[0] if rate != RATE and len(data) else data
+    return mono
+
+
+def curve(mono: np.ndarray, fmin: float = FMIN, fmax: float = FMAX) -> tuple[np.ndarray, np.ndarray]:
+    """The cleaned pitch (MIDI, ``nan`` unvoiced) and the level of every 10 ms of ``mono`` (``mono_16k``)."""
+    periods, depths, rms = _yin(_frames(mono), fmin, fmax)
     loud = float(np.percentile(rms, 95)) if len(rms) else 0.0
     gate = max(1e-5, loud * 10 ** (GATE_DB / 20))
     with np.errstate(invalid="ignore", divide="ignore"):
         midi = 69.0 + 12.0 * np.log2(RATE / periods / 440.0)
     voiced = (depths < VOICED) & (rms > gate) & np.isfinite(midi)
-    clean = _despike(_clean(np.where(voiced, midi, np.nan), voiced))
+    return _despike(_clean(np.where(voiced, midi, np.nan), voiced)), rms
+
+
+def track(samples: Any, sample_rate: Any, *, source: str = "") -> SungPitch:
+    """The sung pitch of ``samples`` (``[channels, frames]`` or mono; best a vocal stem)."""
+    mono = mono_16k(samples, sample_rate)
+    if not len(mono):
+        return missing("The recording is empty.")
+    clean, _rms = curve(mono)
     step = max(1, round(RATE / HOP / OUT_RATE))
     values: list[float | None] = []
     for i in range(0, len(clean), step):

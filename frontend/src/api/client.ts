@@ -109,6 +109,29 @@ export function exportMusicXml(
   return post(fetcher, '/plenio/score/musicxml/export', withLyrics(rest, lyrics, spans))
 }
 
+export interface MusicXmlImportResult {
+  abc: string
+  /** The lyrics to keep with the score (``null``: the file has none - the sheet's stay). */
+  lyrics: string | null
+  /** Every lyrics line's span with the onsets of its syllables (or words). */
+  lyric_spans: number[][]
+  /** What the import read and did. */
+  report: string[]
+  analysis: ScoreView
+}
+
+/**
+ * A MusicXML file Plenio's export wrote (``text``) as the score with the lyrics and their places; ``abc`` and
+ * ``lyrics``: the sheet's now (kept where the file leaves them as they were). Other MusicXML is refused.
+ */
+export function importMusicXml(
+  fetcher: Fetcher,
+  request: { text: string; abc: string; lyrics?: string | null }
+): Promise<MusicXmlImportResult> {
+  const { lyrics, ...rest } = request
+  return post(fetcher, '/plenio/score/musicxml/import', lyrics ? { ...rest, lyrics } : rest)
+}
+
 /** A Guide-track note ``[onset, duration, pitch]`` in units of the score's L (never sent to YuE2). */
 export type GuideNote = [number, number, number]
 

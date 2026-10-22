@@ -27,10 +27,10 @@ from ..core import brief as brief_rules
 from ..core import creativity as creativity_rules
 from ..core import subtitles as subtitle_rules
 from ..core.errors import PlenioError
+from ..core.release import RECORD_SUFFIX, base_title, numbered_title
 from . import other as other_music
 
-RECORD_SUFFIX = ".plenio.json"
-CACHE_VERSION = 7
+CACHE_VERSION = 8
 RETIRED_DIR = "_retired"
 CLOCK_SLACK = 1.0
 """Seconds a file's time may run ahead of the clock read at a scan's start: on Windows a file written just
@@ -458,7 +458,10 @@ def summarize(record: Mapping[str, Any], path: Path, root: Path) -> Song:
         "plenio": _text((record.get("versions") or {}).get("plenio")),
         "folder": path.parent.relative_to(root).as_posix() if path.parent.is_relative_to(root) else "",
         "file": path.name.removesuffix(RECORD_SUFFIX),
-        "takes_key": hashlib.sha1(f"{title.lower()}|{lyrics_sha}|{score_sha}".encode()).hexdigest()[:10]
+        # the takes of one song: one title (a repeated title's number left out), one lyrics, one score
+        "takes_key": hashlib.sha1(
+            f"{base_title(title).lower()}|{lyrics_sha}|{score_sha}".encode()
+        ).hexdigest()[:10]
         if (lyrics_sha or score_sha)
         else "",
         "has": {
@@ -479,6 +482,27 @@ def summarize(record: Mapping[str, Any], path: Path, root: Path) -> Song:
     song = Song(song_id(path, root), path, root, summary, files)
     summary["id"] = song.id
     return song
+
+
+def distinguish_titles(songs: Iterable[Song]) -> None:
+    """Songs of one title get `` (2)``, `` (3)`` ... in the order they were made - as Export Release numbers a
+    title another song has since 1.1.0; songs exported before kept one title (owner's request 2026-10-22: every
+    cover of a song had the same title in the list). The record's own title stays ``recorded_title``."""
+    plenio = [song for song in songs if not song.other]
+    groups: dict[str, list[Song]] = {}
+    for song in plenio:
+        groups.setdefault(str(song.summary.get("title") or "").strip().casefold(), []).append(song)
+    taken = {str(song.summary.get("title") or "") for song in plenio}
+    for group in groups.values():
+        if len(group) < 2:
+            continue
+        group.sort(key=lambda song: (str(song.summary.get("created") or ""), song.id))
+        for song in group[1:]:
+            title = str(song.summary.get("title") or "")
+            shown = numbered_title(title, taken)
+            taken.add(shown)
+            # a new dict: the cache keeps the summary as the record has it
+            song.summary = {**song.summary, "title": shown, "recorded_title": title}
 
 
 def other_detail(song: Song) -> dict[str, Any]:
@@ -506,10 +530,54 @@ def other_detail(song: Song) -> dict[str, Any]:
     }
 
 
+def timing_note(record: Mapping[str, Any]) -> str:
+    """Why a song has no measured lyrics times, as far as its record tells."""
+    status = record.get("subtitles")
+    if isinstance(status, Mapping):
+        if not status.get("wanted"):
+            return "Lyrics subtitles were off when the song was exported."
+        why = [str(x) for x in status.get("why") or [] if x]
+        if why:
+            return f"No lyrics times were measured when the song was exported - {why[0]}."
+    version = _text((record.get("versions") or {}).get("plenio"))
+    major = re.match(r"(\d+)\.", version)
+    if major and int(major.group(1)) < 1:
+        return f"The song was exported by Plenio {version}, before songs kept their lyrics times."
+    return (
+        "No lyrics times were measured when the song was exported (most often: the lyrics ASR could not run "
+        "- the export's summary said why)."
+    )
+
+
+def _estimated_lines(
+    record: Mapping[str, Any], score: str, lyrics: str, found: Mapping[str, Any]
+) -> list[Any]:
+    """The lyrics lines at the score's times, carried into the recording by the estimate ``found``
+    (``core.subtitles.time_by_score``); none when the lyrics do not lie on the score."""
+    from ..core.score import canonical, lyric_layout
+    from .align import score_to_audio
+
+    try:
+        parsed = canonical.from_abc(score)
+        layout = lyric_layout.layout(parsed, lyrics, _spans(record) or None)
+        seconds = float((record.get("audio") or {}).get("seconds") or 0.0)
+        timed = subtitle_rules.time_by_score(
+            lyrics,
+            score=parsed,
+            layout=layout,
+            duration=seconds or parsed.seconds(parsed.total) + 60.0,
+            to_audio=lambda at: score_to_audio(at, dict(found)),
+        )
+    except (PlenioError, ValueError, KeyError, TypeError):
+        return []
+    return list(timed.to_timing()["lines"])
+
+
 def song_detail(song: Song, cache: Path | None = None) -> dict[str, Any]:
     """Everything the song's page needs: the documents, the notation, the times, the files. With ``cache``,
     a song without measured times gets the score's place in its recording estimated (``plenio.player.align``),
-    so that its notation follows the music."""
+    so that its notation follows the music - and its lyrics lines, where they lie on the score, follow it too
+    (``timing_source`` ``estimated``)."""
     if song.other:
         return other_detail(song)
     record = json.loads(song.record.read_text(encoding="utf-8"))
@@ -565,6 +633,9 @@ def song_detail(song: Song, cache: Path | None = None) -> dict[str, Any]:
             notation["warp"] = found["warp"]
             notation["anchors"] = found["anchors"]
             notation["estimated"] = True
+            if not lines and lyrics.strip():
+                lines = _estimated_lines(record, score, lyrics, found)
+                source = "estimated" if lines else source
     return {
         **song.summary,
         "documents": {kind: doc(kind) for kind in ("title", "style", "lyrics", "artwork_prompt")},
@@ -572,6 +643,7 @@ def song_detail(song: Song, cache: Path | None = None) -> dict[str, Any]:
         "notation": notation,
         "lines": lines,
         "timing_source": source,
+        "timing_note": timing_note(record) if source in ("", "estimated") else "",
         "files": {kind: path.name for kind, path in song.files.items() if kind != "stems"},
         "owned_files": [
             path.relative_to(song.record.parent.resolve()).as_posix() for path in owned_files(song)
@@ -805,6 +877,7 @@ class Library:
                     }
                 except (OSError, ValueError, KeyError, TypeError) as error:
                     errors.append(f"{path.name}: {error}")
+            distinguish_titles(songs.values())
             self._songs, self._cache, self.errors = songs, cache, errors
             self._appeared = appeared
             # "now" for Live Play: no song seen in this scan may count as newer than it on the next question

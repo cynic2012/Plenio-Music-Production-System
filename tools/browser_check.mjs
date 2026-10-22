@@ -545,6 +545,57 @@ const pdfOk = (outcome) => !outcome.timeout && outcome.head === '%PDF-' && outco
   record('Song Sheet', check, ok, ok ? '[Instrumental] before the second line, the cursor after it' : JSON.stringify(after) + ' ' + plenioErrors().join(' | '))
 }
 
+{
+  // Requests of 2026-10-22, in the real editor: a whole track an octave up (the palette's Whole score), and
+  // Import MusicXML… - the file Export MusicXML wrote, with a word a script moved to another note - gives the
+  // score back and the line its notes; Apply keeps the span with the onsets of its syllables.
+  const check = 'Song Sheet: a track an octave up; MusicXML out and back with a moved word'
+  consoleErrors = []
+  const score = 'X:1\nT:\nM:4/4\nL:1/8\nQ:1/4=120\nV: Vocal clef=treble name="Vocal Melody" snm="Vocal"\nV: Ins clef=treble name="Ins Melody" snm="Inst."\nK:C\n% verse\nV: Vocal\nCDEF GABc|c8|\nV: Ins\nC8|C8|\n'
+  const lyrics = '[Verse]\nsun on me\n'
+  await page.evaluate(async ([score, lyrics]) => {
+    await window.app.loadGraphData({ last_node_id: 0, last_link_id: 0, nodes: [], links: [], groups: [], config: {}, extra: {}, version: 0.4 }, true, true, 'browser-check-musicxml')
+    const node = window.LiteGraph.createNode('PlenioSongSheet')
+    node.pos = [200, 150]
+    window.app.graph.add(node)
+    const manual = (text) => ({ state: 'manual', text })
+    node.widgets.find((w) => w.name === 'sheet_state').value = JSON.stringify({ schema: 'plenio.sheet_state/1', docs: { lyrics: manual(lyrics), score: manual(score) } })
+    window.app.graph.setDirtyCanvas(true, true)
+  }, [score, lyrics])
+  await page.waitForTimeout(1000)
+  await page.locator('button.plenio-sheet-open').first().click()
+  await page.locator('.plenio-dialog [role="tab"]', { hasText: 'Score' }).first().click()
+  await page.locator('.plenio-dialog details.whole summary').first().click()
+  const up = page.locator('.plenio-dialog .track-octave[aria-label="Vocal track octave"] button', { hasText: '+8va' }).first()
+  await up.waitFor({ timeout: 15000 })
+  await up.click()
+  await page.waitForTimeout(1500)
+  const raised = await page.locator('.plenio-dialog .score-tab .status').first().textContent()
+  // the file a script changed: "me" moved from the third to the fifth Vocal note
+  const xml = await page.evaluate(async ([score, lyrics]) => {
+    const answer = await window.app.api.fetchApi('/plenio/score/musicxml/export', { method: 'POST', body: JSON.stringify({ abc: score, title: 'Check', lyrics }) })
+    return (await answer.json()).data
+  }, [score, lyrics])
+  const notes = xml.split('<part id="P2">')[0].match(/<note>[\s\S]*?<\/note>/g)
+  const from = notes.findIndex((n) => n.includes('<text>me</text>'))
+  const lyric = notes[from].match(/<lyric[\s\S]*?<\/lyric>/)[0]
+  const moved = xml.replace(notes[from], notes[from].replace(lyric, '')).replace(notes[from + 2], notes[from + 2].replace('</note>', `${lyric}</note>`))
+  await page.locator('.plenio-dialog input[aria-label="MusicXML file"]').setInputFiles({ name: 'check.musicxml', mimeType: 'application/xml', buffer: Buffer.from(moved) })
+  await page.waitForTimeout(2500)
+  const imported = await page.locator('.plenio-dialog .score-tab .status').first().textContent()
+  await page.getByRole('button', { name: 'Apply', exact: true }).first().click()
+  await page.waitForTimeout(800)
+  const spans = await page.evaluate(() => window.app.graph.nodes.find((n) => n.type === 'PlenioSongSheet').properties?.plenio_lyric_spans)
+  await page.locator('.plenio-dialog footer button', { hasText: 'Close' }).first().click().catch(() => undefined)
+  const ok =
+    /Vocal: all 9 notes 1 octave up/.test(raised ?? '') &&
+    /imported check\.musicxml/.test(imported ?? '') &&
+    /every line on the notes the file gives it/.test(imported ?? '') &&
+    Array.isArray(spans) && spans.length === 1 && spans[0].length === 7 && spans[0][6] === 4 &&
+    plenioErrors().length === 0
+  record('Song Sheet', check, ok, ok ? `octave up; imported, span ${JSON.stringify(spans[0])}` : `${raised} | ${imported} | ${JSON.stringify(spans)} ` + plenioErrors().join(' | '))
+}
+
 // 8. continue a song (owner's request 2026-10-11): a release record opens the workflow the song was made
 // with, its documents kept in the Song Sheets - dropped onto ComfyUI, or picked in File > Continue a Plenio song….
 // An old record (no workflow inside) opens in today's template with the song's settings: the prompt the

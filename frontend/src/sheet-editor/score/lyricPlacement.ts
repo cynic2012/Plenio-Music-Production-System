@@ -19,9 +19,11 @@ import type { LyricLayoutView, LyricLine, LyricPart } from '../../shared/scoreVi
 
 /**
  * ``[start, end, block, line]`` of a line placed by hand, in units of L (``[start, end]``: kept by Plenio
- * 0.4.4 and 0.4.5 without its line - the backend gives it to the lyrics block of its section).
+ * 0.4.4 and 0.4.5 without its line - the backend gives it to the lyrics block of its section). After them the
+ * onsets of the line's syllables (or words) when the MusicXML import placed it: sung exactly on those notes.
+ * An edit of the line in the lane places it anew, without them.
  */
-export type LyricSpan = [number, number] | [number, number, number, number]
+export type LyricSpan = [number, number] | [number, number, number, number, ...number[]]
 
 /**
  * What the score editor keeps in the node's properties besides the documents (they are no documents:
@@ -56,16 +58,28 @@ export function parseLineKey(key: string): { block: number; line: number } | nul
   return match ? { block: Number(match[1]), line: Number(match[2]) } : null
 }
 
-/** The spans of a node property value: ``[[start, end, block, line], ...]`` or ``[start, end]`` (anything else: none). */
+/** At most this many syllable onsets per span (the backend's limit). */
+const MAX_ONSETS = 512
+
+/**
+ * The spans of a node property value: ``[[start, end, block, line, ...onsets], ...]`` or ``[start, end]``
+ * (anything else: none; onsets out of order or outside the span are left out).
+ */
 export function parseSpans(value: unknown): LyricSpan[] {
   if (!Array.isArray(value)) return []
   const spans: LyricSpan[] = []
   for (const item of value) {
-    if (!Array.isArray(item) || (item.length !== 2 && item.length !== 4)) continue
+    if (!Array.isArray(item) || item.length === 3 || item.length < 2 || item.length > 4 + MAX_ONSETS) continue
     if (!item.every((x) => Number.isInteger(x) && x >= 0)) continue
     const [start, end] = item as number[]
     if (end <= start) continue
-    spans.push(item.length === 4 ? [start, end, item[2] as number, item[3] as number] : [start, end])
+    if (item.length === 2) {
+      spans.push([start, end])
+      continue
+    }
+    const onsets = (item as number[]).slice(4)
+    const fits = onsets.every((x, i) => x >= start && x < end && (i === 0 || x >= onsets[i - 1]))
+    spans.push([start, end, item[2] as number, item[3] as number, ...(fits ? onsets : [])])
   }
   return spans.sort((a, b) => a[0] - b[0] || a[1] - b[1] || (a[2] ?? -1) - (b[2] ?? -1) || (a[3] ?? -1) - (b[3] ?? -1))
 }
@@ -187,8 +201,8 @@ export function withBlockSpans(
   layout: LyricLayoutView,
   edited: ReadonlyMap<number, readonly PlacedLine[]>
 ): LyricSpan[] {
-  const kept = spans.filter((s): s is [number, number, number, number] => s.length === 4 && !edited.has(s[2]))
-  const known = new Set(kept.map((s) => lineKey(s[2], s[3])))
+  const kept = spans.filter((s) => s.length >= 4 && !edited.has(s[2] as number))
+  const known = new Set(kept.map((s) => lineKey(s[2] as number, s[3] as number)))
   const migrated: LyricSpan[] = spans.some((s) => s.length === 2)
     ? layout.parts.flatMap((p) =>
         p.lines
@@ -196,7 +210,11 @@ export function withBlockSpans(
           .map((l): LyricSpan => [l.start, l.end, l.block, l.line])
       )
     : []
-  const added = [...edited].flatMap(([block, lines]) => lines.map((line, index): LyricSpan => [line.start, line.end, block, index]))
+  // a line the edit left where it was keeps the onsets of its syllables (the MusicXML import's placement)
+  const onsets = new Map(spans.filter((s) => s.length > 4).map((s) => [`${s[0]}:${s[1]}:${s[2]}`, s.slice(4)]))
+  const added = [...edited].flatMap(([block, lines]) =>
+    lines.map((line, index): LyricSpan => [line.start, line.end, block, index, ...(onsets.get(`${line.start}:${line.end}:${block}`) ?? [])])
+  )
   return parseSpans([...kept, ...migrated, ...added])
 }
 
@@ -209,7 +227,10 @@ export function remapSpans(spans: readonly LyricSpan[], timeMap: readonly (reado
       // a span goes where its start goes (a copied bar copies it, a deleted one loses it)
       if (start < oldStart || start >= oldEnd) continue
       const shift = newStart - oldStart
-      const moved: LyricSpan = span.length === 4 ? [start + shift, Math.min(end, oldEnd) + shift, span[2], span[3]] : [start + shift, Math.min(end, oldEnd) + shift]
+      // the syllables' onsets move along while they stay inside the moved bars
+      const onsets = span.slice(4)
+      const kept = onsets.every((x) => x >= oldStart && x < oldEnd) ? onsets.map((x) => x + shift) : []
+      const moved: LyricSpan = span.length >= 4 ? [start + shift, Math.min(end, oldEnd) + shift, span[2] as number, span[3] as number, ...kept] : [start + shift, Math.min(end, oldEnd) + shift]
       result.push(moved)
     }
   }
@@ -231,15 +252,15 @@ export function followSpans(
 ): LyricSpan[] {
   const result: LyricSpan[] = []
   for (const span of spans) {
-    if (span.length !== 4) {
+    if (span.length < 4) {
       result.push(span)
       continue
     }
-    const section = oldLabelled[span[2]]
+    const section = oldLabelled[span[2] as number]
     const candidates = newLabelled.map((index, block) => ({ index, block })).filter(({ index }) => section !== undefined && sources[index] === section)
     if (!candidates.length) continue
     const nearest = candidates.reduce((best, c) => (Math.abs(newStarts[c.index] - span[0]) < Math.abs(newStarts[best.index] - span[0]) ? c : best))
-    result.push([span[0], span[1], nearest.block, span[3]])
+    result.push([span[0], span[1], nearest.block, span[3] as number, ...span.slice(4)])
   }
   return parseSpans(result)
 }

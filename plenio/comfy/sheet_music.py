@@ -135,15 +135,16 @@ def _workflow_node(workflow: Mapping[str, Any], node_id: str) -> Mapping[str, An
 
 
 def _spans(value: Any) -> list[list[int]]:
-    """Valid spans of a node property - ``[start, end, block, line]``, or ``[start, end]`` as Plenio 0.4.4 and
-    0.4.5 kept them (anything else is ignored, as the editor does)."""
+    """Valid spans of a node property - ``[start, end, block, line]`` (with the onsets of the line's syllables
+    or words after it, as the MusicXML import places them), or ``[start, end]`` as Plenio 0.4.4 and 0.4.5 kept
+    them (anything else is ignored, as the editor does)."""
     if not isinstance(value, list):
         return []
     spans = []
     for item in value:
         if (
             isinstance(item, list | tuple)
-            and len(item) in (2, 4)
+            and (len(item) == 2 or len(item) >= 4)
             and all(isinstance(x, int) and not isinstance(x, bool) and x >= 0 for x in item)
             and item[1] > item[0]
         ):

@@ -24,7 +24,7 @@ import difflib
 import re
 import statistics
 import unicodedata
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -110,7 +110,8 @@ class TimedLine:
 class Subtitles:
     lines: tuple[TimedLine, ...]
     timing: str
-    """``measured``: the lyrics, timed by listening; ``heard``: no lyrics given - what was heard."""
+    """``measured``: the lyrics, timed by listening; ``heard``: no lyrics given - what was heard; ``estimated``:
+    the score's times carried into the recording (``time_by_score``, the Plenio Player's guess)."""
     untimed: tuple[str, ...] = ()
     """Lyrics lines left out: nothing of them was heard and there was no room for them."""
     matched: float = 0.0
@@ -611,6 +612,33 @@ def _finish(lines: Sequence[TimedLine], duration: float) -> list[TimedLine]:
         units = tuple(Unit(min(max(u.start, start), end), u.cut, u.score) for u in line.units)
         result.append(TimedLine(line.text, start, end, units))
     return result
+
+
+def time_by_score(
+    lyrics: str, *, score: Any, layout: Any, duration: float, to_audio: Callable[[float], float]
+) -> Subtitles:
+    """The lyrics' lines where the score sings them, carried into the recording by ``to_audio`` (score seconds
+    -> song seconds) - nothing heard. The Plenio Player's times for a song exported without them (GitHub report
+    2026-10-22: "exported without lyrics times"); ``score`` and ``layout`` as for ``time_lyrics``. Lines no
+    note sings are left out; the units carry no score time (the times are no measurement of the score)."""
+    lines = sung_lines(lyrics)
+    if not lines or score is None or layout is None or not score.vocal:
+        return Subtitles((), "estimated")
+    notes = score_notes(score, layout, lines)
+    timed: list[TimedLine] = []
+    for line in lines:
+        placed = notes.get((line.block, line.line))
+        if placed is None or not placed.words:
+            continue
+        own = {k: to_audio(t) for k, t in placed.words.items()}
+        before = timed[-1].end if timed else 0.0
+        word_times = _fill(line, own, before, duration)
+        units = [Unit(u.start, u.cut) for u in _units(line, word_times, placed, 1.0)]
+        last = len(line.tokens) - 1
+        end = to_audio(placed.end) if placed.end is not None else word_times[last] + 2 * WORD_S
+        timed.append(TimedLine(line.text, units[0].start, max(end, units[-1].start + 0.2), tuple(units)))
+    inside = [line for line in timed if 0.0 <= line.start < duration]
+    return Subtitles(tuple(_finish(inside, duration)), "estimated")
 
 
 def time_heard(heard: Sequence[AsrWord], *, duration: float, timing: HeardTiming = WHISPER) -> Subtitles:

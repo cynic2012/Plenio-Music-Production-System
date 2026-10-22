@@ -2357,7 +2357,7 @@
      "collision": [
       "COMBO",
       {
-       "tooltip": "When the file exists: number (add ' (2)'), overwrite, or stop with an error.",
+       "tooltip": "When the file exists: number (add ' (2)' - also to a title another song of the folder has), overwrite, or stop with an error.",
        "advanced": true,
        "default": "number",
        "multiselect": false,

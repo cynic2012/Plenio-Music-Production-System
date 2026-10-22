@@ -1,6 +1,6 @@
 import "../../../scripts/api.js";
 import "../../../scripts/app.js";
-import { a8 as t } from "./chunks/main-Bw3JfXN4.mjs";
+import { a9 as t } from "./chunks/main-CeRGLYYL.mjs";
 export {
   t as EXTENSION_NAME
 };

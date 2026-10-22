@@ -16,6 +16,7 @@ from comfy_api.latest import io
 from ...core.audio import stems as stem_core
 from ...core.audio.effects import effects_for
 from ...core.audio.stems import MIX_SCHEMA, REST, SavedStems, make_stems, parse_mix
+from ...core.audio.transcribe import write_stem_midi
 from ...core.release import STEMS_SUFFIX, feeds, plan_release, safe_filename, write_audio
 from ...core.reports import Report, Status
 from .. import audio_models, host
@@ -28,6 +29,8 @@ EXPORT_FOLDER = "plenio/stems"
 """Where the strips marked *save* are written when no Export Release takes the mixer's report (under the
 ComfyUI output folder); with one they go next to the song, into ``<name>-stems`` (owner's request 2026-10-09)."""
 EXPORT_NODE = "PlenioExportRelease"
+DEFAULT_TEMPO = 120.0
+"""The tempo of a stem's MIDI file when the song's tempo is unknown (the notes keep their times all the same)."""
 REPORT_OUTPUT = 1
 """The Stem Mixer's report output: the stems marked *save* ride on it to Export Release."""
 
@@ -125,7 +128,8 @@ class PlenioStemMixer(io.ComfyNode):
             description=(
                 "Mixes the stems back into one song: gain, mute/solo, compression and muted time ranges per stem "
                 "(and the residual 'rest'); empty settings return the input. A strip marked *save* becomes its own "
-                "file: Export Release writes it into '<name>-stems' next to the song. Experimental."
+                "file: Export Release writes it into '<name>-stems' next to the song - the bass and the vocals also "
+                "as MIDI notes for a DAW. Experimental."
             ),
             inputs=[
                 StemsType.Input("stems", tooltip="The stems and the residual 'rest' from Separate Stems."),
@@ -146,7 +150,7 @@ class PlenioStemMixer(io.ComfyNode):
                     tooltip=(
                         "Per strip: audible, gain, gain reduction, muted time. Into Export Release: it also "
                         "carries the strips marked 'save', which the export writes next to the song "
-                        "('<name>-stems')."
+                        "('<name>-stems'; bass and vocals also as .mid)."
                     ),
                 ),
             ],
@@ -192,6 +196,10 @@ class PlenioStemMixer(io.ComfyNode):
                 for strip in reports[index]["strips"]:
                     if strip["name"] == name:
                         strip["file"] = str(path)
+            # without the song's score the tempo is unknown: the notes keep the stem's times at 120 BPM
+            for name, path, count in write_stem_midi(folder, to_save, tempo=DEFAULT_TEMPO, number=True):
+                written.append(str(path))
+                saved.append(f"{name} as MIDI: {path.name} ({count} notes, at 120 BPM; experimental)")
         notes = sorted({note for report in reports for note in report["notes"]})
         audible = [s["name"] for s in reports[0]["strips"] if s["audible"]]
         summary = (

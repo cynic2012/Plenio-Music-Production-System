@@ -12,7 +12,7 @@ import { computed } from 'vue'
 import type { VoiceSwitches } from '../../shared/playback'
 import type { ScoreView } from '../../shared/scoreView'
 import { INSTRUMENTS, INSTRUMENT_IDS, type InstrumentId, type Sounds } from './instruments'
-import { notesLabel, trackRows } from './tracks'
+import { SHIFTABLE, notesLabel, shiftBlock, trackRows } from './tracks'
 
 const props = defineProps<{
   view: ScoreView | null
@@ -33,7 +33,7 @@ function setSound(voice: string, id: InstrumentId): void {
   const key = SOUND_OF[voice]
   if (sounds.value && key) sounds.value = { ...sounds.value, [key]: id }
 }
-const emit = defineEmits<{ clearGuide: [] }>()
+const emit = defineEmits<{ clearGuide: []; shiftTrack: [track: 'vocal' | 'ins', semitones: number] }>()
 
 const visible = computed(() =>
   trackRows(props.view, props.guideCount).filter((row) => props.keepsGuide || row.voice !== 'guide')
@@ -80,6 +80,24 @@ function toggle(voice: string, on: boolean): void {
             @change="toggle(row.voice, ($event.target as HTMLInputElement).checked)"
           />
         </label>
+        <span v-if="SHIFTABLE[row.voice] && !readonly" class="octave" role="group" :aria-label="`${row.name} track octave`">
+          <button
+            class="shift"
+            :disabled="!!shiftBlock(view, SHIFTABLE[row.voice].track, -12)"
+            :title="shiftBlock(view, SHIFTABLE[row.voice].track, -12) ?? `Every ${row.name} note an octave down`"
+            @click="emit('shiftTrack', SHIFTABLE[row.voice].track, -12)"
+          >
+            −8va
+          </button>
+          <button
+            class="shift"
+            :disabled="!!shiftBlock(view, SHIFTABLE[row.voice].track, 12)"
+            :title="shiftBlock(view, SHIFTABLE[row.voice].track, 12) ?? `Every ${row.name} note an octave up`"
+            @click="emit('shiftTrack', SHIFTABLE[row.voice].track, 12)"
+          >
+            +8va
+          </button>
+        </span>
         <button
           v-if="row.voice === 'guide' && row.notes > 0 && !readonly"
           class="link"

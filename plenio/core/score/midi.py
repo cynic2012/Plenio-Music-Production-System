@@ -341,6 +341,48 @@ def export_midi(score: Score, *, guide: Sequence[GuideNote] = (), title: str = "
     return header + b"".join(tracks)
 
 
+STEM_PROGRAMS = {"bass": 33, "vocals": 53}
+"""General MIDI sounds of the transcribed stems: Electric Bass (finger), Voice Oohs (zero-based numbers)."""
+STEM_PPQ = 480
+
+
+def stem_midi(
+    notes: Sequence[tuple[float, float, int, int]],
+    *,
+    tempo: float,
+    name: str,
+    meter: tuple[int, int] = (4, 4),
+    program: int | None = None,
+) -> bytes:
+    """Notes in seconds (``start, end, pitch, velocity``: a transcribed stem, ``core.audio.transcribe``) as a
+    type-1 standard MIDI file at ``tempo``: in a DAW at that tempo every note sounds where the stem plays it."""
+    if not 1 <= tempo <= 1000:
+        raise PlenioValidationError(f"The tempo {tempo:g} BPM cannot be written.")
+    per_second = tempo / 60 * STEM_PPQ
+
+    def tick(seconds: float) -> int:
+        return max(0, round(seconds * per_second))
+
+    end = max((tick(e) for _s, e, _p, _v in notes), default=0)
+    conductor = [
+        (0, 0, _meta(0x03, name.encode("utf-8"))),
+        (0, 1, _meta(0x51, round(60_000_000 / tempo).to_bytes(3, "big"))),
+        (0, 2, _meta(0x58, bytes([meter[0], meter[1].bit_length() - 1, 24, 8]))),
+    ]
+    events: list[tuple[int, int, bytes]] = [(0, 0, _meta(0x03, name.encode("utf-8")))]
+    if program is not None:
+        events.append((0, 1, bytes([0xC0, program & 0x7F])))
+    for start, stop, pitch, velocity in notes:
+        a, b = tick(start), tick(stop)
+        events.append((a, 3, bytes([0x90, pitch & 0x7F, max(1, min(127, velocity))])))
+        events.append((max(b, a + 1), 2, bytes([0x80, pitch & 0x7F, 0])))
+    tracks = [_track(conductor, end), _track(events, end)]
+    header = _chunk(
+        b"MThd", (1).to_bytes(2, "big") + len(tracks).to_bytes(2, "big") + STEM_PPQ.to_bytes(2, "big")
+    )
+    return header + b"".join(tracks)
+
+
 # --- import -----------------------------------------------------------------------------
 
 

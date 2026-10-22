@@ -174,6 +174,13 @@ async function copy(text: string, what: string): Promise<void> {
   }
 }
 const lyricsLines = computed(() => detail.value?.lines ?? [])
+/** Where the lines' times come from, in a sentence (``timing_source`` of the song's page). */
+function timingSourceText(source: string, note?: string): string {
+  if (source === 'subtitles') return 'Times from the song’s subtitle files.'
+  if (source === 'lrc' || source === 'srt') return `Times from the .${source} file beside the song.`
+  if (source === 'estimated') return `Times estimated from the score and the music, not measured. ${note ?? ''}`.trim()
+  return 'Times measured when the song was exported.'
+}
 </script>
 
 <template>
@@ -228,11 +235,11 @@ const lyricsLines = computed(() => detail.value?.lines ?? [])
       </ol>
       <pre v-else class="plain">{{ song.lyrics || 'An instrumental - no lyrics.' }}</pre>
       <p v-if="detail?.timing_source" class="hint">
-        {{ detail.timing_source === 'subtitles' ? 'Times from the song’s subtitle files.' : detail.timing_source === 'lrc' || detail.timing_source === 'srt' ? `Times from the .${detail.timing_source} file beside the song.` : 'Times measured when the song was exported.' }}
+        {{ timingSourceText(detail.timing_source, detail.timing_note) }}
         Click a line to hear it.
       </p>
       <p v-else-if="lyricsLines.length === 0 && song.lyrics && song.other" class="hint">The lyrics from the file's tags. An <code>.lrc</code> file of the same name beside it gives their times.</p>
-      <p v-else-if="lyricsLines.length === 0 && song.lyrics" class="hint">This song was exported without lyrics times - export it again with lyrics subtitles on to follow along.</p>
+      <p v-else-if="detail && lyricsLines.length === 0 && song.lyrics" class="hint">{{ detail.timing_note || 'This song was exported without lyrics times.' }} Export it again with lyrics subtitles on to follow along.</p>
     </section>
 
     <section v-if="tab === 'notation' && detail" class="pane">

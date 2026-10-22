@@ -165,6 +165,30 @@ describe('TrackPanel', () => {
     expect(voices.guide).toBe(false)
   })
 
+  it('moves a whole Vocal or Instrument track an octave down or up (feature request 2026-10-22)', () => {
+    const shifts = vi.fn()
+    const { host } = mount({ onShiftTrack: shifts })
+    const groups = [...host.querySelectorAll('.octave')]
+    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['Vocal track octave', 'Instrument track octave'])
+    const [down, up] = [...groups[0].querySelectorAll('button')] as HTMLButtonElement[]
+    expect([down.textContent?.trim(), up.textContent?.trim()]).toEqual(['−8va', '+8va'])
+    up.click()
+    ;(groups[1].querySelector('button') as HTMLButtonElement).click()
+    expect(shifts.mock.calls).toEqual([
+      ['vocal', 12],
+      ['ins', -12]
+    ])
+    // a track without notes has nothing to move; a read-only sheet offers nothing
+    const empty = { ...VIEW, model: { ...MODEL, tracks: { ...MODEL.tracks, ins: [] } } }
+    app?.unmount()
+    const second = mount({ view: empty })
+    const instrument = second.host.querySelectorAll('.octave')[1]
+    expect([...instrument.querySelectorAll('button')].every((b) => (b as HTMLButtonElement).disabled)).toBe(true)
+    expect(instrument.querySelector('button')?.getAttribute('title')).toBe('The Instrument track has no notes')
+    app?.unmount()
+    expect(mount({ readonly: true }).host.querySelector('.octave')).toBeNull()
+  })
+
   it('offers to clear the Guide notes and hides the track when the sheet keeps none', async () => {
     const { host, clears } = mount()
     ;(host.querySelector('.link') as HTMLButtonElement).click()

@@ -384,6 +384,14 @@
   gap: 4px;
   margin-top: 4px;
 }
+/* a whole track an octave down or up: its name and the two buttons together */
+.plenio-overlay .whole-tools .track-octave {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 4px;
+  border-left: 1px solid var(--border-color, #444);
+}
 .plenio-overlay input.chord {
   width: 110px;
 }
@@ -1148,6 +1156,16 @@
 }
 .plenio-overlay .track-panel button.link {
   grid-area: clear;
+}
+/* Vocal and Instrument: the whole track an octave down or up, where the Guide track has *clear* */
+.plenio-overlay .track-panel .octave {
+  grid-area: clear;
+  display: flex;
+  gap: 6px;
+}
+.plenio-overlay .track-panel .octave button {
+  padding: 0 5px;
+  font-size: 11px;
 }
 .plenio-overlay .track-panel .destination {
   grid-area: destination;

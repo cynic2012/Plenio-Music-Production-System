@@ -22,7 +22,7 @@ from ..core.asr import (
     result_from_dict,
 )
 from ..core.assets import ensure_asset, missing_files
-from ..core.errors import PlenioUserError
+from ..core.errors import PlenioDependencyError, PlenioError, PlenioUserError, PlenioWorkerError
 from ..core.workers import WorkerEnv, WorkerLimits, run_worker
 from . import host
 from .shared import asset_catalogue
@@ -114,7 +114,8 @@ def run_asr(audio: Any, settings: AsrSettings, source_sha256: str, progress: hos
     settings before - also after a restart.
 
     Qwen3-ASR hands a language its aligner cannot time to its fallback (faster-whisper): before the run when
-    the language is given, after it when Qwen3 detected it. The result says so (``settings.engine_note``).
+    the language is given, after it when Qwen3 detected it - and the whole song when Qwen3 cannot run here (a
+    package too old or missing) while the fallback can. The result says so (``settings.engine_note``).
     """
     engine = engine_for(settings.engine)
     if engine.fallback and not can_time(engine, settings.language):
@@ -122,7 +123,18 @@ def run_asr(audio: Any, settings: AsrSettings, source_sha256: str, progress: hos
             _run(audio, replace(settings, engine=engine.fallback), source_sha256, progress),
             fallback_note(engine, settings.language),
         )
-    result = _run(audio, settings, source_sha256, progress)
+    try:
+        result = _run(audio, settings, source_sha256, progress)
+    except PlenioWorkerError as error:
+        if not engine.fallback or error.details.get("type") != PlenioDependencyError.__name__:
+            raise
+        try:
+            heard = _run(audio, replace(settings, engine=engine.fallback), source_sha256, progress)
+        except PlenioError:
+            raise error from None  # neither can run: what Qwen3 needs is the fix to name
+        return _with_note(
+            heard, f"{engine.label} could not run ({error.message}): heard by {engine.fallback}"
+        )
     if engine.fallback and result.settings.get("timed") is False:
         again = replace(settings, engine=engine.fallback, language=settings.language or result.language)
         return _with_note(_run(audio, again, source_sha256, progress), fallback_note(engine, result.language))

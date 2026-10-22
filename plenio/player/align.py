@@ -158,6 +158,26 @@ def estimate(audio: Path, score_text: str) -> dict[str, Any] | None:
     }
 
 
+def score_to_audio(seconds: float, found: dict[str, Any]) -> float:
+    """Score time -> song time by an estimate: between two anchors by interpolation, outside them along the
+    warp (the page's ``scoreToAudio``, ``frontend/src/player/timing.ts``)."""
+    a, b = (float(x) for x in (found.get("warp") or [1.0, 0.0]))
+    anchors: list[tuple[float, float]] = []
+    for t, s in found.get("anchors") or []:
+        if not anchors or (t > anchors[-1][0] and s > anchors[-1][1]):
+            anchors.append((float(t), float(s)))
+    if not anchors:
+        return a * seconds + b
+    if seconds <= anchors[0][1]:
+        return anchors[0][0] - (anchors[0][1] - seconds) * a
+    if seconds >= anchors[-1][1]:
+        return anchors[-1][0] + (seconds - anchors[-1][1]) * a
+    for (t0, s0), (t1, s1) in zip(anchors, anchors[1:], strict=False):
+        if s0 <= seconds <= s1:
+            return t0 + (seconds - s0) / (s1 - s0) * (t1 - t0)
+    return a * seconds + b  # not reached: the anchors cover the score between their ends
+
+
 def cached_estimate(audio: Path, score_text: str, cache: Path) -> dict[str, Any] | None:
     """:func:`estimate`, worked out once per recording and score (``<cache>/align/<key>.json``)."""
     stat = audio.stat()
