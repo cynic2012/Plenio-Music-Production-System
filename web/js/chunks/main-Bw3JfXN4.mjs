@@ -656,7 +656,7 @@ function Ks(e, t = window) {
   return t.addEventListener("drop", n, !0), () => t.removeEventListener("drop", n, !0);
 }
 async function Zs(e) {
-  const t = () => tn(import.meta.url, nn), { openContinueDialog: n } = await qe(() => import("./openContinue-D5BGD3ht.mjs"), t);
+  const t = () => tn(import.meta.url, nn), { openContinueDialog: n } = await qe(() => import("./openContinue-B7Y0KARU.mjs"), t);
   n(e.fetcher, (o) => dt(e, o));
 }
 const er = "COMFY_DYNAMICCOMBO_V3";
@@ -2421,7 +2421,7 @@ const Ci = (e, t, n) => {
   async function m() {
     const $ = Se(o);
     $ === null && (r.textContent = "The stored state is unreadable; it will be replaced when you apply.");
-    const k = Ee(String(e.id)), u = (e.inputs ?? []).filter((N) => N.link != null).map((N) => N.name), F = $ ?? { schema: "plenio.sheet_state/1", docs: {} }, A = k?.owned ?? co(u, F), b = String(e.widgets?.find((N) => N.name === "review")?.value ?? "continue"), g = b === "as the brief says" ? k?.review ?? "continue" : b, y = () => tn(import.meta.url, nn), { openSheetDialog: w } = await qe(() => import("./open-D6rLe8y8.mjs"), y), { parseGuide: L, serializeGuide: E } = await qe(() => import("./tracks-DxmZeggM.mjs"), y), { parseShift: U, parseSpans: z } = await qe(() => import("./lyricPlacement-rAf-x_fn.mjs"), y);
+    const k = Ee(String(e.id)), u = (e.inputs ?? []).filter((N) => N.link != null).map((N) => N.name), F = $ ?? { schema: "plenio.sheet_state/1", docs: {} }, A = k?.owned ?? co(u, F), b = String(e.widgets?.find((N) => N.name === "review")?.value ?? "continue"), g = b === "as the brief says" ? k?.review ?? "continue" : b, y = () => tn(import.meta.url, nn), { openSheetDialog: w } = await qe(() => import("./open-CN3lnsuy.mjs"), y), { parseGuide: L, serializeGuide: E } = await qe(() => import("./tracks-DxmZeggM.mjs"), y), { parseShift: U, parseSpans: z } = await qe(() => import("./lyricPlacement-rAf-x_fn.mjs"), y);
     if (!ut) throw new Error("Plenio: API not initialised");
     let R = null;
     try {

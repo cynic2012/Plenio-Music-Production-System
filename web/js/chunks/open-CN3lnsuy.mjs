@@ -1,5 +1,5 @@
 import { d as Dt, m as Re, a as Hn, i as w, c as C, b as p, t as I, F as fe, r as xe, n as ze, j as ae, e as G, g as W, h as B, o as qs, u as E, w as Oe, v as dt, p as st, f as Ue, q as Nt, s as oi, x as ks, y as _i, z as Sn, A as ut, B as Ui, C as eo, D as Zt, E as Uf, G as En, H as On, I as Gf, k as jf, l as qf } from "./dialog-cQCiTnNN.mjs";
-import { a as Yf, P as Uc, b as Xf, t as Jf, c as Zf, T as To, d as Qf, s as Ho, f as ep, e as tp, g as np, h as ip, j as sp, k as op, m as rp, n as lp, o as za, q as ap, r as up, I as Gc, u as zo, w as cp, x as hp, y as dp, z as fp, A as pp, B as mp, R as gp, C as vp, S as yp, D as bp, N as kp, E as wp, F as jt, v as xp, G as $o, H as Wa, J as Sp, K as Fa, L as Cp, M as Mp, O as Ap, Q as Tp, U as Ka, V as $p, W as Dp, X as Er, Y as _a, Z as Ua, _ as Lp, $ as Ga, a0 as Bp, a1 as Op, a2 as Ep, a3 as ja, a4 as qa, a5 as Ya, a6 as Ir, a7 as Ip } from "./main-BFy5bH2X.mjs";
+import { a as Yf, P as Uc, b as Xf, t as Jf, c as Zf, T as To, d as Qf, s as Ho, f as ep, e as tp, g as np, h as ip, j as sp, k as op, m as rp, n as lp, o as za, q as ap, r as up, I as Gc, u as zo, w as cp, x as hp, y as dp, z as fp, A as pp, B as mp, R as gp, C as vp, S as yp, D as bp, N as kp, E as wp, F as jt, v as xp, G as $o, H as Wa, J as Sp, K as Fa, L as Cp, M as Mp, O as Ap, Q as Tp, U as Ka, V as $p, W as Dp, X as Er, Y as _a, Z as Ua, _ as Lp, $ as Ga, a0 as Bp, a1 as Op, a2 as Ep, a3 as ja, a4 as qa, a5 as Ya, a6 as Ir, a7 as Ip } from "./main-Bw3JfXN4.mjs";
 import { a as Rp, r as Pp, n as Np, e as Rr, b as Vp, s as Hp, p as zp } from "./notationExport-DkCMgjck.mjs";
 import { lineKey as Wo, parseSpans as jc, editRange as to, sameSpans as Do, partOf as Wp, settle as Fp, placedLines as Xa, withBlockSpans as Kp, parseLineKey as _p, clipOfLines as Ja, partAt as Up, remapSpans as Gp, followSpans as jp } from "./lyricPlacement-rAf-x_fn.mjs";
 import { notesLabel as qp, trackRows as Yp, parseGuide as Xp, sameGuide as ws, guideNotes as Jp, remapGuide as Zp } from "./tracks-DxmZeggM.mjs";
@@ -18775,7 +18775,7 @@ function bC(i, e) {
   if (e?.bars?.length)
     return !i || !e.bar_prints?.length ? i ? i.measures.map((t, n) => e.bars[n] ?? null) : e.bars : yC(gC(i), e.bar_prints).map((t) => t === null ? null : e.bars[t] ?? null);
 }
-const kC = "1.0.2";
+const kC = "1.1.0";
 function wC(i) {
   return {
     sounds: { ...i.sounds },
