@@ -74,7 +74,7 @@ def test_hq1_and_hq2_with_the_released_universr(gpu_server: ComfyServer) -> None
     second = entry["outputs"]["5"]["plenio_summary"][0]["markdown"]
     print(first, second, sep="\n")
     assert first.startswith("**HQ 1 · Stereo Cleanup: standard")
-    assert "UniverSR from 8 kHz, new highs from 8.2 kHz" in second
+    assert "UniverSR from 8 kHz (4 steps), new highs from 8.2 kHz" in second
     # the model generated highs: without them the envelope match leaves 15 % of the original's (-16 dB)
     highs = float(second.split("; highs ")[1].split(" dB")[0])
     assert highs > -10.0, second

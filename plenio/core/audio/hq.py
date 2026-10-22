@@ -54,7 +54,7 @@ AUTO = "auto - from the song's genre"
 CUSTOM = "custom - the fields below"
 PRESET_LABELS = {
     STANDARD: "standard - pop, hip-hop, soul, world",
-    GENTLE: "gentle - acoustic, classical, jazz, folk",
+    GENTLE: "gentle - classical, jazz, folk",
     STRONG: "strong - rock, metal, punk",
     WIDE: "wide - electronic, dance, ambient",
 }
@@ -160,8 +160,6 @@ GENRE_WORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "swing",
             "bossa",
             "folk",
-            "acoustic",
-            "singer-songwriter",
             "bluegrass",
             "americana",
             "country",
@@ -315,6 +313,27 @@ def _lufs_change(before: np.ndarray, after: np.ndarray, rate: int) -> float | No
     return None if a is None or b is None else round(float(b) - float(a), 2)
 
 
+MIN_FRAMES = 8192
+"""Shorter audio (0.17 s at 48 kHz) is passed on unchanged with a note: the spectra need more."""
+
+
+def _skipped(
+    data: np.ndarray,
+    stage: str,
+    preset: str,
+    profile: str | None,
+    why: str,
+    settings: Any,
+    note: str,
+    started: float,
+    clock: Callable[[], float],
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """The audio unchanged and a report that says why (R7: a visible *skipped*, never a silent pass-through)."""
+    report = _base_report(stage, preset, profile, why, settings)
+    report.update(skipped=True, seconds=round(clock() - started, 3), notes=[note])
+    return data + 0.0, report
+
+
 def _base_report(stage: str, preset: str, profile: str | None, why: str, settings: Any) -> dict[str, Any]:
     return {
         "schema": HQ_SCHEMA,
@@ -349,7 +368,7 @@ class StereoCleanup:
 
 STEREO_PROFILES = {
     STANDARD: StereoCleanup(10500.0, 0.65, 0.18),
-    GENTLE: StereoCleanup(12500.0, 0.45, 0.10),
+    GENTLE: StereoCleanup(11500.0, 0.55, 0.14),
     STRONG: StereoCleanup(9500.0, 0.80, 0.25),
     WIDE: StereoCleanup(14000.0, 0.40, 0.12),
 }
@@ -396,6 +415,18 @@ def stereo_cleanup(
     data = as_channels(samples)
     rate = check_rate(rate)
     options = settings.checked()
+    if data.shape[1] < MIN_FRAMES:
+        return _skipped(
+            data,
+            "stereo cleanup",
+            preset,
+            profile,
+            why,
+            options,
+            "too short to clean: passed on unchanged",
+            started,
+            clock,
+        )
     notes: list[str] = []
     if data.shape[0] < 2:
         out = data + 0.0 if options.warmth <= 0 else _exciter(data, options.warmth)
@@ -457,10 +488,13 @@ class RegenerateHighs:
 
 REGENERATE_PROFILES = {
     STANDARD: RegenerateHighs(8200.0, 0.85, 0.90),
-    GENTLE: RegenerateHighs(12200.0, 0.70, 0.90),
+    GENTLE: RegenerateHighs(8200.0, 0.80, 0.90),
     STRONG: RegenerateHighs(8200.0, 0.95, 0.90),
-    WIDE: RegenerateHighs(12200.0, 0.85, 0.95),
+    WIDE: RegenerateHighs(8200.0, 0.85, 0.95),
 }
+"""Every profile regenerates from 8.2 kHz, the crossover the owner listened to (2026-10-22: a gentle profile
+from 12.2 kHz, chosen by *auto* for a singer-songwriter song, changed the song too little to hear); they differ
+only in the share of new highs and how closely those follow the original's level."""
 ENVELOPE_SECONDS = 0.04
 MAX_ENVELOPE_GAIN = 2.5
 
@@ -495,6 +529,17 @@ def condition_for(engine: Engine, from_hz: float) -> Engine:
     return cast(ConditionedEngine, engine).at_input_rate(max(fitting))
 
 
+def _gaussian_smooth(values: np.ndarray, sigma: float) -> np.ndarray:
+    """``scipy.ndimage.gaussian_filter1d(values, sigma)`` (mode *reflect*, truncate 4) as an FFT convolution: the
+    same numbers, but a 40 ms envelope of a four-minute song in a second instead of minutes."""
+    radius = int(4.0 * sigma + 0.5)
+    offsets = np.arange(-radius, radius + 1, dtype=np.float64)
+    kernel = np.exp(-0.5 * (offsets / sigma) ** 2)
+    kernel /= kernel.sum()
+    padded = np.pad(values, radius, mode="symmetric")
+    return np.asarray(_signal().oaconvolve(padded, kernel, mode="valid"))
+
+
 def _engine_input(samples: np.ndarray, rate: int, target: int) -> np.ndarray:
     """The model's input at its condition rate, through SciPy's default polyphase filter (as the proposal).
 
@@ -527,11 +572,23 @@ def regenerate_highs(
     rate = check_rate(rate)
     options = settings.checked()
     if options.from_hz >= rate / 2 - 500:
-        raise PlenioUserError(
-            f"New highs from {options.from_hz:g} Hz leaves no band at {rate} Hz.",
-            hint=f"Choose at most {rate / 2 - 500:g} Hz.",
+        note = (
+            f"at {rate} Hz there is no band above {options.from_hz / 1000:g} kHz for new highs: passed on unchanged "
+            "(convert the song to 44.1 or 48 kHz first - Loudness & Dynamics or Refine - to regenerate its highs)"
         )
-    ndimage = _ndimage()
+        return _skipped(data, "regenerate highs", preset, profile, why, options, note, started, clock)
+    if data.shape[1] < MIN_FRAMES:
+        return _skipped(
+            data,
+            "regenerate highs",
+            preset,
+            profile,
+            why,
+            options,
+            "too short: passed on unchanged",
+            started,
+            clock,
+        )
     model = condition_for(engine, options.from_hz)
     source = data
     edge = model.input_rate / 2
@@ -549,8 +606,8 @@ def regenerate_highs(
         low = _zero_phase(data[channel], options.from_hz, rate, "low")
         high = data[channel] - low
         new = generated[channel] - _zero_phase(generated[channel], options.from_hz, rate, "low")
-        envelope = np.sqrt(ndimage.gaussian_filter1d(high**2, sigma=sigma) + 1e-12)
-        new_envelope = np.sqrt(ndimage.gaussian_filter1d(new**2, sigma=sigma) + 1e-12)
+        envelope = np.sqrt(np.maximum(_gaussian_smooth(high**2, sigma), 0.0) + 1e-12)
+        new_envelope = np.sqrt(np.maximum(_gaussian_smooth(new**2, sigma), 0.0) + 1e-12)
         matched = new * np.clip(envelope / new_envelope * options.level_match, 0.0, MAX_ENVELOPE_GAIN)
         out[channel] = low + (1.0 - options.new_share) * high + options.new_share * matched
     top = min(20000.0, rate / 2)
@@ -559,6 +616,7 @@ def regenerate_highs(
         engine=model.name,
         engine_input_rate=int(model.input_rate),
         engine_edge_hz=edge,
+        engine_steps=getattr(model, "ode_steps", None),
         highs_change_db=_change(
             _band_db(data, rate, options.from_hz, top), _band_db(out, rate, options.from_hz, top)
         ),
@@ -649,6 +707,18 @@ def dereverb(
     data = as_channels(samples)
     rate = check_rate(rate)
     options = settings.checked()
+    if data.shape[1] < MIN_FRAMES:
+        return _skipped(
+            data,
+            "de-reverb",
+            preset,
+            profile,
+            why,
+            options,
+            "too short to process: passed on unchanged",
+            started,
+            clock,
+        )
     if options.dereverb <= 0 and options.phase_lock <= 0:
         out = data + 0.0
     else:

@@ -416,7 +416,8 @@ def test_audio_hq_runs_in_the_master_block_before_the_eq() -> None:
         for node in path[:3]:
             assert node["widgets_values"][0] == hq.AUTO, name
         highs = path[1]
-        assert highs["widgets_values"][-1] == "fixed", name  # the seed must not change on every queue
+        # the seed stays fixed (a new one on every queue would re-run the model), the model runs its 4 steps
+        assert highs["widgets_values"][1:] == [0, "fixed", 4], name
         loader = next(n for n in nodes if n["type"] == "PlenioAudioModelLoader")
         assert loader["widgets_values"][:2] == ["super-resolution", "pytorch_model.bin"]
         assert loader["properties"]["models"][0]["directory"] == "audio_sr"

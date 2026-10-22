@@ -1,9 +1,45 @@
 # Catalogue of Plenio-owned assets (files that are not ComfyUI model weights).
 # Every asset is pinned to a full commit hash; sizes are mandatory, SHA-256 where published.
 # ComfyUI-format weights are declared in the templates (properties.models) instead.
-# Lyrics ASR models arrived with the YuE2 Cover path (Phase 4B).
+# Lyrics ASR models arrived with the YuE2 Cover path (Phase 4B); Qwen3-ASR with its forced aligner is the default
+# engine since 2026-10-22, faster-whisper its fallback for the languages the aligner cannot time.
 
 schema = "plenio.assets/1"
+
+[[asset]]
+id = "qwen3-asr-1.7b-hf"
+kind = "asr"
+repo = "Qwen/Qwen3-ASR-1.7B-hf"
+revision = "bcd2b5b7f32b480ab5790554cfa8347f246a14f3"
+licence = "Apache-2.0"
+description = "Qwen3-ASR 1.7B (transformers-native checkpoint), lyrics ASR"
+role = "lyrics ASR: Transcribe Lyrics (2 · YuE2 · Cover: original lyrics, the sung-lyrics check) and the lyrics subtitles of Export Release (every song template)"
+files = [
+  { path = "chat_template.jinja", size = 1434 },
+  { path = "config.json", size = 2399 },
+  { path = "generation_config.json", size = 165 },
+  { path = "model.safetensors", size = 4076193080, sha256 = "2db53c7d81bd9b8cbc6a074e89be2c968a0d373fb4ee68bb1b1e14f7042dfee1" },
+  { path = "processor_config.json", size = 487 },
+  { path = "tokenizer.json", size = 11429653 },
+  { path = "tokenizer_config.json", size = 998 },
+]
+
+[[asset]]
+id = "qwen3-forcedaligner-0.6b-hf"
+kind = "asr"
+repo = "Qwen/Qwen3-ForcedAligner-0.6B-hf"
+revision = "c07281df297b9905d24a508279258cccf987a064"
+licence = "Apache-2.0"
+description = "Qwen3-ForcedAligner 0.6B (transformers-native checkpoint), word times of the lyrics ASR"
+role = "word times of the lyrics ASR (with Qwen3-ASR; 11 languages)"
+files = [
+  { path = "chat_template.jinja", size = 551 },
+  { path = "config.json", size = 248029 },
+  { path = "model.safetensors", size = 1835545960, sha256 = "00568245ceca5af1991d28562a75fe1ddc9bfeb041c27fda66947ea05c47fb86" },
+  { path = "processor_config.json", size = 487 },
+  { path = "tokenizer.json", size = 11429842 },
+  { path = "tokenizer_config.json", size = 998 },
+]
 
 [[asset]]
 id = "faster-whisper-large-v3"
@@ -12,6 +48,7 @@ repo = "Systran/faster-whisper-large-v3"
 revision = "edaa852ec7e145841d8ffdb056a99866b5f0a478"
 licence = "MIT"
 description = "Whisper large-v3 converted for CTranslate2 (faster-whisper), lyrics ASR"
+role = "fallback of the lyrics ASR for the languages Qwen3's aligner cannot time (needs the faster-whisper package)"
 files = [
   { path = "config.json", size = 2394 },
   { path = "model.bin", size = 3087284237, sha256 = "69f74147e3334731bc3a76048724833325d2ec74642fb52620eda87352e3d4f1" },

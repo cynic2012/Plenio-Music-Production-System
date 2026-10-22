@@ -25,7 +25,7 @@
     "Node name for S&R": "MarkdownNote"
    },
    "widgets_values": [
-    "# 0 · System Check\n\nPress **Run**. The node lists:\n\n- ComfyUI, frontend and Plenio versions, Python and torch\n- GPUs, VRAM and system RAM\n- which model files of each template are installed, and what is still missing\n- optional Python packages and the Plenio assets (lyrics ASR)\n- the offline and download policy (`PLENIO_OFFLINE`, `PLENIO_AUTO_DOWNLOAD`)\n- the hardware rule table, with the row for this machine marked\n\nRecommendations are text only. Plenio never changes a setting or a model on its own; you choose the model files in the loader nodes of each template.\n\nSet **detail** to `full` to include the raw facts as JSON, for example for a bug report.\n"
+    "# 0 · System Check\n\nPress **Run**. The node lists:\n\n- ComfyUI, frontend and Plenio versions, Python and torch\n- GPUs, VRAM and system RAM\n- which model files of each template are installed, what is still missing, and the folder each one goes into (with its download link)\n- the Plenio assets - the lyrics ASR Qwen3-ASR, its aligner and the Whisper fallback - with the folder Plenio keeps them in and whether they are there\n- optional Python packages\n- the offline and download policy (`PLENIO_OFFLINE`, `PLENIO_AUTO_DOWNLOAD`)\n- the hardware rule table, with the row for this machine marked\n\nRecommendations are text only. Plenio never changes a setting or a model on its own; you choose the model files in the loader nodes of each template.\n\nSet **detail** to `full` to include the raw facts as JSON, for example for a bug report.\n"
    ]
   },
   {

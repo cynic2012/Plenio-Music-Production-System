@@ -354,7 +354,8 @@ def master() -> Blueprint:
     inside the block - all audio work after the render lives in this block now (the REFINE block is gone).
     """
     g = Graph(first_id=401)
-    hq_size = (380, 250 + SUMMARY_ROOM)  # the preset (custom adds three fields) and the run summary
+    # two socket rows and the preset, the run summary below (custom's fields make the node grow by itself)
+    hq_size = (380, 120 + SUMMARY_ROOM)
     stereo = g.add("PlenioHQStereoCleanup", (0, 0), size=hq_size, widgets={"preset": hq.AUTO})
     loader = g.add(
         "PlenioAudioModelLoader",
@@ -366,7 +367,7 @@ def master() -> Blueprint:
         properties=model(SR_MODEL),
     )
     highs = g.add(
-        "PlenioHQRegenerateHighs", (440, 80), size=(380, 300 + SUMMARY_ROOM), widgets={"preset": hq.AUTO}
+        "PlenioHQRegenerateHighs", (440, 80), size=(380, 180 + SUMMARY_ROOM), widgets={"preset": hq.AUTO}
     )
     dereverb = g.add(
         "PlenioHQDeReverb",
@@ -1879,8 +1880,9 @@ file name: `{{artist}} - {{title}}`. A name that is no variable stops the run wh
 anything renders.
 
 **Subtitles:** *lyrics subtitles (SRT)* (on) writes `<name> (lines).srt` - whole lines - and
-`<name> (notes).srt` - the lines painted on note by note - next to the song, timed by listening (the lyrics
-ASR, 3.1 GB, fetched on first use).
+`<name> (notes).srt` - the lines painted on note by note - next to the song, timed by listening: Qwen3-ASR
+hears the words and Qwen3-ForcedAligner times them (4.1 + 1.8 GB, fetched on first use; faster-whisper for a
+language the aligner does not know).
 """
 TAGS_NOTE_SIZE = (460, 760)
 
@@ -1916,12 +1918,12 @@ STEMS_TEXT = (
 HQ_TEXT = (
     "**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer "
     "in the render's highs; *HQ 2 · Regenerate Highs* lets the UniverSR model (229 MB) generate new highs above "
-    "8.2 kHz and blends them in at the original's level - on a 16 GB GPU it takes about 2-3 minutes per minute "
-    "of music; *HQ 3 · De-Reverb* (bypassed) dries the short metallic room but also dulls the highs. Their "
-    "presets are on **auto**: the brief's genre picks *standard*, *gentle* (acoustic, classical, jazz, folk), "
-    "*strong* (rock, metal, punk) or *wide* (electronic, dance, ambient). Open the block (the icon at the top "
-    "right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). The user guide *Audio HQ* "
-    "covers it."
+    "8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s per second of music on an "
+    "RTX 5060 Ti (its *model steps* 3: about 1.1 s); *HQ 3 · De-Reverb* (bypassed) dries the short metallic room "
+    "but also dulls the highs. Their presets are on **auto**: the brief's genre picks *standard*, *gentle* "
+    "(classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient). Open the "
+    "block (the icon at the top right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). "
+    "The user guide *Audio HQ* covers it."
 )
 CREATIVITY_TEXT = (
     "**Creativity** (the brief's slider): 0 steady, 50 the reference - exactly as before -, 100 experimental. It "
@@ -2211,7 +2213,7 @@ ABOUT_COVER = f"""# 2 · YuE2 · Cover
 
 **App mode:** switch *Graph / App* at the top left for a simple form: the source file, the mode, the cover style, the creative mode with both closeness sliders, the creativity, the writer model, the seeds, the two Song Sheet buttons (the review stops work in the app; their status line says where the run stands) and the results. The other options of *original lyrics* and *new lyrics* are set in the graph.
 
-**Models** (downloaded on first use): YuE2 3B int8, SheetSage2, the instrumental adapter, the Gemma 4 E4B writer; the lyrics ASR (faster-whisper large-v3, 3.1 GB) is fetched by Plenio when first needed. YuE2, SheetSage2 and the adapter are **CC BY-NC 4.0 (non-commercial)**.
+**Models** (downloaded on first use): YuE2 3B int8, SheetSage2, the instrumental adapter, the Gemma 4 E4B writer; the lyrics ASR (Qwen3-ASR 1.7B with Qwen3-ForcedAligner 0.6B, 4.1 + 1.8 GB; faster-whisper large-v3, 3.1 GB, only for a language the aligner does not know) is fetched by Plenio when first needed. YuE2, SheetSage2 and the adapter are **CC BY-NC 4.0 (non-commercial)**.
 """
 
 
@@ -2668,7 +2670,7 @@ ABOUT_ENHANCE = """# 4 · Enhance & Master
 Finishes an existing recording (for example a take you rendered earlier) without any music model.
 
 1. Upload the file in **Load Audio**.
-2. **Audio HQ** runs before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the highs, *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 2-3 minutes per minute of music on a 16 GB GPU) - also the cure for a **band-limited** source such as an old MP3. *HQ 3 · De-Reverb* is bypassed (select it, **Ctrl+B**). There is no brief here, so the presets are *standard*; pick *gentle* (acoustic, classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) for your music (the user guide *Audio HQ* covers them).
+2. **Audio HQ** runs before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the highs, *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 1.5 s per second of music on an RTX 5060 Ti) - also the cure for a **band-limited** source such as an old MP3. *HQ 3 · De-Reverb* is bypassed (select it, **Ctrl+B**). There is no brief here, so the presets are *standard*; pick *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) for your music (the user guide *Audio HQ* covers them).
 3. To rebalance a finished mix, select *Stems (optional)* and press **Ctrl+B**: *Separate Stems* splits the file into vocals, drums, bass and other, the *Stem Mixer* balances them (the residual *rest* keeps a neutral mix exact; the user guide *Stems* covers it). It is bypassed by default.
 4. **EQ** starts with a gentle warm tone match (*match preset*). Choose *manual* to draw your own curve, *flat* for no EQ, or connect a **reference** recording and pick a reference recipe.
 5. **Loudness & Dynamics** brings the song to -14 LUFS with a true peak of at most -1 dBTP (streaming); pick another target or compression style if you like.
@@ -2688,11 +2690,11 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     source = g.add("LoadAudio", (0, 0), size=(340, 140), title="Source")
     audio, stems_node = stems_stage(g, bp, 0, audio=(source, "AUDIO"), y=260)
     standard = hq.PRESET_LABELS[hq.STANDARD]
-    hq_size = (380, 250 + SUMMARY_ROOM)
+    hq_size = (380, 120 + SUMMARY_ROOM)
     stereo = g.add("PlenioHQStereoCleanup", (420, 0), size=hq_size, widgets={"preset": standard})
     loader = g.add(
         "PlenioAudioModelLoader",
-        (420, 430),
+        (420, 290),
         size=(340, 110),
         collapsed=True,
         title="Super-resolution model (HQ 2)",
@@ -2700,11 +2702,11 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         properties=model(SR_MODEL),
     )
     highs = g.add(
-        "PlenioHQRegenerateHighs", (420, 500), size=(380, 300 + SUMMARY_ROOM), widgets={"preset": standard}
+        "PlenioHQRegenerateHighs", (420, 360), size=(380, 180 + SUMMARY_ROOM), widgets={"preset": standard}
     )
     dereverb = g.add(
         "PlenioHQDeReverb",
-        (420, 980),
+        (420, 700),
         size=hq_size,
         title="HQ 3 · De-Reverb (optional)",
         widgets={"preset": standard},
@@ -2783,8 +2785,9 @@ Press **Run**. The node lists:
 
 - ComfyUI, frontend and Plenio versions, Python and torch
 - GPUs, VRAM and system RAM
-- which model files of each template are installed, and what is still missing
-- optional Python packages and the Plenio assets (lyrics ASR)
+- which model files of each template are installed, what is still missing, and the folder each one goes into (with its download link)
+- the Plenio assets - the lyrics ASR Qwen3-ASR, its aligner and the Whisper fallback - with the folder Plenio keeps them in and whether they are there
+- optional Python packages
 - the offline and download policy (`PLENIO_OFFLINE`, `PLENIO_AUTO_DOWNLOAD`)
 - the hardware rule table, with the row for this machine marked
 

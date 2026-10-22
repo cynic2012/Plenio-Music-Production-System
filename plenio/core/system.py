@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .assets import Asset
 from .models import Inventory, ModelFile, readiness, size_text, template_names
 from .reports import Report, Status, worst
 
@@ -52,6 +53,12 @@ class SystemFacts:
     location without its line)."""
     assets: Mapping[str, str] = field(default_factory=dict)
     """Plenio assets: id -> ``installed``, ``configured folder`` or ``not downloaded``."""
+    models_root: str = ""
+    """ComfyUI's (first) models folder, where the template model files go."""
+    asset_root: str = ""
+    """Where Plenio keeps its assets: ``<asset_root>/<kind>/<id>``."""
+    asset_folders: Mapping[str, str] = field(default_factory=dict)
+    """A configured folder per asset id (``[asset_paths]`` of the Plenio config), instead of the asset root."""
     llm: Mapping[str, Any] = field(default_factory=dict)
     """Local LLM: ``runtimes`` (names, best first), ``models`` (source -> count), ``files`` (GGUF files
     among them), ``notes``."""
@@ -192,6 +199,22 @@ def _model_rows(catalogue: Mapping[str, ModelFile], inventory: Inventory) -> lis
     return rows
 
 
+def _asset_rows(assets: Mapping[str, Asset], facts: SystemFacts) -> list[dict[str, Any]]:
+    root = facts.asset_root.rstrip("/\\") if facts.asset_root else "models/plenio"
+    return [
+        {
+            "asset": asset.id,
+            "folder": facts.asset_folders.get(asset.id) or f"{root}/{asset.kind}/{asset.id}",
+            "size": size_text(asset.total_size),
+            "licence": asset.licence,
+            "role": asset.role or asset.description,
+            "status": facts.assets.get(asset.id, "unknown"),
+            "source": f"https://huggingface.co/{asset.repo}/tree/{asset.revision}",
+        }
+        for asset in assets.values()
+    ]
+
+
 def _llm_lines(llm: Mapping[str, Any]) -> list[str]:
     """What the Local LLM node can use on this machine (nothing when the facts were not gathered)."""
     if not llm:
@@ -211,7 +234,11 @@ def _llm_lines(llm: Mapping[str, Any]) -> list[str]:
     return lines
 
 
-def check_system(facts: SystemFacts, catalogue: Mapping[str, ModelFile] | None = None) -> Report:
+def check_system(
+    facts: SystemFacts,
+    catalogue: Mapping[str, ModelFile] | None = None,
+    assets: Mapping[str, Asset] | None = None,
+) -> Report:
     statuses: list[Status] = []
     messages: list[str] = []
     comfy = parse_version(facts.comfyui_version)
@@ -327,6 +354,9 @@ def check_system(facts: SystemFacts, catalogue: Mapping[str, ModelFile] | None =
         ]
         data["templates"].sort(key=lambda row: row["template"])
         data["models"] = _model_rows(catalogue, inventory)
+        data["models_root"] = facts.models_root
+    if assets is not None:
+        data["assets"] = _asset_rows(assets, facts)
     status = worst(statuses)
     summary = "System looks usable for Plenio." if status is Status.OK else "System check found warnings."
     return Report(kind="system_check", status=status, summary=summary, messages=tuple(messages), data=data)
@@ -364,16 +394,40 @@ def to_markdown(report: Report) -> str:
         ]
     models = report.data.get("models")
     if models:
+        root = report.data.get("models_root") or "ComfyUI/models"
         lines += [
             "",
             "### Model files",
             "",
-            "| File | Folder | Size | Licence | Status |",
-            "|---|---|---|---|---|",
+            f"Into the folder named below inside ComfyUI's models folder (`{root}`), or the same folder of an "
+            "`extra_model_paths.yaml` location.",
+            "",
+            "| File | Folder | Size | Licence | Used by | Status |",
+            "|---|---|---|---|---|---|",
         ]
         for row in models:
+            used = ", ".join(row.get("used_by", [])) or "-"
+            name = f"[`{row['file']}`]({row['url']})" if row.get("url") else f"`{row['file']}`"
             lines.append(
-                f"| `{row['file']}` | {row['folder']} | {row['size']} | {_cell(row['licence'])} | {row['status']} |"
+                f"| {name} | `models/{row['folder']}` | {row['size']} | {_cell(row['licence'])} | {_cell(used)} | "
+                f"{row['status']} |"
+            )
+    plenio_assets = report.data.get("assets")
+    if plenio_assets:
+        lines += [
+            "",
+            "### Plenio assets",
+            "",
+            "Plenio fetches a missing asset itself the first time a node needs it (automatic asset downloads on); "
+            "offline, place its files into the folder shown (from the source link).",
+            "",
+            "| Asset | Folder | Size | Licence | Used for | Status |",
+            "|---|---|---|---|---|---|",
+        ]
+        for row in plenio_assets:
+            lines.append(
+                f"| [`{row['asset']}`]({row['source']}) | `{row['folder']}` | {row['size']} | {_cell(row['licence'])} | "
+                f"{_cell(row['role'])} | {row['status']} |"
             )
     lines += [
         "",

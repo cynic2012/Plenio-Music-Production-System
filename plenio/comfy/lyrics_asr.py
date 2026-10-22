@@ -4,10 +4,23 @@ Release's lyrics subtitles)."""
 from __future__ import annotations
 
 import uuid
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from ..core.asr import AsrCache, AsrNotes, AsrResult, AsrSettings, cache_key, engine_for, result_from_dict
+from ..core.asr import (
+    QWEN3_LANGUAGES,
+    AsrCache,
+    AsrEngine,
+    AsrNotes,
+    AsrResult,
+    AsrSettings,
+    cache_key,
+    can_time,
+    engine_for,
+    fallback_note,
+    result_from_dict,
+)
 from ..core.assets import ensure_asset, missing_files
 from ..core.errors import PlenioUserError
 from ..core.workers import WorkerEnv, WorkerLimits, run_worker
@@ -38,11 +51,13 @@ LANGUAGES = {
     "ko": "Korean",
     "zh": "Chinese",
 }
-ASR_VRAM_BYTES = 4 * 2**30
+LANGUAGES.update(
+    {code: name for name, code in QWEN3_LANGUAGES.items() if code not in LANGUAGES}
+)  # the other languages Qwen3-ASR hears (Cantonese, Indonesian, Thai ...)
 
 
 def language_code(value: str) -> str:
-    """``auto``/empty -> ``""``; a code or an English language name -> the Whisper code."""
+    """``auto``/empty -> ``""``; a code or an English language name -> its code."""
     text = value.strip()
     if not text or text.lower() == "auto":
         return ""
@@ -87,16 +102,46 @@ def asr_cache() -> AsrCache:
     return AsrCache(host.user_directory() / "plenio" / "cache" / "asr")
 
 
+def revision(engine: AsrEngine) -> str:
+    """The model revision that keys the cache: the ASR's, and the aligner's when there is one."""
+    assets = asset_catalogue()
+    pinned = assets[engine.asset_id].revision
+    return f"{pinned}+{assets[engine.aligner_asset_id].revision}" if engine.aligner_asset_id else pinned
+
+
 def run_asr(audio: Any, settings: AsrSettings, source_sha256: str, progress: host.Progress) -> AsrResult:
     """The ASR of ``audio`` (a ComfyUI AUDIO), from the cache when the same audio was transcribed with the same
-    settings before - also after a restart."""
+    settings before - also after a restart.
+
+    Qwen3-ASR hands a language its aligner cannot time to its fallback (faster-whisper): before the run when
+    the language is given, after it when Qwen3 detected it. The result says so (``settings.engine_note``).
+    """
+    engine = engine_for(settings.engine)
+    if engine.fallback and not can_time(engine, settings.language):
+        return _with_note(
+            _run(audio, replace(settings, engine=engine.fallback), source_sha256, progress),
+            fallback_note(engine, settings.language),
+        )
+    result = _run(audio, settings, source_sha256, progress)
+    if engine.fallback and result.settings.get("timed") is False:
+        again = replace(settings, engine=engine.fallback, language=settings.language or result.language)
+        return _with_note(_run(audio, again, source_sha256, progress), fallback_note(engine, result.language))
+    return result
+
+
+def _with_note(result: AsrResult, note: str) -> AsrResult:
+    return replace(result, settings={**result.settings, "engine_note": note})
+
+
+def _run(audio: Any, settings: AsrSettings, source_sha256: str, progress: host.Progress) -> AsrResult:
     engine = engine_for(settings.engine)
     cache = asr_cache()
-    key = cache_key(source_sha256, settings, asset_catalogue()[engine.asset_id].revision)
+    key = cache_key(source_sha256, settings, revision(engine))
     cached = cache.get(key)
     if cached is not None:
         return cached  # a stored result: no model, no worker, the same draft as before
     model_dir, _revision = model_folder(engine.asset_id, progress)
+    aligner_dir = model_folder(engine.aligner_asset_id, progress)[0] if engine.aligner_asset_id else None
     import numpy as np
 
     config = host.load_config()
@@ -107,12 +152,13 @@ def run_asr(audio: Any, settings: AsrSettings, source_sha256: str, progress: hos
     np.save(audio_file, samples)
     try:
         if settings.device != "cpu":
-            host.free_memory(ASR_VRAM_BYTES)
+            host.free_memory(engine.vram_bytes)
         data = run_worker(
             engine.worker,
             {
                 "engine": engine.id,
                 "model_dir": str(model_dir),
+                **({"aligner_dir": str(aligner_dir)} if aligner_dir is not None else {}),
                 "audio": str(audio_file),
                 "language": settings.language,
                 "beam_size": settings.beam_size,

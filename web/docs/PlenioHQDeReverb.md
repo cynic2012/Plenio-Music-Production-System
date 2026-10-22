@@ -14,7 +14,7 @@ Same rate and length, no normalisation.
 | profile | for | de-reverb | phase lock |
 |---|---|---|---|
 | *standard* | pop, hip-hop, soul, world | 45 % | 55 % |
-| *gentle* | acoustic, classical, jazz, folk | 25 % | 30 % |
+| *gentle* | classical, jazz, folk | 25 % | 30 % |
 | *strong* | rock, metal, punk | 65 % | 70 % |
 | *wide* | electronic, dance, ambient | 30 % | 40 % |
 

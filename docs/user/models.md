@@ -23,7 +23,7 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 | `sheetsage2_bf16.safetensors` | `audio_encoders` | 1.4 GB | CC BY-NC 4.0 | needed (score transcription, Check Vocals) |
 | `ar_lora_inst_v3abc_comfyui.safetensors` | `loras` | (see the model card) | CC BY-NC 4.0 | needed (instrumental adapter) |
 | `gemma4_e4b_it_fp8_scaled.safetensors` | `text_encoders` | (see the model card) | Apache-2.0 | needed (writer) |
-| faster-whisper large-v3 (Plenio asset, below) | `plenio/asr/faster-whisper-large-v3` | 3.1 GB | MIT | fetched by Plenio when *original lyrics* first need it |
+| Qwen3-ASR 1.7B and Qwen3-ForcedAligner 0.6B (Plenio assets, below) | `plenio/asr/qwen3-asr-1.7b-hf`, `plenio/asr/qwen3-forcedaligner-0.6b-hf` | 4.1 + 1.8 GB | Apache-2.0 | fetched by Plenio when *original lyrics*, *Check sung lyrics* or the subtitles first need them |
 | FLUX.2 Klein files (below) | | 16.1 GB | Apache-2.0 | optional: Cover Art, bypassed |
 
 ### 3 · MiniMax · Song
@@ -81,6 +81,7 @@ The block stays bypassed until you turn it on, so a template runs without these 
 | BS-RoFormer 4-stem (Stems) | [ZFTurbo/Music-Source-Separation-Training](https://github.com/ZFTurbo/Music-Source-Separation-Training) release v1.0.12 - `model_bs_roformer_ep_17_sdr_9.6568.ckpt` (MIT training code; the inference code is MIT and vendored) |
 | FLUX.2 Klein 4B, its text encoder | [Comfy-Org/flux2-klein](https://huggingface.co/Comfy-Org/flux2-klein) |
 | FLUX.2 VAE | [Comfy-Org/flux2-dev](https://huggingface.co/Comfy-Org/flux2-dev) |
+| Qwen3-ASR 1.7B, Qwen3-ForcedAligner 0.6B | [Qwen/Qwen3-ASR-1.7B-hf](https://huggingface.co/Qwen/Qwen3-ASR-1.7B-hf), [Qwen/Qwen3-ForcedAligner-0.6B-hf](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B-hf) (pinned revisions; the inference code is Apache-2.0 and vendored from transformers 5.17) |
 | faster-whisper large-v3 | [Systran/faster-whisper-large-v3](https://huggingface.co/Systran/faster-whisper-large-v3) (pinned revision) |
 
 The exact URLs are in `resources/models.toml` (the templates' loaders carry the same entries for ComfyUI's download dialog).
@@ -104,11 +105,15 @@ The writer can also be a GGUF file from `models/LLM` (or LM Studio's folder, the
 
 ## Plenio assets
 
-Some models are not ComfyUI model files but run in a separate Plenio worker. Plenio fetches them itself, pinned to an exact revision, when a node first needs them:
+Some models are not ComfyUI model files but run in a separate Plenio worker. Plenio fetches them itself, pinned to an exact revision, when a node first needs them - **0 · System Check** lists them with their folder and whether they are there:
 
 | Asset | Used by | Size | Where |
 |---|---|---|---|
-| faster-whisper large-v3 | *Transcribe Lyrics* (covers with the original lyrics, *Check sung lyrics*) | 3.1 GB | `ComfyUI/models/plenio/asr/faster-whisper-large-v3` |
+| Qwen3-ASR 1.7B | the lyrics ASR: *Transcribe Lyrics* (covers with the original lyrics, *Check sung lyrics*) and the lyrics subtitles of *Export Release* (every song template) | 4.1 GB | `ComfyUI/models/plenio/asr/qwen3-asr-1.7b-hf` |
+| Qwen3-ForcedAligner 0.6B | the word times of the lyrics ASR (with Qwen3-ASR) | 1.8 GB | `ComfyUI/models/plenio/asr/qwen3-forcedaligner-0.6b-hf` |
+| faster-whisper large-v3 | the lyrics ASR for a language the aligner cannot time (Dutch, Swedish, Polish, Turkish ...), and *Transcribe Lyrics* set to it; needs the optional `faster-whisper` package | 3.1 GB | `ComfyUI/models/plenio/asr/faster-whisper-large-v3` |
+
+Qwen3-ASR runs on ComfyUI's own `transformers` (5.5 or newer): Plenio ships the model's inference code (from transformers 5.17, Apache-2.0) and installs nothing.
 
 - `PLENIO_OFFLINE=1` or `PLENIO_AUTO_DOWNLOAD=0` turn this off; the node then names the files to place.
 - An existing copy elsewhere: point `[asset_paths]` in the Plenio `config.toml` at it (see [Configuration](configuration.md)).

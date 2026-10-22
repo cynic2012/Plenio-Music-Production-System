@@ -32,6 +32,8 @@ class Asset:
     licence: str
     description: str
     files: tuple[AssetFile, ...]
+    role: str = ""
+    """What Plenio uses the asset for (the System Check shows it)."""
 
     @property
     def total_size(self) -> int:
@@ -72,6 +74,7 @@ def parse_catalogue(data: Mapping[str, Any], source: str) -> dict[str, Asset]:
                 licence=str(raw["licence"]),
                 description=str(raw.get("description", "")),
                 files=files,
+                role=str(raw.get("role", "")),
             )
         except (KeyError, TypeError, ValueError) as error:
             raise PlenioUserError(f"{where} is incomplete or malformed: {error!r}.") from error

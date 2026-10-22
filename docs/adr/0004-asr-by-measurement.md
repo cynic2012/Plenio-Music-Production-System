@@ -20,3 +20,8 @@ No dependency conflicts in ComfyUI's environment; the worker protocol (`plenio.c
 
 - Phase 4A measured **faster-whisper large-v3** (host Python, worker process): WER 0.8-1.6 % on a produced pop vocal and 7.6-8.6 % on YuE2 takes over the vocal regions; it is the default.
 - Phase 4B measured **Qwen3-ASR-1.7B** (`-hf` checkpoints, now `transformers` >= 5.13; run from an isolated `--target` package folder): lower WER on YuE2 takes (3.7-5.1 %), equal on the MiniMax material, 2-3x slower, section placement equal or slightly worse. Not shipped; a candidate engine once a managed isolated environment exists (yue2-cover-design.md §21.3).
+
+## Revision (2026-10-22)
+
+- **Owner's decision: Qwen3-ASR 1.7B with Qwen3-ForcedAligner 0.6B is the default engine**, faster-whisper large-v3 its fallback for the languages the aligner cannot time (and a choice in Transcribe Lyrics). The 4B measurements above stand: Qwen3 hears YuE2 takes better; the aligner was already the reference of the subtitle study.
+- **No isolated environment after all**: instead of transformers >= 5.13 in a package folder, Plenio vendors the model's inference code from transformers 5.17 (`plenio/third_party/qwen3_asr`, `tools/vendor_qwen3_asr.py`: absolute imports, the few helpers older 5.x lack, three documented patches) and runs it on ComfyUI's transformers (5.5.4 here) in the existing ASR worker - the same words and word times as transformers 5.17 on a test song, nothing installed.

@@ -66,6 +66,15 @@ def test_system_route(server: ComfyServer) -> None:
     assert {row["template"] for row in report["templates"]} >= {"1 · YuE2 · Song", "4 · Enhance & Master"}
     assert all(row["status"] == "missing" for row in report["models"])
     assert "not downloaded" in report["facts"]["assets"]["faster-whisper-large-v3"]
+    # where every file goes (owner's request 2026-10-22): the model folder and each Plenio asset's own folder
+    assets = {row["asset"]: row for row in report["assets"]}
+    assert set(assets) >= {"qwen3-asr-1.7b-hf", "qwen3-forcedaligner-0.6b-hf", "faster-whisper-large-v3"}
+    assert assets["qwen3-asr-1.7b-hf"]["folder"].replace("\\", "/").endswith("/asr/qwen3-asr-1.7b-hf")
+    assert (
+        "not downloaded" in assets["qwen3-asr-1.7b-hf"]["status"]
+        and assets["qwen3-asr-1.7b-hf"]["size"] == "4.1 GB"
+    )
+    assert "### Plenio assets" in data["markdown"] and "`models/audio_sr`" in data["markdown"]
     assert "### Hardware rule table" in data["markdown"]
 
 

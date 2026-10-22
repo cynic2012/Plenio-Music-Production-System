@@ -30,9 +30,15 @@ KNOWN_PACKAGES: tuple[OptionalPackage, ...] = (
         "scipy", "scipy", "Mastering DSP (EQ, Loudness & Dynamics)", "python -m pip install scipy"
     ),
     OptionalPackage(
+        "transformers",
+        "transformers",
+        "Lyrics ASR with Qwen3-ASR and its aligner (Transcribe Lyrics, lyrics subtitles; transformers 5.5 or newer)",
+        'python -m pip install "transformers>=5.5"',
+    ),
+    OptionalPackage(
         "faster_whisper",
         "faster-whisper",
-        "Lyrics transcription of covers with lyrics (Transcribe Lyrics; optional)",
+        "Lyrics ASR fallback for languages Qwen3's aligner cannot time (faster-whisper; optional)",
         "python -m pip install faster-whisper",
     ),
 )

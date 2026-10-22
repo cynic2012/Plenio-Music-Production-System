@@ -82,8 +82,8 @@ class PlenioRefine(io.ComfyNode):
                     optional=True,
                     tooltip=(
                         "A prepared stage template: one choice sets PRE, POST and the crossover (500 Hz "
-                        "below PRE). *custom* uses the three fields below, which stay editable - the "
-                        "MiniMax template ships template 3 and the matching numbers."
+                        "below PRE); template 3 suits MiniMax renders. *custom* uses the three fields below, "
+                        "which stay editable."
                     ),
                 ),
                 io.Float.Input(
@@ -172,10 +172,14 @@ class PlenioRefine(io.ComfyNode):
         settings = RefineSettings(use_pre, use_crossover, sr_gain, use_post, seed)
         items, rate = host.audio_items(audio)
         results, reports = [], []
-        for item in items:
-            refined, report = refine(item, rate, sr_engine, settings, cancel=host.raise_if_interrupted)
-            results.append(refined)
-            reports.append(report)
+        try:
+            for item in items:
+                refined, report = refine(item, rate, sr_engine, settings, cancel=host.raise_if_interrupted)
+                results.append(refined)
+                reports.append(report)
+        finally:
+            if hasattr(sr_engine, "release"):
+                sr_engine.release()
         notes = [note for report in reports for note in report["notes"]]
         first = reports[0]
         edge_in, edge_out = first["bandwidth_in_hz"], first["bandwidth_out_hz"]

@@ -79,8 +79,8 @@ SIZE_TOOLTIP = (
     "(the biggest notes)."
 )
 SRT_TOOLTIP = (
-    "Write the lyrics as subtitles next to the song: '(lines).srt' with whole lines, '(notes).srt' painted on "
-    "note by note. Timed by listening (the lyrics ASR, 3.1 GB, fetched on first use)."
+    "Write the lyrics as subtitles: '(lines).srt' whole lines, '(notes).srt' painted on note by note. Timed by "
+    "listening (Qwen3-ASR and its aligner, 5.9 GB, fetched on first use)."
 )
 BRIEF_TOOLTIP = (
     "Optional: the brief, so that tags and the file name can use its fields ({genre}, {mood} ...)."
@@ -743,8 +743,11 @@ def _subtitles(
     weak = weak_segments(result)
     words = [w for w in result.words if w.segment not in weak]
     seconds = samples.shape[1] / rate
+    if result.settings.get("engine_note"):
+        notes.append(f"subtitles: {result.settings['engine_note']}")
+    timing = subtitle_rules.timing_for(result.engine)
     if not lyrics.strip():
-        timed = subtitle_rules.time_heard(words, duration=seconds)
+        timed = subtitle_rules.time_heard(words, duration=seconds, timing=timing)
         if not timed.lines:
             notes.append("subtitles: not written - no lyrics given and no singing heard")
             return None
@@ -756,7 +759,9 @@ def _subtitles(
             layout = lyric_layout.layout(score, lyrics, spans or None)
         except PlenioError:
             score = layout = None
-    return subtitle_rules.time_lyrics(lyrics, words, duration=seconds, score=score, layout=layout)
+    return subtitle_rules.time_lyrics(
+        lyrics, words, duration=seconds, score=score, layout=layout, timing=timing
+    )
 
 
 def _subtitle_notes(timed: subtitle_rules.Subtitles, take: str) -> list[str]:

@@ -2,9 +2,12 @@
 2026-10-15, ``docs/design/subtitles-tags-seeds.md``).
 
 A YuE2 render is shifted against its score (1.7 s in the median song, up to 15 s), so the score's note
-times alone are no subtitles. The times are **heard**: the lyrics ASR (faster-whisper) transcribes the
-song, its words are matched to the lyrics, and - with a score - the score is fitted to the heard words and
-gives every syllable its note. Measured against a forced aligner on 48 YuE2 songs no choice was made on:
+times alone are no subtitles. The times are **heard**: the lyrics ASR transcribes the song, its words are
+matched to the lyrics, and - with a score - the score is fitted to the heard words and gives every syllable
+its note. Since 2026-10-22 the ASR is Qwen3-ASR and **Qwen3-ForcedAligner** times the heard words - the
+aligner was the reference of the measurement below, so its times are used as they are (``ALIGNED``).
+faster-whisper, the fallback for languages the aligner does not know, starts its words early; its times
+get the corrections measured against the aligner on 48 YuE2 songs no choice was made on (``WHISPER``):
 median error 0.16 s per word, 82 % within 0.5 s (Whisper alone: 0.34 s, 66 %).
 
 Two files: whole lines (``lines_srt``), and the lines painted on note by note (``notes_srt``: a cue per
@@ -52,6 +55,27 @@ WRAP = 42
 """Characters per subtitle row (the common limit); a longer line takes two rows."""
 MIN_HEARD_WORDS = 5
 """Without lyrics: fewer heard words than this are no singing (an instrumental's stray ASR words)."""
+
+
+@dataclass(frozen=True)
+class HeardTiming:
+    """How heard word starts are corrected before they are used."""
+
+    lead_s: float
+    """Added to every heard start."""
+    first_word_max_s: float | None
+    """A line's first word starts at most this long before its end (``None``: as heard)."""
+
+
+WHISPER = HeardTiming(LEAD_S, FIRST_WORD_MAX_S)
+ALIGNED = HeardTiming(0.0, None)
+"""A forced aligner's times are the measurement's reference: nothing to correct."""
+
+
+def timing_for(engine: str) -> HeardTiming:
+    """The timing correction of an ASR engine id (``AsrResult.engine``)."""
+    return WHISPER if engine.startswith("faster-whisper") else ALIGNED
+
 
 _DIRECTION = re.compile(r"^\s*[\(\[\{<].*[\)\]\}>]\s*$")
 _TOKEN = re.compile(r"\S+")
@@ -394,7 +418,7 @@ def score_notes(score: Any, layout: Any, lines: Sequence[LyricLine]) -> dict[tup
 
 
 def _heard_starts(
-    lines: Sequence[LyricLine], heard: Sequence[AsrWord], pairs: Mapping[int, int]
+    lines: Sequence[LyricLine], heard: Sequence[AsrWord], pairs: Mapping[int, int], timing: HeardTiming
 ) -> dict[int, float]:
     first = set()
     index = 0
@@ -404,9 +428,10 @@ def _heard_starts(
     starts = {}
     for word, h in pairs.items():
         start, end = heard[h].start, heard[h].end
-        if word in first and end - start > FIRST_WORD_MAX_S:
-            start = end - FIRST_WORD_MAX_S
-        starts[word] = start + LEAD_S
+        cap = timing.first_word_max_s
+        if word in first and cap is not None and end - start > cap:
+            start = end - cap
+        starts[word] = start + timing.lead_s
     return starts
 
 
@@ -417,9 +442,11 @@ def time_lyrics(
     duration: float,
     score: Any = None,
     layout: Any = None,
+    timing: HeardTiming = WHISPER,
 ) -> Subtitles:
     """The lyrics' lines with their times, measured from the heard words (and the score's notes when given:
-    a ``canonical.Score`` with the ``LyricLayout`` of these lyrics)."""
+    a ``canonical.Score`` with the ``LyricLayout`` of these lyrics); ``timing`` corrects the heard starts
+    (``timing_for`` the engine that heard them)."""
     lines = sung_lines(lyrics)
     if not lines:
         return Subtitles((), "measured")
@@ -428,7 +455,7 @@ def time_lyrics(
     usable = [w for w in heard if normalize(w.word)]
     pairs = match_words(lyric_words, [normalize(w.word) for w in usable])
     pairs = {i: j for i, j in pairs.items() if lyric_words[i]}
-    heard_at = _heard_starts(lines, usable, pairs)
+    heard_at = _heard_starts(lines, usable, pairs, timing)
     times: dict[int, float] = {}
     notes: dict[tuple[int, int], ScoreNotes] = {}
     warp = (1.0, 0.0)
@@ -483,7 +510,7 @@ def time_lyrics(
         placed = notes.get((line.block, line.line))
         units = _units(line, word_times, placed, a)
         start = units[0].start
-        end = _line_end(line, word_times, placed, a, b + shifts.get(n, 0.0), usable, pairs, index)
+        end = _line_end(line, word_times, placed, a, b + shifts.get(n, 0.0), usable, pairs, index, timing)
         timed.append(TimedLine(line.text, start, max(end, units[-1].start + 0.2), tuple(units)))
         index += count
     finished = _finish(timed, duration)
@@ -556,6 +583,7 @@ def _line_end(
     heard: Sequence[AsrWord],
     pairs: Mapping[int, int],
     index: int,
+    timing: HeardTiming,
 ) -> float:
     last = len(line.tokens) - 1
     if placed is not None and placed.end is not None and last in placed.words:
@@ -563,8 +591,8 @@ def _line_end(
         if abs(on_score - word_times[last]) <= AGREE_S:
             return a * placed.end + b
     h = pairs.get(index + last)
-    if h is not None and heard[h].end + LEAD_S > word_times[last]:
-        return heard[h].end + LEAD_S
+    if h is not None and heard[h].end + timing.lead_s > word_times[last]:
+        return heard[h].end + timing.lead_s
     return word_times[last] + 2 * WORD_S
 
 
@@ -585,7 +613,7 @@ def _finish(lines: Sequence[TimedLine], duration: float) -> list[TimedLine]:
     return result
 
 
-def time_heard(heard: Sequence[AsrWord], *, duration: float) -> Subtitles:
+def time_heard(heard: Sequence[AsrWord], *, duration: float, timing: HeardTiming = WHISPER) -> Subtitles:
     """Subtitles of what was heard, for a song whose lyrics are not known: a line per ASR segment, split at
     pauses longer than ``alignment.LINE_GAP_S``; Whisper's known inventions left out."""
     kept, _dropped = drop_known_inventions([w for w in heard if normalize(w.word)])
@@ -607,11 +635,12 @@ def time_heard(heard: Sequence[AsrWord], *, duration: float) -> Subtitles:
         cut = 0
         for k, word in enumerate(group):
             start, end = word.start, word.end
-            if k == 0 and end - start > FIRST_WORD_MAX_S:
-                start = end - FIRST_WORD_MAX_S
+            cap = timing.first_word_max_s
+            if k == 0 and cap is not None and end - start > cap:
+                start = end - cap
             cut = text.find(word.word, cut) + len(word.word) if word.word in text[cut:] else len(text)
-            units.append(Unit(start + LEAD_S, cut))
+            units.append(Unit(start + timing.lead_s, cut))
         for k in range(1, len(units)):
             units[k] = Unit(max(units[k].start, units[k - 1].start), units[k].cut)
-        lines.append(TimedLine(text, units[0].start, group[-1].end + LEAD_S, tuple(units)))
+        lines.append(TimedLine(text, units[0].start, group[-1].end + timing.lead_s, tuple(units)))
     return Subtitles(tuple(_finish(lines, duration)), "heard")

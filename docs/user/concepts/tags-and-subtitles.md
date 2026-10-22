@@ -54,15 +54,19 @@ template lists the variables, too.
   on its note) or word (MiniMax), showing the line up to what is being sung - `Hal`, `Halle`, `Hallelu`,
   `Hallelujah`.
 
-**How the times are measured.** The lyrics ASR (faster-whisper large-v3, 3.1 GB, MIT; downloaded on first
-use, its results cached) listens to the exported song. Its words are matched to the final lyrics; with a
-score (YuE2), the score is fitted to the heard words and every syllable takes its note's time - the heard
-time wins where the two disagree. A YuE2 render is shifted against its score (1.7 s in the median song), so
-the score's own times are not used. Measured on 48 YuE2 songs against a forced aligner: half the words
-within 0.16 s, 82 % within 0.5 s, 92 % within 1 s.
+**How the times are measured.** The lyrics ASR listens to the exported song: **Qwen3-ASR 1.7B** hears the
+words and **Qwen3-ForcedAligner 0.6B** places every word on the audio (Apache-2.0, 4.1 + 1.8 GB, downloaded on
+first use; its results are cached). Its words are matched to the final lyrics; with a score (YuE2), the score
+is fitted to the heard words and every syllable takes its note's time - the heard time wins where the two
+disagree. A YuE2 render is shifted against its score (1.7 s in the median song), so the score's own times are
+not used. The aligner was the reference of the measurement behind this method, so its times are used as they
+are. For a language the aligner does not know (it times English, German, French, Spanish, Italian,
+Portuguese, Russian, Chinese, Cantonese, Japanese and Korean) **faster-whisper large-v3** (MIT, 3.1 GB) takes
+over and the export's summary says so; its word times start early and are corrected - measured on 48 YuE2
+songs against the aligner: half the words within 0.16 s, 82 % within 0.5 s, 92 % within 1 s.
 
 - **Without lyrics** (*Enhance & Master*): the subtitles are the words as heard, a line per phrase; the
-  sentences Whisper is known to invent into music are left out, and without singing there are none.
+  sentences an ASR is known to invent into music are left out, and without singing there are none.
 - **Instrumentals**: no subtitles.
 - **A line nobody sang** (the render left it out) is placed between its neighbours when there is room,
   otherwise left out; the summary names it.

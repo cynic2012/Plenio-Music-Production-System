@@ -151,4 +151,4 @@ def test_hq2_runs_the_vendored_universr_at_its_16_khz_condition(server: ComfySer
     entry = server.run(prompt, timeout=900.0)
     probe = events(log, "probe")[-1]
     assert probe["rate"] == RATE and probe["shape"] == [1, 2, int(1.5 * RATE)]
-    assert "UniverSR from 8 kHz, new highs from 8.2 kHz (85%, level 0.9)" in summary(entry, "4")
+    assert "UniverSR from 8 kHz (4 steps), new highs from 8.2 kHz (85%, level 0.9)" in summary(entry, "4")

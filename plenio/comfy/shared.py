@@ -177,5 +177,5 @@ def llm_facts() -> dict[str, Any]:
 def system_report() -> tuple[Report, str]:
     """The System Check report and its Markdown (node and route)."""
     facts = replace(host.system_facts(model_catalogue(), asset_catalogue()), llm=llm_facts())
-    report = check_system(facts, model_catalogue())
+    report = check_system(facts, model_catalogue(), asset_catalogue())
     return report, to_markdown(report)

@@ -118,7 +118,10 @@ def test_template_inventory_and_optional_packages() -> None:
     )
     assert "Optional package 'faster_whisper' is not installed." in markdown
     assert "faster-whisper-large-v3': not downloaded" in markdown
-    assert "| `sheetsage2_bf16.safetensors` | audio_encoders | 1.4 GB | CC BY-NC 4.0 | missing |" in markdown
+    row = next(
+        line for line in markdown.splitlines() if line.startswith("| [`sheetsage2_bf16.safetensors`](")
+    )
+    assert "| `models/audio_encoders` | 1.4 GB | CC BY-NC 4.0 | 2 · YuE2 · Cover | missing |" in row
 
 
 def test_warnings_for_old_comfyui_cpu_only_and_missing_packages() -> None:
@@ -158,3 +161,28 @@ def test_a_configuration_error_is_reported_not_fatal() -> None:
     )
     assert report.status is Status.WARNING
     assert any("Plenio configuration error" in m and "unknown settings" in m for m in report.messages)
+
+
+def test_the_check_says_where_every_model_file_and_asset_goes() -> None:
+    """Owner's request (2026-10-22): System Check lists the new models and the folder each one goes to."""
+    from plenio.core.assets import load_catalogue
+    from plenio.core.models import load_catalogue as load_models
+
+    root = Path(__file__).resolve().parents[2] / "resources"
+    report = check_system(
+        facts(
+            models_root="F:/ComfyUI/models",
+            asset_root="F:/ComfyUI/models/plenio",
+            assets={"qwen3-asr-1.7b-hf": "installed", "faster-whisper-large-v3": "not downloaded"},
+        ),
+        load_models(root / "models.toml"),
+        load_catalogue(root / "assets.toml"),
+    )
+    rows = {row["asset"]: row for row in report.data["assets"]}
+    assert rows["qwen3-asr-1.7b-hf"]["folder"] == "F:/ComfyUI/models/plenio/asr/qwen3-asr-1.7b-hf"
+    assert rows["qwen3-forcedaligner-0.6b-hf"]["status"] == "unknown"  # no state gathered for it here
+    markdown = to_markdown(report)
+    assert "### Plenio assets" in markdown and "`F:/ComfyUI/models/plenio/asr/qwen3-asr-1.7b-hf`" in markdown
+    assert "ComfyUI's models folder (`F:/ComfyUI/models`)" in markdown
+    universr = next(line for line in markdown.splitlines() if line.startswith("| [`pytorch_model.bin`]("))
+    assert "`models/audio_sr`" in universr and "1 · YuE2 · Song" in universr  # every template needs it now

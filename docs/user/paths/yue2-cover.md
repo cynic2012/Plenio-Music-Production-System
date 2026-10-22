@@ -37,7 +37,7 @@ Measured on an RTX 5060 Ti 16 GB for an 83-second source: transcription under 20
 | Mode | Lyrics come from | What you check in Song Sheet · Text |
 |---|---|---|
 | *instrumental* | the score's section tags (`[Verse]`, `[Chorus]` ...) | nothing to write; the style has no voice or language |
-| *original lyrics* | **Transcribe Lyrics** (faster-whisper large-v3) on the sung parts of the source, placed into the score's sections; sentences Whisper invents in music ("Untertitelung des ZDF ...") are left out | unsure words are highlighted; correct misheard words and line breaks |
+| *original lyrics* | **Transcribe Lyrics** (Qwen3-ASR with Qwen3-ForcedAligner; faster-whisper for a language the aligner cannot time) on the sung parts of the source, placed into the score's sections; sentences an ASR invents in music ("Untertitelung des ZDF ...") are left out | unsure words are highlighted; correct misheard words and line breaks |
 | *new lyrics* | the writer model, written against the score's sections and phrasing | the syllable check: each section needs about one syllable per melody note |
 
 **Which lyrics are used - the order of precedence:**
@@ -83,7 +83,7 @@ For instrumental covers Plenio silences the Vocal voice of the score (the melody
 
 ## Finishing: Master, cover art, files
 
-- **Plenio · Master** (group *FINISH*) masters the take Check Vocals keeps before Export: a gentle warm tone match and -14 LUFS with a true peak of at most -1 dBTP. Before the EQ it runs **[Audio HQ](../concepts/audio-hq.md)**: *HQ 1 · Stereo Cleanup* and *HQ 2 · Regenerate Highs* (UniverSR, 229 MB; about 2.7 s per second of music on a 16 GB GPU) are on, *HQ 3 · De-Reverb* is bypassed; their presets follow the brief's genre (*auto*). Open the block to change an HQ preset, bypass a stage, or change the EQ, the loudness target or the compression style; its *sample rate* is on the block. Details: [Mastering and audio formats](../concepts/mastering.md).
+- **Plenio · Master** (group *FINISH*) masters the take Check Vocals keeps before Export: a gentle warm tone match and -14 LUFS with a true peak of at most -1 dBTP. Before the EQ it runs **[Audio HQ](../concepts/audio-hq.md)**: *HQ 1 · Stereo Cleanup* and *HQ 2 · Regenerate Highs* (UniverSR, 229 MB; about 1.5 s per second of music on an RTX 5060 Ti) are on, *HQ 3 · De-Reverb* is bypassed; their presets follow the brief's genre (*auto*). Open the block to change an HQ preset, bypass a stage, or change the EQ, the loudness target or the compression style; its *sample rate* is on the block. Details: [Mastering and audio formats](../concepts/mastering.md).
 - **The title** is the source recording's with `-cover` (its title tag, else its file name: `Morning Song-cover`), so every cover is easy to match with its source - the files and the release record are named after it. Type a **title** in the Cover Brief (advanced) for another one.
 - **Export Release** writes the mastered song, the unmastered take as `(original).flac`, the release record and the **sheet music** as `<name>.pdf` - the final score with the lyrics under the notes, on A4 (*sheet music* on the node: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; an open ComfyUI page draws it right after the export, whichever workflow it shows). Formats (FLAC, MP3, WAV) and tags are set on the node.
 - **Cover Art (optional)** paints a cover from the sheet's *artwork prompt* with FLUX.2 Klein 4B (4 steps, 1024 x 1024; about 16 GB of extra model files, Apache-2.0). It is bypassed: select *Cover Art* and *Cover preview* and press **Ctrl+B**. Export embeds the cover in the FLAC and MP3 files and saves it next to the song as `.jpg`. The cover seed is fixed, so new takes keep the cover; change the seed for another one.
@@ -100,4 +100,4 @@ Switch **Graph / App** at the top left for a simple form: the source file, the m
 
 ## Licence
 
-YuE2, SheetSage2 (Comfy-Org repackaging) and the instrumental adapter are **CC BY-NC 4.0 (non-commercial)**. faster-whisper and the Whisper weights are MIT. The release record lists the licences. Covering a song also touches the rights in the original composition and lyrics - see [Licensing](../licensing.md).
+YuE2, SheetSage2 (Comfy-Org repackaging) and the instrumental adapter are **CC BY-NC 4.0 (non-commercial)**. Qwen3-ASR and its aligner are Apache-2.0, faster-whisper and the Whisper weights MIT. The release record lists the licences. Covering a song also touches the rights in the original composition and lyrics - see [Licensing](../licensing.md).

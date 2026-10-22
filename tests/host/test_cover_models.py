@@ -1,11 +1,13 @@
 """The Cover analysis nodes with the real models on local hardware (V3).
 
 A GPU ComfyUI server runs the native SheetSage2 node and Plenio's Transcribe Score on the same
-excerpt, then Transcribe Lyrics with faster-whisper large-v3 in its worker process.
+excerpt, then Transcribe Lyrics in its worker process - with Qwen3-ASR and its forced aligner (the default)
+and with faster-whisper large-v3 (the fallback).
 
 Needs ``PLENIO_SMOKE=1``, ``PLENIO_COMFYUI_ROOT``, ``PLENIO_MODELS_DIR`` (with
-``audio_encoders/sheetsage2_bf16.safetensors`` and ``audio_encoders/whisper-large-v3``, or set
-``PLENIO_WHISPER_DIR``) and the MiniMax sample in ``assets/sound-samples`` (or ``PLENIO_LEGACY_SAMPLE``). About 2 minutes on an RTX 5060 Ti 16 GB.
+``audio_encoders/sheetsage2_bf16.safetensors``, the Plenio assets in ``plenio/asr/`` - ``qwen3-asr-1.7b-hf``,
+``qwen3-forcedaligner-0.6b-hf``, ``faster-whisper-large-v3`` - or ``PLENIO_WHISPER_DIR``) and the MiniMax
+sample in ``assets/sound-samples`` (or ``PLENIO_LEGACY_SAMPLE``). About 3 minutes on an RTX 5060 Ti 16 GB.
 """
 
 from __future__ import annotations
@@ -22,11 +24,19 @@ import pytest
 from harness import PACKAGE_NAME, PROJECT, ComfyServer, Log, copy_package
 from plenio.core import score as score_rules
 from plenio.core.alignment import AsrWord, check_sung_lyrics
+from plenio.core.asr import QWEN3
+from plenio.core.asr import WHISPER as WHISPER_ENGINE
 
 pytestmark = [pytest.mark.host, pytest.mark.smoke]
 
 MODELS = Path(os.environ.get("PLENIO_MODELS_DIR", "") or "missing-models-dir")
-WHISPER = Path(os.environ.get("PLENIO_WHISPER_DIR", "") or MODELS / "audio_encoders" / "whisper-large-v3")
+WHISPER = Path(
+    os.environ.get("PLENIO_WHISPER_DIR", "") or MODELS / "plenio" / "asr" / "faster-whisper-large-v3"
+)
+QWEN3_DIRS = (
+    MODELS / "plenio" / "asr" / "qwen3-asr-1.7b-hf",
+    MODELS / "plenio" / "asr" / "qwen3-forcedaligner-0.6b-hf",
+)
 SHEETSAGE = MODELS / "audio_encoders" / "sheetsage2_bf16.safetensors"
 LEGACY_SAMPLE = Path(
     os.environ.get("PLENIO_LEGACY_SAMPLE", "")
@@ -41,7 +51,16 @@ EXCERPT = (18.33, 83.02)
 
 @pytest.fixture(scope="module")
 def gpu_server(tmp_path_factory: pytest.TempPathFactory, comfy_path: Path) -> Iterator[ComfyServer]:
-    missing = [p for p in (SHEETSAGE, WHISPER / "model.bin", LEGACY_SAMPLE) if not p.exists()]
+    missing = [
+        p
+        for p in (
+            SHEETSAGE,
+            WHISPER / "model.bin",
+            *(d / "model.safetensors" for d in QWEN3_DIRS),
+            LEGACY_SAMPLE,
+        )
+        if not p.exists()
+    ]
     if missing:
         pytest.skip(f"real-model files not found: {', '.join(str(p) for p in missing)}")
     here = Path(__file__).resolve().parent
@@ -73,7 +92,7 @@ def gpu_server(tmp_path_factory: pytest.TempPathFactory, comfy_path: Path) -> It
     server.stop()
 
 
-def analysis_prompt() -> dict[str, Any]:
+def analysis_prompt(engine: str) -> dict[str, Any]:
     start, duration = EXCERPT
     return {
         "1": {"class_type": "LoadAudio", "inputs": {"audio": "m1.mp3"}},
@@ -99,7 +118,7 @@ def analysis_prompt() -> dict[str, Any]:
                 "audio": ["2", 0],
                 "score": ["5", 0],
                 "timeline": ["5", 1],
-                "engine": "faster-whisper large-v3",
+                "engine": engine,
                 "language": "auto",
                 "device": "auto",
             },
@@ -109,18 +128,20 @@ def analysis_prompt() -> dict[str, Any]:
     }
 
 
-def test_transcribe_score_and_lyrics_with_the_real_models(gpu_server: ComfyServer) -> None:
+@pytest.mark.parametrize("engine", [QWEN3, WHISPER_ENGINE])
+def test_transcribe_score_and_lyrics_with_the_real_models(gpu_server: ComfyServer, engine: str) -> None:
     log = Log(gpu_server.output_dir / "plenio_test_log.jsonl")
     log.clear()
-    entry = gpu_server.run(analysis_prompt(), timeout=1200)
+    entry = gpu_server.run(analysis_prompt(engine), timeout=1200)
     sinks = {e["label"]: e["value"] for e in log.events() if e["node"] == "sink"}
-    # the same score as the native node in full mode
-    assert sinks["plenio"] == sinks["native"]
-    analysis = score_rules.analyze(sinks["plenio"])
-    assert analysis.ok
-    probe = next(e for e in log.events() if e["node"] == "timeline")
-    assert probe["bars"] == len(analysis.bars)  # one timeline bar per score bar
-    assert probe["vocal_notes"] > 0 and probe["regions"]
+    if "plenio" in sinks:  # the first engine's run; the second takes the score analysis from ComfyUI's cache
+        # the same score as the native node in full mode
+        assert sinks["plenio"] == sinks["native"]
+        analysis = score_rules.analyze(sinks["plenio"])
+        assert analysis.ok
+        probe = next(e for e in log.events() if e["node"] == "timeline")
+        assert probe["bars"] == len(analysis.bars)  # one timeline bar per score bar
+        assert probe["vocal_notes"] > 0 and probe["regions"]
     # sung words placed into the score's sections, close to the lyrics MiniMax was given
     lyrics = sinks["lyrics"]
     assert [line for line in lyrics.splitlines() if line.startswith("[")][:3] == [
@@ -135,7 +156,8 @@ def test_transcribe_score_and_lyrics_with_the_real_models(gpu_server: ComfyServe
     check = check_sung_lyrics(FIXTURE["reference"], heard)
     assert check.wer is not None and check.wer <= 0.05, check.to_dict()
     assert sinks["language"] == "English"
-    assert "beat grid" in entry["outputs"]["9"]["plenio_summary"][0]["markdown"]
-    # resources: the result is cached on disk, the worker's audio file is gone
-    assert len(list((gpu_server.base / "user" / "plenio" / "cache" / "asr").glob("*.json"))) == 1
+    summary = entry["outputs"]["9"]["plenio_summary"][0]["markdown"]
+    assert "beat grid" in summary and ("qwen3-asr-1.7b" if engine == QWEN3 else "faster-whisper") in summary
+    # resources: the result is cached on disk (one per engine), the worker's audio file is gone
+    assert list((gpu_server.base / "user" / "plenio" / "cache" / "asr").glob("*.json"))
     assert not list((gpu_server.base / "temp").rglob("asr-*.npy"))

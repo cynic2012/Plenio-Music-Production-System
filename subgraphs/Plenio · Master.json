@@ -264,7 +264,7 @@
       ],
       "size": [
        380,
-       350
+       220
       ],
       "flags": {},
       "order": 0,
@@ -389,7 +389,7 @@
       ],
       "size": [
        380,
-       400
+       280
       ],
       "flags": {},
       "order": 2,
@@ -431,6 +431,15 @@
          "name": "seed"
         },
         "link": null
+       },
+       {
+        "localized_name": "model_steps",
+        "name": "model_steps",
+        "type": "INT",
+        "widget": {
+         "name": "model_steps"
+        },
+        "link": null
        }
       ],
       "outputs": [
@@ -457,7 +466,8 @@
       "widgets_values": [
        "auto - from the song's genre",
        0,
-       "fixed"
+       "fixed",
+       4
       ]
      },
      {
@@ -469,7 +479,7 @@
       ],
       "size": [
        380,
-       350
+       220
       ],
       "flags": {},
       "order": 3,
@@ -682,7 +692,7 @@
        -30,
        -70,
        1320,
-       580
+       460
       ],
       "color": "#3f789e",
       "font_size": 24,

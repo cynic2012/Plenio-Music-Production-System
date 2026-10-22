@@ -688,4 +688,7 @@ def system_facts(
             if model.file not in found and (path := misplaced_model(model.folder, model.file)) is not None
         },
         assets=_asset_states(assets, config) if assets else {},
+        models_root=str(models_directory()),
+        asset_root=str(asset_root(config)),
+        asset_folders={asset_id: str(path) for asset_id, path in config.asset_paths.items()},
     )

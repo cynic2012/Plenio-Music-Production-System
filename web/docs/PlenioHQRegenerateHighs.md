@@ -13,13 +13,15 @@ Same rate and length as the input (a 44.1 kHz song stays 44.1 kHz), no normalisa
 | profile | for | new highs from | share | level match |
 |---|---|---|---|---|
 | *standard* | pop, hip-hop, soul, world | 8.2 kHz | 85 % | 0.90 |
-| *gentle* | acoustic, classical, jazz, folk | 12.2 kHz | 70 % | 0.90 |
+| *gentle* | classical, jazz, folk | 8.2 kHz | 80 % | 0.90 |
 | *strong* | rock, metal, punk | 8.2 kHz | 95 % | 0.90 |
-| *wide* | electronic, dance, ambient | 12.2 kHz | 85 % | 0.95 |
+| *wide* | electronic, dance, ambient | 8.2 kHz | 85 % | 0.95 |
+
+Every profile regenerates from 8.2 kHz with UniverSR's 16 kHz condition - the setting the owner listened to.
 
 *custom* shows the three fields. *standard* is the proposal's setting, accepted in the owner's listening test with UniverSR (2026-10-22: better than with the FlashSR model the proposal named, which Plenio does not offer); the other profiles are **provisional** until they have been listened to.
 
-**Time:** UniverSR runs the song channel by channel with four steps per chunk: on a 16 GB RTX GPU about 2.7 s per second of music (a four-minute song: about eleven minutes); much longer on the CPU.
+**model_steps** (advanced, default 4) - UniverSR's flow steps. **Time** on an RTX 5060 Ti: 4 steps about 1.5 s per second of music (a four-minute song: about six minutes), 3 steps about 1.1 s, 2 steps about 0.75 s; much longer on the CPU. Fewer steps give other, somewhat quieter highs (-15 dB and -6 dB from the four-step highs); only 4 steps were listened to. The model runs in bfloat16 on a GPU that has it (the same result as float32 within -25 dB, a quarter faster).
 
 **What it changes, measured (2026-10-21, YuE2 takes, standard):** the highs above 8.2 kHz are new (their similarity to the original's is about 0.3), 1-3 dB quieter between 6 and 10 kHz and 3-7 dB between 10 and 16 kHz, with more air above 16 kHz; UniverSR generates both channels alike, so the highs get narrower (side -4 to -13 dB above 10.5 kHz, more with HQ 1 before it).
 

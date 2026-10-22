@@ -43,6 +43,9 @@ resampling to 24 kHz - the condition for MiniMax material, whose useful band end
 CHUNK_SECONDS = 5.0
 OVERLAP_SECONDS = 0.5
 ODE_STEPS = 4
+"""Midpoint steps of the flow (two network passes each, both twice with guidance). Measured on an RTX 5060 Ti,
+30 s stereo at the 16 kHz condition (2026-10-22): 4 steps 1.5 s per second of audio in bf16, 3 steps 1.1 s (the
+highs -15 dB from 4 steps), 2 steps 0.75 s (-6 dB, 3.5 dB quieter); Euler with 4 steps is 19 dB too quiet."""
 GUIDANCE_SCALE = 1.5
 CONFIG_NAME = "audio_config.yaml"
 VENDOR = Path(__file__).resolve().parents[1] / "third_party" / "universr"
@@ -90,6 +93,9 @@ class UniverSREngine:
     """Which ODE integrator ran (``torchdiffeq`` or the vendored stand-in), for the report."""
     substitutes: tuple[str, ...] = field(default_factory=tuple)
     """Optional packages that were replaced by the vendored stand-ins."""
+    ode_steps: int = ODE_STEPS
+    bf16: bool = True
+    """bfloat16 autocast on a GPU that has it: a quarter faster than float32, the result within -25 dB of it."""
 
     @property
     def input_rate(self) -> int:
@@ -114,6 +120,12 @@ class UniverSREngine:
             )
         return replace(self, input_rate_hz=int(rate))
 
+    def with_steps(self, steps: int) -> UniverSREngine:
+        """The same loaded model with another number of flow steps (a copy)."""
+        if not 1 <= int(steps) <= 16:
+            raise PlenioModelError(f"{NAME} runs 1 to 16 steps, not {steps}.")
+        return replace(self, ode_steps=int(steps))
+
     @property
     def chunk_seconds(self) -> float:
         return CHUNK_SECONDS
@@ -132,22 +144,36 @@ class UniverSREngine:
         data = np.ascontiguousarray(chunk, dtype=np.float32)
         frames = int(round(data.shape[1] * OUTPUT_RATE / self.input_rate))
         outputs: list[np.ndarray] = []
-        with torch.no_grad():
+        half = self.bf16 and str(self.device).startswith("cuda") and torch.cuda.is_bf16_supported()
+        with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16, enabled=half):
             for index in range(data.shape[0]):
                 single = torch.from_numpy(data[index]).to(self.device)
-                enhanced = self.model.enhance(
-                    single,
-                    input_sr=self.input_rate,
-                    ode_steps=ODE_STEPS,
-                    guidance_scale=GUIDANCE_SCALE,
-                    seed=int(seed),
-                )
+                try:
+                    enhanced = self.model.enhance(
+                        single,
+                        input_sr=self.input_rate,
+                        ode_steps=self.ode_steps,
+                        guidance_scale=GUIDANCE_SCALE,
+                        seed=int(seed),
+                    )
+                except torch.cuda.OutOfMemoryError as error:
+                    _free_gpu_memory()
+                    raise PlenioModelError(
+                        f"{NAME} ran out of GPU memory ({error}).",
+                        hint="It needs about 3 GB of VRAM: close other GPU programs or unload models "
+                        "(ComfyUI's 'Unload models'), or bypass the stage.",
+                    ) from error
                 flat = enhanced.detach().to("cpu").to(torch.float64).reshape(-1).numpy()
                 outputs.append(
                     flat[:frames] if flat.size >= frames else np.pad(flat, (0, frames - flat.size))
                 )
-        _free_gpu_memory()
+        # no cache release per chunk: the next chunk needs the same memory again; the stage that ran the engine
+        # releases it once, at its end (``release``)
         return np.stack(outputs)
+
+    def release(self) -> None:
+        """After a stage's last chunk: let ComfyUI free what the chunks held."""
+        _free_gpu_memory()
 
 
 def _free_gpu_memory() -> None:

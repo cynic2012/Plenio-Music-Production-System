@@ -2580,7 +2580,7 @@
       "BOOLEAN",
       {
        "display_name": "lyrics subtitles (SRT)",
-       "tooltip": "Write the lyrics as subtitles next to the song: '(lines).srt' with whole lines, '(notes).srt' painted on note by note. Timed by listening (the lyrics ASR, 3.1 GB, fetched on first use).",
+       "tooltip": "Write the lyrics as subtitles: '(lines).srt' whole lines, '(notes).srt' painted on note by note. Timed by listening (Qwen3-ASR and its aligner, 5.9 GB, fetched on first use).",
        "default": true
       }
      ]
@@ -2762,7 +2762,7 @@
          }
         },
         {
-         "key": "gentle - acoustic, classical, jazz, folk",
+         "key": "gentle - classical, jazz, folk",
          "inputs": {
           "required": {}
          }
@@ -2877,7 +2877,7 @@
          }
         },
         {
-         "key": "gentle - acoustic, classical, jazz, folk",
+         "key": "gentle - classical, jazz, folk",
          "inputs": {
           "required": {}
          }
@@ -2951,6 +2951,16 @@
        "max": 4294967295,
        "control_after_generate": "fixed"
       }
+     ],
+     "model_steps": [
+      "INT",
+      {
+       "tooltip": "UniverSR's flow steps: 4 (default) about 1.5 s per second of music on an RTX 5060 Ti, 3 about 1.1 s, 2 about 0.75 s - fewer steps, other and quieter highs.",
+       "advanced": true,
+       "default": 4,
+       "min": 2,
+       "max": 8
+      }
      ]
     }
    },
@@ -2962,7 +2972,8 @@
     ],
     "optional": [
      "brief",
-     "seed"
+     "seed",
+     "model_steps"
     ]
    },
    "output": [
@@ -3008,7 +3019,7 @@
          }
         },
         {
-         "key": "gentle - acoustic, classical, jazz, folk",
+         "key": "gentle - classical, jazz, folk",
          "inputs": {
           "required": {}
          }
@@ -3684,7 +3695,7 @@
      "preset": [
       "COMBO",
       {
-       "tooltip": "A prepared stage template: one choice sets PRE, POST and the crossover (500 Hz below PRE). *custom* uses the three fields below, which stay editable - the MiniMax template ships template 3 and the matching numbers.",
+       "tooltip": "A prepared stage template: one choice sets PRE, POST and the crossover (500 Hz below PRE); template 3 suits MiniMax renders. *custom* uses the three fields below, which stay editable.",
        "default": "custom - the three fields below",
        "multiselect": false,
        "options": [
@@ -4922,10 +4933,11 @@
      "engine": [
       "COMBO",
       {
-       "tooltip": "ASR engine (runs in a separate process).",
-       "default": "faster-whisper large-v3",
+       "tooltip": "Qwen3-ASR 1.7B: its aligner times the words; faster-whisper takes over a language it cannot time (the summary says so). faster-whisper large-v3: always Whisper. Separate process.",
+       "default": "Qwen3-ASR 1.7B",
        "multiselect": false,
        "options": [
+        "Qwen3-ASR 1.7B",
         "faster-whisper large-v3"
        ]
       }
@@ -4941,7 +4953,7 @@
      "device": [
       "COMBO",
       {
-       "tooltip": "auto: GPU, falling back to the CPU (about 0.6 x the audio length) with a warning.",
+       "tooltip": "auto: the GPU, else the CPU with a warning (Qwen3 there takes several times the audio length, Whisper about 0.6 x).",
        "advanced": true,
        "default": "auto",
        "multiselect": false,

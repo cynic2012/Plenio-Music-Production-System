@@ -57,16 +57,21 @@ def _finish(
     first = reports[0]
     profile = first["profile"] or "custom"
     why = "" if first["chosen_by"] in ("preset", "custom") else f" ({first['chosen_by']})"
-    summary = f"{title}: {profile}{why} - {detail(first)}; {first['seconds']:.1f} s"
+    skipped = all(report.get("skipped") for report in reports)
+    shown = "skipped" if skipped else detail(first)
+    summary = f"{title}: {profile}{why} - {shown}; {first['seconds']:.1f} s"
     notes = [note for report in reports for note in report["notes"]]
     if first["provisional"]:
         notes.append(f"the '{profile}' values are provisional (not listening-tested yet)")
-    record = Report(kind, Status.OK, summary, tuple(dict.fromkeys(notes)), {"items": reports})
+    status = (
+        Status.SKIPPED if skipped else Status.WARNING if any(r.get("skipped") for r in reports) else Status.OK
+    )
+    record = Report(kind, status, summary, tuple(dict.fromkeys(notes)), {"items": reports})
     markdown = "\n".join([f"**{summary}**", *[f"- note: {n}" for n in dict.fromkeys(notes)]])
     return io.NodeOutput(
         host.make_audio(results, rate),
         record,
-        ui={"plenio_summary": [{"status": Status.OK.value, "markdown": markdown}]},
+        ui={"plenio_summary": [{"status": status.value, "markdown": markdown}]},
     )
 
 
@@ -215,6 +220,16 @@ class PlenioHQRegenerateHighs(io.ComfyNode):
                     control_after_generate=io.ControlAfterGenerate.fixed,
                     tooltip="Seed of the model: the same seed gives the same highs.",
                 ),
+                io.Int.Input(
+                    "model_steps",
+                    default=4,
+                    min=2,
+                    max=8,
+                    optional=True,
+                    advanced=True,
+                    tooltip="UniverSR's flow steps: 4 (default) about 1.5 s per second of music on an RTX 5060 "
+                    "Ti, 3 about 1.1 s, 2 about 0.75 s - fewer steps, other and quieter highs.",
+                ),
             ],
             outputs=[
                 io.Audio.Output(
@@ -234,6 +249,7 @@ class PlenioHQRegenerateHighs(io.ComfyNode):
         preset: dict[str, Any] | None = None,
         brief: Any = None,
         seed: int = 0,
+        model_steps: int = 4,
     ) -> io.NodeOutput:
         name = _choice(preset)
         preset = preset or {}
@@ -245,26 +261,34 @@ class PlenioHQRegenerateHighs(io.ComfyNode):
         settings, profile, why = hq.resolve(name, brief, hq.REGENERATE_PROFILES, custom)
         settings = replace(settings, seed=int(seed))
         engine = audio_models.require(model, "super-resolution", "HQ 2 · Regenerate Highs")
+        if hasattr(engine, "with_steps"):
+            engine = engine.with_steps(int(model_steps))
         items, rate = host.audio_items(audio)
         results, reports = [], []
-        for item in items:
-            out, report = hq.regenerate_highs(
-                item,
-                rate,
-                engine,
-                settings,
-                preset=name,
-                profile=profile,
-                why=why,
-                cancel=host.raise_if_interrupted,
-            )
-            results.append(out)
-            reports.append(report)
+        try:
+            for item in items:
+                out, report = hq.regenerate_highs(
+                    item,
+                    rate,
+                    engine,
+                    settings,
+                    preset=name,
+                    profile=profile,
+                    why=why,
+                    cancel=host.raise_if_interrupted,
+                )
+                results.append(out)
+                reports.append(report)
+        finally:
+            if hasattr(engine, "release"):
+                engine.release()
 
         def detail(report: dict[str, Any]) -> str:
             s = report["settings"]
             return (
-                f"{report['engine']} from {report['engine_edge_hz'] / 1000:g} kHz, new highs from "
+                f"{report['engine']} from {report['engine_edge_hz'] / 1000:g} kHz"
+                + (f" ({report['engine_steps']} steps)" if report.get("engine_steps") else "")
+                + ", new highs from "
                 f"{s['from_hz'] / 1000:g} kHz ({s['new_share']:.0%}, level {s['level_match']:g}); highs "
                 f"{_db(report['highs_change_db'])}, their side {_db(report['side_change_db'])}"
             )

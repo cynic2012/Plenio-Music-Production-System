@@ -12,7 +12,7 @@ from comfy_api.latest import io
 
 from ...core import score as score_rules
 from ...core.alignment import LOW_CONFIDENCE, align, check_sung_lyrics, drop_inventions, join_tokens
-from ...core.asr import ENGINES, AsrSettings, weak_segments
+from ...core.asr import DEFAULT_ENGINE, ENGINES, AsrSettings, weak_segments
 from ...core.brief import CoverBrief
 from ...core.errors import PlenioCancelledError, PlenioUserError
 from ...core.hashing import sha256_text
@@ -56,9 +56,10 @@ class PlenioTranscribeLyrics(io.ComfyNode):
             display_name="Transcribe Lyrics",
             category="Plenio/Audio analysis",
             description=(
-                "Transcribes the sung words of a recording (faster-whisper large-v3, only where the transcription "
-                "found singing) and places them into the final score's sections on the beat grid. With "
-                "expected_lyrics connected it checks a take: were these lyrics sung, section by section?"
+                "Transcribes the sung words of a recording (Qwen3-ASR 1.7B; Qwen3-ForcedAligner times every word, "
+                "faster-whisper large-v3 steps in for languages the aligner does not know; only where the "
+                "transcription found singing) and places them into the final score's sections on the beat grid. "
+                "With expected_lyrics connected it checks a take: were these lyrics sung, section by section?"
             ),
             inputs=[
                 io.Audio.Input(
@@ -90,8 +91,9 @@ class PlenioTranscribeLyrics(io.ComfyNode):
                 io.Combo.Input(
                     "engine",
                     options=list(ENGINES),
-                    default="faster-whisper large-v3",
-                    tooltip="ASR engine (runs in a separate process).",
+                    default=DEFAULT_ENGINE,
+                    tooltip="Qwen3-ASR 1.7B: its aligner times the words; faster-whisper takes over a language it "
+                    "cannot time (the summary says so). faster-whisper large-v3: always Whisper. Separate process.",
                 ),
                 io.String.Input(
                     "language",
@@ -104,7 +106,8 @@ class PlenioTranscribeLyrics(io.ComfyNode):
                     options=["auto", "cuda", "cpu"],
                     default="auto",
                     advanced=True,
-                    tooltip="auto: GPU, falling back to the CPU (about 0.6 x the audio length) with a warning.",
+                    tooltip="auto: the GPU, else the CPU with a warning (Qwen3 there takes several times the audio "
+                    "length, Whisper about 0.6 x).",
                 ),
             ],
             outputs=[
@@ -156,8 +159,9 @@ class PlenioTranscribeLyrics(io.ComfyNode):
             host.raise_if_interrupted()  # ComfyUI's interrupt, not an error dialog (AUD-10)
             raise
         progress.update(1.0)
-        if result.settings.get("device_note"):
-            warnings.append(str(result.settings["device_note"]))
+        for key in ("engine_note", "device_note"):
+            if result.settings.get(key):
+                warnings.append(str(result.settings[key]))
         detected = LANGUAGES.get(result.language, result.language or "unknown")
         transcript = join_tokens([w.word for w in result.words])
         data: dict[str, Any] = {
@@ -226,9 +230,11 @@ class PlenioTranscribeLyrics(io.ComfyNode):
         warnings.extend(alignment.warnings)
         data["alignment"] = alignment.to_dict()
         summary = (
-            f"{len(kept)} words in {len([s for s in alignment.sections if s['words']])} section(s), {detected} "
-            f"({result.language_probability:.0%}), placement: {alignment.method}"
+            f"{len(kept)} words in {len([s for s in alignment.sections if s['words']])} section(s), {detected}"
+            + (f" ({result.language_probability:.0%})" if result.language_probability > 0 else "")
+            + f", placement: {alignment.method}"
             + (", from the cache" if result.cached else f", {result.seconds:.0f} s on {result.device}")
+            + f" ({result.engine})"
         )
         report = Report(
             "transcribe_lyrics", Status.WARNING if warnings else Status.OK, summary, tuple(warnings), data

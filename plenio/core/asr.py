@@ -3,6 +3,11 @@
 The ASR itself runs in a worker process (``plenio.workers.asr``). This module is
 pure: it describes what to run and stores what came back.
 
+Engines (owner's decision 2026-10-22): **Qwen3-ASR 1.7B** hears the words and **Qwen3-ForcedAligner 0.6B**
+places them on the audio - exact word times, the reference of the subtitle study - in the eleven languages
+the aligner knows. **faster-whisper large-v3** stays as the fallback for every other language (and as a
+choice in Transcribe Lyrics, so workflows saved with it keep running); the switch is named in the result.
+
 Reproducibility (yue2-cover-design section 5.3): an edited lyrics document stays
 valid only while its ASR draft is unchanged, so every result is cached on disk
 under a key made of the source audio hash, the vocal regions, the engine, the
@@ -38,18 +43,74 @@ class AsrEngine:
     environment: str = "host"
     """``host`` = ComfyUI's Python; otherwise the name of an isolated package folder."""
     aligner_asset_id: str = ""
+    """Catalogue id of the forced aligner that times the heard words (empty: the ASR times them itself)."""
+    timed_languages: frozenset[str] = frozenset()
+    """Language codes the engine can time; empty = every language it hears."""
+    fallback: str = ""
+    """The engine (label) for a language this one cannot time."""
+    vram_bytes: int = 4 * 2**30
+    """What the worker asks ComfyUI to free on the GPU before it starts."""
 
 
+QWEN3_LANGUAGES = {
+    "Chinese": "zh",
+    "English": "en",
+    "Cantonese": "yue",
+    "Arabic": "ar",
+    "German": "de",
+    "French": "fr",
+    "Spanish": "es",
+    "Portuguese": "pt",
+    "Indonesian": "id",
+    "Italian": "it",
+    "Korean": "ko",
+    "Russian": "ru",
+    "Thai": "th",
+    "Vietnamese": "vi",
+    "Japanese": "ja",
+    "Turkish": "tr",
+    "Hindi": "hi",
+    "Malay": "ms",
+    "Dutch": "nl",
+    "Swedish": "sv",
+    "Danish": "da",
+    "Finnish": "fi",
+    "Polish": "pl",
+    "Czech": "cs",
+    "Filipino": "fil",
+    "Persian": "fa",
+    "Greek": "el",
+    "Hungarian": "hu",
+    "Macedonian": "mk",
+    "Romanian": "ro",
+}
+"""The languages Qwen3-ASR hears (its model card), by the name it answers with, and their codes."""
+ALIGNER_LANGUAGES = frozenset({"zh", "en", "yue", "fr", "de", "it", "ja", "ko", "pt", "ru", "es"})
+"""The languages Qwen3-ForcedAligner can time (its model card)."""
+
+QWEN3 = "Qwen3-ASR 1.7B"
+WHISPER = "faster-whisper large-v3"
 ENGINES: dict[str, AsrEngine] = {
-    "faster-whisper large-v3": AsrEngine(
+    QWEN3: AsrEngine(
+        "qwen3-asr-1.7b",
+        QWEN3,
+        "qwen3-asr-1.7b-hf",
+        "plenio.workers.asr",
+        "Apache-2.0 (Qwen3-ASR-1.7B, Qwen3-ForcedAligner-0.6B; inference code from transformers 5.17)",
+        aligner_asset_id="qwen3-forcedaligner-0.6b-hf",
+        timed_languages=ALIGNER_LANGUAGES,
+        fallback=WHISPER,
+        vram_bytes=5 * 2**30,
+    ),
+    WHISPER: AsrEngine(
         "faster-whisper-large-v3",
-        "faster-whisper large-v3",
+        WHISPER,
         "faster-whisper-large-v3",
         "plenio.workers.asr",
         "MIT (faster-whisper, CTranslate2, Whisper weights)",
     ),
 }
-DEFAULT_ENGINE = "faster-whisper large-v3"
+DEFAULT_ENGINE = QWEN3
 
 
 @dataclass(frozen=True)
@@ -129,6 +190,19 @@ def engine_for(label: str) -> AsrEngine:
         raise PlenioUserError(
             f"Unknown ASR engine {label!r}.", hint=f"Choose one of {sorted(ENGINES)}."
         ) from error
+
+
+def can_time(engine: AsrEngine, language: str) -> bool:
+    """Can ``engine`` time words in ``language`` (a code; empty = not known yet)?"""
+    return not engine.timed_languages or not language or language in engine.timed_languages
+
+
+def fallback_note(engine: AsrEngine, language: str) -> str:
+    """The line a result carries when ``engine`` handed a language it cannot time to its fallback."""
+    return (
+        f"{engine.label} cannot time {language!r} words (its aligner knows "
+        f"{', '.join(sorted(engine.timed_languages))}): transcribed with {engine.fallback} instead"
+    )
 
 
 def cache_key(source_sha256: str, settings: AsrSettings, model_revision: str) -> str:

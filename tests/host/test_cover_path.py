@@ -24,7 +24,7 @@ import pytest
 
 from harness import ComfyServer, Log
 from plenio.core.alignment import words_from
-from plenio.core.asr import AsrCache, AsrResult, AsrSettings, cache_key
+from plenio.core.asr import WHISPER, AsrCache, AsrResult, AsrSettings, cache_key
 from plenio.core.assets.catalogue import load_catalogue
 
 pytestmark = pytest.mark.host
@@ -246,7 +246,11 @@ def primed(server: ComfyServer, tmp_path_factory: pytest.TempPathFactory) -> dic
     probe = events(log, "timeline")[-1]
     assert probe["bars"] == len(FIXTURE["bar_starts"]) and probe["vocal_notes"] > 0
     revision = load_catalogue(ROOT / "resources" / "assets.toml")["faster-whisper-large-v3"].revision
-    settings = AsrSettings(language="", regions=tuple((float(a), float(b)) for a, b in probe["regions"]))
+    # the cover prompt names faster-whisper (Transcribe Lyrics' engine widget); Qwen3-ASR is the default since
+    # 2026-10-22, and a workflow saved with Whisper keeps it
+    settings = AsrSettings(
+        engine=WHISPER, language="", regions=tuple((float(a), float(b)) for a, b in probe["regions"])
+    )
     words = tuple(words_from(FIXTURE["words"]))
     result = AsrResult(
         engine="faster-whisper-large-v3",

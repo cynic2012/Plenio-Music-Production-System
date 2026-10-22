@@ -255,5 +255,8 @@ song).
 
 - LRC (synced lyrics for music players) and karaoke ASS with colours: the times are there, the formats are
   not requested; a small follow-up.
-- A forced aligner (Qwen3-ForcedAligner, the study's truth): a second ASR model of 1.2 GB for a gain of a
-  few hundredths of a second over the hybrid - not worth it now.
+- ~~A forced aligner (Qwen3-ForcedAligner, the study's truth): a second ASR model of 1.2 GB for a gain of a
+  few hundredths of a second over the hybrid - not worth it now.~~ **Built 2026-10-22** (owner's decision): the
+  lyrics ASR is Qwen3-ASR with Qwen3-ForcedAligner (1.8 GB); its times are used as they are
+  (`subtitles.ALIGNED`), Whisper's - the fallback for other languages - keep the corrections of §1.1
+  (`subtitles.WHISPER`).

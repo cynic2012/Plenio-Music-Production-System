@@ -371,7 +371,7 @@
     "tooltip": "The rendered song (any sample rate)."
    },
    "preset": {
-    "tooltip": "A prepared stage template: one choice sets PRE, POST and the crossover (500 Hz below PRE). *custom* uses the three fields below, which stay editable - the MiniMax template ships template 3 and the matching numbers."
+    "tooltip": "A prepared stage template: one choice sets PRE, POST and the crossover (500 Hz below PRE); template 3 suits MiniMax renders. *custom* uses the three fields below, which stay editable."
    },
    "pre_hz": {
     "tooltip": "Low-pass before the model (it shapes only what the model sees): 0 = the model's training condition, -1 = no PRE, else Hz (6000, 8000, 10000, 12000, 14000)."

@@ -13,7 +13,7 @@ The mid is never filtered. A mono input gets the warmth only. Same rate and leng
 | profile | for | side high-cut | side cleanup | warmth |
 |---|---|---|---|---|
 | *standard* | pop, hip-hop, soul, world | 10.5 kHz | 65 % | 0.18 |
-| *gentle* | acoustic, classical, jazz, folk | 12.5 kHz | 45 % | 0.10 |
+| *gentle* | classical, jazz, folk | 11.5 kHz | 55 % | 0.14 |
 | *strong* | rock, metal, punk | 9.5 kHz | 80 % | 0.25 |
 | *wide* | electronic, dance, ambient | 14 kHz | 40 % | 0.12 |
 

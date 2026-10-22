@@ -51,7 +51,8 @@ def band_db(x: np.ndarray, low: float, high: float, rate: int = RATE) -> float:
         ("drum & bass", "", hq.WIDE),
         ("chillout / downtempo", "", hq.WIDE),
         ("neoclassical", "", hq.GENTLE),
-        ("singer-songwriter", "pop/singer-songwriter-acoustic-vocal", hq.GENTLE),
+        # the templates' default song: pop, the profile of the owner's listening test (2026-10-22)
+        ("singer-songwriter", "pop/singer-songwriter-acoustic-vocal", hq.STANDARD),
         ("smooth jazz", "", hq.GENTLE),
         ("hip-hop / rap", "", hq.STANDARD),
         ("k-pop", "asian/kpop-vocal", hq.STANDARD),
@@ -90,6 +91,20 @@ def test_every_preset_resolves_and_custom_uses_the_fields() -> None:
     assert hq.resolve(hq.CUSTOM, None, hq.STEREO_PROFILES, custom) == (custom, None, "custom")
     with pytest.raises(PlenioUserError, match="Unknown preset"):
         hq.chosen_profile("loud", None)
+
+
+def test_every_profile_regenerates_from_the_crossover_the_owner_heard() -> None:
+    """2026-10-22: a gentle profile from 12.2 kHz changed a singer-songwriter song too little to hear."""
+    assert {settings.from_hz for settings in hq.REGENERATE_PROFILES.values()} == {8200.0}
+
+
+def test_the_envelope_smoothing_equals_scipys_gaussian_filter() -> None:
+    from scipy.ndimage import gaussian_filter1d
+
+    values = np.random.default_rng(3).standard_normal(48000) ** 2
+    assert np.allclose(
+        hq._gaussian_smooth(values, 1920.0), gaussian_filter1d(values, 1920.0), rtol=0, atol=1e-12
+    )
 
 
 def test_standard_is_the_proposal_the_owner_listened_to() -> None:
@@ -224,7 +239,7 @@ def test_regenerate_keeps_a_44100_song_at_its_rate_and_length() -> None:
     out, report = hq.regenerate_highs(
         x, 44100, FakeConditionedEngine(), hq.REGENERATE_PROFILES[hq.GENTLE], profile=hq.GENTLE
     )
-    assert out.shape == x.shape and report["engine_input_rate"] == 24000 and report["provisional"]
+    assert out.shape == x.shape and report["engine_input_rate"] == 16000 and report["provisional"]
 
 
 def test_regenerate_is_deterministic_for_a_seed() -> None:
@@ -235,9 +250,21 @@ def test_regenerate_is_deterministic_for_a_seed() -> None:
     assert np.array_equal(first, again) and not np.array_equal(first, other)
 
 
-def test_regenerate_refuses_a_crossover_above_the_band() -> None:
-    with pytest.raises(PlenioUserError, match="leaves no band"):
-        hq.regenerate_highs(song(1.0, rate=32000), 32000, FakeEngine(), hq.RegenerateHighs(16000.0))
+def test_regenerate_passes_a_song_without_room_for_new_highs_on_and_says_so() -> None:
+    """A 16 kHz upload has no band above 8.2 kHz: a visible skip, not an error that stops the master (R7)."""
+    x = song(1.0, rate=16000)
+    out, report = hq.regenerate_highs(x, 16000, FakeEngine(), hq.RegenerateHighs())
+    assert np.array_equal(out, x) and report["skipped"] and "no band above 8.2 kHz" in report["notes"][0]
+
+
+def test_very_short_audio_is_passed_on_with_a_note() -> None:
+    x = song(0.05)
+    for out, report in (
+        hq.stereo_cleanup(x, RATE, hq.STEREO_PROFILES[hq.STANDARD]),
+        hq.regenerate_highs(x, RATE, FakeEngine(), hq.RegenerateHighs()),
+        hq.dereverb(x, RATE, hq.DEREVERB_PROFILES[hq.STANDARD]),
+    ):
+        assert np.array_equal(out, x) and report["skipped"] and "too short" in report["notes"][0]
 
 
 # --- stage 3 ------------------------------------------------------------------------------------

@@ -16,7 +16,8 @@ Plenio never ships model weights; the templates point to the official downloads.
 | YuE2 instrumental LoRA (community) | CC BY-NC 4.0 | non-commercial |
 | MiniMax Music 3 | MiniMax-Music3 Community License | commercial use has conditions (see the licence) |
 | Gemma 4, Qwen 3.5 (Comfy-Org repackaging) | Apache-2.0 | permissive |
-| faster-whisper large-v3 (lyrics ASR of covers) | MIT | permissive |
+| Qwen3-ASR 1.7B, Qwen3-ForcedAligner 0.6B (lyrics ASR: covers, subtitles) | Apache-2.0 | permissive |
+| faster-whisper large-v3 (the lyrics ASR's fallback) | MIT | permissive |
 | FLUX.2 Klein 4B, its Qwen3 4B text encoder and the FLUX.2 VAE (optional Cover Art) | Apache-2.0 | permissive (check the model cards of other FLUX.2 variants before switching: their licences may differ) |
 
 Songs made with a YuE2 path are therefore subject to the non-commercial terms of YuE2 (and SheetSage2 and the adapter in covers). Plenio writes the licence notices of the models used into each release record (`<song>.plenio.json`): the music model's licence, and SheetSage2 and the instrumental adapter when the workflow loads them.
@@ -25,7 +26,7 @@ A cover image made with the optional Cover Art block (FLUX.2 Klein 4B) is under 
 
 ## Optional Python packages
 
-Plenio installs no Python packages. Cover art is embedded into FLAC and MP3 by Plenio's own code (since 0.2.2; earlier versions used the optional GPL package mutagen, which is no longer used). The optional **faster-whisper** (MIT) is only needed for covers with lyrics.
+Plenio installs no Python packages. Cover art is embedded into FLAC and MP3 by Plenio's own code (since 0.2.2; earlier versions used the optional GPL package mutagen, which is no longer used). The optional **faster-whisper** (MIT) is only needed for the lyrics ASR's fallback (languages Qwen3's aligner cannot time). Qwen3-ASR's inference code (Apache-2.0) is part of Plenio (`plenio/third_party/qwen3_asr`, from transformers 5.17) and runs on ComfyUI's own transformers.
 
 ## Covers
 
