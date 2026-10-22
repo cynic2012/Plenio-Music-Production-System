@@ -25,6 +25,13 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 - **The bass and the vocals as MIDI**: a saved bass or vocals stem also comes as a `.mid` file with the notes it plays, for your DAW (experimental). [Details](docs/user/concepts/stems.md#the-bass-and-the-vocals-as-midi)
 - **In the Plenio Player**: covers of one song no longer share one title (*Yesterday (2)*, *(3)* …), and a song exported without lyrics times follows its score's times and says why it has none of its own.
 
+<p align="center">
+  <img src="assets/branding/1.1.0/comfyui-hq-mastering.jpg" alt="The 1 · YuE2 · Song template in ComfyUI: the HQ Mastering switch at the top of group 1, off - faster, no UniverSR - above the Song Brief" width="49%" />
+  <img src="assets/branding/1.1.0/editor-musicxml-octave.jpg" alt="The score editor in the DAW layout: Import MusicXML next to the other file buttons, Vocal and Instrument −8va / +8va under Whole score and in the track headers" width="49%" />
+</p>
+
+*The HQ Mastering switch at the top of every template (off by default) · the score editor with Import MusicXML… and an octave for a whole track.*
+
 Every change: [CHANGELOG](CHANGELOG.md).
 
 ## New in 1.0.2: creativity, one slider
