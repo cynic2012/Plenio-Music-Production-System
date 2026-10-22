@@ -80,7 +80,7 @@ def test_template_inventory_and_optional_packages() -> None:
         "yue2_3b_int8_convrot.safetensors": 3960938800,
         "gemma4_e4b_it_fp8_scaled.safetensors": 1,
         "minimax_music3_dav.safetensors": 1000,  # interrupted download
-        "pytorch_model.bin": 229072395,  # UniverSR for HQ 2 in every template's Master
+        "pytorch_model.bin": 229072395,  # UniverSR for HQ 2 in every template's Master (HQ mastering)
     }
     report = check_system(
         facts(
@@ -185,4 +185,6 @@ def test_the_check_says_where_every_model_file_and_asset_goes() -> None:
     assert "### Plenio assets" in markdown and "`F:/ComfyUI/models/plenio/asr/qwen3-asr-1.7b-hf`" in markdown
     assert "ComfyUI's models folder (`F:/ComfyUI/models`)" in markdown
     universr = next(line for line in markdown.splitlines() if line.startswith("| [`pytorch_model.bin`]("))
-    assert "`models/audio_sr`" in universr and "1 · YuE2 · Song" in universr  # every template needs it now
+    assert (
+        "`models/audio_sr`" in universr and "1 · YuE2 · Song" in universr
+    )  # every template, with HQ mastering

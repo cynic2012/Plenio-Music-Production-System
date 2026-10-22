@@ -102,7 +102,7 @@ def test_inventory_and_readiness(tmp_path: Path) -> None:
         "yue2_3b_int8_convrot.safetensors": 3960938800,
         "gemma4_e4b_it_fp8_scaled.safetensors": 1234,  # size not recorded: any size counts
         "minimax_music3_dav.safetensors": 5,  # wrong size
-        "pytorch_model.bin": 229072395,  # UniverSR: HQ 2 runs in every template's Master (2026-10-21)
+        "pytorch_model.bin": 229072395,  # UniverSR: HQ 2 in every template's Master, with HQ mastering on
     }
 
     def locate(folder: str, file: str) -> Path | None:
@@ -138,11 +138,15 @@ def test_inventory_and_readiness(tmp_path: Path) -> None:
         "flux-2-klein-4b.safetensors",
         "ar_lora_inst_v3abc_comfyui.safetensors",
     }
-    # Enhance & Master runs HQ 2 (UniverSR) and ships Stems bypassed: nothing else is optional there
+    # Enhance & Master needs no model: UniverSR only with HQ mastering on (off by default), Stems bypassed
     assert enhance.ready
     assert {m.file for m in enhance.optional_missing} == {"model_bs_roformer_ep_17_sdr_9.6568.ckpt"}
     nothing = readiness(CATALOGUE, Inventory({}), ["4 · Enhance & Master"])[0]
-    assert not nothing.ready and {m.file for m in nothing.missing} == {"pytorch_model.bin"}
+    assert nothing.ready and not nothing.missing
+    assert {m.file for m in nothing.optional_missing} == {
+        "pytorch_model.bin",
+        "model_bs_roformer_ep_17_sdr_9.6568.ckpt",
+    }
 
 
 def test_size_text() -> None:

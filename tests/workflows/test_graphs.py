@@ -190,7 +190,12 @@ def model_files(template: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], se
                 index = 1 if node["type"] == "PlenioAudioModelLoader" else 0
                 assert entry["name"] == node["widgets_values"][index], node
                 entries[entry["name"]] = entry
-                (optional if off else required).add(entry["name"])
+                # HQ 2 asks for its super-resolution model only with HQ mastering on (lazy; off by default)
+                lazy = (
+                    node["type"] == "PlenioAudioModelLoader"
+                    and node["widgets_values"][0] == "super-resolution"
+                )
+                (optional if off or lazy else required).add(entry["name"])
 
     walk(template["nodes"], False)
     return entries, required, optional - required
@@ -238,7 +243,8 @@ def test_app_configurations() -> None:
         brief = [widget for kind, widget in shown if kind.endswith("Brief")]
         assert brief[0] == "mode", name
         assert [kind for kind, widget in shown if widget == "sheet_state"] == ["PlenioSongSheet"] * count
-        # the audio stages live in the Master block since Audio HQ (2026-10-21): none in the song apps
+        # the audio stages live in the Master block since Audio HQ (2026-10-21): none in the song apps - only
+        # the HQ Mastering switch, among the first choices (2026-10-22)
         assert {kind for kind, _ in shown} <= {
             "PlenioSongBrief",
             "PlenioCoverBrief",
@@ -246,7 +252,9 @@ def test_app_configurations() -> None:
             "PlenioSeed",
             "PlenioSongSheet",
             "LoadAudio",
+            "PlenioHQMastering",
         }
+        assert ("PlenioHQMastering", "hq_mastering") in shown[:3], name
         # the creative mode and its sliders, and the one writer model of every writing step (0.5.0)
         assert [widget for kind, widget in shown if kind == "PlenioWriterChoice"] == ["model"], name
         assert "arrangement" in brief, name
@@ -397,7 +405,8 @@ def audio_chain(nodes: list[dict[str, Any]], links: list[Any], first: dict[str, 
 
 def test_audio_hq_runs_in_the_master_block_before_the_eq() -> None:
     """Owner's request (2026-10-21): HQ 1 and HQ 2 on, HQ 3 bypassed, before the first EQ, inside the Master
-    block; the presets follow the brief's genre (auto); the REFINE block outside it is gone."""
+    block; the presets follow the brief's genre (auto); the REFINE block outside it is gone. HQ 2 runs only with
+    *HQ mastering* on: the switch at the top of the template, off, linked to the block alone (2026-10-22)."""
     from plenio.core.audio import hq
 
     for name in ("1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"):
@@ -413,11 +422,26 @@ def test_audio_hq_runs_in_the_master_block_before_the_eq() -> None:
         modes = {n["type"]: n.get("mode", 0) for n in path}
         assert modes["PlenioHQDeReverb"] == 4, name
         assert all(modes[kind] == 0 for kind in HQ_CHAIN if kind != "PlenioHQDeReverb"), name
+        highs = path[1]
         for node in path[:3]:
             assert node["widgets_values"][0] == hq.AUTO, name
-        highs = path[1]
         # the seed stays fixed (a new one on every queue would re-run the model), the model runs its 4 steps
-        assert highs["widgets_values"][1:] == [0, "fixed", 4], name
+        assert highs["widgets_values"][2:] == [0, "fixed", 4], name
+        hq_input = next(slot for slot in master_def["inputs"] if slot["name"] == "hq_mastering")
+        assert any(
+            link["target_id"] == highs["id"]
+            and link["origin_id"] == -10
+            and link["origin_slot"] == master_def["inputs"].index(hq_input)
+            for link in master_def["links"]
+        ), name
+        wrapper = next(n for n in template["nodes"] if n["type"] == master_def["id"])
+        switch_slot = next(slot for slot in wrapper["inputs"] if slot["name"] == "hq_mastering")
+        switch_link = next(link for link in template["links"] if link[0] == switch_slot["link"])
+        switch = next(n for n in template["nodes"] if n["id"] == switch_link[1])
+        # off, at the top of group 1, and made last: the template's other node ids stay as they were
+        assert switch["type"] == "PlenioHQMastering" and switch["widgets_values"] == [False], name
+        assert switch["pos"][1] < 0 and switch["id"] == max(n["id"] for n in template["nodes"]), name
+        assert [link[3] for link in template["links"] if link[1] == switch["id"]] == [wrapper["id"]], name
         loader = next(n for n in nodes if n["type"] == "PlenioAudioModelLoader")
         assert loader["widgets_values"][:2] == ["super-resolution", "pytorch_model.bin"]
         assert loader["properties"]["models"][0]["directory"] == "audio_sr"
@@ -455,9 +479,15 @@ def test_enhance_runs_audio_hq_as_plain_nodes_with_standard_presets() -> None:
     assert [n.get("mode", 0) for n in path[:3]] == [0, 0, 4]
     # no brief in this template: the presets say what they are
     assert [n["widgets_values"][0] for n in path[:3]] == [hq.PRESET_LABELS[hq.STANDARD]] * 3
+    # the HQ Mastering switch (off) sets HQ 2's *hq_mastering*
+    switch = next(n for n in nodes if n["type"] == "PlenioHQMastering")
+    assert switch["widgets_values"] == [False] and switch["pos"][1] < 0
+    hq_slot = next(slot for slot in path[1]["inputs"] if slot["name"] == "hq_mastering")
+    assert next(link for link in template["links"] if link[0] == hq_slot["link"])[1] == switch["id"]
     app = template["extra"]["linearData"]["inputs"]
     shown = [(next(n for n in nodes if n["id"] == i)["type"], widget) for i, widget in app]
     assert ("PlenioHQStereoCleanup", "preset") in shown and ("PlenioHQRegenerateHighs", "preset") in shown
+    assert shown[1] == ("PlenioHQMastering", "hq_mastering")
 
 
 def test_stems_is_bypassed_everywhere_and_mixes_neutrally() -> None:

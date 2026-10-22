@@ -127,6 +127,41 @@ def test_an_unknown_preset_is_refused(server: ComfyServer) -> None:
     assert "The preset is missing or unknown" in str(refused.value) and hq.AUTO in str(refused.value)
 
 
+def test_with_hq_mastering_off_hq2_passes_the_song_and_its_model_never_loads(
+    server: ComfyServer, log: Log
+) -> None:
+    """Owner's request 2026-10-22: off, UniverSR does not run - HQ 2 does not even ask for its model (lazy),
+    so the loader does not run and a model file that is not installed is no error."""
+    prompt = chain(highs={"preset": hq.AUTO, "hq_mastering": False})
+    prompt["8"] = {"class_type": "PlenioTestAudioProbe", "inputs": {"audio": ["2", 0], "name": "before"}}
+    prompt["9"] = {"class_type": "PlenioTestAudioProbe", "inputs": {"audio": ["4", 0], "name": "after"}}
+    entry = server.run(prompt)
+    assert (
+        summary(entry, "4") == "**HQ 2 · Regenerate Highs: off - HQ mastering is off, UniverSR did not run**"
+    )
+    assert entry["outputs"]["4"]["plenio_summary"][0]["status"] == "skipped"
+    assert not events(log, "audio_model")  # the fake loader never ran
+    before, after = (
+        next(e for e in reversed(log.events()) if e.get("name") == n) for n in ("before", "after")
+    )
+    assert (before["shape"], before["peak"], before["rms"]) == (after["shape"], after["peak"], after["rms"])
+    # the real loader with a file this server does not have: off runs, on says where the file goes
+    missing = chain(highs={"preset": hq.AUTO, "hq_mastering": False})
+    missing["3"] = {
+        "class_type": "PlenioAudioModelLoader",
+        "inputs": {"kind": "super-resolution", "kind.model": "pytorch_model.bin"},
+    }
+    server.run(missing)
+    missing["4"]["inputs"]["hq_mastering"] = True
+    with pytest.raises(ExecutionFailedError) as refused:
+        server.run(missing)
+    assert "pytorch_model.bin" in str(refused.value) and "models/audio_sr" in str(refused.value)
+    # the switch node gives its value on
+    info = server.get("/object_info/PlenioHQMastering")["PlenioHQMastering"]
+    switch = info["input"]["required"]["hq_mastering"][1]
+    assert switch["default"] is False and switch["label_on"].startswith("on: less AI shimmer")
+
+
 def test_the_node_definitions(server: ComfyServer) -> None:
     for node_id in ("PlenioHQStereoCleanup", "PlenioHQRegenerateHighs", "PlenioHQDeReverb"):
         info = server.get(f"/object_info/{node_id}")[node_id]

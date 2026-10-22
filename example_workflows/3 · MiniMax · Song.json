@@ -1,8 +1,8 @@
 {
  "id": "b96be7a0-0f56-5627-8df4-99ad092a11ce",
  "revision": 0,
- "last_node_id": 17,
- "last_link_id": 38,
+ "last_node_id": 18,
+ "last_link_id": 39,
  "nodes": [
   {
    "id": 1,
@@ -25,7 +25,7 @@
     "Node name for S&R": "MarkdownNote"
    },
    "widgets_values": [
-    "# 3 · MiniMax · Song\n\n**Brief -> Write Song -> Song Sheet -> MiniMax Render -> Master (Audio HQ, EQ, loudness) -> Export**\n\n1. Choose the **mode** in **Song Brief**:\n   - *new song every run* - every run writes and renders a **different song** from the brief, without stops (set the **Draft seed** to 🎲 *new seed* for even more variety). For a series, set the batch count next to **Run** (App mode: *Number of runs*) - one click, many songs.\n   - *one song, stop to review* - the run **stops at the Song Sheet**: open it, check or edit the documents, *Approve*, run again. Once approved, every further run is a **new take** of the same song (the documents stay cached).\n2. Describe the song (or pick a template). *vocals* switches between a sung song and an instrumental; *length* runs from 1:00 to 6:00.\n3. Press **Run**. The writer model drafts title, a structured **caption** (Global Metadata, Vocal Details, Arrangement), lyrics and an artwork prompt; MiniMax Music 3 renders the song.\n\n**Where the run stands:** a badge above each Plenio node shows its result - ✓ done, ⚠ warning, ✖ error; every Song Sheet that will stop carries ⏸ *review stop* before the run, ⏸ *waiting for your approval* (and an amber frame) when the run stopped there, ✓ *approved* once you approved it. A new run clears the badges, so they show how far this run got.\n\n**Creativity** (the brief's slider): 0 steady, 50 the reference - exactly as before -, 100 experimental. It shapes the writer's rules and the temperature of its draft (and of a creative mode's plan) and, with YuE2, how freely the plan and the takes are sampled. More surprises also bring more misses: try a few seeds. A workflow saved before the slider keeps 50.\n\n**Seeds:** each seed node has one switch - **🔒 same seed**: the next run keeps that part (the same draft, the same take), so you can change other things; **🎲 new seed**: every run draws a new number - something new each time. The number shown is always the one the last run used: liked a take? Switch its seed to 🔒. Blue nodes keep, amber nodes renew.\n\n**Inspect and edit:** open the **Song Sheet** to see exactly what MiniMax receives; its *review* follows the brief's mode (*as the brief says*). Caption and lyrics together must stay under **5 000 tokens** (the sheet counts them exactly with the loaded text encoder and stops before rendering if they do not fit). The render ceiling follows the brief's length, at most 6:00; the model can end earlier.\n\n**Instrumentals:** the lyrics are a map of section tags ([Intro], [Instrumental], [Solo], ...), about twice as long as a sung song's, and the caption's Vocal Details are *n/a*.\n\n**Creative modes:** *arrangement* in the brief adds the mode's hints to the caption (for example *many instruments*: a large ensemble) and, with *genre closeness*, says how typical it stays. MiniMax Music 3 has no score, so there is no section plan here; *off* writes as before.\n\n**Writer model:** one list in the *Writer model* node for every writing step (Write Song and Arrange): ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed is answered from Plenio's cache, without asking the model again.\n\n**Finish:** *Plenio · Master* refines the take (*Audio HQ*, below) and brings it to -14 LUFS / -1 dBTP with a gentle tone match (open the block to change a stage, the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the **sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export), and the lyrics as **subtitles** - `<name> (lines).srt` and `<name> (notes).srt`, timed by listening. The **tags** take the brief's fields as variables (`{genre}`, `{mood}` ...); the *Tags & variables* note beside Export lists them all.\n\n**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the render's highs; *HQ 2 · Regenerate Highs* lets the UniverSR model (229 MB) generate new highs above 8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s per second of music on an RTX 5060 Ti (its *model steps* 3: about 1.1 s); *HQ 3 · De-Reverb* (bypassed) dries the short metallic room but also dulls the highs. Their presets are on **auto**: the brief's genre picks *standard*, *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient). Open the block (the icon at the top right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). The user guide *Audio HQ* covers it.\n\n**Cover art (optional, bypassed):** *Cover Art* paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about 16 GB of extra model files, Apache-2.0). Select it and the cover preview and press **Ctrl+B**; Export then embeds the cover in the FLAC and MP3 files and saves it as `.jpg`.\n\n**Stems (optional, bypassed):** *Separate Stems* splits the take into vocals, drums, bass and other; the *Stem Mixer* balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Select the block and press **Ctrl+B**; the mixer is inside it - open the block with the icon at the top right of the node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it.\n\n**App mode:** switch *Graph / App* at the top left for a simple form: the mode, the brief with its creative mode, closeness and creativity, the writer model, the seeds, the Song Sheet buttons (review and edit, also in the app - their status line says where the run stands: *stops here for review*, *waiting for your approval*, *approved*) and the results. *Number of runs* next to Run renders a series.\n\n**Models** (ComfyUI offers the downloads when you open the template): MiniMax Music 3 (diffusion model 4.9 GB, int8 text encoder 9.2 GB, VAE), the Gemma 4 E4B writer. MiniMax Music 3 weights: **MiniMax-Music3 Community License**. If decoding runs out of memory, turn on *tiled decode* in MiniMax Render.\n"
+    "# 3 · MiniMax · Song\n\n**Brief -> Write Song -> Song Sheet -> MiniMax Render -> Master (Audio HQ, EQ, loudness) -> Export**\n\n1. Choose the **mode** in **Song Brief**:\n   - *new song every run* - every run writes and renders a **different song** from the brief, without stops (set the **Draft seed** to 🎲 *new seed* for even more variety). For a series, set the batch count next to **Run** (App mode: *Number of runs*) - one click, many songs.\n   - *one song, stop to review* - the run **stops at the Song Sheet**: open it, check or edit the documents, *Approve*, run again. Once approved, every further run is a **new take** of the same song (the documents stay cached).\n2. Describe the song (or pick a template). *vocals* switches between a sung song and an instrumental; *length* runs from 1:00 to 6:00.\n3. Press **Run**. The writer model drafts title, a structured **caption** (Global Metadata, Vocal Details, Arrangement), lyrics and an artwork prompt; MiniMax Music 3 renders the song.\n\n**Where the run stands:** a badge above each Plenio node shows its result - ✓ done, ⚠ warning, ✖ error; every Song Sheet that will stop carries ⏸ *review stop* before the run, ⏸ *waiting for your approval* (and an amber frame) when the run stopped there, ✓ *approved* once you approved it. A new run clears the badges, so they show how far this run got.\n\n**Creativity** (the brief's slider): 0 steady, 50 the reference - exactly as before -, 100 experimental. It shapes the writer's rules and the temperature of its draft (and of a creative mode's plan) and, with YuE2, how freely the plan and the takes are sampled. More surprises also bring more misses: try a few seeds. A workflow saved before the slider keeps 50.\n\n**Seeds:** each seed node has one switch - **🔒 same seed**: the next run keeps that part (the same draft, the same take), so you can change other things; **🎲 new seed**: every run draws a new number - something new each time. The number shown is always the one the last run used: liked a take? Switch its seed to 🔒. Blue nodes keep, amber nodes renew.\n\n**Inspect and edit:** open the **Song Sheet** to see exactly what MiniMax receives; its *review* follows the brief's mode (*as the brief says*). Caption and lyrics together must stay under **5 000 tokens** (the sheet counts them exactly with the loaded text encoder and stops before rendering if they do not fit). The render ceiling follows the brief's length, at most 6:00; the model can end earlier.\n\n**Instrumentals:** the lyrics are a map of section tags ([Intro], [Instrumental], [Solo], ...), about twice as long as a sung song's, and the caption's Vocal Details are *n/a*.\n\n**Creative modes:** *arrangement* in the brief adds the mode's hints to the caption (for example *many instruments*: a large ensemble) and, with *genre closeness*, says how typical it stays. MiniMax Music 3 has no score, so there is no section plan here; *off* writes as before.\n\n**Writer model:** one list in the *Writer model* node for every writing step (Write Song and Arrange): ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed is answered from Plenio's cache, without asking the model again.\n\n**Finish:** *Plenio · Master* refines the take (*Audio HQ*, below) and brings it to -14 LUFS / -1 dBTP with a gentle tone match (open the block to change a stage, the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the **sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export), and the lyrics as **subtitles** - `<name> (lines).srt` and `<name> (notes).srt`, timed by listening. The **tags** take the brief's fields as variables (`{genre}`, `{mood}` ...); the *Tags & variables* note beside Export lists them all.\n\n**HQ mastering** (the switch at the top, **off** by default): on, the mastering runs at its highest quality - it can clearly reduce AI shimmer and artifacts, but the song takes **about twice as long** (UniverSR, 229 MB in `models/audio_sr`, needed only then).\n\n**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the render's highs (always); *HQ 2 · Regenerate Highs*, with HQ mastering on, lets the UniverSR model generate new highs above 8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s per second of music on an RTX 5060 Ti (its *model steps* 3: about 1.1 s); *HQ 3 · De-Reverb* (bypassed) dries the short metallic room but also dulls the highs. Their presets are on **auto**: the brief's genre picks *standard*, *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient). Open the block (the icon at the top right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). The user guide *Audio HQ* covers it.\n\n**Cover art (optional, bypassed):** *Cover Art* paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about 16 GB of extra model files, Apache-2.0). Select it and the cover preview and press **Ctrl+B**; Export then embeds the cover in the FLAC and MP3 files and saves it as `.jpg`.\n\n**Stems (optional, bypassed):** *Separate Stems* splits the take into vocals, drums, bass and other; the *Stem Mixer* balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Select the block and press **Ctrl+B**; the mixer is inside it - open the block with the icon at the top right of the node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it.\n\n**App mode:** switch *Graph / App* at the top left for a simple form: the mode, the brief with its creative mode, closeness and creativity, the writer model, the seeds, the Song Sheet buttons (review and edit, also in the app - their status line says where the run stands: *stops here for review*, *waiting for your approval*, *approved*) and the results. *Number of runs* next to Run renders a series.\n\n**Models** (ComfyUI offers the downloads when you open the template): MiniMax Music 3 (diffusion model 4.9 GB, int8 text encoder 9.2 GB, VAE), the Gemma 4 E4B writer. MiniMax Music 3 weights: **MiniMax-Music3 Community License**. If decoding runs out of memory, turn on *tiled decode* in MiniMax Render.\n"
    ]
   },
   {
@@ -1179,6 +1179,16 @@
      "link": 21
     },
     {
+     "localized_name": "hq_mastering",
+     "name": "hq_mastering",
+     "label": "HQ mastering",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "hq_mastering"
+     },
+     "link": 39
+    },
+    {
      "localized_name": "sample_rate",
      "name": "sample_rate",
      "label": "sample rate",
@@ -1243,6 +1253,7 @@
    "title": "Plenio · Master",
    "properties": {},
    "widgets_values": [
+    false,
     "keep"
    ]
   },
@@ -1805,6 +1816,48 @@
     0,
     true
    ]
+  },
+  {
+   "id": 18,
+   "type": "PlenioHQMastering",
+   "pos": [
+    0,
+    -160
+   ],
+   "size": [
+    340,
+    70
+   ],
+   "flags": {},
+   "order": 17,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "hq_mastering",
+     "name": "hq_mastering",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "hq_mastering"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "hq_mastering",
+     "name": "hq_mastering",
+     "type": "BOOLEAN",
+     "links": [
+      39
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "PlenioHQMastering"
+   },
+   "widgets_values": [
+    false
+   ]
   }
  ],
  "links": [
@@ -2111,6 +2164,14 @@
    13,
    12,
    "PLENIO_REPORT"
+  ],
+  [
+   39,
+   18,
+   0,
+   11,
+   3,
+   "BOOLEAN"
   ]
  ],
  "groups": [
@@ -2158,9 +2219,9 @@
    "title": "1 · SONG",
    "bounding": [
     -30,
-    -70,
+    -230,
     580,
-    1220
+    1380
    ],
    "color": "#3f789e",
    "font_size": 24,
@@ -6329,7 +6390,7 @@
     "state": {
      "lastGroupId": 2,
      "lastNodeId": 406,
-     "lastLinkId": 17,
+     "lastLinkId": 18,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -6341,7 +6402,7 @@
       -260,
       0,
       160,
-      120
+      140
      ]
     },
     "outputNode": {
@@ -6393,15 +6454,28 @@
       ]
      },
      {
-      "id": "88af35db-67c6-5f32-9faa-8c9c73452a51",
-      "name": "sample_rate",
-      "type": "COMBO",
+      "id": "0ef66cfd-0a79-55dd-92a9-860a09161767",
+      "name": "hq_mastering",
+      "type": "BOOLEAN",
       "linkIds": [
        11
       ],
       "pos": [
        0,
        60
+      ],
+      "label": "HQ mastering"
+     },
+     {
+      "id": "88af35db-67c6-5f32-9faa-8c9c73452a51",
+      "name": "sample_rate",
+      "type": "COMBO",
+      "linkIds": [
+       12
+      ],
+      "pos": [
+       0,
+       80
       ],
       "label": "sample rate"
      }
@@ -6412,7 +6486,7 @@
       "name": "audio",
       "type": "AUDIO",
       "linkIds": [
-       12
+       13
       ],
       "pos": [
        0,
@@ -6424,7 +6498,7 @@
       "name": "eq_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       13
+       14
       ],
       "pos": [
        0,
@@ -6436,7 +6510,7 @@
       "name": "loudness_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       14
+       15
       ],
       "pos": [
        0,
@@ -6448,7 +6522,7 @@
       "name": "hq1_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       15
+       16
       ],
       "pos": [
        0,
@@ -6460,7 +6534,7 @@
       "name": "hq2_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       16
+       17
       ],
       "pos": [
        0,
@@ -6472,7 +6546,7 @@
       "name": "hq3_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       17
+       18
       ],
       "pos": [
        0,
@@ -6534,7 +6608,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         15
+         16
         ]
        }
       ],
@@ -6591,7 +6665,7 @@
         ]
        }
       ],
-      "title": "Super-resolution model (HQ 2)",
+      "title": "Super-resolution model (HQ mastering)",
       "properties": {
        "Node name for S&R": "PlenioAudioModelLoader",
        "models": [
@@ -6616,7 +6690,7 @@
       ],
       "size": [
        380,
-       280
+       300
       ],
       "flags": {},
       "order": 2,
@@ -6651,6 +6725,15 @@
         "link": null
        },
        {
+        "localized_name": "hq_mastering",
+        "name": "hq_mastering",
+        "type": "BOOLEAN",
+        "widget": {
+         "name": "hq_mastering"
+        },
+        "link": 11
+       },
+       {
         "localized_name": "seed",
         "name": "seed",
         "type": "INT",
@@ -6683,7 +6766,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         16
+         17
         ]
        }
       ],
@@ -6692,6 +6775,7 @@
       },
       "widgets_values": [
        "auto - from the song's genre",
+       true,
        0,
        "fixed",
        4
@@ -6749,7 +6833,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         17
+         18
         ]
        }
       ],
@@ -6822,7 +6906,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         13
+         14
         ]
        }
       ],
@@ -6880,7 +6964,7 @@
         "widget": {
          "name": "sample_rate"
         },
-        "link": 11
+        "link": 12
        }
       ],
       "outputs": [
@@ -6889,7 +6973,7 @@
         "name": "audio",
         "type": "AUDIO",
         "links": [
-         12
+         13
         ]
        },
        {
@@ -6897,7 +6981,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         14
+         15
         ]
        }
       ],
@@ -6919,7 +7003,7 @@
        -30,
        -70,
        1320,
-       460
+       480
       ],
       "color": "#3f789e",
       "font_size": 24,
@@ -7024,12 +7108,20 @@
       "id": 11,
       "origin_id": -10,
       "origin_slot": 3,
+      "target_id": 403,
+      "target_slot": 4,
+      "type": "BOOLEAN"
+     },
+     {
+      "id": 12,
+      "origin_id": -10,
+      "origin_slot": 4,
       "target_id": 406,
       "target_slot": 3,
       "type": "COMBO"
      },
      {
-      "id": 12,
+      "id": 13,
       "origin_id": 406,
       "origin_slot": 0,
       "target_id": -20,
@@ -7037,7 +7129,7 @@
       "type": "AUDIO"
      },
      {
-      "id": 13,
+      "id": 14,
       "origin_id": 405,
       "origin_slot": 1,
       "target_id": -20,
@@ -7045,7 +7137,7 @@
       "type": "PLENIO_REPORT"
      },
      {
-      "id": 14,
+      "id": 15,
       "origin_id": 406,
       "origin_slot": 1,
       "target_id": -20,
@@ -7053,7 +7145,7 @@
       "type": "PLENIO_REPORT"
      },
      {
-      "id": 15,
+      "id": 16,
       "origin_id": 401,
       "origin_slot": 1,
       "target_id": -20,
@@ -7061,7 +7153,7 @@
       "type": "PLENIO_REPORT"
      },
      {
-      "id": 16,
+      "id": 17,
       "origin_id": 403,
       "origin_slot": 1,
       "target_id": -20,
@@ -7069,7 +7161,7 @@
       "type": "PLENIO_REPORT"
      },
      {
-      "id": 17,
+      "id": 18,
       "origin_id": 404,
       "origin_slot": 1,
       "target_id": -20,
@@ -7079,7 +7171,7 @@
     ],
     "extra": {},
     "category": "Plenio/Mastering",
-    "description": "Finishes a song: Audio HQ - HQ 1 · Stereo Cleanup and HQ 2 · Regenerate Highs (UniverSR) run, HQ 3 · De-Reverb is bypassed; their presets follow the brief's genre - then a gentle tone match (EQ) and loudness for streaming (-14 LUFS, -1 dBTP true peak) with gentle compression. Open the block to change a preset, bypass a stage (Ctrl+B), the EQ curve or the compression style."
+    "description": "Finishes a song: Audio HQ - HQ 1 · Stereo Cleanup runs, HQ 2 · Regenerate Highs (UniverSR) with HQ mastering on (fewer AI shimmer and artifacts, about twice the time), HQ 3 · De-Reverb is bypassed; their presets follow the brief's genre - then a gentle tone match (EQ) and loudness for streaming (-14 LUFS, -1 dBTP true peak) with gentle compression. Open the block to change a preset, bypass a stage (Ctrl+B), the EQ curve or the compression style."
    },
    {
     "id": "9dbb5617-ccf9-5537-b674-405adb29958c",
@@ -8291,7 +8383,7 @@
    "scale": 0.7,
    "offset": [
     640,
-    150
+    300
    ]
   },
   "linearData": {
@@ -8303,6 +8395,10 @@
     [
      2,
      "template"
+    ],
+    [
+     18,
+     "hq_mastering"
     ],
     [
      2,

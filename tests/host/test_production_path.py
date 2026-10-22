@@ -343,6 +343,7 @@ def test_enhance_template_contains_the_chain(server: ComfyServer, log: Log) -> N
             "PlenioHQStereoCleanup",
             "PlenioHQRegenerateHighs",
             "PlenioHQDeReverb",
+            "PlenioHQMastering",
             "PlenioEQ",
             "PlenioExportRelease",
             "PlenioLoudness",

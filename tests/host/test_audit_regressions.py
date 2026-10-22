@@ -29,6 +29,7 @@ ALL_NODES = {
     "PlenioHQStereoCleanup",
     "PlenioHQRegenerateHighs",
     "PlenioHQDeReverb",
+    "PlenioHQMastering",
     "PlenioEQ",
     "PlenioLoudness",
     "PlenioExportRelease",

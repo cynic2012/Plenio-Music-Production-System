@@ -349,9 +349,11 @@ SEPARATION_MODEL = "model_bs_roformer_ep_17_sdr_9.6568.ckpt"
 def master() -> Blueprint:
     """Audio HQ 1-3 (the owner's request, 2026-10-21: before the first EQ), EQ and Loudness.
 
-    HQ 1 and HQ 2 run, HQ 3 is bypassed (the owner's listening test: it dulls the highs); their presets are on
-    *auto*, so the brief's genre picks the profile. The super-resolution model of HQ 2 is a collapsed loader
-    inside the block - all audio work after the render lives in this block now (the REFINE block is gone).
+    HQ 1 runs, HQ 2 runs only with *HQ mastering* on (the block's input, linked from the templates' HQ Mastering
+    switch, off by default - the owner's request 2026-10-22: UniverSR about doubles a song's time), HQ 3 is
+    bypassed (the owner's listening test: it dulls the highs); their presets are on *auto*, so the brief's genre
+    picks the profile. The super-resolution model of HQ 2 is a collapsed loader inside the block, which runs only
+    when HQ 2 asks for it - all audio work after the render lives in this block now (the REFINE block is gone).
     """
     g = Graph(first_id=401)
     # two socket rows and the preset, the run summary below (custom's fields make the node grow by itself)
@@ -362,12 +364,12 @@ def master() -> Blueprint:
         (440, 0),
         size=(340, 110),
         collapsed=True,
-        title="Super-resolution model (HQ 2)",
+        title="Super-resolution model (HQ mastering)",
         widgets={"kind": "super-resolution", "kind.model": SR_MODEL},
         properties=model(SR_MODEL),
     )
     highs = g.add(
-        "PlenioHQRegenerateHighs", (440, 80), size=(380, 180 + SUMMARY_ROOM), widgets={"preset": hq.AUTO}
+        "PlenioHQRegenerateHighs", (440, 80), size=(380, 200 + SUMMARY_ROOM), widgets={"preset": hq.AUTO}
     )
     dereverb = g.add(
         "PlenioHQDeReverb",
@@ -399,8 +401,9 @@ def master() -> Blueprint:
     return Blueprint(
         "Plenio · Master",
         "Plenio/Mastering",
-        "Finishes a song: Audio HQ - HQ 1 · Stereo Cleanup and HQ 2 · Regenerate Highs (UniverSR) run, "
-        "HQ 3 · De-Reverb is bypassed; their presets follow the brief's genre - then a gentle tone match (EQ) "
+        "Finishes a song: Audio HQ - HQ 1 · Stereo Cleanup runs, HQ 2 · Regenerate Highs (UniverSR) with HQ "
+        "mastering on (fewer AI shimmer and artifacts, about twice the time), HQ 3 · De-Reverb is bypassed; their "
+        "presets follow the brief's genre - then a gentle tone match (EQ) "
         "and loudness for streaming (-14 LUFS, -1 dBTP true peak) with gentle compression. Open the block to "
         "change a preset, bypass a stage (Ctrl+B), the EQ curve or the compression style.",
         g,
@@ -417,6 +420,15 @@ def master() -> Blueprint:
                 "PLENIO_BRIEF",
                 [(stereo, "brief"), (highs, "brief"), (dereverb, "brief")],
                 tooltip="Optional: Song Brief or Cover Brief - the HQ presets on auto follow its genre.",
+            ),
+            BlueprintInput(
+                "hq_mastering",
+                "BOOLEAN",
+                [(highs, "hq_mastering")],
+                widget=True,
+                default=False,
+                label="HQ mastering",
+                tooltip=HQ_MASTERING_TOOLTIP,
             ),
             BlueprintInput(
                 "sample_rate",
@@ -1630,6 +1642,23 @@ the EQ - and shrank the brief's description field; ``frontend/src/extension/summ
 summary its minimum, and ``tests/workflows/test_graphs.py`` checks the room."""
 
 
+HQ_MASTERING_TOOLTIP = hq.HQ_MASTERING_HINT
+HQ_SWITCH_SIZE = (340, 70)
+HQ_SWITCH_Y = -160
+"""Above the first node of group 1: the first thing a template shows (owner's request 2026-10-22)."""
+
+
+def hq_switch(g: Graph, target: Node, name: str = "hq_mastering") -> Node:
+    """The HQ Mastering switch at the start (off), wired into the Master block (``target``; Enhance & Master:
+    HQ 2 itself) only - so switching it runs the mastering again, not the song. Made last, so that the
+    template's other node ids stay as they were (continuing an older song maps its values by id)."""
+    switch = g.add(
+        "PlenioHQMastering", (0, HQ_SWITCH_Y), size=HQ_SWITCH_SIZE, widgets={"hq_mastering": False}
+    )
+    g.link(switch, "hq_mastering", target, name)
+    return switch
+
+
 def about_note(g: Graph, text: str, height: float = ABOUT_SIZE[1]) -> Node:
     return g.add_frontend(
         "MarkdownNote", (-560, 0), size=(ABOUT_SIZE[0], height), title="About this template", widgets=[text]
@@ -1916,10 +1945,14 @@ STEMS_TEXT = (
     "node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it."
 )
 HQ_TEXT = (
+    "**HQ mastering** (the switch at the top, **off** by default): on, the mastering runs at its highest quality - "
+    "it can clearly reduce AI shimmer and artifacts, but the song takes **about twice as long** (UniverSR, "
+    "229 MB in `models/audio_sr`, needed only then).\n\n"
     "**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer "
-    "in the render's highs; *HQ 2 · Regenerate Highs* lets the UniverSR model (229 MB) generate new highs above "
-    "8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s per second of music on an "
-    "RTX 5060 Ti (its *model steps* 3: about 1.1 s); *HQ 3 · De-Reverb* (bypassed) dries the short metallic room "
+    "in the render's highs (always); *HQ 2 · Regenerate Highs*, with HQ mastering on, lets the UniverSR model "
+    "generate new highs above 8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s "
+    "per second of music on an RTX 5060 Ti (its *model steps* 3: about 1.1 s); *HQ 3 · De-Reverb* (bypassed) dries "
+    "the short metallic room "
     "but also dulls the highs. Their presets are on **auto**: the brief's genre picks *standard*, *gentle* "
     "(classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient). Open the "
     "block (the icon at the top right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). "
@@ -2097,7 +2130,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(brief, "creativity", render, "creativity")
     # Only the sheets' reports (and the master's): they hold the final documents, and wiring draft reports
     # here would force the writer and the planner to run even when the user replaced their documents manually.
-    _master, preview, export = finish(
+    master_block, preview, export = finish(
         g,
         bp,
         2720,
@@ -2115,7 +2148,8 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         sheet_music="PDF (A4)",
         brief=brief,
     )
-    g.group("1 · SONG", [brief])
+    switch = hq_switch(g, master_block)
+    g.group("1 · SONG", [switch, brief])
     g.group("2 · WRITE", [write, draft, writer])
     g.group("3 · TEXT", [text_sheet])
     g.group("4 · SCORE", [plan, plan_seed_node, tools, arrange_node, arrangement, score_sheet])
@@ -2132,6 +2166,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         [(plan_seed_node, name) for name in SEED_CONTROLS],
         writer=writer,
         arrangement=arrangement,
+        hq_mastering=switch,
     )
 
 
@@ -2146,6 +2181,7 @@ def song_app(
     *,
     writer: Node,
     arrangement: Node | None = None,
+    hq_mastering: Node | None = None,
 ) -> App:
     # The sung options only: App Mode (frontend 1.52) drops controls of the option that is not selected,
     # so the instrumental options are set in the graph. The sheets' editor buttons work in App mode too:
@@ -2171,6 +2207,8 @@ def song_app(
         "creativity",
     ]
     inputs = [(brief, name) for name in controls] + [(writer, "model")]
+    if hq_mastering is not None:  # right after the template: the first choice of a run
+        inputs.insert(2, (hq_mastering, "hq_mastering"))
     inputs += [(node, name) for node in (seed, draft) for name in SEED_CONTROLS]
     if arrangement is not None:
         inputs += [(arrangement, name) for name in SEED_CONTROLS]
@@ -2363,7 +2401,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(check_vocals, "audio", check_lyrics, "audio")
     g.link(text_sheet, "lyrics", check_lyrics, "expected_lyrics")
     audio, stems_node = stems_stage(g, bp, 3420, audio=(check_vocals, "audio"), y=715)
-    _master, preview, export = finish(
+    master_block, preview, export = finish(
         g,
         bp,
         3880,
@@ -2399,7 +2437,8 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(excerpt, "AUDIO", sung_pitch, "audio")
     g.link(sung_pitch, "sung_pitch", score_sheet, "sung_pitch")
     g.link(sung_pitch, "sung_pitch", text_sheet, "sung_pitch")
-    g.group("1 · SOURCE", [source, excerpt])
+    switch = hq_switch(g, master_block)
+    g.group("1 · SOURCE", [switch, source, excerpt])
     g.group("2 · COVER", [brief])
     g.group(
         "3 · SCORE", [transcribe, tools, score_sheet, sung_pitch, arrange_node, arrangement], min_height=700
@@ -2415,7 +2454,12 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     controls = ["mode", "template", "description", "genre", "mood", "vocals"]
     controls += ["vocals.language", "vocals.voice", "harmony", "arrangement", "song_flow_closeness"]
     controls += ["lyrics_closeness", "creativity"]
-    inputs = [(source, "audio"), *[(brief, name) for name in controls], (writer, "model")]
+    inputs = [
+        (source, "audio"),
+        (switch, "hq_mastering"),
+        *[(brief, name) for name in controls],
+        (writer, "model"),
+    ]
     inputs += [(node, name) for node in (seed, draft, arrangement) for name in SEED_CONTROLS]
     inputs += [(score_sheet, "sheet_state"), (text_sheet, "sheet_state")]
     return g, App(inputs, [takes_preview, preview, export])
@@ -2497,7 +2541,7 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     # the band-limited MiniMax highs are regenerated by HQ 2 inside the Master block (2026-10-21; until then
     # a REFINE block with UniverSR ran here)
     audio, stems_node = stems_stage(g, bp, 1800, audio=(render, "AUDIO"), y=430)
-    _master, preview, export = finish(
+    master_block, preview, export = finish(
         g,
         bp,
         2320,
@@ -2513,13 +2557,14 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         cover_y=700,
         brief=brief,
     )
-    g.group("1 · SONG", [brief])
+    switch = hq_switch(g, master_block)
+    g.group("1 · SONG", [switch, brief])
     g.group("2 · WRITE", [write, draft, writer])
     g.group("3 · SHEET", [sheet])
     g.group("4 · RENDER", [seed, render])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
-    return g, song_app(brief, seed, draft, [sheet], preview, export, writer=writer)
+    return g, song_app(brief, seed, draft, [sheet], preview, export, writer=writer, hq_mastering=switch)
 
 
 ABOUT_DAW = f"""# 5 · YuE2 · DAW
@@ -2634,7 +2679,7 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(seed, "seed", render, "seed")
     g.link(brief, "creativity", render, "creativity")
     audio, stems_node = stems_stage(g, bp, 2320, audio=(render, "AUDIO"), y=670)
-    _master, preview, export = finish(
+    master_block, preview, export = finish(
         g,
         bp,
         2720,
@@ -2653,14 +2698,17 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         export_size=(385, 554 + SUMMARY_ROOM),
         brief=brief,
     )
-    g.group("1 · SONG", [brief])
+    switch = hq_switch(g, master_block)
+    g.group("1 · SONG", [switch, brief])
     g.group("2 · WRITE", [write, draft, writer])
     g.group("3 · TEXT", [text_sheet])
     g.group("4 · DAW", [tools, score_sheet])
     g.group("5 · RENDER", [seed, render])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
-    return g, song_app(brief, seed, draft, [text_sheet, score_sheet], preview, export, writer=writer)
+    return g, song_app(
+        brief, seed, draft, [text_sheet, score_sheet], preview, export, writer=writer, hq_mastering=switch
+    )
 
 
 ABOUT_ENHANCE = """# 4 · Enhance & Master
@@ -2670,7 +2718,7 @@ ABOUT_ENHANCE = """# 4 · Enhance & Master
 Finishes an existing recording (for example a take you rendered earlier) without any music model.
 
 1. Upload the file in **Load Audio**.
-2. **Audio HQ** runs before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the highs, *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 1.5 s per second of music on an RTX 5060 Ti) - also the cure for a **band-limited** source such as an old MP3. *HQ 3 · De-Reverb* is bypassed (select it, **Ctrl+B**). There is no brief here, so the presets are *standard*; pick *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) for your music (the user guide *Audio HQ* covers them).
+2. **Audio HQ** runs before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the highs; with **HQ mastering** on (the switch at the top, off by default) *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 1.5 s per second of music on an RTX 5060 Ti) - it can clearly reduce AI shimmer and artifacts, and it is the cure for a **band-limited** source such as an old MP3; off, UniverSR does not run and is not needed. *HQ 3 · De-Reverb* is bypassed (select it, **Ctrl+B**). There is no brief here, so the presets are *standard*; pick *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) for your music (the user guide *Audio HQ* covers them).
 3. To rebalance a finished mix, select *Stems (optional)* and press **Ctrl+B**: *Separate Stems* splits the file into vocals, drums, bass and other, the *Stem Mixer* balances them (the residual *rest* keeps a neutral mix exact; the user guide *Stems* covers it). It is bypassed by default.
 4. **EQ** starts with a gentle warm tone match (*match preset*). Choose *manual* to draw your own curve, *flat* for no EQ, or connect a **reference** recording and pick a reference recipe.
 5. **Loudness & Dynamics** brings the song to -14 LUFS with a true peak of at most -1 dBTP (streaming); pick another target or compression style if you like.
@@ -2697,12 +2745,12 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         (420, 290),
         size=(340, 110),
         collapsed=True,
-        title="Super-resolution model (HQ 2)",
+        title="Super-resolution model (HQ mastering)",
         widgets={"kind": "super-resolution", "kind.model": SR_MODEL},
         properties=model(SR_MODEL),
     )
     highs = g.add(
-        "PlenioHQRegenerateHighs", (420, 360), size=(380, 180 + SUMMARY_ROOM), widgets={"preset": standard}
+        "PlenioHQRegenerateHighs", (420, 360), size=(380, 200 + SUMMARY_ROOM), widgets={"preset": standard}
     )
     dereverb = g.add(
         "PlenioHQDeReverb",
@@ -2761,13 +2809,15 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     ]
     for index, (node, output) in enumerate(reports):
         g.link(node, output, export, f"reports.report_{index}")
-    g.group("1 · SOURCE", [source])
+    switch = hq_switch(g, highs, "hq_mastering")
+    g.group("1 · SOURCE", [switch, source])
     g.group("2 · AUDIO HQ (before the EQ)", [stereo, loader, highs, dereverb])
     g.group("3 · MASTER", [eq, loudness])
     g.group("4 · FINISH", [preview, export])
     app = App(
         [
             (source, "audio"),
+            (switch, "hq_mastering"),
             (stereo, "preset"),
             (highs, "preset"),
             (eq, "mode"),

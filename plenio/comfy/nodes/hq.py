@@ -46,6 +46,50 @@ def _db(value: Any, unit: str = "dB") -> str:
     return "-" if value is None else f"{value:+.1f} {unit}"
 
 
+HQ_MASTERING_TOOLTIP = hq.HQ_MASTERING_HINT
+HQ_ON = "on: less AI shimmer, 2× time"
+HQ_OFF = "off: faster, no UniverSR"
+
+
+class PlenioHQMastering(io.ComfyNode):
+    """The templates' switch for the highest mastering quality (owner's request 2026-10-22): at the start of
+    the workflow, beside the brief, wired only into *Plenio · Master* - so switching it runs the mastering again,
+    not the song."""
+
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="PlenioHQMastering",
+            display_name="HQ Mastering",
+            category="Plenio/Mastering",
+            description=(
+                "The switch for the highest mastering quality: on, HQ 2 · Regenerate Highs (UniverSR) runs in "
+                "Plenio · Master - it can clearly reduce AI shimmer and artifacts, but the song takes about twice "
+                "as long. Off (default): the master runs without UniverSR, and the model file is not needed."
+            ),
+            inputs=[
+                io.Boolean.Input(
+                    "hq_mastering",
+                    display_name="HQ mastering",
+                    default=False,
+                    label_on=HQ_ON,
+                    label_off=HQ_OFF,
+                    tooltip=HQ_MASTERING_TOOLTIP,
+                )
+            ],
+            outputs=[
+                io.Boolean.Output(
+                    display_name="hq_mastering",
+                    tooltip="Into Plenio · Master (HQ 2 · Regenerate Highs): on lets UniverSR run.",
+                )
+            ],
+        )
+
+    @classmethod
+    def execute(cls, hq_mastering: bool = False) -> io.NodeOutput:
+        return io.NodeOutput(bool(hq_mastering))
+
+
 def _finish(
     kind: str,
     title: str,
@@ -179,7 +223,18 @@ class PlenioHQRegenerateHighs(io.ComfyNode):
             ),
             inputs=[
                 io.Audio.Input("audio", tooltip="The song (every item of a batch)."),
-                AudioModelType.Input("model", tooltip="Load Audio Model (super-resolution)."),
+                io.Boolean.Input(
+                    "hq_mastering",
+                    display_name="HQ mastering",
+                    default=True,
+                    optional=True,  # an API prompt without it runs the stage, as before
+                    label_on="on - UniverSR regenerates the highs",
+                    label_off="off - the song passes unchanged",
+                    tooltip="Off: skipped, the model is not even loaded. In the templates the HQ Mastering switch "
+                    "at the start sets it (off by default): on, fewer AI shimmer and artifacts, about twice the time.",
+                ),
+                # lazy: with HQ mastering off the loader never runs (and a missing model file is no error)
+                AudioModelType.Input("model", lazy=True, tooltip="Load Audio Model (super-resolution)."),
                 _preset(
                     [
                         io.Float.Input(
@@ -242,15 +297,33 @@ class PlenioHQRegenerateHighs(io.ComfyNode):
         )
 
     @classmethod
+    def check_lazy_status(cls, hq_mastering: bool = True, model: Any = None, **_others: Any) -> list[str]:
+        """The model only when HQ mastering is on."""
+        return ["model"] if hq_mastering and model is None else []
+
+    @classmethod
     def execute(
         cls,
         audio: dict[str, Any],
-        model: Any,
+        hq_mastering: bool = True,
+        model: Any = None,
         preset: dict[str, Any] | None = None,
         brief: Any = None,
         seed: int = 0,
         model_steps: int = 4,
     ) -> io.NodeOutput:
+        if not hq_mastering:
+            summary = "HQ 2 · Regenerate Highs: off - HQ mastering is off, UniverSR did not run"
+            record = Report(
+                "hq_regenerate_highs",
+                Status.SKIPPED,
+                summary,
+                ("the song passes unchanged; switch HQ mastering on for fewer AI shimmer and artifacts",),
+                {"items": [], "hq_mastering": False},
+            )
+            return io.NodeOutput(
+                audio, record, ui={"plenio_summary": [{"status": "skipped", "markdown": f"**{summary}**"}]}
+            )
         name = _choice(preset)
         preset = preset or {}
         custom = hq.RegenerateHighs(

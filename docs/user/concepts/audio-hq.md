@@ -9,10 +9,19 @@ render ─► Stems (optional) ─► Plenio · Master [ HQ 1 ─► HQ 2 ─►
 | Stage | What it does | In the templates |
 |---|---|---|
 | [HQ 1 · Stereo Cleanup](../../../web/docs/PlenioHQStereoCleanup.md) | cleans the *side* signal (the stereo difference) above 2 kHz - the unsteady shimmer AI renders leave at the edge of the stereo image - and adds a little harmonic warmth; the middle (voice, kick, snare, bass) is not filtered | **on** |
-| [HQ 2 · Regenerate Highs](../../../web/docs/PlenioHQRegenerateHighs.md) | *erase and regenerate*: the UniverSR model (229 MB) generates new highs from the song without its top octaves; above 8.2 kHz - in every preset - they replace most of the original's, at the original's level | **on** |
+| [HQ 2 · Regenerate Highs](../../../web/docs/PlenioHQRegenerateHighs.md) | *erase and regenerate*: the UniverSR model (229 MB) generates new highs from the song without its top octaves; above 8.2 kHz - in every preset - they replace most of the original's, at the original's level | with **HQ mastering** on (off by default) |
 | [HQ 3 · De-Reverb](../../../web/docs/PlenioHQDeReverb.md) | takes out the short metallic room after syllables and hits and smooths the phase above 2 kHz - but it also lowers the highs by 3-4 dB | bypassed (experimental) |
 
 All three keep the song's sample rate and length and normalise nothing; Loudness & Dynamics after the EQ sets the level and the peaks. Every stage writes a report into the release record (profile, why it was chosen, settings, what changed) and a one-line summary on the node.
+
+## HQ mastering: the switch at the top
+
+UniverSR is what makes HQ 2 sound best - and what takes the time: it **about doubles** a song's time (measured on *1 · YuE2 · Song*, 97 s of music, RTX 5060 Ti: 280 s with it, about 130 s without). So every template has the **[HQ Mastering](../../../web/docs/PlenioHQMastering.md)** switch at the top of its first group, **off** by default:
+
+- **on** (*on: less AI shimmer, 2× time*) - the mastering at its highest quality: HQ 2 regenerates the highs. It can clearly reduce AI shimmer and artifacts. The UniverSR file (229 MB, `models/audio_sr`) is needed.
+- **off** (*off: faster, no UniverSR*) - HQ 1, the EQ and the loudness run as always; HQ 2 passes the song unchanged and says *off* in its badge. UniverSR is **not loaded** and the file is not needed.
+
+The switch is wired into the Master block only (in *4 · Enhance & Master* into HQ 2), so switching it after a run runs **only the mastering** again - the song stays. In App mode it is one of the first choices.
 
 **To change a stage**, open the Master block (the icon at the top right of the node), then choose a preset, or select a stage and press **Ctrl+B** to bypass it or switch it on. In **4 · Enhance & Master** the three stages are plain nodes on the canvas (there is no Master block), and their presets are also in App mode.
 
@@ -36,7 +45,7 @@ The numbers of each profile are in the stages' help pages. **Only *standard* has
 
 ## Time and memory
 
-HQ 1 and HQ 3 take a few seconds per minute of music on the CPU. **HQ 2 takes the time**: UniverSR runs each channel through four flow steps (two network passes each, both twice for its guidance) per 5-second chunk - on an RTX 5060 Ti about **1.5 seconds per second of music**, so a four-minute song takes about six minutes more (much longer without a GPU). It runs in bfloat16 (a quarter faster than float32, the same result within -25 dB) and needs about 3 GB of VRAM. Faster on purpose: HQ 2's *model steps* (an advanced field) - 3 steps about 1.1 s per second of music, 2 about 0.75 s - give other, somewhat quieter highs (measured: -15 dB and -6 dB from the four-step highs); fewer steps were not listened to. Bypass HQ 2 for quick drafts; its seed is *fixed*, so ComfyUI reuses its result as long as nothing before it changed.
+HQ 1 and HQ 3 take a few seconds per minute of music on the CPU. **HQ 2 takes the time**: UniverSR runs each channel through four flow steps (two network passes each, both twice for its guidance) per 5-second chunk - on an RTX 5060 Ti about **1.5 seconds per second of music**, so a four-minute song takes about six minutes more (much longer without a GPU). It runs in bfloat16 (a quarter faster than float32, the same result within -25 dB) and needs about 3 GB of VRAM. Faster on purpose: HQ 2's *model steps* (an advanced field) - 3 steps about 1.1 s per second of music, 2 about 0.75 s - give other, somewhat quieter highs (measured: -15 dB and -6 dB from the four-step highs); fewer steps were not listened to. For quick drafts leave **HQ mastering** off; its seed is *fixed*, so with it on ComfyUI reuses HQ 2's result as long as nothing before it changed.
 
 ## Where it comes from, and what was measured
 
@@ -44,7 +53,7 @@ The stages follow a proposal the owner brought in (*Plenio-AudioHQ v3.0*, 2026-1
 
 - **HQ 2 uses UniverSR.** The proposal named a FlashSR model; in the owner's listening test UniverSR sounded better than FlashSR (2026-10-22), so Plenio uses UniverSR only (MIT code, CC BY 4.0 weights, part of Plenio since Refine) and offers no FlashSR.
 - **No soft clipper.** The proposal ran `tanh` over the whole song when a peak reached 0.999 - seven of nine YuE2 takes peak at 0 dBFS, so it would have saturated almost every song. Loudness & Dynamics handles the peaks after the EQ.
-- **No silent fallback.** Without its model the proposal quietly replaced HQ 2 by a DSP trick that cut the highs above 10 kHz by about 15 dB. In Plenio, HQ 2 needs the model input; a missing file is an error with a download hint.
+- **No silent fallback.** Without its model the proposal quietly replaced HQ 2 by a DSP trick that cut the highs above 10 kHz by about 15 dB. In Plenio, HQ 2 with HQ mastering on needs the model; a missing file is an error with a download hint (off, the file is not needed).
 
 Measured on 45-second excerpts of nine YuE2 takes (standard):
 

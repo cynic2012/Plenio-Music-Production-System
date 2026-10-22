@@ -50,6 +50,14 @@ HQ_SCHEMA = "plenio.hq/1"
 
 STANDARD, GENTLE, STRONG, WIDE = "standard", "gentle", "strong", "wide"
 PROFILES = (STANDARD, GENTLE, STRONG, WIDE)
+
+HQ_MASTERING_HINT = (
+    "Highest mastering quality: UniverSR (HQ 2) regenerates the highs - clearly fewer AI shimmer and artifacts, "
+    "but the song takes about twice as long. Off (default): UniverSR does not run and is not needed."
+)
+"""The HQ Mastering switch's hint (owner's request 2026-10-22: off by default; on, HQ 2 runs): the node, its
+tooltip and the templates' notes say the same."""
+
 AUTO = "auto - from the song's genre"
 CUSTOM = "custom - the fields below"
 PRESET_LABELS = {

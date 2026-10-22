@@ -8,6 +8,8 @@ The second Audio HQ stage, before the EQ: **erase and regenerate**. A super-reso
 
 Same rate and length as the input (a 44.1 kHz song stays 44.1 kHz), no normalisation.
 
+**hq_mastering** (*HQ mastering*) - **off**: the stage is skipped, the song passes unchanged and the model is **not even loaded** (its loader runs only when this node asks for it, so a missing model file is no error then). In the templates the **HQ Mastering** switch at the top sets it - **off by default**, because the model about doubles a song's time; on, it can clearly reduce AI shimmer and artifacts. A node you place yourself is on.
+
 **preset** - *auto* picks the profile from the connected brief's genre (*standard* without a brief), or choose one:
 
 | profile | for | new highs from | share | level match |
@@ -25,6 +27,6 @@ Every profile regenerates from 8.2 kHz with UniverSR's 16 kHz condition - the se
 
 **What it changes, measured (2026-10-21, YuE2 takes, standard):** the highs above 8.2 kHz are new (their similarity to the original's is about 0.3), 1-3 dB quieter between 6 and 10 kHz and 3-7 dB between 10 and 16 kHz, with more air above 16 kHz; UniverSR generates both channels alike, so the highs get narrower (side -4 to -13 dB above 10.5 kHz, more with HQ 1 before it).
 
-**model** - Load Audio Model (super-resolution). There is no fallback: without a model the node does not run (R7). **brief** (optional) - for *auto*, as in HQ 1.
+**model** - Load Audio Model (super-resolution). There is no fallback: with *hq* on and no model the node does not run (R7). **brief** (optional) - for *auto*, as in HQ 1.
 
 In the templates the node and its model loader are inside the **Plenio · Master** block; the user guide [Audio HQ](../../docs/user/concepts/audio-hq.md) covers the three stages.

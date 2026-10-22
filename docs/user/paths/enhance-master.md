@@ -21,7 +21,7 @@ Load Audio -> Audio HQ 1-3 -> EQ -> Loudness & Dynamics -> Preview
 
 ## The stages
 
-**Audio HQ** ([guide](../concepts/audio-hq.md)) - three nodes before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer of AI renders in the highs; *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 1.5 s per second of music on an RTX 5060 Ti) - also the cure for a band-limited source such as an old MP3; *HQ 3 · De-Reverb* (bypassed) dries a short metallic room but also dulls the highs. There is no brief here, so their presets are *standard*; choose *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) to match your music.
+**Audio HQ** ([guide](../concepts/audio-hq.md)) - three nodes before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer of AI renders in the highs; with the **HQ Mastering** switch at the top on (off by default) *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 1.5 s per second of music on an RTX 5060 Ti) - fewer AI shimmer and artifacts, and the cure for a band-limited source such as an old MP3; *HQ 3 · De-Reverb* (bypassed) dries a short metallic room but also dulls the highs. There is no brief here, so their presets are *standard*; choose *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) to match your music.
 
 **EQ** ([help](../../../web/docs/PlenioEQ.md)) - *flat* (no change), *manual* (drag bands on the curve under the node; double-click adds a band, the wheel changes Q), *match preset* (Plenio measures the audio and proposes up to a few gentle peak bands towards a **warm** or **bright** tilt, or towards a **reference** recording you connect), *custom match* (the same with your own strength and limits). The EQ does not normalise: a boost can raise the peak - the next stage takes care of level.
 
@@ -39,7 +39,7 @@ Bypass a node (Ctrl+B) or choose *flat* in the EQ: the audio then passes through
 
 ## App mode
 
-Switch **Graph / App** at the top left: the app asks for the file, the presets of HQ 1 and HQ 2, the EQ mode, the loudness target and the compression style ([App mode](../concepts/app-mode.md)).
+Switch **Graph / App** at the top left: the app asks for the file, HQ mastering, the presets of HQ 1 and HQ 2, the EQ mode, the loudness target and the compression style ([App mode](../concepts/app-mode.md)).
 
 ## Good to know
 

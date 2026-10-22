@@ -541,7 +541,9 @@ class App:
 
 def workflow(graph: Graph, name: str, blueprints: list[Blueprint], app: App | None = None) -> dict[str, Any]:
     # The view opens on the About note (x = -560) and the first groups.
-    extra: dict[str, Any] = {"ds": {"scale": 0.7, "offset": [640, 150]}}
+    extra: dict[str, Any] = {
+        "ds": {"scale": 0.7, "offset": [640, 300]}
+    }  # the HQ Mastering switch above group 1 in view
     if app is not None:
         extra["linearData"] = app.to_json()
     return {

@@ -2844,6 +2844,39 @@
    "category": "Plenio/Mastering",
    "display_name": "HQ 3 · De-Reverb"
   },
+  "PlenioHQMastering": {
+   "input": {
+    "required": {
+     "hq_mastering": [
+      "BOOLEAN",
+      {
+       "display_name": "HQ mastering",
+       "tooltip": "Highest mastering quality: UniverSR (HQ 2) regenerates the highs - clearly fewer AI shimmer and artifacts, but the song takes about twice as long. Off (default): UniverSR does not run and is not needed.",
+       "default": false,
+       "label_on": "on: less AI shimmer, 2× time",
+       "label_off": "off: faster, no UniverSR"
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "hq_mastering"
+    ]
+   },
+   "output": [
+    "BOOLEAN"
+   ],
+   "output_name": [
+    "hq_mastering"
+   ],
+   "output_is_list": [
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Mastering",
+   "display_name": "HQ Mastering"
+  },
   "PlenioHQRegenerateHighs": {
    "input": {
     "required": {
@@ -2856,7 +2889,8 @@
      "model": [
       "PLENIO_AUDIO_MODEL",
       {
-       "tooltip": "Load Audio Model (super-resolution)."
+       "tooltip": "Load Audio Model (super-resolution).",
+       "lazy": true
       }
      ],
      "preset": [
@@ -2936,6 +2970,16 @@
      ]
     },
     "optional": {
+     "hq_mastering": [
+      "BOOLEAN",
+      {
+       "display_name": "HQ mastering",
+       "tooltip": "Off: skipped, the model is not even loaded. In the templates the HQ Mastering switch at the start sets it (off by default): on, fewer AI shimmer and artifacts, about twice the time.",
+       "default": true,
+       "label_on": "on - UniverSR regenerates the highs",
+       "label_off": "off - the song passes unchanged"
+      }
+     ],
      "brief": [
       "PLENIO_BRIEF",
       {
@@ -2971,6 +3015,7 @@
      "preset"
     ],
     "optional": [
+     "hq_mastering",
      "brief",
      "seed",
      "model_steps"

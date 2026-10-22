@@ -56,6 +56,17 @@ class PlenioAudioModelLoader(io.ComfyNode):
         )
 
     @classmethod
+    def validate_inputs(cls, **kwargs: Any) -> bool | str:
+        # ComfyUI then leaves the file list to this node: a model file that is not installed is no error
+        # until the model is needed - HQ 2 with HQ mastering off never asks for it (lazy), and execute says
+        # where the file goes.
+        kind = kwargs.get("kind")
+        name = str(kind.get("kind", "")) if isinstance(kind, dict) else str(kind or "")
+        if name and name not in AUDIO_MODEL_FOLDERS:
+            return f"Unknown model kind {name!r}; use one of {list(AUDIO_MODEL_FOLDERS)}."
+        return True
+
+    @classmethod
     def execute(cls, kind: dict[str, Any]) -> io.NodeOutput:
         name = str(kind.get("kind", ""))
         file = str(kind.get("model", "") or "")

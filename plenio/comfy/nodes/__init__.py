@@ -10,7 +10,7 @@ from .engine import PlenioEngine
 from .eq import PlenioEQ
 from .export import PlenioExportRelease
 from .fit_lyrics import PlenioFitLyrics
-from .hq import PlenioHQDeReverb, PlenioHQRegenerateHighs, PlenioHQStereoCleanup
+from .hq import PlenioHQDeReverb, PlenioHQMastering, PlenioHQRegenerateHighs, PlenioHQStereoCleanup
 from .local_llm import PlenioLocalLLM
 from .loudness import PlenioLoudness
 from .parse import PlenioParseDraft
@@ -48,6 +48,7 @@ NODES = (
     PlenioHQStereoCleanup,
     PlenioHQRegenerateHighs,
     PlenioHQDeReverb,
+    PlenioHQMastering,
     PlenioEQ,
     PlenioLoudness,
     PlenioExportRelease,

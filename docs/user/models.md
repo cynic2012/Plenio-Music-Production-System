@@ -34,7 +34,7 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 | `minimax_music3_text_encoder_pruned_int8_convrot.safetensors` | `text_encoders` | 9.2 GB | MiniMax-Music3 Community License | needed |
 | `minimax_music3_dav.safetensors` | `vae` | 217 MB | MiniMax-Music3 Community License | needed |
 | `gemma4_e4b_it_fp8_scaled.safetensors` | `text_encoders` | (see the model card) | Apache-2.0 | needed (writer) |
-| `pytorch_model.bin` (UniverSR) | `audio_sr` | 229 MB | CC BY 4.0 (weights); MIT (code) | **needed**: HQ 2 · Regenerate Highs in the Master block |
+| `pytorch_model.bin` (UniverSR) | `audio_sr` | 229 MB | CC BY 4.0 (weights); MIT (code) | **optional**: HQ 2 · Regenerate Highs, with the HQ Mastering switch on |
 | FLUX.2 Klein files (below) | | 16.1 GB | Apache-2.0 | optional: Cover Art, bypassed |
 
 ### Audio HQ 2 (UniverSR), in the Master block of templates 1-5
@@ -43,7 +43,7 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 |---|---|---|---|
 | `pytorch_model.bin` (UniverSR audio) | `audio_sr` | 229 MB | CC BY 4.0 (weights), MIT (inference code; vendored in `plenio/third_party/universr`) |
 
-**Needed by every template** since 2026-10-21: [HQ 2 · Regenerate Highs](concepts/audio-hq.md) runs in the Master block (in 4 · Enhance & Master as a plain node) - ComfyUI offers the download when a template opens. The one file serves every template, and the *Refine (48 kHz)* node of the library uses it too (its *resample only* engine needs no model at all). To run a template without it, bypass HQ 2 (open the Master block, select the node, **Ctrl+B**).
+**Needed only for HQ mastering** (the switch at the top of every template, off by default): with it on, [HQ 2 · Regenerate Highs](concepts/audio-hq.md) runs in the Master block (in 4 · Enhance & Master as a plain node); off, the model is not loaded and the file is not needed. ComfyUI offers the download when a template opens. The one file serves every template, and the *Refine (48 kHz)* node of the library uses it too (its *resample only* engine needs no model at all).
 
 ### Stems (BS-RoFormer), the optional block of templates 1-5
 
@@ -67,7 +67,7 @@ The block stays bypassed until you turn it on, so a template runs without these 
 
 ### 0 · System Check and 4 · Enhance & Master (the other files)
 
-0 · System Check needs no model file. 4 · Enhance & Master needs the UniverSR file of HQ 2 (above) and carries the optional Stems block (bypassed) for material you upload.
+0 · System Check needs no model file. 4 · Enhance & Master needs none either: the UniverSR file of HQ 2 (above) only for HQ mastering, and the optional Stems block (bypassed) for material you upload.
 
 ## Download sources
 

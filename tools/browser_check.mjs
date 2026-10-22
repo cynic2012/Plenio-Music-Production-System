@@ -208,6 +208,11 @@ for (const name of names) {
       eqNode?.inputs?.audio?.[0] === hq2[0][0] && hq2[0][1].inputs.audio?.[0] === hq1[0][0] &&
       Array.isArray(hq2[0][1].inputs.model)
     record(name, 'options: Audio HQ 1 and 2 run before the EQ, HQ 3 is bypassed', chained)
+    // HQ mastering (2026-10-22): the switch at the top, off, sets HQ 2 through the link
+    const switches = byType(defaults.output, 'PlenioHQMastering')
+    const fed = hq2[0]?.[1]?.inputs?.hq_mastering
+    const switched = switches.length === 1 && switches[0][1].inputs.hq_mastering === false && Array.isArray(fed) && fed[0] === switches[0][0]
+    record(name, 'options: the HQ Mastering switch (off) sets HQ 2', switched, JSON.stringify({ switches: switches.length, fed }))
   }
   const optional = OPTIONAL[name] ?? []
   if (optional.length) {

@@ -322,6 +322,9 @@
    "brief": {
     "tooltip": "Optional: Song Brief or Cover Brief - the HQ presets on auto follow its genre."
    },
+   "hq_mastering": {
+    "tooltip": "Highest mastering quality: UniverSR (HQ 2) regenerates the highs - clearly fewer AI shimmer and artifacts, but the song takes about twice as long. Off (default): UniverSR does not run and is not needed."
+   },
    "sample_rate": {
     "tooltip": "keep, 44100 or 48000 Hz; converted before the limiter, so the true-peak ceiling holds."
    }
