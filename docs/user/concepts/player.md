@@ -203,7 +203,10 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
 (on *Lyrics*, its live lyrics), and Back still leads to where you came from.
 
 - **Lyrics**: every line with the time it is sung. Click a line to hear the song from there. While the song
-  plays, the lyrics light up as they are sung, and the line sung now stays in view.
+  plays, the lyrics light up as they are sung, and the line sung now stays in view. A song exported with what
+  its take sings has a switch above them: **As written** - the song's lyrics - or **As sung** - what the take
+  really sings, as heard when it was exported (see [Written and sung lyrics](#written-and-sung-lyrics)), with
+  a line on how far the take follows its lyrics and the lines it left out.
 - **Notation**: the score with the lyrics under the notes. While the song plays, the notes light up as they
   sound and the sheet moves on with the music: the line of music sounding now always stays in view, also
   after a jump or when you come back to the tab. The cursor points at the notes sounding (where only rests
@@ -235,7 +238,8 @@ Click the cover in the bar at the bottom (or press **F**) for the full screen. I
 - **Visual**: only the visual, with the lyrics as subtitles. The controls fade out while the mouse rests.
 
 **How the lyrics look** - in the Lyrics and Stage views, on a song's page and in the subtitles over the
-visual: 🎤 in Now playing, or *Lyrics* in Settings.
+visual: 🎤 in Now playing, or *Lyrics* in Settings. There, too: **which lyrics** to follow, *As written* or
+*As sung* (below).
 
 - **Font**: Clean, Condensed, Poster, Rounded, Elegant serif, Classic serif, Handwritten, Script, Typewriter,
   Code, Blackletter - each shown in itself - or **your own font**: the name of any font installed on this
@@ -653,6 +657,27 @@ follows the music - *The cursor follows the music as the player heard it*. A YuE
 its score, often by about a bar, and the shift wanders over the song; on the songs measured at export the
 estimate lands within a few tenths of a second. If a song's cursor still runs ahead or behind, move it with
 the buttons above the sheet (a quarter second or a bar at a time); the player keeps it for that song.
+
+## Written and sung lyrics
+
+A music model does not always sing what it was given: YuE2 may repeat a line, make one up, sing other words
+or leave a line out - the more so, the freer the brief's creativity and a creative arrangement. Export Release
+listens to every take (below), so it knows both: the **lyrics as written**, at the times they are sung, and
+**what the take sings**, as heard. Both are kept in the release record, and the sung lyrics also in
+`<name> (sung).srt` ([Lyrics subtitles](tags-and-subtitles.md#lyrics-subtitles)).
+
+- **As written**: the song's lyrics. A line the take left out has no time of its own; one it made up is not
+  there.
+- **As sung**: what was heard, laid out like the lyrics wherever the take sings them - the lyrics' lines,
+  their section tags and their spelling where the same word was heard; the words the lyrics do not have make
+  lines of their own between them. It is what the ASR heard, so a misheard word shows as it was heard.
+
+The switch is on the *Lyrics* tab, in 🎤 in Now playing and in *Settings > Lyrics*; the choice holds for every
+song, and a song exported before shows its written lyrics. *Save as a video* starts with the same choice
+(*Which*, next to the lyrics). The **notation** always follows the written lyrics: only their syllables have
+a place in the score. The song's page says how far the take follows its lyrics - *This take sings 86 % of its
+lyrics' words as written, 12 words they do not have, 2 lines not heard* - and names the sections it did not
+sing as written.
 
 ## Where the times come from
 

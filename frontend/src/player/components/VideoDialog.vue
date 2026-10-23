@@ -12,6 +12,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { api, type SongDetail, type SongSummary } from '../api'
 import { frameWatchers, jobs, progressOf, progressText, queueVideo, stopJob } from '../jobs'
 import { COLORS, EFFECTS, FONTS, lyricsWithDefaults } from '../lyricsStyle'
+import { LYRICS_VERSIONS, sungOf } from '../lyricsVersion'
 import { go, settings } from '../store'
 import { formatTime, sectionName } from '../timing'
 import { CLASSIC, PRESETS, type Scheme } from '../visuals/presets'
@@ -24,7 +25,7 @@ import Icon from './Icon.vue'
 const props = defineProps<{ song: SongSummary }>()
 const emit = defineEmits<{ close: [] }>()
 
-const options = reactive<VideoOptions>(videoWithDefaults(settings.video, settings.lyrics))
+const options = reactive<VideoOptions>(videoWithDefaults(settings.video, settings.lyrics, settings.lyricsVersion))
 const detail = ref<SongDetail | null>(null)
 const shot = ref<HTMLDivElement | null>(null)
 const error = ref('')
@@ -55,6 +56,7 @@ const groups = computed(() => [
   ['My presets', myPresets.value],
 ] as const)
 const hasLines = computed(() => (detail.value?.lines.length ?? 0) > 0)
+const hasSung = computed(() => !!sungOf(detail.value))
 const PLACE_NAMES: Record<string, string> = { 'top-left': 'top left', top: 'top', 'top-right': 'top right', left: 'left', center: 'in the middle', right: 'right', 'bottom-left': 'bottom left', bottom: 'bottom', 'bottom-right': 'bottom right', drift: 'drifting slowly' }
 const usesDrop = computed(() => !options.visual || options.visual.startsWith('drop-') || options.visual.startsWith('my-'))
 const hasNotation = computed(() => !!detail.value?.notation.abc)
@@ -233,6 +235,11 @@ onBeforeUnmount(() => {
                 <option value="subtitles">subtitles, lit up as they are sung</option>
                 <option value="karaoke">karaoke - large, the lines before and after</option>
                 <option value="words">word by word - each word large as it is sung</option>
+              </select>
+            </label>
+            <label v-if="options.lyrics !== 'off' && hasSung">Which
+              <select v-model="options.lyricsVersion">
+                <option v-for="v in LYRICS_VERSIONS" :key="v.id" :value="v.id" :title="v.title">{{ v.label.toLowerCase() }}</option>
               </select>
             </label>
             <div v-if="options.lyrics !== 'off' && hasLines" class="row look">

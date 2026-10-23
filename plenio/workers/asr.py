@@ -10,8 +10,9 @@ Request (``request.json``)::
 Result: a ``plenio.asr/1`` object (see ``plenio.core.asr``).
 
 **Qwen3** (vendored inference code, ``plenio.third_party.qwen3_asr``): every vocal region (or the whole
-audio) in pieces of at most four minutes - the aligner takes five - is transcribed greedily, then the
-aligner times the heard words; the two models run one after the other, so the GPU holds one at a time. A
+audio) in pieces of at most 20 seconds, cut at quiet moments and heard with a little of their neighbours, is
+transcribed greedily, then the aligner times the heard words; the two models run one after the other, so the
+GPU holds one at a time. Over a whole song the aligner loses its place (see ``PIECE_S``). A
 word's ``p`` is the geometric mean of its tokens' probabilities in the transcription. A language the aligner
 does not know leaves the words untimed (``settings.timed`` false): the host then asks faster-whisper.
 
@@ -167,13 +168,79 @@ def _whisper(job: Job) -> dict[str, Any]:
 # --- Qwen3-ASR + Qwen3-ForcedAligner ------------------------------------------------------------------------
 
 RATE = 16000
-PIECE_S = 240.0
-"""Longest piece transcribed and aligned at once (the aligner takes up to five minutes)."""
-CUT_SEARCH_S = 10.0
-"""A long span is cut at its quietest 100 ms within this distance before the four-minute mark."""
+PIECE_S = 20.0
+"""Longest piece transcribed and aligned at once. The aligner takes up to five minutes of speech, but over a
+song with its music it loses its place (owner's report 2026-10-23, the following of the lyrics got worse with
+1.1.0, when a song went to it in one piece of up to four minutes): a word stretched over the first 24 seconds,
+a third of the words of zero length, the rest crowded into a few seconds. Measured on 15 of the owner's YuE2
+songs against faster-whisper (an independent timing): in one piece 29 % of the words more than 3 s from
+Whisper's, in pieces of 30 s 7 %, of 20 s 8 % - and of 20 s the most word starts on an onset of the separated
+vocals (71 % within 0.15 s; one piece: 57 %)."""
+CUT_SEARCH_S = 8.0
+"""A long span is cut at its quietest 100 ms within this distance before the 20-second mark."""
+OVERLAP_S = 1.5
+"""Each piece is heard with this much of its neighbours on both sides, so a word sung across a cut is heard
+whole; ``owned_words`` keeps one copy of it."""
 MIN_PIECE_S = 0.5
 SENTENCE_END = (".", "!", "?", "。", "！", "？", "…")
 NAMES = {code: name for name, code in QWEN3_LANGUAGES.items()}
+
+
+def heard_pieces(audio: Any, spans: list[tuple[float, float]]) -> list[tuple[float, float, float, float]]:
+    """``(start, end, heard from, heard to)`` of every piece: the piece, and the audio it is heard in - the piece
+    with ``OVERLAP_S`` of its neighbours, inside its span."""
+    total = len(audio) / RATE
+    out: list[tuple[float, float, float, float]] = []
+    for low, high in spans or [(0.0, total)]:
+        low, high = max(0.0, low), min(total, high)
+        for start, end in pieces(audio, [(low, high)]):
+            out.append((start, end, max(low, start - OVERLAP_S), min(high, end + OVERLAP_S)))
+    return out
+
+
+def owned_words(
+    owns: list[tuple[float, float]], heard: list[list[tuple[float, float, str]]]
+) -> list[list[bool]]:
+    """Which of its aligned words each piece keeps. ``owns``: every piece's own ``(start, end)``; ``heard``: per
+    piece its aligned words ``(start, end, text)``, heard with ``OVERLAP_S`` of its neighbours.
+
+    A word belongs to the piece its middle is in. Near a cut both neighbours heard the same words, and they time
+    them a little differently, so a word could fall on the other side in both and be lost: there the two are
+    paired by their text (as the subtitles pair the lyrics with what was heard), and of a word both heard the
+    one copy kept is in the piece the mean of its two middles is in."""
+    from ..core.subtitles import match_words, normalize
+
+    def middle(word: tuple[float, float, str]) -> float:
+        return (word[0] + word[1]) / 2
+
+    keep = []
+    for k, ((start, end), words) in enumerate(zip(owns, heard, strict=True)):
+        last = k + 1 == len(owns) or owns[k + 1][0] != end
+        keep.append([start <= middle(w) < end or (last and middle(w) == end) for w in words])
+    for k in range(len(owns) - 1):
+        cut = owns[k][1]
+        if owns[k + 1][0] != cut:
+            continue  # the next piece is in another span: nothing heard twice
+        left = [i for i, w in enumerate(heard[k]) if middle(w) >= cut - OVERLAP_S]
+        right = [j for j, w in enumerate(heard[k + 1]) if middle(w) < cut + OVERLAP_S]
+        pairs = match_words(
+            [normalize(heard[k][i][2]) for i in left], [normalize(heard[k + 1][j][2]) for j in right]
+        )
+        for x, y in pairs.items():
+            i, j = left[x], right[y]
+            mine = (middle(heard[k][i]) + middle(heard[k + 1][j])) / 2 < cut
+            keep[k][i], keep[k + 1][j] = mine, not mine
+    return keep
+
+
+def _kept_text(whole: str, kept: list[str]) -> str:
+    """A sentence cut by a piece's edges: from its first kept word to its last."""
+    lowered = whole.lower()
+    first = lowered.find(kept[0].lower())
+    last = lowered.rfind(kept[-1].lower())
+    if first < 0 or last < first:
+        return " ".join(kept)
+    return whole[first : last + len(kept[-1])].strip()
 
 
 def pieces(audio: Any, spans: list[tuple[float, float]]) -> list[tuple[float, float]]:
@@ -307,7 +374,7 @@ def _qwen3_on(
     started = time.perf_counter()
     audio = np.load(str(request["audio"])).astype("float32")
     regions = [(float(a), float(b)) for a, b in request.get("regions", [])]
-    parts = pieces(audio, regions)
+    parts = heard_pieces(audio, regions)
     language_code = str(request.get("language") or "")
     language_name = NAMES.get(language_code)
     asr_class, aligner_class = classes
@@ -317,8 +384,10 @@ def _qwen3_on(
     model = _load(folder, asr_class, device)
     torch.manual_seed(int(request.get("seed", 0)))
     heard: list[dict[str, Any]] = []
-    for number, (start, end) in enumerate(parts):
+    for number, (own_start, own_end, start, end) in enumerate(parts):
         piece = audio[int(start * RATE) : int(end * RATE)]
+        # no context prompt: the piece before's transcription gained nothing, and the lyrics made it hear words
+        # that were not sung (2026-10-23, docs/design/subtitles-tags-seeds.md section 1.3)
         options = {"language": language_name} if language_name else {}
         inputs = processor.apply_transcription_request(audio=piece, **options).to(model.device, model.dtype)
         with torch.inference_mode():
@@ -343,6 +412,7 @@ def _qwen3_on(
             {
                 "start": start,
                 "end": end,
+                "own": (own_start, own_end),
                 "text": str(parsed.get("transcription") or "").strip(),
                 "language": name,
                 "raw": raw,
@@ -365,7 +435,10 @@ def _qwen3_on(
         aligner_folder = Path(str(request["aligner_dir"]))
         aligner_processor = qwen3_asr.processor(aligner_folder)
         aligner = _load(aligner_folder, aligner_class, device)
+        aligned: list[list[dict[str, Any]]] = []
+        """Per piece its aligned words (the overlap included), and the sentence each is in."""
         for number, h in enumerate(heard):
+            aligned.append([])
             if not h["text"]:
                 continue
             piece = audio[int(h["start"] * RATE) : int(h["end"] * RATE)]
@@ -384,34 +457,51 @@ def _qwen3_on(
             texts = [str(item["text"]) for item in items]
             confidence = _word_probabilities(h["text"], h["raw"], h["spans"], h["probs"], texts)
             sentence_of = _sentences(h["text"], texts)
-            first_segment = len(segments)
             for k, item in enumerate(items):
-                segment = first_segment + sentence_of[k]
-                while len(segments) <= segment:
-                    segments.append({"start": None, "end": None, "text": "", "words": 0})
-                begin = round(h["start"] + float(item["start_time"]), 3)
-                finish = round(h["start"] + float(item["end_time"]), 3)
-                words.append(
+                aligned[-1].append(
                     {
-                        "start": begin,
-                        "end": finish,
+                        "start": round(h["start"] + float(item["start_time"]), 3),
+                        "end": round(h["start"] + float(item["end_time"]), 3),
                         "word": texts[k],
                         "p": round(confidence[k], 3),
-                        "segment": segment,
+                        "sentence": sentence_of[k],
                     }
                 )
-                row = segments[segment]
-                row["start"] = begin if row["start"] is None else row["start"]
-                row["end"] = finish
-                row["words"] += 1
-            texts_of = _sentence_texts(h["text"])
-            for k, row in enumerate(segments[first_segment:]):
-                row["text"] = texts_of[k] if k < len(texts_of) else ""
             job.progress(0.7 + 0.29 * (number + 1) / len(heard), f"timed {number + 1}/{len(heard)}")
+        keep = owned_words(
+            [h["own"] for h in heard],
+            [[(w["start"], w["end"], w["word"]) for w in found] for found in aligned],
+        )
+        for h, found, kept in zip(heard, aligned, keep, strict=True):
+            texts_of = _sentence_texts(h["text"])
+            row_of: dict[int, int] = {}
+            """The piece's sentences that kept a word -> their segment (a sentence heard only in the overlap
+            has none)."""
+            for word, own in zip(found, kept, strict=True):
+                if not own:
+                    continue  # heard in the overlap: the neighbour's word
+                sentence = word["sentence"]
+                if sentence not in row_of:
+                    row_of[sentence] = len(segments)
+                    whole = texts_of[sentence] if sentence < len(texts_of) else ""
+                    segments.append(
+                        {"start": word["start"], "end": word["end"], "text": whole, "words": 0, "kept": []}
+                    )
+                row = segments[row_of[sentence]]
+                words.append(
+                    {**{k: v for k, v in word.items() if k != "sentence"}, "segment": row_of[sentence]}
+                )
+                row["end"] = word["end"]
+                row["words"] += 1
+                row["kept"].append(word["word"])
+            for sentence, index in row_of.items():
+                row = segments[index]
+                if len(row["kept"]) < sum(1 for w in found if w["sentence"] == sentence):
+                    row["text"] = _kept_text(row["text"], row["kept"])
         del aligner
     else:
         segments = [
-            {"start": round(h["start"], 2), "end": round(h["end"], 2), "text": h["text"], "words": 0}
+            {"start": round(h["own"][0], 2), "end": round(h["own"][1], 2), "text": h["text"], "words": 0}
             for h in heard
             if h["text"]
         ]
@@ -429,7 +519,8 @@ def _qwen3_on(
         "device": device,
         "seconds": round(time.perf_counter() - started, 2),
         "settings": {
-            "pieces": [[round(a, 2), round(b, 2)] for a, b in parts],
+            "pieces": [[round(a, 2), round(b, 2)] for a, b, _lo, _hi in parts],
+            "overlap": OVERLAP_S,
             "regions": [[round(a, 2), round(b, 2)] for a, b in regions],
             "timed": timed,
             "device_note": device_note,

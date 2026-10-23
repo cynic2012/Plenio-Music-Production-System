@@ -138,6 +138,52 @@ def test_long_spans_are_cut_at_their_quietest_moment() -> None:
     assert worker.pieces(audio, [(10.0, 20.0), (30.0, 30.2)]) == [(10.0, 20.0)]
 
 
+def test_a_song_is_heard_in_short_pieces_with_a_little_of_their_neighbours() -> None:
+    """Owner's report 2026-10-23: over a whole song the aligner loses its place - 20-second pieces, each heard
+    with OVERLAP_S of its neighbours inside its span."""
+    rate = worker.RATE
+    audio = np.random.default_rng(2).standard_normal(rate * 70).astype("float32") * 0.1
+    heard = worker.heard_pieces(audio, [])
+    assert [round(end - start) <= worker.PIECE_S for start, end, _lo, _hi in heard] == [True] * len(heard)
+    assert heard[0][2] == 0.0 and heard[0][3] == pytest.approx(heard[0][1] + worker.OVERLAP_S)
+    assert heard[1][2] == pytest.approx(heard[1][0] - worker.OVERLAP_S) and heard[-1][3] == pytest.approx(
+        70.0
+    )
+    # a region is heard inside its own bounds
+    assert worker.heard_pieces(audio, [(10.0, 15.0)]) == [(10.0, 15.0, 10.0, 15.0)]
+
+
+def test_a_word_heard_by_both_pieces_at_a_cut_is_kept_once() -> None:
+    owns = [(0.0, 20.0), (20.0, 40.0)]
+    # both heard "dancing" near the cut, and time it on opposite sides: kept once, by the mean of the two
+    # (each alone: the left piece's middle 20.0 is the right one's, the right piece's 19.6 the left one's)
+    left = [(18.0, 18.5, "you"), (18.6, 19.0, "can"), (19.6, 20.4, "dancing")]
+    right = [(18.6, 19.0, "can"), (19.4, 19.8, "Dancing"), (20.7, 21.5, "queen")]
+    keep = worker.owned_words(owns, [left, right])
+    assert keep == [[True, True, True], [False, False, True]]
+    kept = [
+        w
+        for words, flags in zip([left, right], keep, strict=True)
+        for w, k in zip(words, flags, strict=True)
+        if k
+    ]
+    assert [w[2] for w in kept] == ["you", "can", "dancing", "queen"]
+    # a word only one piece heard keeps the side its middle is on; a piece of another span shares nothing
+    assert worker.owned_words([(0.0, 20.0), (30.0, 40.0)], [[(19.9, 20.4, "late")], [(29.0, 30.5, "x")]]) == [
+        [False],
+        [False],
+    ]
+    assert worker.owned_words([(0.0, 20.0)], [[(19.5, 20.5, "end")]]) == [[True]]
+
+
+def test_a_sentence_cut_by_a_piece_keeps_the_words_it_kept() -> None:
+    assert (
+        worker._kept_text("Friday night and the lights are low.", ["and", "the", "lights"])
+        == "and the lights"
+    )
+    assert worker._kept_text("窗台那盆绿萝", ["那", "盆"]) == "那盆"
+
+
 def test_sentences_follow_the_transcripts_punctuation() -> None:
     transcript = "I held the receiver up to my ear. Static on the hollow, empty chair! And then?"
     words = ["I", "held", "the", "receiver", "up", "to", "my", "ear", "Static", "on", "the", "hollow", "empty", "chair",

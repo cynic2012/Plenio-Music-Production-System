@@ -29,12 +29,14 @@ import {
   toggleFavorite,
   videoFor,
 } from '../store'
+import { linesFor, sungOf } from '../lyricsVersion'
 import { songFacts } from '../songFacts'
 import { formatTime, sectionName } from '../timing'
 import { similarSongs, takesOf } from '../similar'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 import Karaoke from './Karaoke.vue'
+import LyricsVersionSwitch from './LyricsVersionSwitch.vue'
 import Notation from './Notation.vue'
 import SongCard from './SongCard.vue'
 import SongMenu from './SongMenu.vue'
@@ -173,7 +175,11 @@ async function copy(text: string, what: string): Promise<void> {
     /* the clipboard needs a secure context; nothing to do */
   }
 }
-const lyricsLines = computed(() => detail.value?.lines ?? [])
+/** The lyrics as written, timed: the notation follows their syllables. */
+const writtenLines = computed(() => detail.value?.lines ?? [])
+/** The lines shown: as written, or as the take sings them (the listener's choice). */
+const lyricsLines = computed(() => linesFor(detail.value, settings.lyricsVersion))
+const hasSung = computed(() => !!sungOf(detail.value))
 /** Where the lines' times come from, in a sentence (``timing_source`` of the song's page). */
 function timingSourceText(source: string, note?: string): string {
   if (source === 'subtitles') return 'Times from the song’s subtitle files.'
@@ -225,6 +231,7 @@ function timingSourceText(source: string, note?: string): string {
     <p v-if="error" class="error">{{ error }}</p>
 
     <section v-if="tab === 'lyrics'" class="pane lyrics">
+      <LyricsVersionSwitch v-if="hasSung" :detail="detail" details />
       <div v-if="isCurrent && lyricsLines.length" class="karaoke-box">
         <Karaoke :lines="lyricsLines" :time="time" :plain="song.lyrics" />
       </div>
@@ -244,7 +251,7 @@ function timingSourceText(source: string, note?: string): string {
 
     <section v-if="tab === 'notation' && detail" class="pane">
       <div class="notation-box">
-        <Notation :notation="detail.notation" :lines="lyricsLines" :time="Math.max(0, songTime)" :following="isCurrent" :song-id="detail.id" />
+        <Notation :notation="detail.notation" :lines="writtenLines" :time="Math.max(0, songTime)" :following="isCurrent" :song-id="detail.id" />
       </div>
       <p v-if="!isCurrent" class="hint">Play the song and the notes light up as they sound; click a note to jump there.</p>
     </section>

@@ -148,3 +148,106 @@ def test_without_lyrics_the_words_as_heard_and_no_inventions() -> None:
     assert timed.timing == "heard"
     assert [line.text for line in timed.lines] == ["Hold on to the light"]
     assert s.time_heard(heard([("la", 1.0, 1.2)]), duration=5.0).lines == ()
+
+
+def test_what_was_sung_is_laid_out_like_the_lyrics_where_the_take_sings_them() -> None:
+    """Owner's request 2026-10-23: the lyrics that were wanted and the ones the take sings, both to follow. A
+    heard word that pairs with a lyrics word is written as the lyrics write it and keeps its line; words the
+    lyrics do not have make lines of their own; the sections keep their tags."""
+    lyrics = (
+        "[Verse]\nWalking down the river side,\nsinging songs of yesterday\n\n"
+        "[Chorus]\nHold on, hold on\nto the light we made"
+    )
+    words = heard(
+        [("walking", 1.0, 1.4), ("down", 1.4, 1.7), ("the", 1.7, 1.8), ("riverside", 1.8, 2.6)]
+        + [("singing", 3.0, 3.4), ("songs", 3.4, 3.8), ("of", 3.8, 3.9), ("yesterday", 3.9, 4.8)]
+        # the take makes a line up between verse and chorus
+        + [("oh", 7.0, 7.3), ("baby", 7.3, 7.8), ("baby", 7.8, 8.3)]
+        + [("hold", 10.0, 10.3), ("on", 10.3, 10.6), ("hold", 10.6, 10.9), ("on", 10.9, 11.2)]
+    )
+    sung = s.time_sung(lyrics, words, duration=20.0, timing=s.ALIGNED)
+    assert sung is not None and sung.subtitles.timing == "sung"
+    assert [line.text for line in sung.subtitles.lines] == [
+        "Walking down the riverside",
+        "singing songs of yesterday",
+        "oh baby baby",
+        "Hold on, hold on",
+    ]
+    assert sung.text == (
+        "[Verse]\nWalking down the riverside\nsinging songs of yesterday\noh baby baby\n\n[Chorus]\nHold on, hold on"
+    )
+    # 'riverside' is heard where the lyrics have 'river side': it pairs with 'river' and is written as heard
+    assert sung.extra_words == 3 and sung.not_sung == ("to the light we made",)
+    assert sung.written_heard == 12 / 18
+    first = sung.subtitles.lines[0]
+    assert first.start == 1.0 and [u.cut for u in first.units][:2] == [7, 12]
+    assert sung.sections == (
+        {"tag": "Verse", "words": 9, "heard": 8},
+        {"tag": "Chorus", "words": 9, "heard": 4},
+    )
+    assert sung.findings() == []
+    record = sung.to_record()
+    assert record["lines"][2]["text"] == "oh baby baby" and record["not_sung"] == ["to the light we made"]
+    assert s.time_sung(lyrics, heard([("la", 1.0, 1.2)]), duration=5.0) is None
+
+
+def test_a_take_that_sings_other_words_is_laid_out_by_its_pauses() -> None:
+    lyrics = "[Verse]\nthe written line that nobody sings at all today\n\n[Chorus]\nla la la"
+    words = heard(
+        [(w, 1.0 + 0.4 * k, 1.3 + 0.4 * k) for k, w in enumerate("something else came out of it".split())]
+    )
+    words += heard([(w, 9.0 + 0.4 * k, 9.3 + 0.4 * k) for k, w in enumerate("and more of that here".split())])
+    sung = s.time_sung(lyrics, words, duration=20.0, timing=s.ALIGNED)
+    assert sung is not None
+    assert [line.text for line in sung.subtitles.lines] == [
+        "something else came out of it",
+        "and more of that here",
+    ]
+    assert sung.text == "something else came out of it\n\nand more of that here"
+    assert sung.written_heard == 0.0 and sung.extra_words == 11
+    assert sung.findings() == [
+        "[Verse] was not sung as written (0% of its words heard)",
+    ]
+
+
+def test_chinese_and_japanese_lyrics_are_matched_character_by_character() -> None:
+    """The owner's songs in Chinese and Japanese: their lines have no spaces, so a whole phrase was one word and
+    almost nothing of the lyrics was matched to what was heard. Now every character is a token - in the lyrics
+    and in what was heard (Whisper hears several characters as one word)."""
+    lyrics = "[Verse]\n咖啡杯沿，还留着你的唇温\n雨滴敲窗"
+    line = s.sung_lines(lyrics)[0]
+    assert [line.text[a:z] for a, z in line.tokens][:4] == ["咖", "啡", "杯", "沿，"]
+    heard = [
+        AsrWord(1.0, 2.2, "咖啡杯沿", 0.9, 0),
+        AsrWord(2.4, 4.2, "还留着你的唇温", 0.9, 0),
+        AsrWord(6.0, 7.6, "雨滴敲窗", 0.9, 1),
+    ]
+    assert [w.word for w in s.split_cjk(heard)][:3] == ["咖", "啡", "杯"]
+    timed = s.time_lyrics(lyrics, heard, duration=10.0, timing=s.ALIGNED)
+    assert timed.matched == 1.0 and [round(t.start, 2) for t in timed.lines] == [1.0, 6.0]
+    sung = s.time_sung(lyrics, heard, duration=10.0, timing=s.ALIGNED)
+    assert sung is not None and [t.text for t in sung.subtitles.lines] == [
+        "咖啡杯沿，还留着你的唇温",
+        "雨滴敲窗",
+    ]
+    assert s.join_words(["我", "爱", "you", "too"]) == "我爱you too"
+
+
+def test_a_first_word_that_took_the_music_before_it_is_placed_by_its_line() -> None:
+    """Qwen3-ForcedAligner lets the first word of a piece take the music before it, or puts it at the piece's
+    start (an export of 2026-10-23: the first "I" from 0.0 to 12.0 s; a "This" at 45.2 s, its line from 57.9 s)."""
+    lyrics = "[Verse]\nI was tracing lines\nthis old road"
+    words = [AsrWord(0.0, 12.0, "I", 0.9, 0)] + heard(
+        [("was", 12.1, 12.5), ("tracing", 12.6, 13.2), ("lines", 13.3, 14.0)]
+    )
+    words += [AsrWord(20.0, 20.3, "this", 0.9, 1)] + heard([("old", 28.0, 28.4), ("road", 28.5, 29.4)], 1)
+    timed = s.time_lyrics(lyrics, words, duration=40.0, timing=s.ALIGNED)
+    assert [round(line.start, 2) for line in timed.lines] == [
+        round(12.1 - s.WORD_S, 2),
+        round(28.0 - s.WORD_S, 2),
+    ]
+    sung = s.time_sung(lyrics, words, duration=40.0, timing=s.ALIGNED)
+    assert sung is not None and [round(t.start, 2) for t in sung.subtitles.lines] == [11.8, 27.7]
+    # a word as long as the aligner times it, and Whisper's times, are left alone
+    plain = heard([("I", 11.6, 12.0), ("was", 12.1, 12.5), ("tracing", 12.6, 13.2), ("lines", 13.3, 14.0)])
+    assert s.time_lyrics(lyrics, plain, duration=40.0, timing=s.ALIGNED).lines[0].start == 11.6

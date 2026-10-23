@@ -167,6 +167,8 @@ def test_subtitles_from_what_the_asr_heard(comfy_path: Path, monkeypatch: pytest
     asked: list[Any] = []
     words = [("Hold", 1.0, 1.4), ("on", 1.4, 1.8), ("to", 1.8, 2.0), ("the", 2.0, 2.2), ("light", 2.2, 3.0)]
     words += [("Never", 5.0, 5.4), ("let", 5.4, 5.6), ("it", 5.6, 5.8), ("go", 5.8, 6.6)]
+    # a line the take makes up (owner's request 2026-10-23: what it really sings, documented and to follow)
+    words += [("oh", 8.0, 8.3), ("yeah", 8.3, 8.9)]
 
     def fake_asr(audio: Any, settings: Any, source: str, progress: Any) -> AsrResult:
         asked.append(settings)
@@ -177,17 +179,20 @@ def test_subtitles_from_what_the_asr_heard(comfy_path: Path, monkeypatch: pytest
     samples = np.zeros((2, 48000 * 10))
     sheet = {"lyrics": "[Verse]\nHold on to the light\nNever let it go", "score": "", "engine": ""}
     notes: list[str] = []
-    timed, why = export._subtitles(samples, 48000, sheet, [], None, notes)
+    timed, sung, why = export._subtitles(samples, 48000, sheet, [], None, notes)
     assert (
         timed is not None and why == "" and notes == [] and asked[0].language == "en"
     )  # guessed from the lyrics
     assert [line.text for line in timed.lines] == ["Hold on to the light", "Never let it go"]
     assert timed.lines_srt().startswith("1\n00:00:0")
+    assert sung is not None and [line.text for line in sung.subtitles.lines][-1] == "oh yeah"
+    assert sung.written_heard == 1.0 and sung.extra_words == 2 and sung.text.startswith("[Verse]\nHold on")
     # an instrumental has no words: no ASR, no subtitles
     instrumental = song_brief(
         {"vocals": "instrumental", "melody": "accompaniment only", "lead_instrument": ""}
     )
     assert export._subtitles(samples, 48000, sheet, [], instrumental.result[0], notes) == (
+        None,
         None,
         "an instrumental: no words",
     )
@@ -208,9 +213,11 @@ def test_subtitles_are_left_out_with_a_note_when_the_asr_cannot_run(
     monkeypatch.setattr(export, "run_asr", offline)
     notes: list[str] = []
     sheet = {"lyrics": "[Verse]\nHold on", "score": "", "engine": ""}
-    timed, why = export._subtitles(np.zeros((1, 4800)), 48000, sheet, [], None, notes)
+    timed, sung, why = export._subtitles(np.zeros((1, 4800)), 48000, sheet, [], None, notes)
     assert (
-        timed is None and why == "the lyrics ASR could not run: The asset is missing and offline mode is on."
+        timed is None
+        and sung is None
+        and why == "the lyrics ASR could not run: The asset is missing and offline mode is on."
     )
     assert notes and notes[0].startswith("subtitles: not written")
 

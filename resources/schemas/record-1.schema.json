@@ -56,8 +56,8 @@
           "role": { "enum": ["original", "cover", "sheet_music", "stem", "stem_midi", "subtitles"] },
           "stem": { "type": "string", "minLength": 1 },
           "notes": { "type": "integer", "minimum": 0 },
-          "subtitles": { "enum": ["lines", "notes"] },
-          "timing": { "enum": ["measured", "heard"] },
+          "subtitles": { "enum": ["lines", "notes", "sung"] },
+          "timing": { "enum": ["measured", "heard", "sung"] },
           "format": { "enum": ["flac", "mp3", "wav"] },
           "bits": { "type": ["integer", "null"] },
           "sample_rate": { "type": "integer", "minimum": 1 },
@@ -81,7 +81,20 @@
           "take": { "type": "string" },
           "timing": { "enum": ["measured", "heard"] },
           "warp": { "type": ["array", "null"] },
-          "lines": { "type": "array", "items": { "type": "object", "required": ["text", "start", "end", "units"] } }
+          "lines": { "type": "array", "items": { "type": "object", "required": ["text", "start", "end", "units"] } },
+          "sung": {
+            "description": "What the take sings, as heard - laid out like its lyrics, with their section tags - and how far it follows them.",
+            "type": "object",
+            "required": ["text", "lines"],
+            "properties": {
+              "text": { "type": "string" },
+              "lines": { "type": "array", "items": { "type": "object", "required": ["text", "start", "end", "units"] } },
+              "written_heard": { "type": "number", "minimum": 0, "maximum": 1 },
+              "extra_words": { "type": "integer", "minimum": 0 },
+              "not_sung": { "type": "array", "items": { "type": "string" } },
+              "sections": { "type": "array", "items": { "type": "object" } }
+            }
+          }
         }
       }
     },

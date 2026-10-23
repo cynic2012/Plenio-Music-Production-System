@@ -10,6 +10,7 @@ import { mergeState } from './stateMerge'
 import { engine } from './engine'
 import { type LiveSettings, liveWithDefaults } from './liveSettings'
 import { type LyricsStyle, lyricsWithDefaults } from './lyricsStyle'
+import { type LyricsVersion, versionOf } from './lyricsVersion'
 import { type VisualSettings, withDefaults } from './visuals/chooser'
 
 export interface Settings {
@@ -37,6 +38,8 @@ export interface Settings {
   video: Record<string, unknown>
   /** How the lyrics look: font, size, colour, effect. */
   lyrics: LyricsStyle
+  /** Which lyrics to follow: as written, or as the take sings them (lyricsVersion.ts). */
+  lyricsVersion: LyricsVersion
   /** Seconds the listener moved a song's notation cursor (song id -> seconds of score). */
   notationShift: Record<string, number>
   /** Searches and filters kept under a name (the sidebar's *Saved filters*). */
@@ -73,6 +76,7 @@ const DEFAULT_SETTINGS: Settings = {
   live: liveWithDefaults(null),
   video: {},
   lyrics: lyricsWithDefaults(null),
+  lyricsVersion: 'written',
   notationShift: {},
   savedFilters: [],
   moreFilters: false,
@@ -250,7 +254,7 @@ window.addEventListener('pagehide', () => {
 
 /** The settings as saved, checked and filled with the defaults. */
 function applySettings(stored: Partial<Settings>): void {
-  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), notationShift: shiftsOf(stored.notationShift), savedFilters: savedFiltersOf(stored.savedFilters), moreFilters: !!stored.moreFilters })
+  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), lyricsVersion: versionOf(stored.lyricsVersion), notationShift: shiftsOf(stored.notationShift), savedFilters: savedFiltersOf(stored.savedFilters), moreFilters: !!stored.moreFilters })
 }
 
 /** Replace everything the player keeps (a backup read back, or ``null``: start afresh). */

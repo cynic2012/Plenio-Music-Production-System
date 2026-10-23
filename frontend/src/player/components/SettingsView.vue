@@ -15,6 +15,7 @@ import { countOf } from '../timing'
 import FolderBrowser from './FolderBrowser.vue'
 import Icon from './Icon.vue'
 import LyricsPanel from './LyricsPanel.vue'
+import LyricsVersionSwitch from './LyricsVersionSwitch.vue'
 import NetworkAccess from './NetworkAccess.vue'
 import { isPortable, portable } from '../portable'
 
@@ -267,6 +268,8 @@ async function stop(): Promise<void> {
     <section class="block">
       <h3><Icon name="mic" /> Lyrics</h3>
       <p class="lead">How the lyrics look while a song plays: the font, the size, the colour - and how each syllable comes in as it is sung.</p>
+      <p class="lead">Which lyrics to follow: <b>as written</b> - the song's lyrics - or <b>as sung</b> - what the take really sings, as heard when it was exported (a music model may repeat a line, make one up or leave one out). Songs exported before Plenio kept it show their written lyrics.</p>
+      <LyricsVersionSwitch />
       <LyricsPanel />
     </section>
 

@@ -383,6 +383,7 @@ def _files(record: Mapping[str, Any], path: Path) -> dict[str, Path]:
         "pdf": f"{stem}.pdf",
         "lines": f"{stem} (lines).srt",
         "notes": f"{stem} (notes).srt",
+        "sung": f"{stem} (sung).srt",
     }
     for kind, name in guesses.items():
         if kind not in found or not found[kind].exists():
@@ -473,6 +474,7 @@ def summarize(record: Mapping[str, Any], path: Path, root: Path) -> Song:
             "notes": "notes" in files,
             "stems": "stems" in files,
             "timing": bool(record.get("timing")),
+            "sung": any(isinstance(t, Mapping) and t.get("sung") for t in record.get("timing") or []),
             "score": bool(doc("score")),
         },
         **score_facts(doc("score")),
@@ -527,6 +529,21 @@ def other_detail(song: Song) -> dict[str, Any]:
         "file_path": str(song.record),
         "licences": [],
         "versions": {},
+    }
+
+
+def sung_detail(found: Any) -> dict[str, Any]:
+    """What the take sings, as heard (the record's ``timing[].sung``, ``core.subtitles.SungLyrics``): its timed
+    lines, its text and how far it follows the lyrics - empty for a song exported before it was kept."""
+    if not isinstance(found, Mapping) or not found.get("lines"):
+        return {}
+    return {
+        "lines": list(found.get("lines") or []),
+        "text": str(found.get("text") or ""),
+        "written_heard": found.get("written_heard"),
+        "extra_words": found.get("extra_words"),
+        "not_sung": [str(x) for x in found.get("not_sung") or []],
+        "sections": [dict(s) for s in found.get("sections") or [] if isinstance(s, Mapping)],
     }
 
 
@@ -612,10 +629,12 @@ def song_detail(song: Song, cache: Path | None = None) -> dict[str, Any]:
     timing = record.get("timing") or []
     lines: list[dict[str, Any]] = []
     source = ""
+    sung: dict[str, Any] = {}
     if timing:
         first = timing[0]
         lines, source = list(first.get("lines") or []), str(first.get("timing") or "measured")
         notation["warp"] = first.get("warp")
+        sung = sung_detail(first.get("sung"))
     elif "lines" in song.files:
         cues = parse_srt(song.files["lines"].read_text(encoding="utf-8", errors="replace"))
         notes = (
@@ -642,6 +661,7 @@ def song_detail(song: Song, cache: Path | None = None) -> dict[str, Any]:
         "lyrics_raw": lyrics,
         "notation": notation,
         "lines": lines,
+        "sung": sung,
         "timing_source": source,
         "timing_note": timing_note(record) if source in ("", "estimated") else "",
         "files": {kind: path.name for kind, path in song.files.items() if kind != "stems"},

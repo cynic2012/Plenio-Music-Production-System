@@ -12,6 +12,7 @@
 import { api, media, type SongDetail, type SongSummary } from '../api'
 import { paletteFrom, songHue } from '../colors'
 import { fontOf, litColor, lyricsWithDefaults, type LyricsStyle } from '../lyricsStyle'
+import { linesFor, type LyricsVersion, versionOf } from '../lyricsVersion'
 import { settings } from '../store'
 import { lineAt, sectionAt, sectionsInSong, songAnchors, type TimedSection } from '../timing'
 import { chooseVisual } from '../visuals/chooser'
@@ -43,6 +44,8 @@ export interface VideoOptions {
   lyrics: 'off' | 'subtitles' | 'karaoke' | 'words'
   /** The lyrics' font, colour, size and effect (at first the player's own). */
   lyricsStyle: LyricsStyle
+  /** The lyrics as written, or as the take sings them (at first the player's choice). */
+  lyricsVersion: LyricsVersion
   /** Where the lyrics stand (``random``: a new place every line), how each line comes in, and whether it comes
    * in one beat and pulses with the beat. */
   lyricsPlace: LyricsPlace
@@ -87,6 +90,7 @@ export const DEFAULT_VIDEO: VideoOptions = {
   scheme: 'song',
   lyrics: 'subtitles',
   lyricsStyle: lyricsWithDefaults(null),
+  lyricsVersion: 'written',
   lyricsPlace: 'bottom',
   lyricsIn: 'fade',
   onBeat: true,
@@ -101,7 +105,7 @@ export const DEFAULT_VIDEO: VideoOptions = {
 }
 
 /** Saved video settings, checked. */
-export function videoWithDefaults(raw: unknown, lyrics?: unknown): VideoOptions {
+export function videoWithDefaults(raw: unknown, lyrics?: unknown, version?: unknown): VideoOptions {
   const given = (raw && typeof raw === 'object' ? raw : {}) as Partial<VideoOptions> & { eachSection?: boolean }
   const out = { ...DEFAULT_VIDEO, ...given, start: 0, length: 0 }
   // settings of before: a new visual at every section
@@ -113,6 +117,7 @@ export function videoWithDefaults(raw: unknown, lyrics?: unknown): VideoOptions 
   out.fade = fade.style
   out.fadeSeconds = fade.seconds
   out.lyricsStyle = lyricsWithDefaults(given.lyricsStyle ?? lyrics)
+  out.lyricsVersion = versionOf(given.lyricsVersion ?? version)
   if (!SIZES.some((s) => s.width === out.width && s.height === out.height)) Object.assign(out, { width: 1920, height: 1080 })
   if (![24, 25, 30, 50, 60].includes(out.fps)) out.fps = 30
   if (!['off', 'subtitles', 'karaoke', 'words'].includes(out.lyrics)) out.lyrics = 'subtitles'
@@ -183,13 +188,15 @@ export class Composer {
   private section: TimedSection | null = null
   private readonly look: { stack: string; weight: number; lit: string }
   private readonly sections: TimedSection[]
+  /** The lines drawn: as written or as sung; the sections and the notation follow the written ones. */
+  private readonly shown: SongDetail['lines']
   private readonly hue: number
   private readonly accent: string
   readonly length: number
 
   private constructor(
     private readonly song: SongSummary,
-    private readonly detail: SongDetail,
+    detail: SongDetail,
     private readonly sound: Sound,
     readonly options: VideoOptions,
     private readonly strip: NotationStrip | null,
@@ -204,6 +211,7 @@ export class Composer {
     this.analysis = new OfflineAnalysis(sound, options.fps, settings.visuals.sensitivity)
     this.mixer = new SceneMixer((preset) => preset.create({ drop: { renderer: () => this.dropRenderer(), scale: 1 } }))
     this.sections = sectionsInSong(detail.notation.sections, songAnchors(detail.lines, detail.notation), detail.notation.warp, sound.duration)
+    this.shown = linesFor(detail, options.lyricsVersion)
     this.hue = songHue(song.id, song.genre)
     this.accent = paletteFrom(this.hue).accent
     const font = fontOf(options.lyricsStyle)
@@ -290,8 +298,8 @@ export class Composer {
       if (alpha > 0) picture(this.song.title, unit * 0.16, h * 0.42, alpha * 0.5)
     }
     if (this.options.into.lyrics) {
-      const i = lineAt(this.detail.lines, t)
-      const line = i >= 0 ? this.detail.lines[i] : null
+      const i = lineAt(this.shown, t)
+      const line = i >= 0 ? this.shown[i] : null
       if (line && t <= line.end + 0.3) picture(line.text, unit * 0.09, h * 0.72, 0.35)
     }
     ctx.restore()
@@ -309,7 +317,7 @@ export class Composer {
     this.pick(t, elapsed)
     const colors = makeColors(this.hue, this.options.scheme, elapsed)
     const into = this.options.into
-    const lines = this.detail.lines
+    const lines = this.shown
     if (this.mixer.preset?.kind === 'drop') {
       // the song for the pictures of the Drop visual, and the title, line and cover chosen into its smoke
       const renderer = this.dropRenderer()

@@ -29,7 +29,8 @@ from .files import atomic_write_text
 from .hashing import sha256_json
 
 ASR_SCHEMA = "plenio.asr/1"
-CACHE_VERSION = 1
+CACHE_VERSION = 2
+"""2: Qwen3 hears a song in pieces of 20 s (``workers.asr.PIECE_S``) - a result of one long piece is not used."""
 
 
 @dataclass(frozen=True)

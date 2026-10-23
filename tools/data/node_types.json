@@ -2580,7 +2580,7 @@
       "BOOLEAN",
       {
        "display_name": "lyrics subtitles (SRT)",
-       "tooltip": "Write the lyrics as subtitles: '(lines).srt' whole lines, '(notes).srt' painted on note by note. Timed by listening (Qwen3-ASR and its aligner, 5.9 GB, fetched on first use).",
+       "tooltip": "Write the lyrics as subtitles: '(lines).srt' whole lines, '(notes).srt' note by note, '(sung).srt' what the take really sings. Timed by listening (Qwen3-ASR and its aligner, 5.9 GB, fetched on first use).",
        "default": true
       }
      ]

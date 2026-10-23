@@ -46,21 +46,35 @@ template lists the variables, too.
 
 ## Lyrics subtitles
 
-*lyrics subtitles (SRT)* (on by default) writes two files next to the song:
+*lyrics subtitles (SRT)* (on by default) writes three files next to the song:
 
 - `<name> (lines).srt` - one subtitle per lyrics line, shown from where its first word is sung until its last
   word ends;
 - `<name> (notes).srt` - the same lines **painted on note by note**: a new subtitle at every syllable (YuE2,
   on its note) or word (MiniMax), showing the line up to what is being sung - `Hal`, `Halle`, `Hallelu`,
-  `Hallelujah`.
+  `Hallelujah`;
+- `<name> (sung).srt` - **what the take really sings**, as heard: a music model does not always sing its
+  lyrics (it repeats a line, makes one up, leaves one out). The lines follow the lyrics wherever the take sings
+  them - their line breaks, and their spelling where the same word was heard -, and the words the lyrics do
+  not have make lines of their own. For a video of the song as it sounds, this is the file to use.
+
+The release record keeps both - the lyrics' times, and what was sung with its times and its text with the
+lyrics' section tags - together with how far the take follows its lyrics: the share of their words that were
+heard, the words heard that they do not have, the lines not heard. The export's summary says it per take
+(*86 % of the lyrics' words sung as written, 12 words the lyrics do not have*) and names a section not sung as
+written; the [Plenio Player](player.md#written-and-sung-lyrics) follows either version.
 
 **How the times are measured.** The lyrics ASR listens to the exported song: **Qwen3-ASR 1.7B** hears the
 words and **Qwen3-ForcedAligner 0.6B** places every word on the audio (Apache-2.0, 4.1 + 1.8 GB, downloaded on
-first use; its results are cached). Its words are matched to the final lyrics; with a score (YuE2), the score
-is fitted to the heard words and every syllable takes its note's time - the heard time wins where the two
-disagree. A YuE2 render is shifted against its score (1.7 s in the median song), so the score's own times are
-not used. The aligner was the reference of the measurement behind this method, so its times are used as they
-are. For a language the aligner does not know (it times English, German, French, Spanish, Italian,
+first use; its results are cached). It hears the song in pieces of at most 20 seconds, cut at quiet moments,
+each with a second and a half of its neighbours (a word heard by both at a cut is kept once): over a whole song
+with its music the aligner loses its place - in 1.1.0, when it heard a song in one piece, lines could come up
+to a minute early. Measured on 15 YuE2 songs against faster-whisper, an independent timing: 94 % of the words
+within 3 seconds of Whisper's, 72 % of the word starts within 0.15 s of where the separated vocals set in. Its
+words are matched to the final lyrics - Chinese and Japanese character by character -; with a score (YuE2),
+the score is fitted to the heard words and every syllable takes its note's time - the heard time wins where
+the two disagree. A YuE2 render is shifted against its score (1.7 s in the median song), so the score's own
+times are not used. For a language the aligner does not know (it times English, German, French, Spanish, Italian,
 Portuguese, Russian, Chinese, Cantonese, Japanese and Korean) **faster-whisper large-v3** (MIT, 3.1 GB) takes
 over and the export's summary says so; its word times start early and are corrected - measured on 48 YuE2
 songs against the aligner: half the words within 0.16 s, 82 % within 0.5 s, 92 % within 1 s.

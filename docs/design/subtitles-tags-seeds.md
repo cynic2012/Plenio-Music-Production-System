@@ -101,6 +101,55 @@ Offline without the model, or when the ASR fails: no SRT, a note in the summary,
 "lines" | "notes"`, `timing: "measured" | "heard"`), with the ASR's language and how many lines were timed;
 the summary says `- subtitles: <name> (lines).srt, (notes).srt - timed by listening`.
 
+### 1.3 2026-10-23: pieces of 20 seconds, and what the take sings
+
+The owner's report: since 1.1.0 the lyrics - in the player's sheet and its lyrics - often followed far from
+what was sung. 1.1.0 had made Qwen3-ASR with Qwen3-ForcedAligner the lyrics ASR and let it hear a song in one
+piece of up to four minutes (the aligner takes five). Over a song with its music the aligner loses its place:
+on one of the owner's covers its first word lasted from 0.0 to 24.5 s, 78 of 198 words had no length, and all
+words ended by 144 s of a song sung until about 200 s. In the owner's records of 1.1.0 (23 timed songs) the
+median syllable lay 0.99 s from its place in the score after the warp, and 38 % more than 2 s (1.0: 0.18 s and
+2 %).
+
+Measured on 20 of the owner's YuE2 songs (14 of 1.1.0 with Latin script and one of 1.0.2; the five in Chinese
+and Japanese below), read-only, only aggregates. The reference, independent of the aligner: the vocals
+separated by the owner's BS-RoFormer (onsets, voice activity) and faster-whisper large-v3 with the 1.0
+corrections.
+
+| Qwen3, the song heard in | words within 0.5 s / more than 3 s from Whisper's | word starts within 0.15 s of a vocal onset | voiced time under a line | lyrics words heard |
+|---|---|---|---|---|
+| one piece (1.1.0) | 51 % / 29 % | 59 % | 86 % | 86 % |
+| pieces of 30 s | 69 % / 7 % | 71 % | 83 % | 81 % |
+| pieces of 20 s | 70 % / 8 % | 72 % | 83 % | 82 % |
+| **pieces of 20 s, 1.5 s overlap, words paired at the cuts** | **70 % / 6 %** | **72 %** | **88 %** | **82 %** |
+| (faster-whisper) | - | 67 % | 78 % | 85 % |
+
+(Qwen3 in pieces of 30 and of 20 s agree with each other as Whisper agrees with them: 7 % more than 3 s apart.)
+An overlap alone lost words: both neighbours heard a word at the cut and timed it on opposite sides; paired
+by their text, a word both heard is kept once, in the piece the mean of its two middles is in
+(`workers.asr.owned_words`). Qwen3-ASR takes a context prompt; neither helped: the piece before's
+transcription gained nothing (81 % of the lyrics words, 9 % more than 3 s from Whisper), and the lyrics as the
+prompt made it hear the lyrics where they were not sung (86 % of the lyrics words, but 282 words heard instead
+of 217, 42 % of them without length, 40 % more than 3 s from Whisper) - for what a take sings the worst
+possible. So no prompt. Results of one piece are not used again (`core.asr.CACHE_VERSION` 2).
+
+**Chinese and Japanese.** Their lyrics have no spaces, so a whole phrase was one token and nothing was paired
+with the heard words (0-25 % of the lyrics' words on the five songs). Every Kana and Han character is a token
+now - in the lyrics and in what was heard (Whisper hears several characters as one word; its time is shared
+out).
+
+**What the take sings** (owner's request of the same day: the lyrics wanted and the lyrics made, both to follow
+and both documented). The export hears every take anyway; `core.subtitles.time_sung` lays the heard words out
+like the lyrics wherever the take sings them - a heard word paired with a lyrics word keeps that word's line,
+and its spelling when it is the same word; the words the lyrics do not have start a line after a pause (0.9 s)
+and never make a line longer than 64 characters - and gives each line the section tag of the lyrics line it
+sings. Written: `<name> (sung).srt`, the record's `timing[].sung` (text, timed lines, the share of the lyrics'
+words heard, the extra words, the lines not heard, per section) and a line in the summary; a section of four or
+more words of which fewer than 40 % were heard is named as not sung as written. What was heard is what the ASR
+heard: a misheard word shows as heard - which is why the sung version is offered next to the written one, not in
+its place. The player follows either; the notation always the written lyrics, whose syllables have places in
+the score.
+
 ## 2. Tags, inputs and variables
 
 ### 2.1 Inputs

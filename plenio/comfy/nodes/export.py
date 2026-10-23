@@ -64,7 +64,9 @@ EXTRA_TAGS = tuple(field for field in TAG_FIELDS if field != "title")
 # what the *tags* mode writes as the comment unless the user changes it
 DEFAULT_COMMENT = "Powered by Plenio Music Production System / ComfyUI"
 SHEET_SUFFIX = ".pdf"
-SUBTITLE_SUFFIXES = {"lines": " (lines).srt", "notes": " (notes).srt"}
+SUBTITLE_SUFFIXES = {"lines": " (lines).srt", "notes": " (notes).srt", "sung": " (sung).srt"}
+"""The lyrics as written, whole lines and painted on note by note - and what the take sings, as heard
+(``core.subtitles.time_sung``; not for a song without lyrics, whose lines are what was heard)."""
 SEED_NODES = ("PlenioSeed", "SeedNode")
 LOW_MATCH = 0.5
 """Below this share of the lyrics' words heard, the subtitles get a note: the times rest on few words."""
@@ -82,8 +84,8 @@ SIZE_TOOLTIP = (
     "(the biggest notes)."
 )
 SRT_TOOLTIP = (
-    "Write the lyrics as subtitles: '(lines).srt' whole lines, '(notes).srt' painted on note by note. Timed by "
-    "listening (Qwen3-ASR and its aligner, 5.9 GB, fetched on first use)."
+    "Write the lyrics as subtitles: '(lines).srt' whole lines, '(notes).srt' note by note, '(sung).srt' what the "
+    "take really sings. Timed by listening (Qwen3-ASR and its aligner, 5.9 GB, fetched on first use)."
 )
 BRIEF_TOOLTIP = (
     "Optional: the brief, so that tags and the file name can use its fields ({genre}, {mood} ...)."
@@ -516,15 +518,18 @@ class PlenioExportRelease(io.ComfyNode):
         untimed: list[str] = []
         if lyrics_srt:
             for take, samples in zip(takes, items, strict=True):
-                timed, why = _subtitles(samples, rate, sheet, spans, brief, notes)
+                timed, sung, why = _subtitles(samples, rate, sheet, spans, brief, notes)
                 if timed is None:
                     untimed.append(why)
                     continue
-                for kind, text in (("lines", timed.lines_srt()), ("notes", timed.notes_srt())):
+                files_of = [("lines", timed, timed.lines_srt()), ("notes", timed, timed.notes_srt())]
+                if sung is not None:
+                    files_of.append(("sung", sung.subtitles, sung.subtitles.lines_srt()))
+                for kind, source, text in files_of:
                     path = file(take + SUBTITLE_SUFFIXES[kind])
                     atomic_write_text(path, text)
                     facts.append(
-                        {**file_facts(path), "role": "subtitles", "subtitles": kind, "timing": timed.timing}
+                        {**file_facts(path), "role": "subtitles", "subtitles": kind, "timing": source.timing}
                     )
                     written.append(path)
                 where = f" ({take.strip()})" if take else ""
@@ -538,7 +543,14 @@ class PlenioExportRelease(io.ComfyNode):
                     f"listening ({heard})"
                 )
                 notes.extend(_subtitle_notes(timed, take))
-                timings.append(timed.to_timing(take))
+                timings.append({**timed.to_timing(take), **({"sung": sung.to_record()} if sung else {})})
+                if sung is not None:
+                    subtitle_lines.append(
+                        f"- sung lyrics{where}: (sung).srt, {len(sung.subtitles.lines)} lines as heard - "
+                        f"{sung.written_heard:.0%} of the lyrics' words sung as written, {sung.extra_words} "
+                        "word(s) the lyrics do not have"
+                    )
+                    notes.extend(f"sung lyrics{where}: {finding}" for finding in sung.findings())
         cover_path = None
         warnings: list[str] = []
         if picture is not None:
@@ -787,12 +799,12 @@ def asr_language(brief: Any, lyrics: str) -> str:
 
 def _subtitles(
     samples: Any, rate: int, sheet: dict[str, Any], spans: list[list[int]], brief: Any, notes: list[str]
-) -> tuple[subtitle_rules.Subtitles | None, str]:
-    """The lyrics subtitles of one take, timed by listening - or ``None`` and why (nothing to subtitle, or no
-    ASR - noted)."""
+) -> tuple[subtitle_rules.Subtitles | None, subtitle_rules.SungLyrics | None, str]:
+    """The lyrics subtitles of one take, timed by listening, and what it sings as heard (with lyrics) - or
+    ``None`` and why (nothing to subtitle, or no ASR - noted)."""
     lyrics = str(sheet.get("lyrics") or "")
     if getattr(brief, "instrumental", False) or (lyrics.strip() and not subtitle_rules.sung_lines(lyrics)):
-        return None, "an instrumental: no words"
+        return None, None, "an instrumental: no words"
     audio = host.make_audio([samples], rate)
     settings = AsrSettings(language=asr_language(brief, lyrics))
     progress = host.Progress()
@@ -803,7 +815,7 @@ def _subtitles(
         raise
     except PlenioError as error:
         notes.append(f"subtitles: not written - the lyrics ASR could not run ({error.message})")
-        return None, f"the lyrics ASR could not run: {error.message}"
+        return None, None, f"the lyrics ASR could not run: {error.message}"
     finally:
         progress.update(1.0)
     weak = weak_segments(result)
@@ -816,8 +828,8 @@ def _subtitles(
         timed = subtitle_rules.time_heard(words, duration=seconds, timing=timing)
         if not timed.lines:
             notes.append("subtitles: not written - no lyrics given and no singing heard")
-            return None, "no lyrics given and no singing heard"
-        return timed, ""
+            return None, None, "no lyrics given and no singing heard"
+        return timed, None, ""
     score = layout = None
     if str(sheet.get("score") or "").strip():
         try:
@@ -829,6 +841,7 @@ def _subtitles(
         subtitle_rules.time_lyrics(
             lyrics, words, duration=seconds, score=score, layout=layout, timing=timing
         ),
+        subtitle_rules.time_sung(lyrics, words, duration=seconds, timing=timing),
         "",
     )
 

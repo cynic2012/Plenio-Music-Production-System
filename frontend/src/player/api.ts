@@ -73,7 +73,10 @@ export interface SongSummary {
   folder: string
   file: string
   takes_key: string
-  has: Record<'audio' | 'original' | 'cover' | 'pdf' | 'lines' | 'notes' | 'stems' | 'timing' | 'score', boolean>
+  has: Record<'audio' | 'original' | 'cover' | 'pdf' | 'lines' | 'notes' | 'stems' | 'timing' | 'score', boolean> & {
+    /** The record keeps what the take sings, as heard (songs exported since then). */
+    sung?: boolean
+  }
   bpm?: number | null
   score_key?: string
   score_meter?: string
@@ -94,6 +97,20 @@ export interface TimedLine {
   start: number
   end: number
   units: number[][]
+}
+
+/** What a take sings, as heard when it was exported (``core.subtitles.SungLyrics``): its lines, laid out like
+ * its lyrics, the text with their section tags, and how far it follows them. */
+export interface SungLyrics {
+  lines: TimedLine[]
+  text: string
+  /** The share of the lyrics' words that were heard. */
+  written_heard?: number | null
+  /** Heard words the lyrics do not have. */
+  extra_words?: number | null
+  /** Lyrics lines of which no word was heard. */
+  not_sung: string[]
+  sections: { tag: string; words: number; heard: number }[]
 }
 
 export interface Section {
@@ -119,6 +136,8 @@ export interface SongDetail extends SongSummary {
   lyrics_raw: string
   notation: Notation
   lines: TimedLine[]
+  /** What the take sings, as heard (empty for songs exported before it was kept). */
+  sung?: SungLyrics | Record<string, never>
   timing_source: string
   /** Why the song has no measured lyrics times (empty when it has them). */
   timing_note?: string

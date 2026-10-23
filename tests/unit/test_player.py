@@ -180,6 +180,31 @@ def test_a_song_brings_its_times_and_its_notation(songs: Path) -> None:
     assert detail["files"]["audio"] == "River.flac" and "original" not in detail["files"]
 
 
+def test_a_song_brings_what_its_take_sings(tmp_path: Path) -> None:
+    """Owner's request 2026-10-23: the lyrics as written and as the take sings them, both to follow. A song
+    exported before has no sung version (an empty one, so the page offers the written lyrics only)."""
+    folder = tmp_path / "plenio"
+    folder.mkdir()
+    sung = {
+        "text": "[Verse]\nwalking down the riverside\noh baby",
+        "lines": [{"text": "walking down the riverside", "start": 1.8, "end": 4.0, "units": [[1.8, 7]]}],
+        "written_heard": 0.8,
+        "extra_words": 2,
+        "not_sung": [],
+        "sections": [{"tag": "Verse", "words": 5, "heard": 4}],
+    }
+    timing = [{**TIMING[0], "sung": sung}]
+    (folder / "River.plenio.json").write_text(json.dumps(record("River", timing=timing)), encoding="utf-8")
+    (folder / "Old.plenio.json").write_text(json.dumps(record("Old", timing=TIMING)), encoding="utf-8")
+    library = Library([folder])
+    found = {s["title"]: s for s in library.songs()}
+    assert found["River"]["has"]["sung"] and not found["Old"]["has"]["sung"]
+    river = song_detail(library.song(found["River"]["id"]))  # type: ignore[arg-type]
+    assert river["sung"]["lines"] == sung["lines"] and river["sung"]["written_heard"] == 0.8
+    assert river["sung"]["text"].startswith("[Verse]") and river["lines"] == TIMING[0]["lines"]
+    assert song_detail(library.song(found["Old"]["id"]))["sung"] == {}  # type: ignore[arg-type]
+
+
 def test_without_times_in_the_record_the_subtitle_files_give_them(songs: Path) -> None:
     library = Library([songs])
     old = next(library.song(s["id"]) for s in library.songs() if s["title"] == "Old")

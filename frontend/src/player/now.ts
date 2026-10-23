@@ -4,11 +4,15 @@ import { computed, ref, watch } from 'vue'
 import { mediaReady } from './api'
 import { coverHue, paletteFrom, songHue } from './colors'
 import { fontOf, litColor } from './lyricsStyle'
+import { linesFor } from './lyricsVersion'
 import { current, detail, duration, queueSource, settings, state, time } from './store'
 import { lineAt, sectionAt, sectionsInSong, songAnchors } from './timing'
 
-export const lines = computed(() => detail.value?.lines ?? [])
-export const anchors = computed(() => songAnchors(lines.value, detail.value?.notation))
+/** The lyrics as written, timed: their syllables carry the score's times, so the notation follows them. */
+export const writtenLines = computed(() => detail.value?.lines ?? [])
+/** The lines shown and followed: as written, or as sung (the listener's choice, lyricsVersion.ts). */
+export const lines = computed(() => linesFor(detail.value, settings.lyricsVersion))
+export const anchors = computed(() => songAnchors(writtenLines.value, detail.value?.notation))
 export const sections = computed(() =>
   sectionsInSong(detail.value?.notation.sections, anchors.value, detail.value?.notation.warp, duration.value || Infinity)
 )

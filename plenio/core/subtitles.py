@@ -5,7 +5,8 @@ A YuE2 render is shifted against its score (1.7 s in the median song, up to 15 s
 times alone are no subtitles. The times are **heard**: the lyrics ASR transcribes the song, its words are
 matched to the lyrics, and - with a score - the score is fitted to the heard words and gives every syllable
 its note. Since 2026-10-22 the ASR is Qwen3-ASR and **Qwen3-ForcedAligner** times the heard words - the
-aligner was the reference of the measurement below, so its times are used as they are (``ALIGNED``).
+aligner was the reference of the measurement below, so its times are used as they are (``ALIGNED``) - in
+pieces of at most 20 s: over a whole song it loses its place (``workers.asr.PIECE_S``, 2026-10-23).
 faster-whisper, the fallback for languages the aligner does not know, starts its words early; its times
 get the corrections measured against the aligner on 48 YuE2 songs no choice was made on (``WHISPER``):
 median error 0.16 s per word, 82 % within 0.5 s (Whisper alone: 0.34 s, 66 %).
@@ -65,11 +66,38 @@ class HeardTiming:
     """Added to every heard start."""
     first_word_max_s: float | None
     """A line's first word starts at most this long before its end (``None``: as heard)."""
+    stretched_s: float | None = None
+    """A line's first word heard more than this before the line's next word (or this long, when the next is not
+    heard) took the music before it: its start is not used - the score's time, else the next word's (``None``:
+    as heard)."""
 
 
+STRETCHED_S = 2.0
+"""Qwen3-ForcedAligner lets the first word of a piece take the music before it, or puts it at the piece's
+start (an export of 2026-10-23: the song's first "I" from 0.0 to 12.0 s, its note at 12.2 s; a "This" at
+45.2 s, the rest of its line from 57.9 s). Measured on 20 of the owner's songs: lines starting on voice 95.0 ->
+96.9 %, line time on voice 87.6 -> 90.3 %; within a point the same from 1.5 to 4 s."""
 WHISPER = HeardTiming(LEAD_S, FIRST_WORD_MAX_S)
-ALIGNED = HeardTiming(0.0, None)
-"""A forced aligner's times are the measurement's reference: nothing to correct."""
+ALIGNED = HeardTiming(0.0, None, STRETCHED_S)
+"""A forced aligner's times are the measurement's reference: used as they are - but a stretched first word."""
+
+
+def _stretched(word: AsrWord, after: AsrWord | None, timing: HeardTiming) -> bool:
+    """Whether a line's first word took the music before it (``HeardTiming.stretched_s``)."""
+    if timing.stretched_s is None:
+        return False
+    reach = after.start - word.start if after is not None else word.end - word.start
+    return reach > timing.stretched_s
+
+
+def _first_start(word: AsrWord, after: AsrWord | None, timing: HeardTiming) -> float:
+    """Where a line made of heard words starts: its first word's start, corrected (``timing``) - a stretched
+    first word starts ``WORD_S`` before the next word (or its own end)."""
+    start, end = word.start, word.end
+    if _stretched(word, after, timing):
+        return max(start, (after.start if after is not None else end) - WORD_S)
+    cap = timing.first_word_max_s
+    return end - cap if cap is not None and end - start > cap else start
 
 
 def timing_for(engine: str) -> HeardTiming:
@@ -78,8 +106,41 @@ def timing_for(engine: str) -> HeardTiming:
 
 
 _DIRECTION = re.compile(r"^\s*[\(\[\{<].*[\)\]\}>]\s*$")
-_TOKEN = re.compile(r"\S+")
+_CJK = "\u3040-\u30ff\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f"
+"""Kana and Han: Chinese and Japanese write no spaces between words, so every such character is a token."""
+_TOKEN = re.compile(rf"[{_CJK}][^\s\w{_CJK}]*|[^\s{_CJK}]+")
+"""A word - or one Chinese or Japanese character, with the punctuation after it (the owner's songs in Chinese
+and Japanese: a whole phrase was one word, and almost nothing of their lyrics was matched to what was heard)."""
+_CJK_CHAR = re.compile(f"[{_CJK}]")
 _APOSTROPHES = str.maketrans({"’": "'", "‘": "'", "`": "'", "´": "'"})
+
+
+def split_cjk(words: Sequence[AsrWord]) -> list[AsrWord]:
+    """Heard words cut into the lyrics' tokens: a word of several Chinese or Japanese characters (Whisper
+    hears them so) becomes one word per character, its time shared out evenly."""
+    out: list[AsrWord] = []
+    for word in words:
+        parts = [m.group(0) for m in _TOKEN.finditer(word.word)]
+        if len(parts) <= 1:
+            out.append(word)
+            continue
+        step = (word.end - word.start) / len(parts)
+        out += [
+            AsrWord(word.start + k * step, word.start + (k + 1) * step, part, word.p, word.segment)
+            for k, part in enumerate(parts)
+        ]
+    return out
+
+
+def join_words(tokens: Sequence[str]) -> str:
+    """Tokens as a line: ``alignment.join_tokens``, with no space next to a Chinese or Japanese character."""
+    out = ""
+    for token in tokens:
+        if out and (_CJK_CHAR.match(token) or _CJK_CHAR.match(out[-1])):
+            out += token
+        else:
+            out = join_tokens([out, token]) if out else token
+    return out
 
 
 def normalize(word: str) -> str:
@@ -111,7 +172,8 @@ class Subtitles:
     lines: tuple[TimedLine, ...]
     timing: str
     """``measured``: the lyrics, timed by listening; ``heard``: no lyrics given - what was heard; ``estimated``:
-    the score's times carried into the recording (``time_by_score``, the Plenio Player's guess)."""
+    the score's times carried into the recording (``time_by_score``, the Plenio Player's guess); ``sung``: what
+    a take sings, as heard, laid out like its lyrics (``time_sung``)."""
     untimed: tuple[str, ...] = ()
     """Lyrics lines left out: nothing of them was heard and there was no room for them."""
     matched: float = 0.0
@@ -429,6 +491,9 @@ def _heard_starts(
     starts = {}
     for word, h in pairs.items():
         start, end = heard[h].start, heard[h].end
+        after = heard[pairs[word + 1]] if word + 1 in pairs and word + 1 not in first else None
+        if word in first and _stretched(heard[h], after, timing):
+            continue  # it took the music before it: the score places it, or the words after it
         cap = timing.first_word_max_s
         if word in first and cap is not None and end - start > cap:
             start = end - cap
@@ -453,7 +518,7 @@ def time_lyrics(
         return Subtitles((), "measured")
     flat = [(n, k) for n, line in enumerate(lines) for k in range(len(line.tokens))]
     lyric_words = [lines[n].words[k] for n, k in flat]
-    usable = [w for w in heard if normalize(w.word)]
+    usable = [w for w in split_cjk(heard) if normalize(w.word)]
     pairs = match_words(lyric_words, [normalize(w.word) for w in usable])
     pairs = {i: j for i, j in pairs.items() if lyric_words[i]}
     heard_at = _heard_starts(lines, usable, pairs, timing)
@@ -658,17 +723,173 @@ def time_heard(heard: Sequence[AsrWord], *, duration: float, timing: HeardTiming
         groups[-1].append(word)
     lines: list[TimedLine] = []
     for group in groups:
-        text = join_tokens([w.word for w in group])
+        text = join_words([w.word for w in group])
         units: list[Unit] = []
         cut = 0
         for k, word in enumerate(group):
-            start, end = word.start, word.end
-            cap = timing.first_word_max_s
-            if k == 0 and cap is not None and end - start > cap:
-                start = end - cap
+            start = _first_start(word, group[1] if len(group) > 1 else None, timing) if k == 0 else word.start
             cut = text.find(word.word, cut) + len(word.word) if word.word in text[cut:] else len(text)
             units.append(Unit(start + timing.lead_s, cut))
         for k in range(1, len(units)):
             units[k] = Unit(max(units[k].start, units[k - 1].start), units[k].cut)
         lines.append(TimedLine(text, units[0].start, group[-1].end + timing.lead_s, tuple(units)))
     return Subtitles(tuple(_finish(lines, duration)), "heard")
+
+
+# --- what a take sings ------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SungLyrics:
+    """What a take sings, as heard (owner's request 2026-10-23: the lyrics that were wanted and the ones that
+    were made, both to follow and both documented): its lines with their times, the text with the lyrics'
+    section tags, and how far the take follows its lyrics."""
+
+    subtitles: Subtitles
+    text: str
+    written_heard: float
+    """The share of the lyrics' words that were heard: sung as written."""
+    extra_words: int
+    """Heard words the lyrics do not have: an ad-lib, a line the music model made up - or a misheard word."""
+    not_sung: tuple[str, ...]
+    """Lyrics lines of which no word was heard."""
+    sections: tuple[dict[str, Any], ...]
+    """Per lyrics section: ``{"tag", "words", "heard"}``."""
+
+    def findings(self) -> list[str]:
+        """The sections the take did not sing as written."""
+        return [
+            f"[{s['tag']}] was not sung as written ({s['heard'] / s['words']:.0%} of its words heard)"
+            for s in self.sections
+            if s["words"] >= NOT_SUNG_MIN_WORDS and s["heard"] < NOT_SUNG_SHARE * s["words"]
+        ]
+
+    def to_record(self) -> dict[str, Any]:
+        return {
+            "text": self.text,
+            "lines": self.subtitles.to_timing()["lines"],
+            "written_heard": round(self.written_heard, 3),
+            "extra_words": self.extra_words,
+            "not_sung": list(self.not_sung),
+            "sections": [dict(s) for s in self.sections],
+        }
+
+
+SUNG_MAX_CHARS = 64
+"""A sung line longer than this - and than its lyrics line by a third - is split at its longest pause (heard
+words the lyrics do not have bring no line breaks of their own)."""
+SUNG_STANZA_GAP_S = 4.0
+"""Words the lyrics do not place: a pause this long starts a new stanza."""
+NOT_SUNG_SHARE = 0.4
+NOT_SUNG_MIN_WORDS = 4
+"""A lyrics section of at least this many words of which fewer than ``NOT_SUNG_SHARE`` were heard counts as
+not sung as written."""
+
+
+def time_sung(
+    lyrics: str, heard: Sequence[AsrWord], *, duration: float, timing: HeardTiming = WHISPER
+) -> SungLyrics | None:
+    """What was sung, as heard, laid out like the lyrics where the take sings them: a heard word that pairs
+    with a lyrics word (``match_words``, as ``time_lyrics`` pairs them) keeps that word's line - and its
+    spelling when it is the same word; heard words the lyrics do not have start a line after a pause. ``None``: no singing heard
+    (fewer than ``MIN_HEARD_WORDS`` words)."""
+    kept, _dropped = drop_known_inventions([w for w in split_cjk(heard) if normalize(w.word)])
+    if len(kept) < MIN_HEARD_WORDS:
+        return None
+    lines = sung_lines(lyrics)
+    flat = [(n, k) for n, line in enumerate(lines) for k in range(len(line.tokens))]
+    lyric_words = [lines[n].words[k] for n, k in flat]
+    pairs = {
+        i: j for i, j in match_words(lyric_words, [normalize(w.word) for w in kept]).items() if lyric_words[i]
+    }
+    of_heard = {j: i for i, j in pairs.items()}
+
+    def text_of(j: int) -> str:
+        """The lyrics' spelling of the same word (case, apostrophes, punctuation); else the word as heard."""
+        i = of_heard.get(j)
+        if i is None or lyric_words[i] != normalize(kept[j].word):
+            return kept[j].word.strip()
+        n, k = flat[i]
+        start, end = lines[n].tokens[k]
+        return lines[n].text[start:end]
+
+    groups: list[list[int]] = []
+    owners: list[int | None] = []
+    """The lyrics line each group sings (its first paired word's), ``None`` for words the lyrics do not have."""
+    for j, word in enumerate(kept):
+        i = of_heard.get(j)
+        gap = word.start - kept[j - 1].end if j else 0.0
+        line = flat[i][0] if i is not None else None
+        if not groups:
+            new = True
+        elif i is not None:
+            owner = owners[-1]
+            new = (
+                flat[i][1] == 0
+                or (owner is not None and owner != line)
+                or (owner is None and gap > LINE_GAP_S)
+            )
+        else:
+            new = gap > LINE_GAP_S
+        if new:
+            groups.append([])
+            owners.append(None)
+        groups[-1].append(j)
+        if line is not None and owners[-1] is None:
+            owners[-1] = line
+
+    def split(group: list[int], limit: float) -> list[list[int]]:
+        if len(join_words([text_of(j) for j in group])) <= limit or len(group) < 2:
+            return [group]
+        cut = max(range(1, len(group)), key=lambda q: kept[group[q]].start - kept[group[q - 1]].end)
+        return split(group[:cut], limit) + split(group[cut:], limit)
+
+    laid: list[tuple[list[int], int | None]] = []
+    for group, owner in zip(groups, owners, strict=True):
+        limit = max(SUNG_MAX_CHARS, 4 / 3 * len(lines[owner].text)) if owner is not None else SUNG_MAX_CHARS
+        laid += [(part, owner) for part in split(group, limit)]
+    timed: list[TimedLine] = []
+    for group, _owner in laid:
+        texts = [text_of(j) for j in group]
+        text = join_words(texts)
+        units: list[Unit] = []
+        cut = 0
+        for k, (j, piece) in enumerate(zip(group, texts, strict=True)):
+            after = kept[group[1]] if len(group) > 1 else None
+            start = _first_start(kept[j], after, timing) if k == 0 else kept[j].start
+            at = text.find(piece, cut)
+            cut = at + len(piece) if at >= 0 else len(text)
+            units.append(Unit(max(start + timing.lead_s, units[-1].start if units else 0.0), cut))
+        timed.append(TimedLine(text, units[0].start, kept[group[-1]].end + timing.lead_s, tuple(units)))
+    # the sections: a group the lyrics place is in its line's section; the others in the section before them
+    blocks: list[int | None] = [lines[o].block if o is not None else None for _g, o in laid]
+    for k in range(len(blocks)):
+        if blocks[k] is None:
+            blocks[k] = blocks[k - 1] if k else next((b for b in blocks if b is not None), None)
+    tags = {b: section.tag for b, section in enumerate(lyrics_rules.parse_lyrics(lyrics or "").sections)}
+    stanzas: list[tuple[int | None, list[str]]] = []
+    for k, ((group, _owner), block) in enumerate(zip(laid, blocks, strict=True)):
+        pause = kept[group[0]].start - kept[laid[k - 1][0][-1]].end if k else 0.0
+        if not stanzas or block != stanzas[-1][0] or (block is None and pause > SUNG_STANZA_GAP_S):
+            stanzas.append((block, []))
+        stanzas[-1][1].append(timed[k].text)
+    text = "\n\n".join(
+        "\n".join(([f"[{tags[b]}]"] if b is not None and b in tags else []) + rows) for b, rows in stanzas
+    )
+    heard_lines = {flat[i][0] for i in pairs}
+    sections: dict[int, dict[str, Any]] = {}
+    for i, (n, _k) in enumerate(flat):
+        block = lines[n].block
+        if block in tags and lyric_words[i]:
+            entry = sections.setdefault(block, {"tag": tags[block], "words": 0, "heard": 0})
+            entry["words"] += 1
+            entry["heard"] += i in pairs
+    written = sum(1 for w in lyric_words if w)
+    return SungLyrics(
+        Subtitles(tuple(_finish(timed, duration)), "sung", matched=len(pairs) / max(1, written)),
+        text,
+        len(pairs) / written if written else 0.0,
+        len(kept) - len(pairs),
+        tuple(line.text for n, line in enumerate(lines) if n not in heard_lines),
+        tuple(sections[b] for b in sorted(sections)),
+    )

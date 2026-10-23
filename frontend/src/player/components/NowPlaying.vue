@@ -8,7 +8,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { engine } from '../engine'
-import { lineIndex, lines, paletteStyle, playlistVisual, section, sections } from '../now'
+import { lineIndex, lines, paletteStyle, playlistVisual, section, sections, writtenLines } from '../now'
 import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, openCurrentPage, playing, previous, settings, time, toggleFavorite } from '../store'
 import { WAY_IN_SIDES } from '../liveSettings'
 import { formatTime, sectionName } from '../timing'
@@ -18,6 +18,7 @@ import Icon from './Icon.vue'
 import Karaoke from './Karaoke.vue'
 import LyricLine from './LyricLine.vue'
 import LyricsPanel from './LyricsPanel.vue'
+import LyricsVersionSwitch from './LyricsVersionSwitch.vue'
 import Notation from './Notation.vue'
 import VisualCanvas from './VisualCanvas.vue'
 import VisualsPanel from './VisualsPanel.vue'
@@ -123,6 +124,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
     <Transition name="panel">
       <aside v-if="lyricsPanel" class="vpanel lpanel">
         <header><h3><Icon name="mic" /> Lyrics</h3><button class="icon-btn" title="Close" @click="lyricsPanel = false"><Icon name="close" /></button></header>
+        <LyricsVersionSwitch :detail="detail" details />
         <LyricsPanel compact />
       </aside>
     </Transition>
@@ -141,7 +143,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
         <Karaoke :lines="lines" :time="time" :plain="detail?.lyrics_raw ? current.lyrics : ''" />
       </section>
       <section v-if="view === 'notation'" class="notation-col">
-        <Notation v-if="detail" :notation="detail.notation" :lines="lines" :time="time" :following="true" :song-id="detail.id" />
+        <Notation v-if="detail" :notation="detail.notation" :lines="writtenLines" :time="time" :following="true" :song-id="detail.id" />
       </section>
       <section v-if="view === 'notation'" class="side-lyrics">
         <Karaoke :lines="lines" :time="time" :plain="current.lyrics" compact />
