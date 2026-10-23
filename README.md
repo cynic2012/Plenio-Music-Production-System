@@ -2,7 +2,7 @@
   <img src="assets/branding/banner.png" alt="Plenio Music Production System for ComfyUI - YuE2, YuE2 Cover and MiniMax Music 3" width="100%" />
 </p>
 
-# Plenio Music Production System 1.1 for ComfyUI
+# Plenio Music Production System 1.2 for ComfyUI
 
 <p align="center">
   <a href="https://youtu.be/XpNpks9ZCgE"><img src="assets/branding/0.5.0/spot.jpg" alt="Plenio - Your idea. Your song. Your control. Watch the spot on YouTube" width="80%" /></a>
@@ -16,7 +16,7 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 
 **Free, open source - now 1.1.** Plenio costs nothing: no subscription, no credits, no account, Apache 2.0 code. After fourteen releases in three weeks, 1.0.0 was the milestone where the whole way holds together - from the first idea to the song people listen to - and the version to build on: saved workflows and release records keep working in every 1.x version. What changed in each version is in the [changelog](CHANGELOG.md).
 
-## New in 1.1.1: the lyrics as sung, a login for the player, and a tidier studio
+## New in 1.2: the lyrics as sung, a login for the player, and a tidier studio
 
 - **The lyrics as written and as sung**: Export keeps what a take really sings - `(sung).srt` and the release record -, and the Plenio Player follows either; a song whose take departs far from its lyrics shows them as sung (**W** switches). **Check Sung Words** lets the writer model correct the words the lyrics ASR misheard - only those it is sure of. [Details](docs/user/concepts/player.md#written-and-sung-lyrics)
 - **A login for the Plenio Player**: users with a password keep their own playlists, likes and plays on every device; the admin sets them up on the player's computer, a guest keeps everything in the browser. *Settings > Sound* plays the MP3. [Details](docs/user/concepts/player.md#who-is-listening-the-login)
@@ -26,8 +26,8 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 - **A tidier studio**: the sections stand in one row of one height; the *HQ Mastering & Cover Art* cards and the writer model open group 1 (HQ mastering on by default in Enhance & Master); each Song Sheet says with its colour and its edit button what you edit there; the stems sit inside the Master block, Cover Art above the render.
 
 <p align="center">
-  <img src="assets/branding/1.1.1/comfyui-sheet-cards.jpg" alt="The 1 · YuE2 · Song template in ComfyUI: the HQ Mastering card (off) and the Cover Art card (on) with the writer model at the top of group 1, the Song Brief under them, Write Song with its draft seed, and Song Sheet · Text in teal with its Edit lyrics &amp; text card" width="49%" />
-  <img src="assets/branding/1.1.1/player-new-visuals.jpg" alt="Six of the new visuals of the Plenio Player: Vinyl, Spiral Galaxy, Spirograph, Drop · Mandala Breath, Drop · Fractal Garden, Drop · Ember Rise" width="49%" />
+  <img src="assets/branding/1.2.0/comfyui-sheet-cards.jpg" alt="The 1 · YuE2 · Song template in ComfyUI: the HQ Mastering card (off) and the Cover Art card (on) with the writer model at the top of group 1, the Song Brief under them, Write Song with its draft seed, and Song Sheet · Text in teal with its Edit lyrics &amp; text card" width="49%" />
+  <img src="assets/branding/1.2.0/player-new-visuals.jpg" alt="Six of the new visuals of the Plenio Player: Vinyl, Spiral Galaxy, Spirograph, Drop · Mandala Breath, Drop · Fractal Garden, Drop · Ember Rise" width="49%" />
 </p>
 
 *Group 1 with the HQ Mastering & Cover Art cards and the writer model, and Song Sheet · Text with its edit card · six of the 42 new visuals.*
@@ -46,7 +46,7 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
   <img src="assets/branding/1.1.0/editor-musicxml-octave.jpg" alt="The score editor in the DAW layout: Import MusicXML next to the other file buttons, Vocal and Instrument −8va / +8va under Whole score and in the track headers" width="49%" />
 </p>
 
-*The HQ Mastering switch at the top of every template (off by default; on in Enhance & Master since 1.1.1) · the score editor with Import MusicXML… and an octave for a whole track.*
+*The HQ Mastering switch at the top of every template (off by default; on in Enhance & Master since 1.2) · the score editor with Import MusicXML… and an octave for a whole track.*
 
 Every change: [CHANGELOG](CHANGELOG.md).
 
