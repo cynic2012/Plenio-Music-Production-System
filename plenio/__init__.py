@@ -6,4 +6,4 @@ use relative imports only, because ComfyUI imports the custom node folder under
 a path-derived module name.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
