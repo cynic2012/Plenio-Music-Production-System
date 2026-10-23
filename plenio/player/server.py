@@ -21,6 +21,7 @@ from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from .. import __version__
+from . import accounts as account_rules
 from . import folders as folder_choice
 from . import other as other_music
 from .guest import GuestHub
@@ -139,16 +140,31 @@ def make_handler(
     comfyui: str = "",
     guests: GuestHub | None = None,
     network: NetworkAccess | None = None,
+    accounts: account_rules.Accounts | None = None,
 ) -> type[BaseHTTPRequestHandler]:
     """The requests' handler; with ``hosts`` it answers only requests addressed to one of them (a player on
     the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding).
     ``guests``: the guests' access to the live playlist (its own server; here only its settings, what the
     page shows and the guests' wishes). ``network``: the player and ComfyUI from the network (gateways of
     their own; here their settings) - requests that come by them do all but what belongs to this computer
-    alone."""
+    alone. ``accounts``: the login (``plenio.player.accounts``) - each user's state of their own; without it
+    every page has the player's state, as before."""
 
     jobs = VideoJobs(videos_dir(state.path.parent))
     packages = PackageJobs()
+    user_states: dict[str, State] = {}
+    states_lock = threading.Lock()
+
+    def state_of(account: dict[str, Any] | None) -> State | None:
+        """The state of a user (``None``: a guest, who keeps theirs in the browser)."""
+        if account is None:
+            return None
+        if account.get("admin") or accounts is None:
+            return state
+        with states_lock:
+            if account["id"] not in user_states:
+                user_states[account["id"]] = State(accounts.state_path(str(account["id"])))
+            return user_states[account["id"]]
 
     def folders_answer() -> dict[str, Any]:
         counts = library.counts()
@@ -186,6 +202,21 @@ def make_handler(
             """The request came from the network, by the gateway (which says so, on this computer)."""
             return self.headers.get(REMOTE_HEADER) == "1" and self.client_address[0] in ("127.0.0.1", "::1")
 
+        @property
+        def token(self) -> str:
+            return account_rules.token_of(self.headers.get("Cookie"))
+
+        @property
+        def account(self) -> dict[str, Any] | None:
+            """Whose things this request is about: the session's user - without one the admin on this computer
+            (as before the login) and a guest from the network (``None``)."""
+            if accounts is None:
+                return {"id": account_rules.ADMIN, "admin": True}
+            found = accounts.session(self.token)
+            if found is not None:
+                return found if not (found.get("admin") and self.remote) else None
+            return None if self.remote else accounts.admin()
+
         def _not_from_network(self, what: str) -> bool:
             """Answer 403 to a request from the network for what only this computer does; ``True``: answered."""
             if not self.remote:
@@ -194,12 +225,14 @@ def make_handler(
             return True
 
         # --- answers ------------------------------------------------------------------------------
-        def _json(self, data: Any, status: int = 200) -> None:
+        def _json(self, data: Any, status: int = 200, cookie: str = "") -> None:
             body = json.dumps(data, ensure_ascii=False).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
+            if cookie:
+                self.send_header("Set-Cookie", cookie)
             self.end_headers()
             self.wfile.write(body)
 
@@ -315,10 +348,24 @@ def make_handler(
                     return self._json(song_detail(song, cache=state.path.parent / "cache"))
                 except (OSError, ValueError) as error:
                     return self._error(500, str(error))
-            if route == "/api/state":
-                return self._json({**state.read(), "rev": state.rev})
-            if route == "/api/state/rev":
-                return self._json({"rev": state.rev})
+            if route == "/api/session":
+                return self._session()
+            if route == "/api/users":
+                if accounts is None:
+                    return self._error(404, "no login")
+                admin = bool((self.account or {}).get("admin"))
+                return self._json({"users": accounts.users(details=admin)})
+            avatar = re.fullmatch(r"/api/users/([0-9a-f]{12}|admin)/avatar", route)
+            if avatar:
+                path = accounts.avatar(avatar.group(1)) if accounts else None
+                return self._file(path) if path else self._error(404, "no picture")
+            if route in ("/api/state", "/api/state/rev"):
+                mine = state_of(self.account)
+                if mine is None:
+                    return self._json({"error": "a guest keeps the state in the browser", "guest": True}, 401)
+                if route == "/api/state/rev":
+                    return self._json({"rev": mine.rev})
+                return self._json({**mine.read(), "rev": mine.rev})
             if route == "/api/guests":
                 return self._json(guests.status()) if guests else self._error(404, "no guests' access")
             if route == "/api/guests/wishes":
@@ -439,6 +486,8 @@ def make_handler(
         def do_PUT(self) -> None:  # noqa: N802
             body = self._body()
             route = unquote(urlparse(self.path).path)
+            if route.startswith("/api/users/"):
+                return self._put_user(route, body)
             if route not in ("/api/state", "/api/folders", "/api/guests", "/api/network"):
                 return self._error(404, "not found")
             if not self._from_this_page():
@@ -475,17 +524,131 @@ def make_handler(
                 return self._error(400, "not JSON")
             if not isinstance(data, dict):
                 return self._error(400, "the state is an object")
+            mine = state_of(self.account)
+            if mine is None:
+                return self._json({"error": "a guest keeps the state in the browser", "guest": True}, 401)
             base = data.get("rev")
-            saved = state.write(
+            saved = mine.write(
                 {**EMPTY_STATE, **{k: v for k, v in data.items() if k in EMPTY_STATE}},
                 base if isinstance(base, int) and not isinstance(base, bool) else None,
             )
             if saved is None:
                 # another page saved since: this one merges the two and saves again
                 return self._json(
-                    {"error": "saved elsewhere since", "rev": state.rev, "state": state.read()}, 409
+                    {"error": "saved elsewhere since", "rev": mine.rev, "state": mine.read()}, 409
                 )
             return self._json({"ok": True, "rev": saved})
+
+        # --- the login (plenio.player.accounts) ---------------------------------------------------------
+
+        def _session(self) -> None:
+            """Who is logged in here, and who could log in: the login page asks first."""
+            if accounts is None:
+                return self._json(
+                    {"login": False, "user": None, "chosen": True, "local": not self.remote, "users": []}
+                )
+            chosen = accounts.session(self.token)
+            if chosen is not None and chosen.get("admin") and self.remote:
+                chosen = None
+            return self._json(
+                {
+                    "login": True,
+                    "user": chosen or self.account,
+                    "chosen": chosen is not None,
+                    "local": not self.remote,
+                    "users": accounts.users(),
+                    "admin": accounts.admin() if not self.remote else None,
+                }
+            )
+
+        def _login(self, raw: bytes | None) -> None:
+            if accounts is None:
+                return self._error(404, "no login")
+            if not self._from_this_page():
+                return self._error(403, "only from the player's page")
+            try:
+                body = json.loads(raw.decode("utf-8")) if raw else None
+            except ValueError:
+                body = None
+            if not isinstance(body, dict):
+                return self._error(400, "who logs in")
+            where = self.headers.get(REMOTE_HOST_HEADER, "network") if self.remote else self.client_address[0]
+            try:
+                if body.get("admin"):
+                    if self._not_from_network("The admin logs in"):
+                        return None
+                    token, user = accounts.login_admin()
+                else:
+                    token, user = accounts.login(
+                        str(body.get("user") or ""), str(body.get("password") or ""), where
+                    )
+            except account_rules.AccountError as error:
+                return self._error(error.status, str(error))
+            if self.token:
+                accounts.logout(self.token)
+            return self._json({"user": user}, cookie=account_rules.session_cookie(token))
+
+        def _logout(self) -> None:
+            if accounts is not None:
+                if not self._from_this_page():
+                    return self._error(403, "only from the player's page")
+                if self.token:
+                    accounts.logout(self.token)
+            return self._json({"ok": True}, cookie=account_rules.session_cookie("", forget=True))
+
+        def _may_change(self, user_id: str) -> bool:
+            """The admin changes every user; a user only themselves."""
+            me = self.account or {}
+            return bool(me.get("admin")) or (me.get("id") == user_id and user_id != account_rules.ADMIN)
+
+        def _put_user(self, route: str, raw: bytes | None) -> None:
+            if accounts is None:
+                return self._error(404, "no login")
+            picture = re.fullmatch(r"/api/users/([0-9a-f]{12}|admin)/avatar", route)
+            target = picture.group(1) if picture else route.removeprefix("/api/users/")
+            if not self._may_change(target):
+                return self._error(403, "only the admin, or the user themselves")
+            try:
+                if picture:
+                    if not self._binary_from_this_page():
+                        return self._error(403, "only from the player's page")
+                    return self._json({"user": accounts.set_avatar(target, raw or None)})
+                if not self._from_this_page():
+                    return self._error(403, "only from the player's page")
+                body = json.loads(raw.decode("utf-8")) if raw else None
+                if not isinstance(body, dict):
+                    return self._error(400, "name, password or colour")
+                changes = {k: body[k] for k in ("name", "password", "color") if k in body}
+                if "password" in changes and self.token:
+                    changes["keep_session"] = account_rules.session_key(self.token)
+                return self._json({"user": accounts.update(target, changes)})
+            except ValueError as error:
+                status = error.status if isinstance(error, account_rules.AccountError) else 400
+                return self._error(status, str(error))
+
+        def do_DELETE(self) -> None:  # noqa: N802
+            self._body()
+            route = unquote(urlparse(self.path).path)
+            picture = re.fullmatch(r"/api/users/([0-9a-f]{12}|admin)/avatar", route)
+            gone = re.fullmatch(r"/api/users/([0-9a-f]{12})", route)
+            if accounts is None or not (picture or gone):
+                return self._error(404, "not found")
+            if not self._binary_from_this_page() and not self._from_this_page():
+                return self._error(403, "only from the player's page")
+            try:
+                if picture:
+                    if not self._may_change(picture.group(1)):
+                        return self._error(403, "only the admin, or the user themselves")
+                    return self._json({"user": accounts.set_avatar(picture.group(1), None)})
+                assert gone is not None
+                if not (self.account or {}).get("admin"):
+                    return self._error(403, "only the admin")
+                accounts.delete(gone.group(1))
+                with states_lock:
+                    user_states.pop(gone.group(1), None)
+                return self._json({"ok": True})
+            except account_rules.AccountError as error:
+                return self._error(error.status, str(error))
 
         def _put_folders(self, body: bytes | None) -> None:
             """The folders chosen in Settings (``{"folders": [{"path", "other"}]}``), or back to the folders
@@ -632,6 +795,25 @@ def make_handler(
             if route == "/api/rescan":
                 library.scan(force=True)
                 return self._json({"songs": len(library.songs())})
+            if route == "/api/login":
+                return self._login(raw)
+            if route == "/api/logout":
+                return self._logout()
+            if route == "/api/users":
+                if accounts is None:
+                    return self._error(404, "no login")
+                if not self._from_this_page():
+                    return self._error(403, "only from the player's page")
+                if not (self.account or {}).get("admin"):
+                    return self._error(403, "only the admin sets up users")
+                try:
+                    body = json.loads(raw.decode("utf-8")) if raw else None
+                    if not isinstance(body, dict):
+                        return self._error(400, "name and password")
+                    return self._json({"user": accounts.create(body.get("name"), body.get("password"))})
+                except ValueError as error:
+                    status = error.status if isinstance(error, account_rules.AccountError) else 400
+                    return self._error(status, str(error))
             if route == "/api/guests/live":
                 # what the page shows, for the guests: from the player's page only
                 if not self._from_this_page():
@@ -722,10 +904,11 @@ def serve(
     comfyui: str = "",
     guests: GuestHub | None = None,
     network: NetworkAccess | None = None,
+    accounts: account_rules.Accounts | None = None,
 ) -> ThreadingHTTPServer:
     """The player's server; on the loopback address only for requests addressed to it. ``comfyui``: the
     ComfyUI that started it (where *Open in ComfyUI* goes); ``guests``: the guests' access; ``network``: the
-    player and ComfyUI from the network."""
+    player and ComfyUI from the network; ``accounts``: the login."""
 
     class Server(ThreadingHTTPServer):
         daemon_threads = True
@@ -747,11 +930,18 @@ def serve(
                     comfyui=comfyui,
                     guests=guests,
                     network=network,
+                    accounts=accounts,
                 )
 
     return Server(
         (host, port),
         make_handler(
-            library, state, cache=state.path.parent / "peaks", comfyui=comfyui, guests=guests, network=network
+            library,
+            state,
+            cache=state.path.parent / "peaks",
+            comfyui=comfyui,
+            guests=guests,
+            network=network,
+            accounts=accounts,
         ),
     )

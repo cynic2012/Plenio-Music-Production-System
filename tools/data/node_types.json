@@ -1265,6 +1265,75 @@
    "category": "Plenio/Score",
    "display_name": "Apply Arrangement"
   },
+  "PlenioApplySungCheck": {
+   "input": {
+    "required": {
+     "record": [
+      "STRING",
+      {
+       "tooltip": "The release record Export Release wrote (its 'record' output).",
+       "forceInput": true,
+       "multiline": false
+      }
+     ]
+    },
+    "optional": {
+     "answer": [
+      "STRING",
+      {
+       "tooltip": "The writer model's answer (asked only when there are words to check).",
+       "lazy": true,
+       "forceInput": true,
+       "multiline": false
+      }
+     ],
+     "language": [
+      "STRING",
+      {
+       "tooltip": "The language the song is sung in (empty: the brief's, else guessed from the lyrics).",
+       "default": "",
+       "multiline": false
+      }
+     ]
+    },
+    "hidden": {
+     "prompt": [
+      "PROMPT"
+     ],
+     "extra_pnginfo": [
+      "EXTRA_PNGINFO"
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "record"
+    ],
+    "optional": [
+     "answer",
+     "language"
+    ],
+    "hidden": [
+     "prompt",
+     "extra_pnginfo"
+    ]
+   },
+   "output": [
+    "STRING",
+    "PLENIO_REPORT"
+   ],
+   "output_name": [
+    "record",
+    "report"
+   ],
+   "output_is_list": [
+    false,
+    false
+   ],
+   "output_node": true,
+   "category": "Plenio/Lyrics",
+   "display_name": "Apply Sung Check"
+  },
   "PlenioAudioModelLoader": {
    "input": {
     "required": {
@@ -1482,6 +1551,53 @@
    "output_node": false,
    "category": "Plenio/Writing",
    "display_name": "Compose Writing Prompt"
+  },
+  "PlenioComposeSungCheck": {
+   "input": {
+    "required": {
+     "record": [
+      "STRING",
+      {
+       "tooltip": "The release record Export Release wrote (its 'record' output).",
+       "forceInput": true,
+       "multiline": false
+      }
+     ]
+    },
+    "optional": {
+     "language": [
+      "STRING",
+      {
+       "tooltip": "The language the song is sung in (empty: the brief's, else guessed from the lyrics).",
+       "default": "",
+       "multiline": false
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "record"
+    ],
+    "optional": [
+     "language"
+    ]
+   },
+   "output": [
+    "STRING",
+    "STRING"
+   ],
+   "output_name": [
+    "prompt",
+    "schema"
+   ],
+   "output_is_list": [
+    false,
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Lyrics",
+   "display_name": "Compose Sung Check"
   },
   "PlenioCoverBrief": {
    "input": {
@@ -2848,13 +2964,12 @@
    "input": {
     "required": {
      "hq_mastering": [
-      "BOOLEAN",
+      "PLENIO_FINISH_SWITCH",
       {
        "display_name": "HQ mastering",
        "tooltip": "Highest mastering quality: UniverSR (HQ 2) regenerates the highs - clearly fewer AI shimmer and artifacts, but the song takes about twice as long. Off (default): UniverSR does not run and is not needed.",
        "default": false,
-       "label_on": "on: less AI shimmer, 2× time",
-       "label_off": "off: faster, no UniverSR"
+       "socketless": true
       }
      ]
     }
@@ -2875,7 +2990,7 @@
    ],
    "output_node": false,
    "category": "Plenio/Mastering",
-   "display_name": "HQ Mastering"
+   "display_name": "HQ Mastering & Cover Art"
   },
   "PlenioHQRegenerateHighs": {
    "input": {

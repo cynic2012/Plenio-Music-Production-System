@@ -10,7 +10,7 @@ import { mergeState } from './stateMerge'
 import { engine } from './engine'
 import { type LiveSettings, liveWithDefaults } from './liveSettings'
 import { type LyricsStyle, lyricsWithDefaults } from './lyricsStyle'
-import { type LyricsVersion, versionOf } from './lyricsVersion'
+import { choiceOf, choicesOf, type LyricsChoice, type LyricsVersion } from './lyricsVersion'
 import { type VisualSettings, withDefaults } from './visuals/chooser'
 
 export interface Settings {
@@ -38,8 +38,13 @@ export interface Settings {
   video: Record<string, unknown>
   /** How the lyrics look: font, size, colour, effect. */
   lyrics: LyricsStyle
-  /** Which lyrics to follow: as written, or as the take sings them (lyricsVersion.ts). */
-  lyricsVersion: LyricsVersion
+  /** Which lyrics to follow: by how far the take departs from them (auto), as written, or as the take sings
+   * them (lyricsVersion.ts). */
+  lyricsChoice: LyricsChoice
+  /** The listener's choice for single songs where it differs from ``lyricsChoice`` (song id -> version). */
+  lyricsFor: Record<string, LyricsVersion>
+  /** Play a song's MP3 where it has one: less data over the network. */
+  mp3: boolean
   /** Seconds the listener moved a song's notation cursor (song id -> seconds of score). */
   notationShift: Record<string, number>
   /** Searches and filters kept under a name (the sidebar's *Saved filters*). */
@@ -76,7 +81,9 @@ const DEFAULT_SETTINGS: Settings = {
   live: liveWithDefaults(null),
   video: {},
   lyrics: lyricsWithDefaults(null),
-  lyricsVersion: 'written',
+  lyricsChoice: 'auto',
+  lyricsFor: {},
+  mp3: false,
   notationShift: {},
   savedFilters: [],
   moreFilters: false,
@@ -254,7 +261,7 @@ window.addEventListener('pagehide', () => {
 
 /** The settings as saved, checked and filled with the defaults. */
 function applySettings(stored: Partial<Settings>): void {
-  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), lyricsVersion: versionOf(stored.lyricsVersion), notationShift: shiftsOf(stored.notationShift), savedFilters: savedFiltersOf(stored.savedFilters), moreFilters: !!stored.moreFilters })
+  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), lyricsChoice: choiceOf(stored.lyricsChoice), lyricsFor: choicesOf(stored.lyricsFor), mp3: !!stored.mp3, notationShift: shiftsOf(stored.notationShift), savedFilters: savedFiltersOf(stored.savedFilters), moreFilters: !!stored.moreFilters })
 }
 
 /** Replace everything the player keeps (a backup read back, or ``null``: start afresh). */
@@ -590,8 +597,9 @@ export async function songDetail(id: string): Promise<SongDetail> {
   return found
 }
 
+/** The song's sound: its MP3 where the listener wants less data and the song has one, else its first file. */
 function audioUrl(song: SongSummary): string {
-  return media(song.id, 'audio')
+  return media(song.id, settings.mp3 && song.has.mp3 && !isPortable ? 'audio_mp3' : 'audio')
 }
 
 let counted = ''

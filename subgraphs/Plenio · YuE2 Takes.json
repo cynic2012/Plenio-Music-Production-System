@@ -424,8 +424,8 @@
       "id": 902,
       "type": "ComfyMathExpression",
       "pos": [
-       0,
-       230
+       0.0,
+       240
       ],
       "size": [
        300,
@@ -706,8 +706,8 @@
       "id": 905,
       "type": "ConditioningZeroOut",
       "pos": [
-       760,
-       130
+       760.0,
+       150
       ],
       "size": [
        240,
@@ -967,8 +967,8 @@
       "id": 909,
       "type": "PlenioCreativity",
       "pos": [
-       360,
-       440
+       360.0,
+       474
       ],
       "size": [
        320,

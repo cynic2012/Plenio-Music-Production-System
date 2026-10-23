@@ -29,7 +29,7 @@ import {
   toggleFavorite,
   videoFor,
 } from '../store'
-import { linesFor, sungOf } from '../lyricsVersion'
+import { linesFor, sungOf, versionFor } from '../lyricsVersion'
 import { songFacts } from '../songFacts'
 import { formatTime, sectionName } from '../timing'
 import { similarSongs, takesOf } from '../similar'
@@ -177,8 +177,8 @@ async function copy(text: string, what: string): Promise<void> {
 }
 /** The lyrics as written, timed: the notation follows their syllables. */
 const writtenLines = computed(() => detail.value?.lines ?? [])
-/** The lines shown: as written, or as the take sings them (the listener's choice). */
-const lyricsLines = computed(() => linesFor(detail.value, settings.lyricsVersion))
+/** The lines shown: as written, or as the take sings them (the rule, or the listener's choice for the song). */
+const lyricsLines = computed(() => linesFor(detail.value, versionFor(detail.value, settings)))
 const hasSung = computed(() => !!sungOf(detail.value))
 /** Where the lines' times come from, in a sentence (``timing_source`` of the song's page). */
 function timingSourceText(source: string, note?: string): string {

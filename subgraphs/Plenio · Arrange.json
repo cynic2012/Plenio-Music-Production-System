@@ -349,8 +349,8 @@
       "id": 1302,
       "type": "PlenioWriterChoice",
       "pos": [
-       0,
-       210
+       0.0,
+       244
       ],
       "size": [
        320,
@@ -494,8 +494,8 @@
       "id": 1304,
       "type": "TextGenerate",
       "pos": [
-       380,
-       160
+       380.0,
+       180
       ],
       "size": [
        340,
@@ -697,8 +697,8 @@
       "id": 1305,
       "type": "PlenioLocalLLM",
       "pos": [
-       380,
-       640
+       380.0,
+       694
       ],
       "size": [
        340,
@@ -1019,8 +1019,8 @@
       "id": 1308,
       "type": "PrimitiveInt",
       "pos": [
-       0,
-       390
+       0.0,
+       434
       ],
       "size": [
        320,
@@ -1063,8 +1063,8 @@
       "id": 1309,
       "type": "ComfyMathExpression",
       "pos": [
-       0,
-       520
+       0.0,
+       584
       ],
       "size": [
        320,
@@ -1139,8 +1139,8 @@
       "id": 1310,
       "type": "PlenioCreativity",
       "pos": [
-       0,
-       730
+       0.0,
+       828
       ],
       "size": [
        320,
@@ -1415,8 +1415,8 @@
       "id": 1312,
       "type": "PlenioLocalLLM",
       "pos": [
-       1100,
-       810
+       1100.0,
+       844
       ],
       "size": [
        340,

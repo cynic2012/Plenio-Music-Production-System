@@ -177,6 +177,27 @@ def test_style_rules() -> None:
     assert any("vocals" in e for e in errors) and any("language" in e for e in errors)
 
 
+def test_a_style_names_a_length_only_with_a_number() -> None:
+    """'warm driving second half' stopped half of the owner's cover series (2026-10-23)."""
+    for style in ("dance pop, warm driving second half, 120 BPM", "trance, a second drop, 80s pads"):
+        assert not severities(yue2.check_style(style, instrumental=False), "error"), style
+    for timing in ("3 minutes long", "a 30-second intro", "two minutes", "2:45", "target length 3 min"):
+        assert severities(yue2.check_style(f"pop, {timing}", instrumental=False), "error"), timing
+
+
+def test_enforce_style_fixes_what_check_style_calls_an_error() -> None:
+    style, notes = yue2.enforce_style(f"{STYLE}, about 3 minutes, [Verse] build", instrumental=False)
+    assert style == f"{STYLE}, build" and len(notes) == 2
+    assert not severities(yue2.check_style(style, instrumental=False), "error")
+    score = f"{STYLE}\nX:1\nL:1/8\nK:C\n|CDEF GABc|"
+    style, notes = yue2.enforce_style(score, instrumental=False)
+    assert style == STYLE and "ABC" in notes[0]
+    style, notes = yue2.enforce_style(", ".join(["warm pads"] * 70), instrumental=False)
+    assert len(style.split()) == 120 and notes
+    style, _ = yue2.enforce_style(" ".join(["warm"] * 130), instrumental=False)
+    assert len(style.split()) == 120
+
+
 def test_style_length_is_a_hint_up_to_120_words() -> None:
     # GitHub issue #3: "errored at the 40 token limit" - 40 words is the target, never an error
     eighty = ", ".join(["warm"] * 80)
@@ -317,6 +338,19 @@ def test_parse_draft_without_blocks_is_actionable() -> None:
     with pytest.raises(PlenioValidationError) as error:
         parse_draft("Sure! Here is a great song about love.", request)
     assert "### STYLE" in str(error.value)
+
+
+def test_parse_draft_without_labels_and_without_lyrics() -> None:
+    """A cover keeping its original lyrics: Qwen3.8 27B answered without any heading (2026-10-23)."""
+    answer = (
+        "Lay All Your Love On Me-cover\nEnglish, progressive trance, ethereal female vocal, rolling synth bass, "
+        "133 BPM\nnone\nA square abstract cover featuring a serene, moonlit ocean surface, with no text."
+    )
+    brief = build_song_brief({"genre": "trance", "vocals": "instrumental"})
+    _, request = compose(brief, ENGINE)
+    draft = parse_draft(answer, request)
+    assert draft.title == "Lay All Your Love On Me-cover"
+    assert draft.style.startswith("progressive trance") and draft.artwork_prompt.startswith("A square")
 
 
 FIXTURES = ROOT / "tests" / "fixtures" / "llm"

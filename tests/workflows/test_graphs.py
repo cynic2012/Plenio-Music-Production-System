@@ -308,9 +308,12 @@ def test_the_sheets_follow_the_brief_mode(name: str, mode: str) -> None:
     ]
     assert "Plenio · Write Song" in targets
     assert ("Plenio · YuE2 Plan" in targets) == (name == "1 · YuE2 · Song")
-    # the writer's seed is its own node (🔒 by default; 🎲 is one click away), linked to Write Song
+    # the writer's seed is its own node, linked to Write Song; the seeds follow the brief's mode (owner's
+    # request 2026-10-23): runs that go through draw every seed anew, runs that stop keep the song's
     draft = next(n for n in nodes if n.get("title") == "Draft seed")
-    assert draft["type"] == "PlenioSeed" and draft["widgets_values"] == [0, True]
+    assert draft["type"] == "PlenioSeed" and draft["widgets_values"] == [0, "stop" in mode]
+    for seed in (n for n in nodes if n["type"] == "PlenioSeed" and n.get("title") != "Take seed"):
+        assert seed["widgets_values"][1] == ("stop" in mode), (name, seed["title"])
     assert draft["properties"]["plenio_part"].startswith("draft")
     take = next(n for n in nodes if n.get("title") == "Take seed")
     assert take["type"] == "PlenioSeed" and take["widgets_values"] == [1, False]  # 🎲: a new take every run
@@ -332,8 +335,11 @@ def test_song_templates_master_then_export_with_the_raw_take_as_original(name: s
     master = next(n for n in template["nodes"] if titles[n["id"]] == "Plenio · Master")
     master_input = next(s["link"] for s in master["inputs"] if s["name"] == "audio")
     assert links[inputs["original"]][1:3] == links[master_input][1:3]  # the same take, unmastered
-    cover = next(n for n in template["nodes"] if titles[n["id"]] == "Cover Art (optional)")
-    assert cover["mode"] == 4 and titles[links[inputs["cover"]][1]] == "Cover Art (optional)"
+    # the cover is painted by default; the Cover Art switch bypasses its three nodes (owner's request 2026-10-23)
+    cover = next(n for n in template["nodes"] if titles[n["id"]] == "Cover Art")
+    assert cover["mode"] == 0 and titles[links[inputs["cover"]][1]] == "Cover Art"
+    switched = {titles[n["id"]] for n in template["nodes"] if n["properties"].get("plenio_switch") == "cover"}
+    assert switched == {"Cover Art", "Cover preview", "Cover seed"}
 
 
 def test_the_daw_template_composes_its_own_score() -> None:
@@ -545,8 +551,9 @@ def test_thumbnails_are_400px_jpegs() -> None:
 
 def test_validator_checks_the_template_anatomy(tmp_path: Path) -> None:
     template = copy.deepcopy(TEMPLATES["1 · YuE2 · Song"])
-    cover = next(n for n in template["nodes"] if n.get("title") == "Cover Art (optional)")
-    cover["title"] = "Cover Art"
+    bypassed = next(n for n in template["nodes"] if n["mode"] == 4 and "(optional)" in (n.get("title") or ""))
+    bypassed["title"] = bypassed["title"].replace(" (optional)", "")
+    cover = next(n for n in template["nodes"] if n.get("title") == "Cover Art")
     template["extra"]["linearData"]["inputs"].append([2, "no_such_widget"])
     template["extra"]["linearData"]["outputs"].append(cover["id"])
     template["groups"] = template["groups"][:1]

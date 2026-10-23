@@ -16,6 +16,7 @@ from pathlib import Path
 
 from .. import __version__
 from . import folders as folder_choice
+from .accounts import Accounts
 from .guest import GuestHub
 from .library import Library
 from .network import NetworkAccess
@@ -88,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
             comfyui=args.comfyui,
             guests=guests,
             network=network,
+            accounts=Accounts(directory),
         )
     except OSError as error:
         say(

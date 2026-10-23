@@ -22,14 +22,17 @@ import Sidebar from './components/Sidebar.vue'
 import SongView from './components/SongView.vue'
 import Icon from './components/Icon.vue'
 import GuestWayIn from './components/GuestWayIn.vue'
+import LoginView from './components/LoginView.vue'
+import { loginShown } from './account'
 import { guestBig, loadGuests } from './guests'
 import { api } from './api'
 import { engine } from './engine'
-import { paletteStyle } from './now'
+import { paletteStyle, toggleLyrics } from './now'
 import {
   current,
   go,
   library,
+  load,
   loadError,
   loading,
   next,
@@ -130,6 +133,7 @@ const KEYS: [string, string][] = [
   ['S', 'Shuffle'],
   ['R', 'Repeat: the whole playlist, this song, off'],
   ['B', 'A/B: master or unmastered take'],
+  ['W', 'Lyrics as written or as sung (kept for the song)'],
   ['M', 'Mute'],
   ['Q', 'The queue'],
   ['/', 'Search'],
@@ -210,6 +214,11 @@ function onKey(event: KeyboardEvent): void {
     case 'b':
       toggleAB()
       break
+    case 'w': {
+      const shown = toggleLyrics()
+      say(shown ? (shown === 'sung' ? 'Lyrics as sung' : 'Lyrics as written') : 'This song has only its written lyrics')
+      break
+    }
     case 'm':
       toggleMute()
       break
@@ -230,6 +239,12 @@ function onKey(event: KeyboardEvent): void {
 function visualFullscreen(): void {
   nowPlayingOpen.value = true
   void nextTick(() => nowPlaying.value?.visualFullscreen())
+}
+
+/** Somebody chose who listens (the login page): now the page reads their state. */
+function loggedIn(): void {
+  loginShown.value = false
+  void load()
 }
 
 /** A video in the queue is drawn by this page: closing it stops the video, so the browser asks first. */
@@ -268,6 +283,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="app" :class="{ 'no-side': !settings.sidebar }" :style="[paletteStyle, { '--bar-height': `${barHeight}px` }]">
+    <LoginView v-if="loginShown" @done="loggedIn" />
     <div class="ambient" />
     <Sidebar v-if="settings.sidebar" class="sidebar" :class="{ open: drawer }" />
     <button class="menu-btn icon-btn" :class="{ open: drawer }" :title="drawer ? 'Close the menu' : 'Menu: songs, playlists, Live Play, settings'" @click="drawer = !drawer"><Icon :name="drawer ? 'close' : 'list'" /></button>

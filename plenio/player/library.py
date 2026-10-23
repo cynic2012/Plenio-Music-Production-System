@@ -30,7 +30,7 @@ from ..core.errors import PlenioError
 from ..core.release import RECORD_SUFFIX, base_title, numbered_title
 from . import other as other_music
 
-CACHE_VERSION = 8
+CACHE_VERSION = 9
 RETIRED_DIR = "_retired"
 CLOCK_SLACK = 1.0
 """Seconds a file's time may run ahead of the clock read at a scan's start: on Windows a file written just
@@ -467,6 +467,8 @@ def summarize(record: Mapping[str, Any], path: Path, root: Path) -> Song:
         else "",
         "has": {
             "audio": "audio" in files,
+            # besides a FLAC or WAV: the player can play it instead, for less data over the network
+            "mp3": "audio_mp3" in files and files["audio"] != files["audio_mp3"],
             "original": "original" in files,
             "cover": "cover" in files,
             "pdf": "pdf" in files,
@@ -544,6 +546,8 @@ def sung_detail(found: Any) -> dict[str, Any]:
         "extra_words": found.get("extra_words"),
         "not_sung": [str(x) for x in found.get("not_sung") or []],
         "sections": [dict(s) for s in found.get("sections") or [] if isinstance(s, Mapping)],
+        # the words the writer model found misheard, each with the word heard (Check Sung Words)
+        "corrected": [dict(c) for c in found.get("corrected") or [] if isinstance(c, Mapping)],
     }
 
 
@@ -644,14 +648,21 @@ def song_detail(song: Song, cache: Path | None = None) -> dict[str, Any]:
         )
         lines = [_line_from_cues(cue, notes) for cue in cues]
         source = "subtitles"
-    if not timing and notation.get("abc") and cache is not None and "audio" in song.files:
-        from .align import cached_estimate
+    if notation.get("abc") and cache is not None and "audio" in song.files:
+        from .align import cached_estimate, cached_follow
 
-        found = cached_estimate(song.files["audio"], score, cache)
+        # the notation follows the music: its path through the recording, near the measured warp (or, without
+        # measured times, near the whole song's shift)
+        measured = notation.get("warp") if timing else None
+        found = cached_follow(song.files["audio"], score, cache, measured)
+        notation["followed"] = found is not None
+        if found is None and not timing:
+            found = cached_estimate(song.files["audio"], score, cache)
         if found:
-            notation["warp"] = found["warp"]
+            notation["warp"] = measured or found["warp"]
             notation["anchors"] = found["anchors"]
-            notation["estimated"] = True
+            if not timing:
+                notation["estimated"] = True
             if not lines and lyrics.strip():
                 lines = _estimated_lines(record, score, lyrics, found)
                 source = "estimated" if lines else source

@@ -31,7 +31,9 @@ import {
 } from './runStatus'
 import { type SheetMusicHost, type SheetMusicOutcome, SheetMusicJobs, sheetMusicJobs } from './sheetMusic'
 import { SEED_NODE, installSeedNode } from './seedNode'
+import { installSeedsFollowMode } from './seedsFollowMode'
 import { SHEET_STATE_TYPE, setFetcher, sheetStateWidget } from './sheetStateWidget'
+import { FINISH_SWITCH_TYPE, finishSwitchWidget, refreshFinishSwitches } from './finishSwitch'
 import { RELOAD_HINT, codeIsStale, importOrReload, loadFresh } from './staleCode'
 import { addStemMixer } from './stemMixer'
 import { installStyles } from './style'
@@ -131,7 +133,7 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
 
 ;(app as ComfyApp).registerExtension({
   name: EXTENSION_NAME,
-  getCustomWidgets: () => ({ [SHEET_STATE_TYPE]: sheetStateWidget }),
+  getCustomWidgets: () => ({ [SHEET_STATE_TYPE]: sheetStateWidget, [FINISH_SWITCH_TYPE]: finishSwitchWidget }),
   // a song's release record opens its workflow again, its documents kept (continueSong.ts)
   commands: [
     {
@@ -182,7 +184,11 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
     }
   },
   // the sheets' review stops depend on the linked brief's mode: known once the links are in place
-  afterConfigureGraph: () => refreshRunStatus(),
+  afterConfigureGraph: () => {
+    refreshRunStatus()
+    // the Cover Art switch shows what the loaded workflow's cover nodes do
+    refreshFinishSwitches()
+  },
   beforeRegisterNodeDef(nodeType, nodeData) {
     if (!nodeData.name.startsWith('Plenio')) return
     addSummaryDisplay(nodeType)
@@ -235,6 +241,10 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
       ;(nodeType.prototype as ComfyNode & { onNodeCreated?: () => void }).onNodeCreated = function (this: ComfyNode) {
         created?.call(this)
         reviewQueue.watch(this)
+        // runs without a stop draw every seed anew, runs with review stops keep the song's (seedsFollowMode.ts)
+        installSeedsFollowMode(this, (summary, detail) =>
+          comfyApp.extensionManager?.toast?.add({ severity: 'info', summary, detail, life: 10000 })
+        )
       }
     }
     if (nodeData.name === 'PlenioStemMixer') {

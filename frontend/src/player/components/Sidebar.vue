@@ -8,6 +8,7 @@ import { applySavedFilter, comfyLink, deleteSavedFilter, folders, go, lastSaved,
 import Icon from './Icon.vue'
 import { active, jobs } from '../jobs'
 import { isPortable, loading, portable } from '../portable'
+import { avatarUrl, guest, initials, me, session, switchUser } from '../account'
 
 const naming = ref(false)
 const name = ref('')
@@ -58,6 +59,15 @@ async function scan(): Promise<void> {
       <span class="logo"><i /><i /><i /><i /></span>
       <span>Plenio <b>Player</b></span>
     </a>
+    <div v-if="session?.login && !isPortable" class="who" :title="guest ? 'A guest: playlists, likes and plays stay in this browser' : 'Your playlists, likes and plays - the same on every device'">
+      <span class="face" :style="{ background: me?.color ?? '#4a4560' }">
+        <img v-if="me?.avatar" :src="avatarUrl(me)" alt="" />
+        <template v-else-if="me">{{ initials(me.name) }}</template>
+        <Icon v-else name="user" :size="16" />
+      </span>
+      <span class="name">{{ me ? me.name : 'Guest' }}<small v-if="me?.admin"> · admin</small></span>
+      <button class="icon-btn" :title="guest ? 'Log in' : 'Log out - somebody else listens'" @click="switchUser"><Icon name="logout" :size="16" /></button>
+    </div>
     <a v-for="[path, label, icon] in LINKS" :key="path" class="link" :class="{ on: route === path }" @click="go(path)">
       <Icon :name="icon" :size="18" /> {{ label }} <small v-if="path === '/live' && settings.live.on" class="on-air">LIVE</small><small v-else>{{ counts[path] || '' }}</small>
     </a>
@@ -137,6 +147,43 @@ async function scan(): Promise<void> {
   gap: 3px;
   align-items: flex-end;
   height: 22px;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -8px 0 12px;
+  padding: 6px 6px 6px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.who .face {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  overflow: hidden;
+  font: 700 12px var(--font);
+  color: #fff;
+}
+.who .face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.who .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 13px var(--font);
+}
+.who .name small {
+  font-weight: 400;
+  opacity: 0.6;
 }
 .logo i {
   width: 4px;

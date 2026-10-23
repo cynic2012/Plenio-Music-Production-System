@@ -81,6 +81,10 @@ def test_template_inventory_and_optional_packages() -> None:
         "gemma4_e4b_it_fp8_scaled.safetensors": 1,
         "minimax_music3_dav.safetensors": 1000,  # interrupted download
         "pytorch_model.bin": 229072395,  # UniverSR for HQ 2 in every template's Master (HQ mastering)
+        # the cover art, on in the song templates since 2026-10-23
+        "flux-2-klein-4b.safetensors": 7751105712,
+        "qwen_3_4b.safetensors": 8044982048,
+        "flux2-vae.safetensors": 336211292,
     }
     report = check_system(
         facts(
@@ -106,13 +110,13 @@ def test_template_inventory_and_optional_packages() -> None:
     assert not rows["3 · MiniMax · Song"]["ready"]
     # 14.1 GB of MiniMax files (the UniverSR weights of HQ 2 are installed here)
     assert rows["3 · MiniMax · Song"]["missing_size"] == "14.1 GB"  # the DiT and the text encoder
-    assert "flux-2-klein-4b.safetensors" in rows["1 · YuE2 · Song"]["optional_missing"]
+    assert "flux-2-klein-4b.safetensors" not in rows["1 · YuE2 · Song"]["optional_missing"]  # required now
     status = {row["file"]: row["status"] for row in report.data["models"]}
     assert status["yue2_3b_int8_convrot.safetensors"] == "installed"
     assert status["sheetsage2_bf16.safetensors"] == "missing"
     assert "yue2_3b_bf16.safetensors" not in status  # alternatives appear in the rule table only
     markdown = to_markdown(report)
-    assert "| 1 · YuE2 · Song | all installed; optional blocks: 5 not installed |" in markdown
+    assert "| 1 · YuE2 · Song | all installed; optional blocks: 2 not installed |" in markdown
     assert (
         "1 with an unexpected size (an interrupted download?): `minimax_music3_dav.safetensors`" in markdown
     )

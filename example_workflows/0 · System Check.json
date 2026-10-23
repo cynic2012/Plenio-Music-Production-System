@@ -77,12 +77,12 @@
    "title": "SYSTEM CHECK",
    "bounding": [
     -30,
-    -70,
+    -110,
     700,
-    820
+    860
    ],
    "color": "#3f789e",
-   "font_size": 24,
+   "font_size": 32,
    "flags": {}
   }
  ],
@@ -95,7 +95,7 @@
    "scale": 0.7,
    "offset": [
     640,
-    300
+    520
    ]
   },
   "linearData": {

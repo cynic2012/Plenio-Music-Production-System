@@ -20,6 +20,7 @@ from .seed import PlenioSeed
 from .sheet import PlenioSongSheet
 from .song_form import PlenioMatchSongForm
 from .stems import PlenioSeparateStems, PlenioStemMixer
+from .sung_check import PlenioApplySungCheck, PlenioComposeSungCheck
 from .sung_pitch import PlenioSungPitch
 from .system_check import PlenioSystemCheck
 from .transcribe_lyrics import PlenioTranscribeLyrics
@@ -52,6 +53,8 @@ NODES = (
     PlenioEQ,
     PlenioLoudness,
     PlenioExportRelease,
+    PlenioComposeSungCheck,
+    PlenioApplySungCheck,
     PlenioSystemCheck,
     PlenioSeed,
     PlenioCreativity,

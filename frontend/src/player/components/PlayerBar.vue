@@ -3,10 +3,12 @@
 import { computed } from 'vue'
 
 import { engine } from '../engine'
-import { lineIndex, lines, paletteStyle, section, sections } from '../now'
+import { lineIndex, lines, lyricsVersion, paletteStyle, section, sections, toggleLyrics } from '../now'
+import { sungOf } from '../lyricsVersion'
 import {
   ab,
   current,
+  detail,
   duration,
   go,
   isFavorite,
@@ -103,6 +105,9 @@ function volume(event: Event): void {
       </div>
       <button v-if="current?.has.original" class="chip" :class="{ on: ab }" title="A/B: the unmastered take, in step (B)" @click="toggleAB">
         {{ ab ? 'B · original' : 'A · master' }}
+      </button>
+      <button v-if="sungOf(detail)" class="chip" :class="{ on: lyricsVersion === 'sung' }" title="Lyrics as written, or as the take sings them - kept for this song (W)" @click="toggleLyrics">
+        {{ lyricsVersion === 'sung' ? 'Lyrics · as sung' : 'Lyrics · as written' }}
       </button>
       <button class="chip speed" title="Speed (keeps the pitch)" @click="cycleRate">{{ settings.rate }}×</button>
       <div class="vol">

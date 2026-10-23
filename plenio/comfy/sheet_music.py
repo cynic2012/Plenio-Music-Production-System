@@ -103,17 +103,21 @@ class Jobs:
         job = self._take(token, time.monotonic() if now is None else now)
         atomic_write_bytes(job.pdf, data)
         facts = file_facts(job.pdf)
-        try:
-            record = json.loads(job.record.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return facts  # the record was moved or edited meanwhile: the PDF stands on its own
-        atomic_write_text(
-            job.record, json.dumps(with_sheet_music(record, facts), indent=2, ensure_ascii=False)
-        )
+        with RECORD_LOCK:
+            try:
+                record = json.loads(job.record.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return facts  # the record was moved or edited meanwhile: the PDF stands on its own
+            atomic_write_text(
+                job.record, json.dumps(with_sheet_music(record, facts), indent=2, ensure_ascii=False)
+            )
         return facts
 
 
 JOBS = Jobs()
+RECORD_LOCK = threading.Lock()
+"""Held while a release record is read and written again after its export (the sheet music PDF listed,
+the sung words corrected): two such writes never lose one another's change."""
 
 
 def _workflow_node(workflow: Mapping[str, Any], node_id: str) -> Mapping[str, Any] | None:

@@ -528,10 +528,8 @@ def _infer_blocks(text: str) -> dict[str, str]:
     """
     lines = [line.rstrip() for line in _FENCE.sub("", text).strip().split("\n")]
     first_tag = next((i for i, line in enumerate(lines) if _TAG_LINE.match(line.strip())), None)
-    if first_tag is None:
-        return {}
     head = []
-    for line in lines[:first_tag]:
+    for line in lines[: len(lines) if first_tag is None else first_tag]:
         cleaned = _MARKER.sub("", line).strip()
         label = _HEADING.match(line)
         if label and not (label.group(2) or "").strip():
@@ -540,6 +538,8 @@ def _infer_blocks(text: str) -> dict[str, str]:
             cleaned = (label.group(2) or "").strip()
         if cleaned:
             head.append(cleaned)
+    if first_tag is None:
+        return _infer_without_lyrics(head)
     blocks: dict[str, str] = {}
     if len(head) >= 2:
         blocks["TITLE"], blocks["STYLE"] = head[0], " ".join(head[1:])
@@ -556,6 +556,20 @@ def _infer_blocks(text: str) -> dict[str, str]:
             break
         body.append(line)
     blocks["LYRICS"] = "\n".join(body).strip()
+    return blocks
+
+
+def _infer_without_lyrics(head: list[str]) -> dict[str, str]:
+    """An answer without a lyrics tag (a cover that keeps its lyrics, an instrumental): the title line, the
+    style line(s), a bare 'none' where the lyrics would be, and a final artwork sentence. Seen 2026-10-23
+    from Qwen3.8 27B: 'Lay All Your Love On Me-cover', the style, 'none', the artwork."""
+    lines = [line for line in head if line.lower().strip(" .") != "none"]
+    if len(lines) < 2:
+        return {}
+    blocks = {"TITLE": lines[0]}
+    if len(lines) >= 3 and len(lines[-1].split()) >= 8 and lines[-1].endswith("."):
+        blocks["ARTWORK"] = lines.pop()
+    blocks["STYLE"] = " ".join(lines[1:])
     return blocks
 
 
@@ -598,10 +612,10 @@ def parse_draft(text: str, request: Request) -> Draft:
         notes.append("the model's thinking section was removed")
     blocks = _blocks(body)
     if not (blocks.get("STYLE") and blocks.get("LYRICS")):
-        inferred = _infer_blocks(body)
-        for name, value in inferred.items():
-            if value and not blocks.get(name):
-                blocks[name] = value
+        inferred = {
+            name: value for name, value in _infer_blocks(body).items() if value and not blocks.get(name)
+        }
+        blocks.update(inferred)
         if inferred:
             notes.append("the model did not label every block; missing blocks were inferred from the layout")
     if blocks.get("LYRICS") and not blocks.get("ARTWORK"):

@@ -724,12 +724,12 @@
       "title": "AUDIO HQ (before the EQ)",
       "bounding": [
        -30,
-       -70,
+       -110,
        1320,
-       480
+       520
       ],
       "color": "#3f789e",
-      "font_size": 24,
+      "font_size": 32,
       "flags": {}
      },
      {
@@ -737,12 +737,12 @@
       "title": "MASTER",
       "bounding": [
        1330,
-       -70,
+       -110,
        1100,
-       420
+       460
       ],
       "color": "#3f789e",
-      "font_size": 24,
+      "font_size": 32,
       "flags": {}
      }
     ],

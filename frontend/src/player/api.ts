@@ -76,6 +76,8 @@ export interface SongSummary {
   has: Record<'audio' | 'original' | 'cover' | 'pdf' | 'lines' | 'notes' | 'stems' | 'timing' | 'score', boolean> & {
     /** The record keeps what the take sings, as heard (songs exported since then). */
     sung?: boolean
+    /** An MP3 besides the song's FLAC or WAV (Settings: play it, for less data). */
+    mp3?: boolean
   }
   bpm?: number | null
   score_key?: string
@@ -111,6 +113,8 @@ export interface SungLyrics {
   /** Lyrics lines of which no word was heard. */
   not_sung: string[]
   sections: { tag: string; words: number; heard: number }[]
+  /** Words the writer model found misheard, corrected in the lines (Check Sung Words). */
+  corrected?: { line: number; heard: string; word: string; sure?: number }[]
 }
 
 export interface Section {
@@ -125,9 +129,13 @@ export interface Notation {
   sections?: Section[]
   seconds?: number
   warp?: [number, number] | null
-  /** For a song without measured times: ``(audio, score)`` time pairs estimated from the music. */
+  /** ``(audio, score)`` time pairs: the score's path through the recording, found in its music
+   * (plenio/player/align.py ``follow``) - or, for an older song the music could not be followed in, estimated. */
   anchors?: [number, number][]
+  /** No measured times: where the score is was worked out from the music alone. */
   estimated?: boolean
+  /** The anchors are the music's path (the notation follows it through the instrumental parts too). */
+  followed?: boolean
   error?: string
 }
 
@@ -318,15 +326,47 @@ export interface PackageStatus {
   part_mb?: number
 }
 
+// --- a guest's state, in this browser (account.ts) ----------------------------------------------------------
+
+let inBrowser = false
+const GUEST_STATE = 'plenio-guest-state'
+
+/** A guest keeps the playlists, likes, plays and settings in this browser, not on the player's computer. */
+export function keepStateInBrowser(on: boolean): void {
+  inBrowser = on
+}
+
+function browserState(): PlayerState {
+  try {
+    const saved = localStorage.getItem(GUEST_STATE)
+    if (saved) return JSON.parse(saved) as PlayerState
+  } catch {
+    // a private window, or storage switched off: start afresh
+  }
+  return { playlists: [], favorites: [], plays: {}, last_played: {}, tags: {}, settings: {} }
+}
+
+function keepInBrowser(state: PlayerState): void {
+  try {
+    localStorage.setItem(GUEST_STATE, JSON.stringify(state))
+  } catch {
+    // full or switched off: it lasts until the page closes
+  }
+}
+
 const serverApi = {
   library: () => json<LibraryAnswer>('/api/library'),
   song: (id: string) => json<SongDetail>(`/api/song/${id}`),
-  state: () => json<StateAnswer>('/api/state'),
+  state: async (): Promise<StateAnswer> => (inBrowser ? { ...browserState(), rev: 0 } : json<StateAnswer>('/api/state')),
   /** The number of the last change saved (another page's too). */
-  stateRev: () => json<{ rev: number }>('/api/state/rev'),
+  stateRev: async () => (inBrowser ? { rev: 0 } : json<{ rev: number }>('/api/state/rev')),
   /** Save the state, from the change ``rev`` (``undefined``: whatever is saved); ``keepalive``: also when the
    * page is closing (the last change is not lost). */
   saveState: async (state: PlayerState, keepalive = false, rev?: number): Promise<SaveAnswer> => {
+    if (inBrowser) {
+      keepInBrowser(state)
+      return { ok: true, rev: 0 }
+    }
     const response = await fetch('/api/state', {
       method: 'PUT',
       keepalive,

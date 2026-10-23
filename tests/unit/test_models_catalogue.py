@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
@@ -53,9 +54,9 @@ def test_shipped_catalogue() -> None:
         "4 · Enhance & Master",
         "5 · YuE2 · DAW",
     ]
-    # the FLUX.2 files serve only the optional Cover Art block
+    # the FLUX.2 files serve the Cover Art, on in the four song templates since 2026-10-23
     flux = [m for m in CATALOGUE.values() if m.file.startswith(("flux", "qwen_3_4b")) and m.default]
-    assert len(flux) == 3 and all(not m.templates and len(m.optional_templates) == 4 for m in flux)
+    assert len(flux) == 3 and all(len(m.templates) == 4 and not m.optional_templates for m in flux)
     # alternatives are never template defaults
     assert all(not m.templates and not m.optional_templates for m in CATALOGUE.values() if not m.default)
 
@@ -103,16 +104,17 @@ def test_inventory_and_readiness(tmp_path: Path) -> None:
         "gemma4_e4b_it_fp8_scaled.safetensors": 1234,  # size not recorded: any size counts
         "minimax_music3_dav.safetensors": 5,  # wrong size
         "pytorch_model.bin": 229072395,  # UniverSR: HQ 2 in every template's Master, with HQ mastering on
+        "flux-2-klein-4b.safetensors": 7751105712,  # the cover art (on since 2026-10-23)
+        "qwen_3_4b.safetensors": 8044982048,
+        "flux2-vae.safetensors": 336211292,
     }
 
     def locate(folder: str, file: str) -> Path | None:
         if file not in present:
             return None
-        path = tmp_path / folder / file
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("wb") as handle:
-            handle.truncate(present[file])  # sparse: no real 4 GB file
-        return path
+        # a file of that size, without writing 20 GB (Windows writes the zeros of a truncated file)
+        size = present[file]
+        return cast(Path, SimpleNamespace(stat=lambda: SimpleNamespace(st_size=size)))
 
     inventory = take_inventory(CATALOGUE, locate)
     assert inventory.status(files["yue2_3b_int8_convrot.safetensors"]) == "installed"
@@ -121,7 +123,7 @@ def test_inventory_and_readiness(tmp_path: Path) -> None:
     assert inventory.status(files["sheetsage2_bf16.safetensors"]) == "missing"
     song, cover, minimax, enhance, daw = readiness(CATALOGUE, inventory, template_names(CATALOGUE))
     assert song.template == "1 · YuE2 · Song" and song.ready
-    assert {m.file for m in song.optional_missing} >= {"flux-2-klein-4b.safetensors"}
+    assert "flux-2-klein-4b.safetensors" not in {m.file for m in song.optional_missing}  # required now
     assert not cover.ready and {m.file for m in cover.missing} == {
         "sheetsage2_bf16.safetensors",
         "ar_lora_inst_v3abc_comfyui.safetensors",
@@ -134,10 +136,7 @@ def test_inventory_and_readiness(tmp_path: Path) -> None:
     assert minimax.missing_bytes == 4914197682 + 9196611886
     # the DAW template needs the same music model and writer as the song template
     assert daw.template == "5 · YuE2 · DAW" and daw.ready
-    assert {m.file for m in daw.optional_missing} >= {
-        "flux-2-klein-4b.safetensors",
-        "ar_lora_inst_v3abc_comfyui.safetensors",
-    }
+    assert {m.file for m in daw.optional_missing} >= {"ar_lora_inst_v3abc_comfyui.safetensors"}
     # Enhance & Master needs no model: UniverSR only with HQ mastering on (off by default), Stems bypassed
     assert enhance.ready
     assert {m.file for m in enhance.optional_missing} == {"model_bs_roformer_ep_17_sdr_9.6568.ckpt"}

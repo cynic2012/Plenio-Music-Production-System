@@ -1,5 +1,6 @@
-"""The notation of a song without measured times follows the music (owner's report 2026-10-16: it ran a bar
-behind): the player finds where the score sits in the recording from their pitch classes."""
+"""The notation of a song follows the music (owner's reports 2026-10-16: it ran a bar behind; 2026-10-23: it
+raced through an instrumental part and waited at the lyrics): the player finds where the score sits in the
+recording from their pitch classes, and the score's path through it."""
 
 from __future__ import annotations
 
@@ -9,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from plenio.player.align import cached_estimate, estimate
+from plenio.player.align import cached_follow, estimate, follow, score_to_audio
 from plenio.player.library import Library, song_detail
 
 av = pytest.importorskip("av")
@@ -36,8 +37,9 @@ def score_text() -> str:
     return head + "".join(blocks)
 
 
-def render(path: Path, shift: float) -> None:
-    """The score played by sine voices, ``shift`` seconds late, into a FLAC."""
+def render(path: Path, shift: float, left_out: tuple[float, float] | None = None) -> None:
+    """The score played by sine voices, ``shift`` seconds late, into a FLAC - without the notes in the score
+    seconds ``left_out`` (a take that leaves out part of its plan)."""
     from plenio.core.score import canonical
 
     score = canonical.from_abc(score_text())
@@ -46,6 +48,11 @@ def render(path: Path, shift: float) -> None:
     out = np.zeros(int(rate * length), dtype=np.float32)
     for note in [*score.vocal, *score.ins]:
         start = score.seconds(note.onset) + shift
+        if left_out is not None:
+            if left_out[0] <= score.seconds(note.onset) < left_out[1]:
+                continue
+            if score.seconds(note.onset) >= left_out[1]:
+                start -= left_out[1] - left_out[0]
         seconds = score.seconds(note.duration)
         t = np.arange(int(rate * seconds)) / rate
         freq = 440 * 2 ** ((note.pitch - 69) / 12)
@@ -75,6 +82,20 @@ def test_the_score_is_found_in_its_recording(tmp_path: Path) -> None:
     assert estimate(tmp_path / "early.flac", score_text())["warp"][1] == pytest.approx(0.0, abs=0.15)
 
 
+def test_the_score_is_followed_where_the_take_leaves_out_part_of_it(tmp_path: Path) -> None:
+    # bars 5 and 6 (9.6 to 14.4 s of score) are not played: after them the take is 4.8 s ahead of its plan
+    render(tmp_path / "cut.flac", 1.0, left_out=(9.6, 14.4))
+    found = follow(tmp_path / "cut.flac", score_text(), [1.0, 1.0])
+    assert found is not None and found["match"] > 0.2
+    assert score_to_audio(4.0, found) == pytest.approx(5.0, abs=0.3)
+    assert score_to_audio(20.0, found) == pytest.approx(20.0 + 1.0 - 4.8, abs=0.3)
+    assert score_to_audio(30.0, found) == pytest.approx(30.0 + 1.0 - 4.8, abs=0.3)
+    # the anchors are few: a straight line where the take keeps to the tempo
+    assert len(found["anchors"]) < 12
+    assert cached_follow(tmp_path / "cut.flac", score_text(), tmp_path / "cache", [1.0, 1.0]) == found
+    assert cached_follow(tmp_path / "cut.flac", score_text(), tmp_path / "cache", [1.0, 1.0]) == found
+
+
 def test_no_estimate_where_score_and_recording_have_nothing_in_common(tmp_path: Path) -> None:
     rate = 22050
     noise = (np.random.default_rng(1).standard_normal(rate * 40) * 0.05).astype(np.float32)
@@ -89,6 +110,8 @@ def test_no_estimate_where_score_and_recording_have_nothing_in_common(tmp_path: 
             container.mux(packet)
     assert estimate(tmp_path / "noise.flac", score_text()) is None
     assert estimate(tmp_path / "missing.flac", score_text()) is None
+    assert follow(tmp_path / "noise.flac", score_text(), [1.0, 0.0]) is None
+    assert follow(tmp_path / "missing.flac", score_text()) is None
 
 
 def test_a_song_without_measured_times_gets_its_notation_placed_and_kept(tmp_path: Path) -> None:
@@ -111,11 +134,34 @@ def test_a_song_without_measured_times_gets_its_notation_placed_and_kept(tmp_pat
     assert detail["notation"]["estimated"] is True
     assert detail["notation"]["warp"][1] == pytest.approx(2.0, abs=0.15)
     assert list((tmp_path / "cache" / "align").glob("*.json"))
-    # the second time from the cache
-    assert cached_estimate(song.files["audio"], score_text(), tmp_path / "cache") == {
-        k: detail["notation"][k] for k in ("warp", "anchors")
-    } | {
-        k: v
-        for k, v in cached_estimate(song.files["audio"], score_text(), tmp_path / "cache").items()
-        if k not in ("warp", "anchors")
+    # the notation follows the score's path through the music, kept in the cache
+    assert detail["notation"]["followed"] is True
+    assert (
+        detail["notation"]["anchors"]
+        == cached_follow(song.files["audio"], score_text(), tmp_path / "cache")["anchors"]
+    )
+    for audio, score in detail["notation"]["anchors"][1:]:
+        assert audio - score == pytest.approx(2.0, abs=0.2)
+
+
+def test_a_song_with_measured_times_follows_the_music_near_its_warp(tmp_path: Path) -> None:
+    folder = tmp_path / "output"
+    folder.mkdir()
+    render(folder / "New.flac", 1.0, left_out=(9.6, 14.4))
+    line = {"text": "la", "start": 2.0, "end": 3.0, "units": [[2.0, 2, 1.0]]}
+    record = {
+        "schema": "plenio.release/1",
+        "title": "New",
+        "files": [{"name": "New.flac", "format": "flac"}],
+        "documents": {"score": {"text": score_text()}},
+        "timing": [{"take": "", "timing": "measured", "warp": [1.0, 1.0], "lines": [line]}],
     }
+    (folder / "New.plenio.json").write_text(json.dumps(record), encoding="utf-8")
+    library = Library([folder])
+    library.scan(force=True)
+    song = library.song(library.songs()[0]["id"])
+    assert song is not None
+    notation = song_detail(song, cache=tmp_path / "cache")["notation"]
+    assert notation["followed"] is True and "estimated" not in notation
+    assert notation["warp"] == [1.0, 1.0]  # the measured one
+    assert score_to_audio(25.0, notation) == pytest.approx(25.0 + 1.0 - 4.8, abs=0.3)

@@ -13,7 +13,7 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 | `yue2_3b_int8_convrot.safetensors` | `checkpoints` | 4.0 GB | CC BY-NC 4.0 | needed |
 | `gemma4_e4b_it_fp8_scaled.safetensors` | `text_encoders` | (see the model card) | Apache-2.0 | needed (writer) |
 | `ar_lora_inst_v3abc_comfyui.safetensors` | `loras` | (see the model card) | CC BY-NC 4.0 | optional: instrumental adapter inside the model block, bypassed |
-| FLUX.2 Klein files (below) | | 16.1 GB | Apache-2.0 | optional: Cover Art, bypassed |
+| FLUX.2 Klein files (below) | | 16.1 GB | Apache-2.0 | Cover Art (on; the *Cover Art* card switches it off) |
 
 ### 2 · YuE2 · Cover
 
@@ -24,7 +24,7 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 | `ar_lora_inst_v3abc_comfyui.safetensors` | `loras` | (see the model card) | CC BY-NC 4.0 | needed (instrumental adapter) |
 | `gemma4_e4b_it_fp8_scaled.safetensors` | `text_encoders` | (see the model card) | Apache-2.0 | needed (writer) |
 | Qwen3-ASR 1.7B and Qwen3-ForcedAligner 0.6B (Plenio assets, below) | `plenio/asr/qwen3-asr-1.7b-hf`, `plenio/asr/qwen3-forcedaligner-0.6b-hf` | 4.1 + 1.8 GB | Apache-2.0 | fetched by Plenio when *original lyrics*, *Check sung lyrics* or the subtitles first need them |
-| FLUX.2 Klein files (below) | | 16.1 GB | Apache-2.0 | optional: Cover Art, bypassed |
+| FLUX.2 Klein files (below) | | 16.1 GB | Apache-2.0 | Cover Art (on; the *Cover Art* card switches it off) |
 
 ### 3 · MiniMax · Song
 
@@ -35,7 +35,7 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 | `minimax_music3_dav.safetensors` | `vae` | 217 MB | MiniMax-Music3 Community License | needed |
 | `gemma4_e4b_it_fp8_scaled.safetensors` | `text_encoders` | (see the model card) | Apache-2.0 | needed (writer) |
 | `pytorch_model.bin` (UniverSR) | `audio_sr` | 229 MB | CC BY 4.0 (weights); MIT (code) | **optional**: HQ 2 · Regenerate Highs, with the HQ Mastering switch on |
-| FLUX.2 Klein files (below) | | 16.1 GB | Apache-2.0 | optional: Cover Art, bypassed |
+| FLUX.2 Klein files (below) | | 16.1 GB | Apache-2.0 | Cover Art (on; the *Cover Art* card switches it off) |
 
 ### Audio HQ 2 (UniverSR), in the Master block of templates 1-5
 
@@ -55,7 +55,7 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 
 The block is **experimental** until its listening check (L2) is accepted: the separation itself is measured (MUSDB18-HQ SDR 9.66 reported by the authors), but how the stems are used here is not.
 
-### Cover Art (optional block of templates 1-3)
+### Cover Art (templates 1, 2, 3 and 5: on, the *Cover Art* card switches it off)
 
 | File | Folder | Size | Licence |
 |---|---|---|---|

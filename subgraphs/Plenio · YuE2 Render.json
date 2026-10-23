@@ -535,8 +535,8 @@
       "id": 803,
       "type": "ConditioningZeroOut",
       "pos": [
-       400,
-       130
+       400.0,
+       150
       ],
       "size": [
        240,
@@ -732,8 +732,8 @@
       "id": 806,
       "type": "PlenioCreativity",
       "pos": [
-       0,
-       440
+       0.0,
+       474
       ],
       "size": [
        320,

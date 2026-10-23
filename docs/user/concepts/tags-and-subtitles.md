@@ -64,6 +64,16 @@ heard, the words heard that they do not have, the lines not heard. The export's 
 (*86 % of the lyrics' words sung as written, 12 words the lyrics do not have*) and names a section not sung as
 written; the [Plenio Player](player.md#written-and-sung-lyrics) follows either version.
 
+**Misheard words.** What was heard may contain a word the ASR misheard - it then stood in the lyrics as sung as
+heard. In the templates **Check Sung Words** runs after the export: the writer model (the template's *Writer
+model*) reads the lyrics and every sung line, with the words the lyrics do not have at that place marked
+(and, where a similar word was heard instead of the lyrics' one, that word), and names those it is sure were
+misheard, each with the word most likely sung. Plenio takes a correction only when it replaces a marked word,
+the writer is at least 80 % sure, and the word has as many syllables as the word heard; ad-libs and words the
+music model chose stay. The corrections go into the record's sung lines and text - each kept with the word
+heard (`timing[].sung.corrected`) - and into `(sung).srt`; how far the take follows its lyrics is counted
+again. Nothing runs for a song without sung lyrics or without such words, and a record is checked once.
+
 **How the times are measured.** The lyrics ASR listens to the exported song: **Qwen3-ASR 1.7B** hears the
 words and **Qwen3-ForcedAligner 0.6B** places every word on the audio (Apache-2.0, 4.1 + 1.8 GB, downloaded on
 first use; its results are cached). It hears the song in pieces of at most 20 seconds, cut at quiet moments,

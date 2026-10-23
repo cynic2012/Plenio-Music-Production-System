@@ -20,6 +20,23 @@ from workflow_validation import CUSTOM_WIDGET_TYPES, DYNAMIC_COMBO, WIDGET_TYPES
 NAMESPACE = uuid.UUID("9b2f7c1e-4d3a-5e6f-8a9b-0c1d2e3f4a5b")
 AUTOGROW = "COMFY_AUTOGROW_V3"
 
+# What the page draws around a node and a group (frontend 1.55, measured 2026-10-23): ``Graph.settle`` keeps
+# them apart (owner's request 2026-10-23: wide enough, nothing overlapping, every section clearly visible).
+TITLE_HEIGHT = 30
+BADGE_HEIGHT = 24
+"""The source badge (*Plenio-Music-Production-System*) the page draws above a Plenio node's title."""
+NODE_GAP = 24
+"""Between two nodes of a column, below the upper one's body and above the lower one's badge."""
+GROUP_TITLE_SIZE = 32
+GROUP_HEADER = 56
+"""A group's title row (its 32 px title) above its first node's badge."""
+GROUP_PADDING = 30
+GROUP_GAP = 40
+"""Between two groups (or a group and a node outside it)."""
+COLLAPSED_WIDTH = 260
+SECTION_COLORS = ("#3f789e", "#2f7d6d", "#557a35", "#6e4f9e", "#9a6a2c", "#9e4452", "#3f5a9e")
+"""A colour per numbered section (``1 · SONG``, ``2 · WRITE`` ...): neighbouring sections tell apart."""
+
 
 def stable_uuid(*parts: str) -> str:
     return str(uuid.uuid5(NAMESPACE, "/".join(parts)))
@@ -136,6 +153,8 @@ class Graph:
         self.nodes: list[Node] = []
         self.links: list[dict[str, Any]] = []
         self.groups: list[dict[str, Any]] = []
+        self._members: list[list[Node]] = []
+        self._min_heights: list[float] = []
         self._next_node = first_id
         self._next_link = 1
 
@@ -339,29 +358,113 @@ class Graph:
         title: str,
         nodes: list[Node],
         *,
-        color: str = "#3f789e",
-        padding: float = 30,
+        color: str | None = None,
         min_height: float = 0,
     ) -> None:
-        """A group around ``nodes``; ``min_height`` keeps room below them (a run summary grows the last node)."""
-
-        def extent(node: Node) -> tuple[float, float]:
-            return (min(node.size[0], 260), 30) if node.collapsed else node.size
-
-        left = min(n.pos[0] for n in nodes) - padding
-        top = min(n.pos[1] for n in nodes) - padding - 40
-        right = max(n.pos[0] + extent(n)[0] for n in nodes) + padding
-        bottom = max(n.pos[1] + extent(n)[1] for n in nodes) + padding
+        """A group around ``nodes``; ``min_height`` keeps room below them (a run summary grows the last node).
+        Without ``color``, a numbered section takes its section colour."""
+        number = title.split(" ", 1)[0]
+        if color is None:
+            color = (
+                SECTION_COLORS[(int(number) - 1) % len(SECTION_COLORS)]
+                if number.isdigit()
+                else SECTION_COLORS[0]
+            )
         self.groups.append(
             {
                 "id": len(self.groups) + 1,
                 "title": title,
-                "bounding": [left, top, right - left, max(bottom - top, min_height)],
+                "bounding": [0, 0, 0, 0],
                 "color": color,
-                "font_size": 24,
+                "font_size": GROUP_TITLE_SIZE,
                 "flags": {},
             }
         )
+        self._members.append(list(nodes))
+        self._min_heights.append(min_height)
+        self._fit(len(self.groups) - 1)
+
+    # --- layout ----------------------------------------------------------------------
+
+    @staticmethod
+    def box(node: Node) -> tuple[float, float, float, float]:
+        """What the page draws of a node: its body, title bar and (Plenio nodes) source badge."""
+        x, y = node.pos
+        width = min(node.size[0], COLLAPSED_WIDTH) if node.collapsed else node.size[0]
+        top = y - TITLE_HEIGHT - (BADGE_HEIGHT if node.type.startswith("Plenio") else 0)
+        return (x, top, x + width, y if node.collapsed else y + node.size[1])
+
+    def _fit(self, index: int) -> None:
+        boxes = [self.box(n) for n in self._members[index]]
+        left = min(b[0] for b in boxes) - GROUP_PADDING
+        top = min(b[1] for b in boxes) - GROUP_HEADER
+        right = max(b[2] for b in boxes) + GROUP_PADDING
+        bottom = max(b[3] for b in boxes) + GROUP_PADDING
+        height = max(bottom - top, self._min_heights[index])
+        self.groups[index]["bounding"] = [left, top, right - left, height]
+
+    def settle(self) -> None:
+        """Nothing overlaps: in a group, a node that reaches into the one above it in its column moves down;
+        then of two groups (or nodes outside every group) that come too close, the one that starts right of the
+        other's middle moves right, else the lower one moves down - with what it holds. The groups are laid
+        around their nodes again."""
+
+        def apart(column: list[Node]) -> None:
+            placed: list[Node] = []
+            for node in sorted(column, key=lambda n: (self.box(n)[1], n.pos[0])):
+                for upper in placed:
+                    a, b = self.box(upper), self.box(node)
+                    if a[0] < b[2] and b[0] < a[2] and a[1] <= b[1]:
+                        push = a[3] + NODE_GAP - b[1]
+                        if push > 0:
+                            node.pos = (node.pos[0], node.pos[1] + push)
+                placed.append(node)
+
+        grouped = {id(n) for members in self._members for n in members}
+        for members in self._members:
+            apart(members)
+        for index in range(len(self.groups)):
+            self._fit(index)
+        # (what moves together, its group's index or None)
+        blocks: list[tuple[list[Node], int | None]] = [
+            *((members, index) for index, members in enumerate(self._members)),
+            *(([n], None) for n in self.nodes if id(n) not in grouped),
+        ]
+
+        def extent(block: tuple[list[Node], int | None]) -> tuple[float, float, float, float]:
+            if block[1] is not None:
+                x, y, w, h = self.groups[block[1]]["bounding"]
+                return (x, y, x + w, y + h)
+            return self.box(block[0][0])
+
+        for _round in range(50):
+            moved = False
+            for i, first in enumerate(blocks):
+                for second in blocks[i + 1 :]:
+                    a, b = extent(first), extent(second)
+                    if not (
+                        a[0] < b[2] + GROUP_GAP
+                        and b[0] < a[2] + GROUP_GAP
+                        and a[1] < b[3] + GROUP_GAP
+                        and b[1] < a[3] + GROUP_GAP
+                    ):
+                        continue
+                    if b[0] >= (a[0] + a[2]) / 2:
+                        lower, dx, dy = second, a[2] + GROUP_GAP - b[0], 0.0
+                    elif a[0] >= (b[0] + b[2]) / 2:
+                        lower, dx, dy = first, b[2] + GROUP_GAP - a[0], 0.0
+                    elif (b[1], b[0]) >= (a[1], a[0]):
+                        lower, dx, dy = second, 0.0, a[3] + GROUP_GAP - b[1]
+                    else:
+                        lower, dx, dy = first, 0.0, b[3] + GROUP_GAP - a[1]
+                    for node in lower[0]:
+                        node.pos = (node.pos[0] + dx, node.pos[1] + dy)
+                    if lower[1] is not None:
+                        self._fit(lower[1])
+                    moved = True
+            if not moved:
+                return
+        raise RuntimeError("the layout did not settle")
 
 
 def _spec(info: Mapping[str, Any], name: str) -> tuple[Any, dict[str, Any]]:
@@ -421,6 +524,7 @@ class Blueprint:
 
     def definition(self) -> dict[str, Any]:
         body = copy.deepcopy(self.body)
+        body.settle()
         links = list(body.links)
         next_link = max((link["id"] for link in links), default=0) + 1
         node_by_id = {n.id: n for n in body.nodes}
@@ -540,10 +644,11 @@ class App:
 
 
 def workflow(graph: Graph, name: str, blueprints: list[Blueprint], app: App | None = None) -> dict[str, Any]:
+    graph.settle()
     # The view opens on the About note (x = -560) and the first groups.
     extra: dict[str, Any] = {
-        "ds": {"scale": 0.7, "offset": [640, 300]}
-    }  # the HQ Mastering switch above group 1 in view
+        "ds": {"scale": 0.7, "offset": [640, 520]}
+    }  # the HQ Mastering & Cover Art switches above group 1 in view, with the group's title
     if app is not None:
         extra["linearData"] = app.to_json()
     return {

@@ -94,6 +94,24 @@ def test_instrumental_text_sheet_blocks_words() -> None:
     assert "invalid" in evaluation.status_line()
 
 
+def test_a_drafted_style_with_errors_goes_on_corrected() -> None:
+    """Owner's cover series of 2026-10-23: a run that does not stop for review must not end at an error the
+    engine fixes by itself; the user's own style keeps its error."""
+    drafted = STYLE + ", 3:30 minutes, [Chorus] lift"
+    docs = {"title": "Neon", "style": drafted, "lyrics": LYRICS, "artwork_prompt": "A street."}
+    kinds = ["title", "style", "lyrics", "artwork_prompt"]
+    evaluation = evaluate_sheet(
+        SheetState(), docs, kinds, rules=yue2, engine_id="yue2", tokenizer=FakeTokenizer()
+    )
+    assert not evaluation.has_errors
+    assert evaluation.text("style") == STYLE + ", lift"
+    assert any(f.severity == "warning" and "corrected" in f.message for f in evaluation.findings)
+    assert evaluation.payload()["docs"]["style"]["upstream"] == drafted  # the editor still shows the draft
+    manual = SheetState(docs={"style": DocEntry(DocState.MANUAL, drafted)})
+    mine = evaluate_sheet(manual, docs, kinds, rules=yue2, engine_id="yue2", tokenizer=FakeTokenizer())
+    assert mine.has_errors and mine.text("style") == drafted
+
+
 def test_conflict_is_reported_without_validation() -> None:
     state = SheetState(docs={"lyrics": DocEntry(DocState.EDITED, "[Verse]\nmine", sha256_text("old draft"))})
     evaluation = text_sheet(state)

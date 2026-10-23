@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { SongSummary, TimedLine } from '../src/player/api'
 import { lyricsSnippet, parseQuery, score, sortSongs, toggleFilterChip, topValues, versionTest } from '../src/player/search'
 import { similarSongs, takesOf } from '../src/player/similar'
-import { anchorsOf, audioToScore, chunksAt, countOf, formatTime, lineAt, scoreToAudio, sectionAt, sectionsInSong } from '../src/player/timing'
+import { anchorsOf, audioToScore, chunksAt, countOf, formatTime, lineAt, scoreToAudio, sectionAt, sectionsInSong, songAnchors } from '../src/player/timing'
 import { chooseVisual, songMoods, withDefaults } from '../src/player/visuals/chooser'
 import { PRESETS } from '../src/player/visuals/presets'
 
@@ -77,6 +77,15 @@ describe('timing', () => {
     // without syllables the warp decides: t_audio = 1.1 * t_score + 2
     expect(audioToScore(13, [], [1.1, 2])).toBeCloseTo(10)
     expect(scoreToAudio(10, [], [1.1, 2])).toBeCloseTo(13)
+  })
+
+  it('follows the music where the player found the score in it, else the sung syllables', () => {
+    // owner's report 2026-10-23: through an instrumental part the syllables are no guide
+    const path: [number, number][] = [[0, 0], [20, 20], [25, 20.1], [40, 35]]
+    expect(songAnchors(LINES, { anchors: path })).toEqual(path)
+    expect(audioToScore(22, songAnchors(LINES, { anchors: path }))).toBeCloseTo(20.04) // the take holds
+    expect(songAnchors(LINES, {})).toEqual(anchorsOf(LINES))
+    expect(songAnchors(LINES, { anchors: [] })).toEqual(anchorsOf(LINES))
   })
 
   it('places the score sections on the song', () => {

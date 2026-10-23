@@ -16,7 +16,7 @@ All three keep the song's sample rate and length and normalise nothing; Loudness
 
 ## HQ mastering: the switch at the top
 
-UniverSR is what makes HQ 2 sound best - and what takes the time: it **about doubles** a song's time (measured on *1 · YuE2 · Song*, 97 s of music, RTX 5060 Ti: 280 s with it, about 130 s without). So every template has the **[HQ Mastering](../../../web/docs/PlenioHQMastering.md)** switch at the top of its first group, **off** by default:
+UniverSR is what makes HQ 2 sound best - and what takes the time: it **about doubles** a song's time (measured on *1 · YuE2 · Song*, 97 s of music, RTX 5060 Ti: 280 s with it, about 130 s without). So every template has the **[HQ Mastering](../../../web/docs/PlenioHQMastering.md)** card at the top of its first group (beside it the *Cover Art* card), **off** by default - click it to switch:
 
 - **on** (*on: less AI shimmer, 2× time*) - the mastering at its highest quality: HQ 2 regenerates the highs. It can clearly reduce AI shimmer and artifacts. The UniverSR file (229 MB, `models/audio_sr`) is needed.
 - **off** (*off: faster, no UniverSR*) - HQ 1, the EQ and the loudness run as always; HQ 2 passes the song unchanged and says *off* in its badge. UniverSR is **not loaded** and the file is not needed.

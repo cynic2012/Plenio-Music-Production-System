@@ -33,6 +33,8 @@ const PATHS: Record<string, string> = {
   edit: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   back: 'M15 5l-7 7 7 7',
+  user: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0',
+  logout: 'M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4M9 16l-4-4 4-4M5 12h10',
   playlist: 'M4 6h12M4 11h12M4 16h8M18 13v8M14 17h8',
   mic: 'M12 3a3 3 0 013 3v6a3 3 0 01-6 0V6a3 3 0 013-3zM5 11a7 7 0 0014 0M12 18v3',
   wave: 'M2 12h2M6 8v8M10 4v16M14 7v10M18 10v4M22 12h0',

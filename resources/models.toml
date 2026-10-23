@@ -148,7 +148,7 @@ role = "MiniMax Music 3 audio VAE"
 default = true
 templates = ["3 · MiniMax · Song"]
 
-# --- Cover Art: FLUX.2 Klein 4B (distilled, 4 steps) - optional block of the song templates ----
+# --- Cover Art: FLUX.2 Klein 4B (distilled, 4 steps) - on in the song templates since 2026-10-23 (switch: HQ Mastering & Cover Art) ----
 
 [[model]]
 id = "flux2-klein-4b"
@@ -159,8 +159,7 @@ bytes = 7751105712
 licence = "Apache-2.0"
 role = "FLUX.2 Klein 4B image model (distilled, cover art)"
 default = true
-templates = []
-optional_templates = ["1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"]
+templates = ["1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"]
 
 [[model]]
 id = "flux2-klein-4b-fp8"
@@ -182,8 +181,7 @@ bytes = 8044982048
 licence = "Apache-2.0"
 role = "Qwen3 4B text encoder of FLUX.2 Klein"
 default = true
-templates = []
-optional_templates = ["1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"]
+templates = ["1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"]
 
 [[model]]
 id = "flux2-text-encoder-fp4"
@@ -205,5 +203,4 @@ bytes = 336211292
 licence = "Apache-2.0"
 role = "FLUX.2 image VAE"
 default = true
-templates = []
-optional_templates = ["1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"]
+templates = ["1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"]

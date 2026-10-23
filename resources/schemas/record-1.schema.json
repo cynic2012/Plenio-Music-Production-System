@@ -92,7 +92,21 @@
               "written_heard": { "type": "number", "minimum": 0, "maximum": 1 },
               "extra_words": { "type": "integer", "minimum": 0 },
               "not_sung": { "type": "array", "items": { "type": "string" } },
-              "sections": { "type": "array", "items": { "type": "object" } }
+              "sections": { "type": "array", "items": { "type": "object" } },
+              "corrected": {
+                "description": "Since the writer model checked the words the lyrics do not have: the ones it found misheard, each with the word heard (empty: none). The lines and the text carry the corrections.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["line", "heard", "word"],
+                  "properties": {
+                    "line": { "type": "integer", "minimum": 1 },
+                    "heard": { "type": "string" },
+                    "word": { "type": "string" },
+                    "sure": { "type": "number", "minimum": 0, "maximum": 1 }
+                  }
+                }
+              }
             }
           }
         }

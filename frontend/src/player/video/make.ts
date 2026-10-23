@@ -44,7 +44,7 @@ export interface VideoOptions {
   lyrics: 'off' | 'subtitles' | 'karaoke' | 'words'
   /** The lyrics' font, colour, size and effect (at first the player's own). */
   lyricsStyle: LyricsStyle
-  /** The lyrics as written, or as the take sings them (at first the player's choice). */
+  /** The lyrics as written, or as the take sings them (at first what the song shows in the player). */
   lyricsVersion: LyricsVersion
   /** Where the lyrics stand (``random``: a new place every line), how each line comes in, and whether it comes
    * in one beat and pulses with the beat. */

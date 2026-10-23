@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import ModuleType
 from typing import Any
 
-from ..diagnostics import Finding, has_errors, info, summarize
+from ..diagnostics import Finding, has_errors, info, summarize, warning
 from ..hashing import sha256_text
 from ..lyrics import check_lyrics
 from ..reports import Report, Status
@@ -150,6 +150,31 @@ class SheetEvaluation:
         )
 
 
+def _repair_drafts(
+    resolution: Resolution, kinds: tuple[str, ...], rules: ModuleType | None, instrumental: bool
+) -> tuple[Resolution, list[Finding]]:
+    """A drafted style with errors its engine fixes by itself (``enforce_style``) goes on corrected, with a
+    warning: a run nobody stops for review must not end at an error nobody wrote (owner's request
+    2026-10-23). The user's own text (edited, manual) is never changed."""
+    doc = resolution.docs.get("style")
+    if (
+        rules is None
+        or "style" not in kinds
+        or doc is None
+        or doc.status is not DocStatus.AUTO
+        or not doc.text
+    ):
+        return resolution, []
+    if not has_errors(rules.check_style(doc.text, instrumental=instrumental)):
+        return resolution, []
+    fixed, notes = rules.enforce_style(doc.text, instrumental=instrumental)
+    if fixed == doc.text or not fixed.strip():
+        return resolution, []
+    docs = {**resolution.docs, "style": replace(doc, text=fixed)}
+    message = f"The drafted style was corrected: {'; '.join(notes)}."
+    return Resolution(docs), [warning(message, "style")]
+
+
 def _manual_lyrics_note(resolution: Resolution, kinds: tuple[str, ...]) -> list[Finding]:
     """Manual lyrics with drafted title/style: the writer could not read the user's lyrics (plan §7).
 
@@ -191,7 +216,7 @@ def evaluate_sheet(
     review = effective_review(review, brief_mode)
     kinds = tuple(k for k in DOCUMENT_KINDS if k in set(owned))
     resolution = resolve(state, upstream, kinds, series=brief_mode == "batch")
-    findings: list[Finding] = []
+    resolution, findings = _repair_drafts(resolution, kinds, rules, instrumental)
     context = dict(context or {})
     docs = {**context, **{k: resolution.text(k) for k in kinds}}
     validation = None

@@ -76,8 +76,8 @@
    "id": 3,
    "type": "b15b93f5-aa6c-53d1-a081-d23166dcc913",
    "pos": [
-    0,
-    260
+    0.0,
+    296
    ],
    "size": [
     340,
@@ -130,8 +130,8 @@
    "id": 4,
    "type": "PlenioHQStereoCleanup",
    "pos": [
-    420,
-    0
+    560,
+    0.0
    ],
    "size": [
     380,
@@ -193,8 +193,8 @@
    "id": 5,
    "type": "PlenioAudioModelLoader",
    "pos": [
-    420,
-    290
+    560,
+    298.0
    ],
    "size": [
     340,
@@ -255,8 +255,8 @@
    "id": 6,
    "type": "PlenioHQRegenerateHighs",
    "pos": [
-    420,
-    360
+    560,
+    376.0
    ],
    "size": [
     380,
@@ -355,8 +355,8 @@
    "id": 7,
    "type": "PlenioHQDeReverb",
    "pos": [
-    420,
-    700
+    560,
+    754.0
    ],
    "size": [
     380,
@@ -419,8 +419,8 @@
    "id": 8,
    "type": "PlenioEQ",
    "pos": [
-    880,
-    0
+    1040,
+    0.0
    ],
    "size": [
     980,
@@ -493,8 +493,8 @@
    "id": 9,
    "type": "PlenioLoudness",
    "pos": [
-    1905,
-    0
+    2065,
+    0.0
    ],
    "size": [
     425,
@@ -571,8 +571,8 @@
    "id": 10,
    "type": "PreviewAudio",
    "pos": [
-    2490,
-    0
+    2590,
+    0.0
    ],
    "size": [
     360,
@@ -607,8 +607,8 @@
    "id": 11,
    "type": "PlenioExportRelease",
    "pos": [
-    2490,
-    180
+    2590,
+    198.0
    ],
    "size": [
     380,
@@ -852,11 +852,11 @@
    "type": "PlenioHQMastering",
    "pos": [
     0,
-    -160
+    -250
    ],
    "size": [
-    340,
-    70
+    460,
+    160
    ],
    "flags": {},
    "order": 11,
@@ -865,7 +865,7 @@
     {
      "localized_name": "hq_mastering",
      "name": "hq_mastering",
-     "type": "BOOLEAN",
+     "type": "PLENIO_FINISH_SWITCH",
      "widget": {
       "name": "hq_mastering"
      },
@@ -882,6 +882,7 @@
      ]
     }
    ],
+   "title": "HQ Mastering & Cover Art",
    "properties": {
     "Node name for S&R": "PlenioHQMastering"
    },
@@ -1041,13 +1042,13 @@
    "id": 1,
    "title": "STEMS (optional)",
    "bounding": [
-    -30,
-    190,
-    320,
-    130
+    -30.0,
+    210,
+    320.0,
+    116
    ],
    "color": "#555",
-   "font_size": 24,
+   "font_size": 32,
    "flags": {}
   },
   {
@@ -1055,51 +1056,51 @@
    "title": "1 · SOURCE",
    "bounding": [
     -30,
-    -230,
-    400,
-    400
+    -360,
+    520,
+    530
    ],
    "color": "#3f789e",
-   "font_size": 24,
+   "font_size": 32,
    "flags": {}
   },
   {
    "id": 3,
    "title": "2 · AUDIO HQ (before the EQ)",
    "bounding": [
-    390,
-    -70,
+    530,
+    -110.0,
     440,
-    1020
+    1114.0
    ],
-   "color": "#3f789e",
-   "font_size": 24,
+   "color": "#2f7d6d",
+   "font_size": 32,
    "flags": {}
   },
   {
    "id": 4,
    "title": "3 · MASTER",
    "bounding": [
-    850,
-    -70,
+    1010,
+    -110.0,
     1510,
-    760
+    800.0
    ],
-   "color": "#3f789e",
-   "font_size": 24,
+   "color": "#557a35",
+   "font_size": 32,
    "flags": {}
   },
   {
    "id": 5,
    "title": "4 · FINISH",
    "bounding": [
-    2460,
-    -70,
+    2560,
+    -86.0,
     440,
-    910
+    944.0
    ],
-   "color": "#3f789e",
-   "font_size": 24,
+   "color": "#6e4f9e",
+   "font_size": 32,
    "flags": {}
   }
  ],
@@ -1423,7 +1424,7 @@
    "scale": 0.7,
    "offset": [
     640,
-    300
+    520
    ]
   },
   "linearData": {

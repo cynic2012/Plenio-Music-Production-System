@@ -99,6 +99,25 @@ const CSS = `
 .plenio-mix-buses input[type="range"] { width: 84px; accent-color: #4aa3ff; }
 .plenio-mix-advanced { display: flex; align-items: center; gap: 6px; }
 .plenio-mix-info { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plenio-switches { display: flex; flex-direction: column; gap: 8px; padding: 0 2px; }
+.plenio-switch { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 12px; border-radius: 12px;
+  border: 1px solid var(--border-color, #4a4a4a); background: var(--comfy-input-bg, #262626); color: var(--input-text, #ddd);
+  font: 12px/1.3 var(--font-family, sans-serif); text-align: left; cursor: pointer; transition: background .15s, border-color .15s, box-shadow .15s; }
+.plenio-switch:hover { border-color: #7a8ca8; }
+.plenio-switch[hidden] { display: none; }
+.plenio-switch .icon { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: #3a3a3a; color: #9a9a9a; }
+.plenio-switch .icon svg { width: 22px; height: 22px; fill: currentColor; }
+.plenio-switch .text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.plenio-switch .name { font-size: 14px; font-weight: 700; color: var(--input-text, #eee); }
+.plenio-switch .what { color: var(--descrip-text, #aaa); white-space: normal; }
+.plenio-switch .pill { flex: none; min-width: 44px; padding: 3px 0; border-radius: 999px; text-align: center; font-weight: 800; font-size: 11px;
+  letter-spacing: .06em; background: #444; color: #bbb; }
+.plenio-switch.on { border-color: #d9a43a; background: linear-gradient(135deg, rgba(217,164,58,.22), rgba(217,164,58,.06)); box-shadow: 0 0 0 1px rgba(217,164,58,.25) inset; }
+.plenio-switch.on .icon { background: linear-gradient(135deg, #f2c35b, #d58a2a); color: #2a1c05; }
+.plenio-switch.on .pill { background: #e0a83c; color: #261a05; }
+.plenio-switch[data-switch="cover"].on { border-color: #4fa3d9; background: linear-gradient(135deg, rgba(79,163,217,.22), rgba(79,163,217,.06)); box-shadow: 0 0 0 1px rgba(79,163,217,.25) inset; }
+.plenio-switch[data-switch="cover"].on .icon { background: linear-gradient(135deg, #7cc4f0, #3b84c4); color: #071a2a; }
+.plenio-switch[data-switch="cover"].on .pill { background: #5bb0e6; color: #071a2a; }
 .plenio-seed-hint { font: 11px/1.35 var(--font-family, sans-serif); color: var(--descrip-text, #aaa); padding: 2px 6px; white-space: normal; overflow-wrap: anywhere;
   overflow: hidden; }
 ` + TOOLTIP_CSS

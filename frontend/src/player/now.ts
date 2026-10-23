@@ -4,14 +4,25 @@ import { computed, ref, watch } from 'vue'
 import { mediaReady } from './api'
 import { coverHue, paletteFrom, songHue } from './colors'
 import { fontOf, litColor } from './lyricsStyle'
-import { linesFor } from './lyricsVersion'
+import { chooseFor, linesFor, type LyricsVersion, sungOf, versionFor } from './lyricsVersion'
 import { current, detail, duration, queueSource, settings, state, time } from './store'
 import { lineAt, sectionAt, sectionsInSong, songAnchors } from './timing'
 
 /** The lyrics as written, timed: their syllables carry the score's times, so the notation follows them. */
 export const writtenLines = computed(() => detail.value?.lines ?? [])
-/** The lines shown and followed: as written, or as sung (the listener's choice, lyricsVersion.ts). */
-export const lines = computed(() => linesFor(detail.value, settings.lyricsVersion))
+/** Which lyrics the song follows: as written, or as sung (the rule, or the listener's choice; lyricsVersion.ts). */
+export const lyricsVersion = computed(() => versionFor(detail.value, settings))
+/** The lines shown and followed. */
+export const lines = computed(() => linesFor(detail.value, lyricsVersion.value))
+
+/** The other lyrics for the song that plays (W, the player bar's switch); ``null`` when it has only one. */
+export function toggleLyrics(): LyricsVersion | null {
+  const song = detail.value
+  if (!song || !sungOf(song)) return null
+  const next = lyricsVersion.value === 'sung' ? 'written' : 'sung'
+  chooseFor(song, next, settings)
+  return next
+}
 export const anchors = computed(() => songAnchors(writtenLines.value, detail.value?.notation))
 export const sections = computed(() =>
   sectionsInSong(detail.value?.notation.sections, anchors.value, detail.value?.notation.warp, duration.value || Infinity)

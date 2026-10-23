@@ -39,3 +39,23 @@ class SheetState(io.ComfyTypeIO):
 
         def as_dict(self) -> dict[str, Any]:
             return super().as_dict()
+
+
+@io.comfytype(io_type="PLENIO_FINISH_SWITCH")
+class FinishSwitch(io.ComfyTypeIO):
+    """Socketless widget of *HQ Mastering & Cover Art*: the HQ mastering switch (a boolean), drawn by the
+    frontend extension as a card with an icon - beside it the Cover Art switch, which bypasses the template's
+    cover nodes in the page (owner's request 2026-10-23). The value arrives in ``execute`` unchanged."""
+
+    Type = bool
+
+    class Input(io.WidgetInput):
+        def __init__(
+            self, id: str, display_name: str | None = None, tooltip: str | None = None, default: bool = False
+        ):
+            super().__init__(
+                id, display_name, False, tooltip, None, default, True, None, None, None, None, None
+            )
+
+        def as_dict(self) -> dict[str, Any]:
+            return super().as_dict()

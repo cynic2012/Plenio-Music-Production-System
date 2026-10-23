@@ -1155,6 +1155,122 @@ def arrange() -> Blueprint:
     )
 
 
+SUNG_CHECK_MAX_TOKENS = 1024  # a few corrections in JSON
+SUNG_CHECK_CONTEXT = 8192  # the lyrics and the lines as heard (1 000-3 000 tokens) and the answer
+SUNG_CHECK_TEMPERATURE = 0.2
+"""A judgement, not a song: little sampling."""
+
+
+def check_sung() -> Blueprint:
+    """Compose Sung Check -> writer (the same list as Write Song) -> Apply Sung Check, after Export Release
+    (owner's request 2026-10-23). Apply's answer is lazy: a record without what its take sings, or without a
+    word its lyrics lack, asks no writer - no model loads."""
+    g = Graph(first_id=1401)
+    compose = g.add("PlenioComposeSungCheck", (0, 0), size=(320, 110))
+    choice = g.add(
+        "PlenioWriterChoice",
+        (0, 170),
+        size=(WRITER_WIDTH, 120),
+        title="Writer Choice",
+        widgets={"model": WRITER},
+        properties=model(WRITER),
+    )
+    loader = g.add(
+        "CLIPLoader",
+        (460, 0),
+        size=(300, 110),
+        title="Writer model (ComfyUI)",
+        widgets={"clip_name": WRITER, "type": "stable_diffusion", "device": "default"},
+        properties=model(WRITER),
+    )
+    generate = g.add(
+        "TextGenerate",
+        (460, 170),
+        size=(340, 420),
+        title="Generate Text (ComfyUI)",
+        widgets={
+            "prompt": "",
+            "max_length": SUNG_CHECK_MAX_TOKENS,
+            "sampling_mode": "on",
+            "sampling_mode.temperature": SUNG_CHECK_TEMPERATURE,
+            "sampling_mode.top_k": 64,
+            "sampling_mode.top_p": 0.95,
+            "sampling_mode.min_p": 0.05,
+            "sampling_mode.repetition_penalty": 1.05,
+            "sampling_mode.seed": 0,
+            "sampling_mode.presence_penalty": 0.0,
+            "thinking": False,
+            "use_default_template": True,
+            "mtp": "auto",
+        },
+    )
+    local_llm = g.add(
+        "PlenioLocalLLM",
+        (460, 660),
+        size=(340, 360),
+        widgets={
+            "prompt": "",
+            "model": CHOOSE,
+            "seed": 0,
+            "seed.control": "fixed",
+            "max_tokens": SUNG_CHECK_MAX_TOKENS,
+            "temperature": SUNG_CHECK_TEMPERATURE,
+            "thinking": False,
+            "context": SUNG_CHECK_CONTEXT,
+            "keep_loaded": False,
+            "system_prompt": "",
+            "reuse_answers": True,
+        },
+    )
+    switch = g.add("ComfySwitchNode", (860, 170), size=(260, 90), title="ComfyUI or Local LLM")
+    apply = g.add("PlenioApplySungCheck", (1180, 0), size=(360, 220))
+    g.link(compose, "prompt", generate, "prompt")
+    g.link(compose, "prompt", local_llm, "prompt")
+    g.link(compose, "schema", local_llm, "schema")
+    g.link(choice, "text_encoder", loader, "clip_name")
+    g.link(loader, "CLIP", generate, "clip")
+    g.link(choice, "local_model", local_llm, "model")
+    g.link(choice, "use_local", switch, "switch")
+    g.link(generate, "generated_text", switch, "on_false")
+    g.link(local_llm, "text", switch, "on_true")
+    g.link(switch, "output", apply, "answer")
+    return Blueprint(
+        "Plenio · Check Sung Words",
+        "Plenio/Lyrics",
+        "Misheard words in the lyrics as sung: the writer model reads the lyrics and every line the take sings, "
+        "with the words the lyrics do not have there marked, and corrects those it is sure were misheard - "
+        "with a word of as many syllables that fits the line. The release record keeps each correction with "
+        "the word heard; (sung).srt is written again. Nothing runs for a song without sung lyrics or without "
+        "such words.",
+        g,
+        [
+            BlueprintInput(
+                "record",
+                "STRING",
+                [(compose, "record"), (apply, "record")],
+                tooltip="The release record Export Release wrote (its 'record' output).",
+            ),
+            BlueprintInput(
+                "model",
+                "COMBO",
+                [(choice, "model")],
+                widget=True,
+                default=WRITER,
+                label="writer model",
+                tooltip=WRITER_MODEL,
+            ),
+        ],
+        [
+            BlueprintOutput(
+                "report",
+                "PLENIO_REPORT",
+                (apply, "report"),
+                tooltip="What was corrected, and why not the rest.",
+            ),
+        ],
+    )
+
+
 def transcribe_score() -> Blueprint:
     g = Graph(first_id=601)
     loader = g.add(
@@ -1634,6 +1750,9 @@ def cover_art() -> Blueprint:
 GROUP = "#3f789e"
 MODEL_GROUP = "#444"
 OPTIONAL_GROUP = "#555"
+COVER_GROUP = "#8a4f7d"
+COVER_SWITCH = {"plenio_switch": "cover"}
+"""The nodes the Cover Art switch bypasses (``frontend/src/extension/finishSwitch.ts``)."""
 ABOUT_SIZE = (480, 760)
 SUMMARY_ROOM = 100
 """Height every node with a run summary keeps free for it (about five lines). Without the room the
@@ -1643,9 +1762,10 @@ summary its minimum, and ``tests/workflows/test_graphs.py`` checks the room."""
 
 
 HQ_MASTERING_TOOLTIP = hq.HQ_MASTERING_HINT
-HQ_SWITCH_SIZE = (340, 70)
-HQ_SWITCH_Y = -160
-"""Above the first node of group 1: the first thing a template shows (owner's request 2026-10-22)."""
+HQ_SWITCH_SIZE = (460, 160)
+HQ_SWITCH_Y = -(HQ_SWITCH_SIZE[1] + 90)
+"""Above the first node of group 1: the first thing a template shows (owner's request 2026-10-22). Wide enough
+for both cards of *HQ Mastering & Cover Art* (owner's request 2026-10-23)."""
 
 
 def hq_switch(g: Graph, target: Node, name: str = "hq_mastering") -> Node:
@@ -1653,7 +1773,11 @@ def hq_switch(g: Graph, target: Node, name: str = "hq_mastering") -> Node:
     HQ 2 itself) only - so switching it runs the mastering again, not the song. Made last, so that the
     template's other node ids stay as they were (continuing an older song maps its values by id)."""
     switch = g.add(
-        "PlenioHQMastering", (0, HQ_SWITCH_Y), size=HQ_SWITCH_SIZE, widgets={"hq_mastering": False}
+        "PlenioHQMastering",
+        (0, HQ_SWITCH_Y),
+        size=HQ_SWITCH_SIZE,
+        title="HQ Mastering & Cover Art",
+        widgets={"hq_mastering": False},
     )
     g.link(switch, "hq_mastering", target, name)
     return switch
@@ -1715,6 +1839,8 @@ def song_sheet(g: Graph, pos: tuple[float, float], title: str) -> Node:
     )
 
 
+WRITER_WIDTH = 400
+"""The writer model's node and the blocks that show its list: the default model's file name fits (360 cut it)."""
 SEED_SIZE = (340, 190)
 """A Plenio · Seed: the number, the switch, the 🎲 button and the line that says what the switch means."""
 
@@ -1741,10 +1867,11 @@ def seed_node(
 SEED_LOOKS = {"fresh": ("#7a5418", "#3b2a10"), "keep": ("#1f4e6e", "#14304a")}
 
 
-def draft_seed(g: Graph, write: Node, pos: tuple[float, float]) -> Node:
+def draft_seed(g: Graph, write: Node, pos: tuple[float, float], *, keep: bool) -> Node:
     """The writer's seed as its own node: 🔒 keeps the draft (and an approval) across runs, 🎲 writes a new
-    draft every run. Native Generate Text has no switch on its seed."""
-    seed = seed_node(g, pos, "Draft seed", "draft seed", keep=True, part="draft (title, style, lyrics)")
+    draft every run. Native Generate Text has no switch on its seed. ``keep``: the template stops for review
+    (the seeds follow the brief's mode, owner's request 2026-10-23 - runs that go through draw every seed anew)."""
+    seed = seed_node(g, pos, "Draft seed", "draft seed", keep=keep, part="draft (title, style, lyrics)")
     g.link(seed, "seed", write, "sampling_mode.seed")
     return seed
 
@@ -1755,7 +1882,7 @@ def writer_model(g: Graph, pos: tuple[float, float]) -> Node:
     return g.add(
         "PlenioWriterChoice",
         pos,
-        size=(360, 120 + SUMMARY_ROOM),
+        size=(WRITER_WIDTH, 120 + SUMMARY_ROOM),
         title="Writer model",
         widgets={"model": WRITER},
         # the frontend's missing-model dialog reads the download from the node that shows the file name
@@ -1764,10 +1891,10 @@ def writer_model(g: Graph, pos: tuple[float, float]) -> Node:
     )
 
 
-def arrangement_seed(g: Graph, arrange_node: Node, pos: tuple[float, float]) -> Node:
+def arrangement_seed(g: Graph, arrange_node: Node, pos: tuple[float, float], *, keep: bool) -> Node:
     """The arrangement seed as its own node (App mode): another arrangement of the same song - only Arrange
     and what follows it run again."""
-    seed = seed_node(g, pos, "Arrangement seed", "arrangement seed", keep=True, part="arrangement")
+    seed = seed_node(g, pos, "Arrangement seed", "arrangement seed", keep=keep, part="arrangement")
     g.link(seed, "seed", arrange_node, "seed")
     return seed
 
@@ -1777,18 +1904,18 @@ def take_seed(g: Graph, pos: tuple[float, float]) -> Node:
     return seed_node(g, pos, "Take seed", "take seed", keep=False, part="take", seed=1)
 
 
-def plan_seed(g: Graph, plan: Node, pos: tuple[float, float]) -> Node:
+def plan_seed(g: Graph, plan: Node, pos: tuple[float, float], *, keep: bool) -> Node:
     """YuE2's plan seed as a Plenio · Seed (owner's request 2026-10-17: the seed node wherever it helps): 🔒
     the same melody and form, 🎲 a new plan every run. The brief's song seed is still added inside."""
-    seed = seed_node(g, pos, "Plan seed", "plan seed", keep=True, part="plan (melody and form)")
+    seed = seed_node(g, pos, "Plan seed", "plan seed", keep=keep, part="plan (melody and form)")
     g.link(seed, "seed", plan, "seed")
     return seed
 
 
-def cover_seed(g: Graph, cover: Node, pos: tuple[float, float]) -> Node:
+def cover_seed(g: Graph, cover: Node, pos: tuple[float, float], *, keep: bool) -> Node:
     """The cover art's seed as a Plenio · Seed (owner's request 2026-10-17): 🔒 the same picture for the same
-    prompt, 🎲 another picture every run. 0 and 🔒, as the block's own field had it."""
-    seed = seed_node(g, pos, "Cover seed", "cover seed", keep=True, part="cover art")
+    prompt, 🎲 another picture every run - a new song every run gets a new picture."""
+    seed = seed_node(g, pos, "Cover seed", "cover seed", keep=keep, part="cover art")
     g.link(seed, "seed", cover, "noise_seed")
     return seed
 
@@ -1812,6 +1939,8 @@ def finish(
     export_size: tuple[float, float] = (380, 494 + SUMMARY_ROOM),
     sheet_music: str = "off",
     brief: Node | None = None,
+    keep_seeds: bool = False,
+    writer: Node | None = None,
 ) -> tuple[Node, Node, Node]:
     """Master -> Preview + Export (the unmastered take as the original), and the optional Cover Art.
 
@@ -1845,13 +1974,14 @@ def finish(
         g.link(brief, "brief", export, "brief")
         g.link(brief, "brief", master, "brief")  # the HQ presets on auto follow the genre
     tags_note(g, (x + 400 + export_size[0] + 40, 0))
-    cover = g.add_subgraph(
-        blueprints["cover"], (x, cover_y), size=(340, 170), mode=4, title="Cover Art (optional)"
-    )
+    # on by default (owner's request 2026-10-23); the Cover Art switch at the top bypasses these three
+    cover = g.add_subgraph(blueprints["cover"], (x, cover_y), size=(340, 170), title="Cover Art")
     cover_preview = g.add(
-        "PreviewImage", (x + 400, cover_y), size=(300, 300), mode=4, title="Cover preview (optional)"
+        "PreviewImage", (x + 400, cover_y), size=(300, 300), title="Cover preview", properties=COVER_SWITCH
     )
-    cover_seed_node = cover_seed(g, cover, (x, cover_y + 230))
+    cover_seed_node = cover_seed(g, cover, (x, cover_y + 230), keep=keep_seeds)
+    cover.properties.update(COVER_SWITCH)
+    cover_seed_node.properties.update(COVER_SWITCH)
     g.link(audio[0], audio[1], master, "audio")
     g.link(master, "audio", preview, "audio")
     g.link(master, "audio", export, "audio")
@@ -1862,8 +1992,15 @@ def finish(
     g.link(cover, "IMAGE", cover_preview, "images")
     for index, (node, output) in enumerate(all_reports):
         g.link(node, output, export, f"reports.report_{index}")
-    g.group(group, [master, preview, export])
-    g.group("COVER ART (optional)", [cover, cover_seed_node, cover_preview], color=OPTIONAL_GROUP)
+    finished = [master, preview, export]
+    if writer is not None:
+        # misheard words in the lyrics as sung, by the template's writer model (owner's request 2026-10-23)
+        check = g.add_subgraph(blueprints["sung_check"], (x, 420), size=(340, 140), title="Check Sung Words")
+        g.link(export, "record", check, "record")
+        g.link(writer, "model", check, "model")
+        finished.append(check)
+    g.group(group, finished)
+    g.group("COVER ART", [cover, cover_seed_node, cover_preview], color=COVER_GROUP)
     return master, preview, export
 
 
@@ -1933,9 +2070,14 @@ FINISH_TEXT = (
     "beside Export lists them all."
 )
 COVER_TEXT = (
-    "**Cover art (optional, bypassed):** *Cover Art* paints a cover from the sheet's artwork prompt with "
-    "FLUX.2 Klein 4B (about 16 GB of extra model files, Apache-2.0). Select it and the cover preview and "
-    "press **Ctrl+B**; Export then embeds the cover in the FLAC and MP3 files and saves it as `.jpg`."
+    "**Cover art (on):** *Cover Art* paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about "
+    "16 GB of model files, Apache-2.0); Export embeds it in the FLAC and MP3 files and saves it as `.jpg`. The "
+    "**Cover Art** card in *HQ Mastering & Cover Art* at the top switches it off - its three nodes are then "
+    "bypassed and no image model loads.\n\n"
+    "**Check Sung Words** (after Export): the writer model reads the lyrics and what the take sings, as heard, "
+    "and corrects the words the lyrics ASR misheard - only those it is sure of, each with a word of as many "
+    "syllables. The release record keeps every correction with the word heard; the Plenio Player shows the "
+    "corrected lines under *As sung*. Nothing runs for a song without sung lyrics or without such words."
 )
 STEMS_TEXT = (
     "**Stems (optional, bypassed):** *Separate Stems* splits the take into vocals, drums, bass and other; "
@@ -1945,9 +2087,10 @@ STEMS_TEXT = (
     "node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it."
 )
 HQ_TEXT = (
-    "**HQ mastering** (the switch at the top, **off** by default): on, the mastering runs at its highest quality - "
-    "it can clearly reduce AI shimmer and artifacts, but the song takes **about twice as long** (UniverSR, "
-    "229 MB in `models/audio_sr`, needed only then).\n\n"
+    "**HQ Mastering & Cover Art** (the two cards at the top - click one to switch it): **HQ Mastering** (**off** "
+    "by default) runs the mastering at its highest quality - it can clearly reduce AI shimmer and artifacts, but "
+    "the song takes **about twice as long** (UniverSR, 229 MB in `models/audio_sr`, needed only then); **Cover "
+    "Art** (**on**) paints the song's cover.\n\n"
     "**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer "
     "in the render's highs (always); *HQ 2 · Regenerate Highs*, with HQ mastering on, lets the UniverSR model "
     "generate new highs above 8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s "
@@ -1968,7 +2111,9 @@ SEEDS_TEXT = (
     "**Seeds:** each seed node has one switch - **🔒 same seed**: the next run keeps that part (the same draft, "
     "the same take), so you can change other things; **🎲 new seed**: every run draws a new number - something "
     "new each time. The number shown is always the one the last run used: liked a take? Switch its seed to 🔒. "
-    "Blue nodes keep, amber nodes renew."
+    "Blue nodes keep, amber nodes renew. The seeds follow the brief's **mode**: *new song (cover) every run* "
+    "starts with every seed on 🎲, *one song (cover), stop to review* with the song's seeds on 🔒 and the take "
+    "seed on 🎲 - switching the mode switches them (a toast says so)."
 )
 APP_TEXT = (
     "**App mode:** switch *Graph / App* at the top left for a simple form: the mode, the brief with its creative "
@@ -2071,21 +2216,21 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         },
     )
     model_node = g.add_subgraph(bp["yue2_model"], (0, 940), size=(380, 140), collapsed=True)
-    write = g.add_subgraph(bp["write"], (460, 0), size=(360, 220))
-    draft = draft_seed(g, write, (460, 280))
+    write = g.add_subgraph(bp["write"], (460, 0), size=(WRITER_WIDTH, 220))
+    draft = draft_seed(g, write, (460, 280), keep=False)
     writer = writer_model(g, (460, 520))
     text_sheet = song_sheet(g, (900, 0), "Song Sheet · Text")
     # the plan block's inputs take a row more since the creativity (owner's request 2026-10-19)
     plan = g.add_subgraph(bp["yue2_plan"], (1400, 0), size=(340, 250))
-    plan_seed_node = plan_seed(g, plan, (1400, 310))
+    plan_seed_node = plan_seed(g, plan, (1400, 310), keep=False)
     tools = g.add(
         "PlenioScoreTools",
         (1400, 560),
         size=(340, 120 + SUMMARY_ROOM),
         widgets={"operation": "prepare from brief"},
     )
-    arrange_node = g.add_subgraph(bp["arrange"], (1400, 830), size=(340, 260), title="Arrange")
-    arrangement = arrangement_seed(g, arrange_node, (1400, 1140))
+    arrange_node = g.add_subgraph(bp["arrange"], (1400, 830), size=(WRITER_WIDTH, 260), title="Arrange")
+    arrangement = arrangement_seed(g, arrange_node, (1400, 1140), keep=False)
     score_sheet = song_sheet(g, (1820, 0), "Song Sheet · Score")
     seed = take_seed(g, (2320, 0))
     render = g.add_subgraph(bp["yue2_render"], (2320, 230), size=(320, 310))
@@ -2147,6 +2292,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         cover_y=700,
         sheet_music="PDF (A4)",
         brief=brief,
+        writer=writer,
     )
     switch = hq_switch(g, master_block)
     g.group("1 · SONG", [switch, brief])
@@ -2308,8 +2454,8 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         widgets={"operation": "prepare from brief"},
     )
     score_sheet = song_sheet(g, (880, 0), "Song Sheet · Score")
-    arrange_node = g.add_subgraph(bp["arrange"], (460, 650), size=(340, 260), title="Arrange")
-    arrangement = arrangement_seed(g, arrange_node, (460, 960))
+    arrange_node = g.add_subgraph(bp["arrange"], (460, 650), size=(WRITER_WIDTH, 260), title="Arrange")
+    arrangement = arrangement_seed(g, arrange_node, (460, 960), keep=False)
     # Original lyrics: the Cover Brief owns the source's language; new lyrics: this widget does (AUD-02).
     asr = g.add(
         "PlenioTranscribeLyrics",
@@ -2318,8 +2464,8 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         title="Transcribe Lyrics",
         labels={"language": "source language (original lyrics: Cover Brief)"},
     )
-    write = g.add_subgraph(bp["write"], (1380, 360), size=(360, 260))
-    draft = draft_seed(g, write, (1380, 680))
+    write = g.add_subgraph(bp["write"], (1380, 360), size=(WRITER_WIDTH, 260))
+    draft = draft_seed(g, write, (1380, 680), keep=False)
     writer = writer_model(g, (1380, 920))
     source_switch = g.add("ComfySwitchNode", (1800, 0), size=(260, 90), title="Original or new lyrics")
     tags_switch = g.add("ComfySwitchNode", (1800, 165), size=(260, 90), title="Instrumental: section tags")
@@ -2422,13 +2568,14 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         sheet_music="PDF (A4)",
         export_size=(380, 584 + SUMMARY_ROOM),
         brief=brief,
+        writer=writer,
     )
     # Sung Pitch (0.4.4): the source's vocals as a pitch curve for both sheets' editors, once per source;
     # the text sheet plays the source too, so the words can be checked against the singing
     sung_pitch = g.add(
         "PlenioSungPitch",
         (460, 480),
-        size=(340, 106),
+        size=(WRITER_WIDTH, 106),
         title="Sung Pitch (for the editor)",
         widgets={"separation": SEPARATION_MODEL},
         properties=model(SEPARATION_MODEL),
@@ -2518,8 +2665,8 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         },
     )
     model_node = g.add_subgraph(bp["minimax_model"], (0, 940), size=(380, 160), collapsed=True)
-    write = g.add_subgraph(bp["write"], (460, 0), size=(360, 220))
-    draft = draft_seed(g, write, (460, 280))
+    write = g.add_subgraph(bp["write"], (460, 0), size=(WRITER_WIDTH, 220))
+    draft = draft_seed(g, write, (460, 280), keep=False)
     writer = writer_model(g, (460, 520))
     sheet = song_sheet(g, (900, 0), "Song Sheet")
     seed = take_seed(g, (1400, 0))
@@ -2556,6 +2703,7 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         group="5 · FINISH",
         cover_y=700,
         brief=brief,
+        writer=writer,
     )
     switch = hq_switch(g, master_block)
     g.group("1 · SONG", [switch, brief])
@@ -2629,8 +2777,8 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         },
     )
     model_node = g.add_subgraph(bp["yue2_model"], (0, 940), size=(380, 140), collapsed=True)
-    write = g.add_subgraph(bp["write"], (460, 0), size=(360, 220))
-    draft = draft_seed(g, write, (460, 280))
+    write = g.add_subgraph(bp["write"], (460, 0), size=(WRITER_WIDTH, 220))
+    draft = draft_seed(g, write, (460, 280), keep=True)
     writer = writer_model(g, (460, 520))
     text_sheet = song_sheet(g, (900, 0), "Song Sheet · Text")
     tools = g.add(
@@ -2696,7 +2844,9 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         cover_y=755,
         sheet_music="PDF (A4)",
         export_size=(385, 554 + SUMMARY_ROOM),
+        keep_seeds=True,
         brief=brief,
+        writer=writer,
     )
     switch = hq_switch(g, master_block)
     g.group("1 · SONG", [switch, brief])
@@ -2900,6 +3050,7 @@ def blueprints() -> dict[str, Blueprint]:
         "yue2_model": yue2_model(),
         "write": write_song(),
         "arrange": arrange(),
+        "sung_check": check_sung(),
         "yue2_plan": yue2_plan(),
         "yue2_render": yue2_render(),
         "transcribe": transcribe_score(),
@@ -2922,7 +3073,7 @@ def templates(bp: dict[str, Blueprint]) -> list[tuple[str, Graph, list[Blueprint
     check, check_app = system_check()
     # Refine is in no template since Audio HQ (2026-10-21): its blueprint ships in subgraphs/ for the node
     # library only
-    finish_bps = [bp["master"], bp["cover"], bp["stems"]]
+    finish_bps = [bp["master"], bp["cover"], bp["stems"], bp["sung_check"]]
     return [
         ("0 · System Check", check, [], check_app),
         (

@@ -12,7 +12,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { api, type SongDetail, type SongSummary } from '../api'
 import { frameWatchers, jobs, progressOf, progressText, queueVideo, stopJob } from '../jobs'
 import { COLORS, EFFECTS, FONTS, lyricsWithDefaults } from '../lyricsStyle'
-import { LYRICS_VERSIONS, sungOf } from '../lyricsVersion'
+import { LYRICS_VERSIONS, sungOf, versionFor } from '../lyricsVersion'
 import { go, settings } from '../store'
 import { formatTime, sectionName } from '../timing'
 import { CLASSIC, PRESETS, type Scheme } from '../visuals/presets'
@@ -25,7 +25,7 @@ import Icon from './Icon.vue'
 const props = defineProps<{ song: SongSummary }>()
 const emit = defineEmits<{ close: [] }>()
 
-const options = reactive<VideoOptions>(videoWithDefaults(settings.video, settings.lyrics, settings.lyricsVersion))
+const options = reactive<VideoOptions>(videoWithDefaults(settings.video, settings.lyrics))
 const detail = ref<SongDetail | null>(null)
 const shot = ref<HTMLDivElement | null>(null)
 const error = ref('')
@@ -77,7 +77,8 @@ const estimate = computed(() => {
 })
 
 function remember(): void {
-  const { start: _s, length: _l, ...kept } = options
+  // which lyrics belongs to the song (its page, the player bar), not to every video
+  const { start: _s, length: _l, lyricsVersion: _v, ...kept } = options
   settings.video = { ...kept }
 }
 watch(options, remember, { deep: true })
@@ -138,6 +139,7 @@ const sizeText = (bytes: number): string => (bytes > 2 ** 30 ? `${(bytes / 2 ** 
 onMounted(async () => {
   try {
     detail.value = await api.song(props.song.id)
+    options.lyricsVersion = versionFor(detail.value, settings)
     if (!detail.value.lines.length && options.lyrics !== 'off') options.lyrics = 'off'
     if (!detail.value.notation.abc) options.notation = false
     if (options.take === 'original' && !props.song.has.original) options.take = 'master'

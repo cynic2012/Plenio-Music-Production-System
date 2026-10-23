@@ -585,9 +585,29 @@ It needs a ComfyUI with Plenio 1.0.0 or newer running on this computer. Which on
 the player; else the address under **Settings › Open in ComfyUI**; else the player looks for one at
 `127.0.0.1:8188` and `127.0.0.1:8000` (ComfyUI Desktop). The Settings page says which ComfyUI it found.
 
+## Who is listening: the login
+
+The player opens with **Who is listening?** - once per device:
+
+- **A user** - their picture, then their password. A user keeps **their own** playlists, favourites, plays,
+  tags and settings, the same on every device they log in on (a phone in the network, a laptop, this computer).
+- **The admin** (*this computer* - only on the computer the player runs on) has the player's own playlists and
+  settings, as they were before the login, and sets up the users: *Settings > Accounts* - *Set up a user*
+  (name and password), a picture for each (click the round picture), a new password, rename, remove (their
+  playlists and plays go with them).
+- **Continue as a guest** - as before, without an account: what you keep stays **in this browser** only;
+  another browser or device starts afresh.
+
+A device stays logged in (a cookie) and remembers a guest's choice, so the page asks once. The name in the
+sidebar (with its picture) logs out - and somebody else can log in. In *Settings > Accounts* a user changes
+their own picture and password. Passwords are kept only as hashes (PBKDF2-SHA256) in `users.json` beside the
+player's state; each user's things are in `users/<id>/` there. Eight wrong passwords from one device in ten
+minutes make it wait.
+
 ## Your settings are kept
 
-Everything you set in the player is kept - not in the browser, but by the player itself, on this computer:
+Everything you set in the player is kept - not in the browser, but by the player itself, on this computer
+(for a guest: in the browser):
 
 - your playlists, their order, colours and visuals, your favourites and play counts
 - every setting: the visuals (mode, the ticked ones, a song's own visual), the colours, volume, crossfade and
@@ -606,6 +626,10 @@ another version - reload it then). It shows what is kept, the file it is kept in
 - **Download a backup** - a `.json` file with everything above (the songs stay in their folders)
 - **Restore a backup…** - read such a file back, on this or another computer
 - **Start afresh…** - forget playlists, favourites, play counts and settings (asks once more)
+
+**Sound:** *Play the MP3 where a song has one* - a song exported as FLAC (or WAV) **and** MP3 (Export Release:
+*mp3*) plays its MP3: about a sixth of the data, for a phone or another computer in the network. Settings says
+how many songs have one; A/B still plays the unmastered take as it was saved.
 
 It also shows the player in your network, where *Open in ComfyUI* goes (and *Open ComfyUI*), your tags, the
 folders the player reads, the player's version, and **Stop the player**.
@@ -645,15 +669,24 @@ elsewhere.
 | S | shuffle |
 | R | repeat: the whole playlist, this song, off |
 | B | A/B: master or unmastered take |
+| W | lyrics as written or as sung (kept for the song) |
 | M | mute |
 | Q | the queue |
 | / | search |
 | Esc | close |
 | ? | all keys |
 
-**Songs without measured times** (exported before 1.0.0): the player finds where the score sits in the
-recording by comparing their harmonies, once per song (a moment on its first notation), and the cursor
-follows the music - *The cursor follows the music as the player heard it*. A YuE2 render is shifted against
+**The cursor follows the music** - through the instrumental parts too. The player finds the score's path
+through the recording, frame by frame, by comparing the notes' pitch classes with the music (once per song, a
+moment on its first notation; kept in the player's cache): where the take holds a chord longer than planned,
+where it leaves part of its plan out. Until 1.1 the cursor followed only the sung syllables and ran straight
+from one to the next - through an instrumental part often far too fast or too slow (in 85 % of the time between
+syllables more than 4 s apart it ran over 30 % off the score's tempo), so it raced through and then waited at
+the lyrics. Measured on 20 songs against their vocal stems: the score's vocal notes land within 0.15 s of a sung
+onset 75 % of the time (the syllables gave 69 %), and 99 % of their time lies on the voice (94 %).
+
+**Songs without measured times** (exported before 1.0.0): the cursor follows the music the same way -
+*The cursor follows the music as the player heard it*. A YuE2 render is shifted against
 its score, often by about a bar, and the shift wanders over the song; on the songs measured at export the
 estimate lands within a few tenths of a second. If a song's cursor still runs ahead or behind, move it with
 the buttons above the sheet (a quarter second or a bar at a time); the player keeps it for that song.
@@ -672,12 +705,22 @@ listens to every take (below), so it knows both: the **lyrics as written**, at t
   their section tags and their spelling where the same word was heard; the words the lyrics do not have make
   lines of their own between them. It is what the ASR heard, so a misheard word shows as it was heard.
 
-The switch is on the *Lyrics* tab, in 🎤 in Now playing and in *Settings > Lyrics*; the choice holds for every
-song, and a song exported before shows its written lyrics. *Save as a video* starts with the same choice
-(*Which*, next to the lyrics). The **notation** always follows the written lyrics: only their syllables have
-a place in the score. The song's page says how far the take follows its lyrics - *This take sings 86 % of its
-lyrics' words as written, 12 words they do not have, 2 lines not heard* - and names the sections it did not
-sing as written.
+By default (**Auto**) a song whose take departs far from its lyrics - less than 75 % of their words sung as
+written, or more than a quarter of words of its own - shows its lyrics **as sung**, every other song **as
+written**. Switch a song either way like master and original: the **Lyrics · as written / as sung** chip in
+the player bar (key **W**), the switch on the song's *Lyrics* tab or in 🎤 in Now playing - the choice is kept
+for that song. *Settings > Lyrics* sets the rule for every song (*Auto*, *As written*, *As sung*) and forgets
+the songs' own choices with *Follow the rule again*. A song exported before Plenio kept what was sung shows its
+written lyrics. *Save as a video* starts with what the song shows (*Which*, next to the lyrics). The song's
+page says how far the take follows its lyrics - *This take sings 86 % of its lyrics' words as written, 12 words
+they do not have, 2 lines not heard* - names the sections it did not sing as written, and lists the words the
+writer model corrected.
+
+**Misheard words** (*Check Sung Words*, after Export Release in the templates): the lyrics ASR writes what it
+heard, and a word it misheard would stand in the lyrics as sung as it was heard. The writer model reads the
+lyrics and every line as heard, with the words the lyrics do not have marked, and corrects those it is sure were
+misheard - only with a word of as many syllables that fits the line. The record keeps each correction with the
+word heard; ad-libs and words the music model chose stay as they were sung.
 
 ## Where the times come from
 

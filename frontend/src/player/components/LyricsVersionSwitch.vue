@@ -1,29 +1,34 @@
 <script setup lang="ts">
 /**
- * Which lyrics to follow: as written, or as the take sings them (lyricsVersion.ts). *As sung* needs a song
- * exported with what its take sings; the choice is kept with the other settings and holds for every song.
+ * Which lyrics to follow (lyricsVersion.ts). For a song: as written or as sung - kept for that song, like the
+ * player bar's switch (W); *As sung* needs a song exported with what its take sings. In Settings: the rule for
+ * every song - auto (as sung where the take departs far from its lyrics), as written, as sung.
  */
 import { computed } from 'vue'
 
 import type { SongDetail } from '../api'
-import { LYRICS_VERSIONS, sectionsNotSung, sungNote, sungOf } from '../lyricsVersion'
+import { chooseFor, departs, LYRICS_CHOICES, LYRICS_VERSIONS, sectionsNotSung, sungNote, sungOf, versionFor } from '../lyricsVersion'
 import { settings } from '../store'
 
-/** ``detail``: the song the switch is for (*As sung* only where it has it); none - in Settings, or nothing
- * plays - for every song. */
+/** ``detail``: the song the switch is for; none (Settings, or nothing plays): the rule for every song. */
 const props = defineProps<{ detail?: SongDetail | null; details?: boolean }>()
 
-const forAll = computed(() => !props.detail)
 const sung = computed(() => sungOf(props.detail))
 const note = computed(() => (sung.value ? sungNote(sung.value) : ''))
 const notSung = computed(() => (sung.value ? sectionsNotSung(sung.value) : []))
-/** The version shown: a song without what its take sings shows its written lyrics, whatever was chosen. */
-const shown = computed(() => (settings.lyricsVersion === 'sung' && (sung.value || forAll.value) ? 'sung' : 'written'))
+const shown = computed(() => versionFor(props.detail, settings))
+const own = computed(() => !!props.detail && !!settings.lyricsFor[props.detail.id])
+/** Why the song shows what it shows, when the listener did not choose. */
+const why = computed(() => {
+  if (!sung.value || own.value || settings.lyricsChoice !== 'auto') return ''
+  return departs(sung.value) ? 'Auto: as sung - this take departs far from its lyrics.' : 'Auto: as written - this take keeps close to its lyrics.'
+})
+const chosen = computed(() => Object.keys(settings.lyricsFor).length)
 </script>
 
 <template>
   <div class="version">
-    <div class="switch" role="radiogroup" aria-label="Which lyrics">
+    <div v-if="detail" class="switch" role="radiogroup" aria-label="Which lyrics">
       <button
         v-for="v in LYRICS_VERSIONS"
         :key="v.id"
@@ -31,15 +36,33 @@ const shown = computed(() => (settings.lyricsVersion === 'sung' && (sung.value |
         role="radio"
         :aria-checked="shown === v.id"
         :class="{ on: shown === v.id }"
-        :disabled="v.id === 'sung' && !sung && !forAll"
-        :title="v.id === 'sung' && !sung && !forAll ? 'This song was exported before Plenio kept what its take sings' : v.title"
-        @click="settings.lyricsVersion = v.id"
+        :disabled="v.id === 'sung' && !sung"
+        :title="v.id === 'sung' && !sung ? 'This song was exported before Plenio kept what its take sings' : `${v.title} - kept for this song (W)`"
+        @click="chooseFor(detail, v.id, settings)"
       >
         {{ v.label }}
       </button>
     </div>
-    <p v-if="details && note" class="note">
-      {{ note }}<template v-if="notSung.length"> Not sung as written: {{ notSung.map((t) => `[${t}]`).join(', ') }}.</template>
+    <div v-else class="switch" role="radiogroup" aria-label="Which lyrics, for every song">
+      <button
+        v-for="v in LYRICS_CHOICES"
+        :key="v.id"
+        type="button"
+        role="radio"
+        :aria-checked="settings.lyricsChoice === v.id"
+        :class="{ on: settings.lyricsChoice === v.id }"
+        :title="v.title"
+        @click="settings.lyricsChoice = v.id"
+      >
+        {{ v.label }}
+      </button>
+    </div>
+    <p v-if="!detail && chosen" class="note">
+      {{ chosen }} song{{ chosen === 1 ? '' : 's' }} with a choice of their own.
+      <button type="button" class="link" @click="settings.lyricsFor = {}">Follow the rule again</button>
+    </p>
+    <p v-if="details && (note || why)" class="note">
+      {{ why }} {{ note }}<template v-if="notSung.length"> Not sung as written: {{ notSung.map((t) => `[${t}]`).join(', ') }}.</template>
     </p>
     <details v-if="details && sung && sung.not_sung.length" class="missing">
       <summary>Lines of the lyrics not heard</summary>
@@ -81,6 +104,14 @@ const shown = computed(() => (settings.lyricsVersion === 'sung' && (sung.value |
   margin: 0;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.65);
+}
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
 }
 .missing {
   font-size: 13px;

@@ -44,13 +44,15 @@ Every template reads from left to right in numbered groups, with the same anatom
 ```text
 1 · SONG / SOURCE  ->  2 · WRITE  ->  3 · SHEET(S)  ->  4 · RENDER  ->  5 · FINISH
    the brief           the writer     what the model    take seed,     Master -> Export
-                                      receives          the render     (+ Cover Art, optional)
+                                      receives          the render     (+ Cover Art)
                        MUSIC MODEL (collapsed, below): the model files
 ```
 
 - **About this template** (the note on the left) explains the path in a few steps.
 - **Song Sheets** show exactly what the music model receives; you can edit every document there ([Song Sheet](concepts/song-sheet.md)).
-- **Nodes and grey groups marked *(optional)*** are switched off (bypassed). Select the nodes and press **Ctrl+B** to switch them on - for example *Cover Art*, which needs extra model files.
+- **HQ Mastering & Cover Art** (the two cards at the top): click a card to switch it - HQ mastering (off: faster; on: fewer AI artifacts, about twice the time) and the song's cover (on; off needs no image model).
+- **Nodes and grey groups marked *(optional)*** are switched off (bypassed). Select the nodes and press **Ctrl+B** to switch them on.
+- **Seeds** follow the brief's mode: *new song every run* starts with every seed on 🎲 (something new every run), *one song, stop to review* keeps the song's seeds on 🔒 while you review it.
 - The **MUSIC MODEL** block is collapsed: expand it (the dot at its top left, or right-click > *Expand*), then open it with the icon at its top right to change the model files.
 - **Plenio · Master** finishes every song (tone match, -14 LUFS / -1 dBTP) before Export; Export also keeps the unmastered take as `(original).flac`.
 

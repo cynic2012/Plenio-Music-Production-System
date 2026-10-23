@@ -50,7 +50,12 @@ LICENCE = "CC BY-NC 4.0 (YuE2-3B, YuE2 VAE): non-commercial use only"
 
 _WORD = re.compile(r"[^\W_][\w'’+#/-]*", re.UNICODE)
 _TIMESTAMP = re.compile(r"\b\d{1,2}:\d{2}\b")
-_TIMING = re.compile(r"(?i)\b(seconds?|secs?|minutes?|mins?|duration|target length)\b")
+# a unit only after a number: "a warm, driving second half" is a style (half of the owner's cover series of
+# 2026-10-23 stopped at it), "3 minutes" is a length
+_TIMING = re.compile(
+    r"(?i)\b(?:(?:\d+(?:[.,]\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|"
+    r"fifty|sixty|ninety)[\s-]*(?:seconds?|secs?|minutes?|mins?)|duration|target length)\b"
+)
 _TAGS_IN_STYLE = re.compile(r"\[[^\]]{1,30}\]")
 _STRUCTURE = re.compile(r"(?i)\b(intro|verse|pre-chorus|chorus|bridge|outro|hook)\b")
 _ABC = re.compile(r"(?m)^(X:|K:|M:|L:|Q:|V:)")
@@ -309,20 +314,46 @@ def check_style(style: str, *, instrumental: bool) -> list[Finding]:
 
 
 def enforce_style(style: str, *, instrumental: bool) -> tuple[str, list[str]]:
-    """Deterministic draft fixes: for instrumentals, drop descriptors that mention vocals or a language."""
-    if not instrumental:
-        return style, []
+    """Deterministic draft fixes for everything ``check_style`` calls an error but an empty style: ABC lines
+    and bracketed tags go, descriptors with a timing or past the word limit are dropped, and for
+    instrumentals the descriptors that mention vocals or a language. An unchanged style comes back as it was."""
+    notes: list[str] = []
+    lines = [line.strip() for line in style.split("\n")]
+    abc = [line for line in lines if _ABC.match(line) or "|" in line] if _ABC.search(style) else []
+    if abc:
+        lines = [line for line in lines if line not in abc]
+        notes.append(f"removed {len(abc)} line(s) of ABC notation")
+    text = ", ".join(line.rstrip(",") for line in lines if line) if len(lines) > 1 or abc else style
+    tags = _TAGS_IN_STYLE.findall(text)
+    if tags:
+        text = _TAGS_IN_STYLE.sub("", text)
+        notes.append(f"removed the tags {tags}")
     kept: list[str] = []
-    dropped: list[str] = []
-    for descriptor in (part.strip() for part in style.split(",")):
+    timing: list[str] = []
+    vocal: list[str] = []
+    for descriptor in (part.strip() for part in text.split(",")):
         if not descriptor:
             continue
-        (dropped if _VOCAL_TERMS.search(descriptor) or _LANGUAGES.search(descriptor) else kept).append(
-            descriptor
-        )
-    if not dropped:
+        if _TIMESTAMP.search(descriptor) or _TIMING.search(descriptor):
+            timing.append(descriptor)
+        elif instrumental and (_VOCAL_TERMS.search(descriptor) or _LANGUAGES.search(descriptor)):
+            vocal.append(descriptor)
+        else:
+            kept.append(descriptor)
+    if timing:
+        notes.append(f"removed the timing {timing} (the brief and the score set the length)")
+    if vocal:
+        notes.append(f"instrumental: removed style descriptors {vocal}")
+    words = 0
+    for count, descriptor in enumerate(kept):
+        words += len(_WORD.findall(descriptor))
+        if words > STYLE_MAX_WORDS:
+            notes.append(f"cut the style at {STYLE_MAX_WORDS} words")
+            kept = kept[:count] or [" ".join(descriptor.split()[:STYLE_MAX_WORDS])]
+            break
+    if not notes:
         return style, []
-    return ", ".join(kept), [f"instrumental: removed style descriptors {dropped}"]
+    return ", ".join(kept), notes
 
 
 def check_lyrics(lyrics: str, *, instrumental: bool) -> list[Finding]:

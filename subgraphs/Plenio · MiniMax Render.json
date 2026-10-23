@@ -440,8 +440,8 @@
       "id": 303,
       "type": "ConditioningZeroOut",
       "pos": [
-       400,
-       130
+       400.0,
+       150
       ],
       "size": [
        240,
@@ -638,8 +638,8 @@
       "id": 306,
       "type": "VAEDecodeAudioTiled",
       "pos": [
-       1080,
-       110
+       1080.0,
+       130
       ],
       "size": [
        260,

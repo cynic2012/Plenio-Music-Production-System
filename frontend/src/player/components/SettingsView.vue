@@ -16,6 +16,9 @@ import FolderBrowser from './FolderBrowser.vue'
 import Icon from './Icon.vue'
 import LyricsPanel from './LyricsPanel.vue'
 import LyricsVersionSwitch from './LyricsVersionSwitch.vue'
+import AccountsPanel from './AccountsPanel.vue'
+import { guest, me, session } from '../account'
+import { DEPARTS_EXTRA, DEPARTS_HEARD } from '../lyricsVersion'
 import NetworkAccess from './NetworkAccess.vue'
 import { isPortable, portable } from '../portable'
 
@@ -111,6 +114,7 @@ const kept = computed(() => [
   ['Views', `Now playing opens on ${settings.npView}, a song's page on ${settings.songTab}`],
   ['Where you stopped', settings.resume ? 'the queue and the moment in the song' : '-'],
 ])
+const withMp3 = computed(() => library.value.filter((s) => s.has.mp3).length)
 const savedAt = computed(() => (lastSaved.value ? lastSaved.value.toLocaleTimeString() : 'nothing changed since the page opened'))
 
 async function look(): Promise<void> {
@@ -179,16 +183,25 @@ async function stop(): Promise<void> {
       <p class="hint">Making songs, opening them in ComfyUI, Live Play's new songs from ComfyUI and saving videos are the Plenio Player's: <a href="https://github.com/jplenio/Plenio-Music-Production-System" target="_blank" rel="noopener">Plenio</a>.</p>
     </section>
 
+    <section v-if="!isPortable && session?.login" class="block">
+      <h3><Icon name="user" /> Accounts</h3>
+      <AccountsPanel />
+    </section>
+
     <section class="block">
-      <h3><Icon name="check" /> {{ isPortable ? 'Kept in this browser' : 'Kept on this computer' }}</h3>
-      <p class="lead">
+      <h3><Icon name="check" /> {{ isPortable || guest ? 'Kept in this browser' : me && !me.admin ? `Kept for ${me.name}` : 'Kept on this computer' }}</h3>
+      <p v-if="guest" class="lead">
+        As a guest, everything you set here - and everything below - is saved in this browser, half a second after each change and when the page closes. Another
+        browser or device starts afresh; log in to keep it the same everywhere.
+      </p>
+      <p v-else class="lead">
         Everything you set here - and everything below - is saved by the player itself, half a second after each change and when the page closes. It stays when you
-        close the browser, restart the computer, start the player from ComfyUI or by hand, or open it in another browser.
+        close the browser, restart the computer, start the player from ComfyUI or by hand, or open it in another browser{{ me && !me.admin ? ' - or log in on another device' : '' }}.
       </p>
       <dl>
         <template v-for="[k, v] in kept" :key="k"><dt>{{ k }}</dt><dd>{{ v }}</dd></template>
       </dl>
-      <p class="where">
+      <p v-if="!guest && (!me || me.admin)" class="where">
         <Icon name="folder" :size="14" /> <code>{{ info?.state ?? '~/.plenio/player/state.json' }}</code>
       </p>
       <p class="saved" :class="{ bad: saveError }">{{ saveError ? `Not saved: ${saveError}` : `Last saved: ${savedAt}` }}</p>
@@ -250,6 +263,14 @@ async function stop(): Promise<void> {
       <FolderBrowser v-if="browsing" @choose="addFolder" @close="browsing = false" />
     </section>
 
+    <section v-if="!isPortable" class="block">
+      <h3><Icon name="volume" /> Sound</h3>
+      <label class="check" title="A song exported as FLAC (or WAV) and MP3 plays its MP3: about a sixth of the data - for a phone or another computer in the network">
+        <input v-model="settings.mp3" type="checkbox" /> Play the MP3 where a song has one (less data over the network)
+      </label>
+      <p class="hint">{{ countOf(withMp3, 'song') }} of {{ library.length }} have an MP3 besides their FLAC or WAV (Export Release: <i>mp3</i>). A/B plays the unmastered take as it was saved.</p>
+    </section>
+
     <section class="block">
       <h3><Icon name="tag" /> Tags</h3>
       <p class="lead">Tags of your own: give them on a song's page, in a song's ⋯ menu, or to every song a filter shows (<b>Tag…</b> on the songs' page); find them with <code>#tag</code> or the filter row <i>Tags</i>. {{ allTags.length ? '' : 'None yet.' }}</p>
@@ -268,7 +289,7 @@ async function stop(): Promise<void> {
     <section class="block">
       <h3><Icon name="mic" /> Lyrics</h3>
       <p class="lead">How the lyrics look while a song plays: the font, the size, the colour - and how each syllable comes in as it is sung.</p>
-      <p class="lead">Which lyrics to follow: <b>as written</b> - the song's lyrics - or <b>as sung</b> - what the take really sings, as heard when it was exported (a music model may repeat a line, make one up or leave one out). Songs exported before Plenio kept it show their written lyrics.</p>
+      <p class="lead">Which lyrics to follow: <b>as written</b> - the song's lyrics - or <b>as sung</b> - what the take really sings, as heard when it was exported (a music model may repeat a line, make one up or leave one out). <b>Auto</b> shows a song as sung when its take departs far from its lyrics (less than {{ Math.round(DEPARTS_HEARD * 100) }} % of their words sung as written, or more than {{ Math.round(DEPARTS_EXTRA * 100) }} % words of its own), else as written. Switch a song either way on its page or in the player bar (W) - like master and original; the choice is kept for that song. Songs exported before Plenio kept what was sung show their written lyrics.</p>
       <LyricsVersionSwitch />
       <LyricsPanel />
     </section>
@@ -461,6 +482,12 @@ code {
 }
 .shelf small {
   color: var(--muted);
+}
+.check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
 }
 .shelf .other {
   display: flex;

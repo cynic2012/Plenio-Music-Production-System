@@ -18,7 +18,7 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 
 ## New in 1.1: Audio HQ, a new ear for the lyrics, and the score in and out
 
-- **Audio HQ** in every template's master: *Stereo Cleanup* calms the unsteady stereo shimmer of AI renders, *Regenerate Highs* lets UniverSR generate fresh highs above 8.2 kHz - presets that follow the song's genre. The **HQ Mastering** switch at the top of every template turns UniverSR on: it can clearly reduce AI shimmer and artifacts, but the song takes about twice as long - so it is **off** by default. [Details](docs/user/concepts/audio-hq.md)
+- **Audio HQ** in every template's master: *Stereo Cleanup* calms the unsteady stereo shimmer of AI renders, *Regenerate Highs* lets UniverSR generate fresh highs above 8.2 kHz - presets that follow the song's genre. The **HQ Mastering** card at the top of every template (beside it the *Cover Art* card) turns UniverSR on: it can clearly reduce AI shimmer and artifacts, but the song takes about twice as long - so it is **off** by default. [Details](docs/user/concepts/audio-hq.md)
 - **Qwen3-ASR** hears the lyrics and **Qwen3-ForcedAligner** times every word - for covers and for the lyrics subtitles; faster-whisper stays as the fallback.
 - **MusicXML round trip**: *Import MusicXML…* brings back what *Export MusicXML* wrote - also after a script put the lyrics on their notes or changed notes in bulk. Only Plenio's own MusicXML is read. [Details](docs/user/concepts/score-editor.md#musicxml-round-trip)
 - **A whole track an octave down or up** - Vocal or Instrument, in the palette and the DAW track headers.

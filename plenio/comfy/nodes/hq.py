@@ -12,7 +12,7 @@ from ...core.audio import hq
 from ...core.errors import PlenioUserError
 from ...core.reports import Report, Status
 from .. import audio_models, host
-from ..types import AudioModelType, Brief, ReportType
+from ..types import AudioModelType, Brief, FinishSwitch, ReportType
 
 PRESET_TOOLTIP = (
     "auto: the profile that fits the song's genre (from the connected brief; standard without one). standard, "
@@ -47,33 +47,31 @@ def _db(value: Any, unit: str = "dB") -> str:
 
 
 HQ_MASTERING_TOOLTIP = hq.HQ_MASTERING_HINT
-HQ_ON = "on: less AI shimmer, 2× time"
-HQ_OFF = "off: faster, no UniverSR"
 
 
 class PlenioHQMastering(io.ComfyNode):
     """The templates' switch for the highest mastering quality (owner's request 2026-10-22): at the start of
     the workflow, beside the brief, wired only into *Plenio · Master* - so switching it runs the mastering again,
-    not the song."""
+    not the song. The page draws it as a card, with the Cover Art switch beside it (2026-10-23,
+    ``frontend/src/extension/finishSwitch.ts``)."""
 
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="PlenioHQMastering",
-            display_name="HQ Mastering",
+            display_name="HQ Mastering & Cover Art",
             category="Plenio/Mastering",
             description=(
-                "The switch for the highest mastering quality: on, HQ 2 · Regenerate Highs (UniverSR) runs in "
-                "Plenio · Master - it can clearly reduce AI shimmer and artifacts, but the song takes about twice "
-                "as long. Off (default): the master runs without UniverSR, and the model file is not needed."
+                "Two switches at the start of a template. HQ mastering: on, HQ 2 · Regenerate Highs (UniverSR) "
+                "runs in Plenio · Master - it can clearly reduce AI shimmer and artifacts, but the song takes about "
+                "twice as long; off (default), the master runs without UniverSR and its model file is not needed. "
+                "Cover Art (on by default): paints the song's cover - off, the template's cover nodes are bypassed."
             ),
             inputs=[
-                io.Boolean.Input(
+                FinishSwitch.Input(
                     "hq_mastering",
                     display_name="HQ mastering",
                     default=False,
-                    label_on=HQ_ON,
-                    label_off=HQ_OFF,
                     tooltip=HQ_MASTERING_TOOLTIP,
                 )
             ],
@@ -86,8 +84,9 @@ class PlenioHQMastering(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, hq_mastering: bool = False) -> io.NodeOutput:
-        return io.NodeOutput(bool(hq_mastering))
+    def execute(cls, hq_mastering: Any = False) -> io.NodeOutput:
+        # a widget of its own: ComfyUI does not convert its value (a client may send "false")
+        return io.NodeOutput(hq_mastering is True or str(hq_mastering).strip().lower() in ("true", "1", "on"))
 
 
 def _finish(
