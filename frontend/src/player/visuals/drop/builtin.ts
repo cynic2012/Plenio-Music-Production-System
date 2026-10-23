@@ -301,9 +301,9 @@ export const BUILTIN: PresetFile[] = [
 export function randomPreset(random: () => number = Math.random): PresetFile {
   const pick = <T>(list: readonly T[]): T => list[Math.floor(random() * list.length) % list.length]
   const r = (a: number, b: number, digits = 4): number => Number((a + (b - a) * random()).toFixed(digits))
-  const family = pick(['plain', 'swirl', 'waves', 'tunnel', 'kaleidoscope', 'ripple'] as const)
-  const famB = { plain: 1, swirl: r(0.6, 1.4), waves: r(3, 10), tunnel: r(6, 16), kaleidoscope: Math.round(r(3, 9)), ripple: r(14, 34) }[family]
-  const famA = { plain: '0', swirl: `${r(0.05, 0.2)} * bass_att`, waves: `${r(0.002, 0.008)} * (1 + mid_att)`, tunnel: `${r(0.01, 0.04)} * bass_att`, kaleidoscope: `${r(0.2, 1)}`, ripple: `${r(0.008, 0.03)} + 0.02 * pulse` }[family]
+  const family = pick(['plain', 'swirl', 'waves', 'tunnel', 'kaleidoscope', 'ripple', 'twist', 'fold', 'lens', 'tiles', 'spiral', 'drain'] as const)
+  const famB = { plain: 1, swirl: r(0.6, 1.4), waves: r(3, 10), tunnel: r(6, 16), kaleidoscope: Math.round(r(3, 9)), ripple: r(14, 34), twist: r(1, 2.5), fold: r(0.2, 0.8), lens: r(0.2, 0.4), tiles: Math.round(r(2, 3)), spiral: 1, drain: r(0.08, 0.25) }[family]
+  const famA = { plain: '0', swirl: `${r(0.05, 0.2)} * bass_att`, waves: `${r(0.002, 0.008)} * (1 + mid_att)`, tunnel: `${r(0.01, 0.04)} * bass_att`, kaleidoscope: `${r(0.2, 1)}`, ripple: `${r(0.008, 0.03)} + 0.02 * pulse`, twist: `${r(0.01, 0.03)} * bass_att`, fold: `${r(0.08, 0.16)}`, lens: `${r(0.01, 0.03)} * bass_att`, tiles: `${r(0.03, 0.08)} + 0.15 * pulse`, spiral: `${r(0.008, 0.02)} * bass_att`, drain: `${r(0.004, 0.012)} * bass_att` }[family]
   const band = pick(['bass', 'bass_att', 'mid', 'mid_att'])
   const wave = pick(['circle', 'scope', 'line', 'spectrum', 'stereo', 'dots', 'vertical', 'spiral'] as const)
   const speed = r(0.02, 0.1)

@@ -25,7 +25,7 @@ import { DEFAULTS, type DropDef, type DropParams, type Music, type Shape, type S
 
 // --- names --------------------------------------------------------------------------------------------
 
-export const FAMILIES = ['plain', 'swirl', 'waves', 'tunnel', 'kaleidoscope', 'ripple'] as const
+export const FAMILIES = ['plain', 'swirl', 'waves', 'tunnel', 'kaleidoscope', 'ripple', 'twist', 'fold', 'lens', 'tiles', 'spiral', 'drain'] as const
 export const WAVE_MODES = ['circle', 'scope', 'line', 'spectrum', 'stereo', 'dots', 'vertical', 'spiral'] as const
 export const MIRRORS = ['none', 'left-right', 'top-bottom', 'both'] as const
 /** What a sprite shows, and how it is laid on. */

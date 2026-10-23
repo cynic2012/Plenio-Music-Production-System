@@ -8,8 +8,10 @@ enforcement is reported (never silent).
 
 from __future__ import annotations
 
+import hashlib
+import random
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,7 +25,7 @@ from .engines.yue2 import melody_register, note_name
 from .errors import PlenioValidationError
 
 REQUEST_SCHEMA = "plenio.request/1"
-BLOCKS = ("TITLE", "STYLE", "LYRICS", "ARTWORK")
+BLOCKS = ("TITLE", "TITLES", "STYLE", "LYRICS", "ARTWORK")
 DETAIL = {
     "concise": "Keep it compact: short sections with few lines.",
     "standard": "",
@@ -32,7 +34,7 @@ DETAIL = {
 # A label line: "TITLE: text", "### STYLE", "**Lyrics:**". Without a colon the label must stand alone,
 # so that a lyric line such as "Style is everything" is never taken for a label.
 _HEADING = re.compile(
-    r"(?im)^[ \t>*#_\-]*\**\s*(TITLE|STYLE|LYRICS|ARTWORK)\s*\**(?:\s*:\s*\**[ \t]*(.*?)\**[ \t]*|[ \t]*)$"
+    r"(?im)^[ \t>*#_\-]*\**\s*(TITLES|TITLE|STYLE|LYRICS|ARTWORK)\s*\**(?:\s*:\s*\**[ \t]*(.*?)\**[ \t]*|[ \t]*)$"
 )
 _THINKING = [
     re.compile(r"(?is)<think>.*?</think>"),
@@ -206,7 +208,7 @@ def compose(
         brief.to_text(),
         "",
         "RULES",
-        "- Title: 1 to 6 words, no quotes."
+        title_rule("the brief's description and theme" if brief.instrumental else "the lyrics you write")
         if not request.fixed_title
         else f'- Title: use exactly "{request.fixed_title}".',
         f"- {rules['style']}",
@@ -222,7 +224,7 @@ def compose(
                 else " (adapt only if the brief asks for it)."
             )
         )
-    parts.append("- Artwork: one sentence describing a square cover image; no text or letters in the image.")
+    parts.append(artwork_rule("the brief's description and theme" if brief.instrumental else "your lyrics"))
     parts += series_lines(brief)
     if DETAIL.get(detail):
         parts.append(f"- {DETAIL[detail]}")
@@ -236,8 +238,64 @@ def compose(
         fixed_sections=bool(score_sections),
     )
     example = lyrics_rules.tags_only(sections) if brief.instrumental else f"[{sections[0]}]\n<lines>\n..."
-    parts += [*_example_style(rules), "", *_layout(example, multiline=bool(rules.get("style_multiline")))]
+    multiline = bool(rules.get("style_multiline"))
+    parts += [
+        *_example_style(rules),
+        "",
+        *_layout(example, multiline=multiline, titles=not request.fixed_title),
+    ]
     return "\n".join(parts), request
+
+
+TITLE_CANDIDATES = 10
+"""Titles the writer proposes; Plenio picks one at random (owner's request 2026-10-23: the same titles came
+again and again - the writer's first idea is the most obvious one)."""
+WORN_TITLE_WORDS = (
+    "neon",
+    "midnight",
+    "echoes",
+    "pulse",
+    "fading",
+    "drift",
+    "glass",
+    "circuit",
+    "static",
+    "velvet",
+)
+"""The words the owner's 1 577 song titles had most often (2026-10-23), after *the*, *in* and *of*."""
+
+
+def title_rule(source: str) -> str:
+    """The writer's rule for the titles; ``source``: what the song's words are (``"the lyrics"`` ...)."""
+    return (
+        f"- Titles: when the rest is written, think of {TITLE_CANDIDATES} truly different titles for the song "
+        "(TITLES below), each 1 to 6 words, no quotes. Take them, in this order, from (a) "
+        f"{source}: what it is about, its central image, a striking phrase, an object, a place or a feeling in it "
+        "- not only the hook of the chorus; (b) a title or theme the brief gives, as a starting point; (c) the "
+        "genre, the mood, the voice and the tempo. Mix them: concrete and poetic, short and long, a name, a "
+        "question, an image. Avoid the most obvious title and worn-out song words ("
+        + ", ".join(WORN_TITLE_WORDS)
+        + "). Plenio picks one of them at random."
+    )
+
+
+def artwork_rule(source: str) -> str:
+    """The writer's rule for the cover prompt (owner's request 2026-10-23: the cover from the song - its lyrics
+    first, then its title, then its tags), written for an image model such as FLUX.2: natural sentences in a
+    fixed order, one visual idea, concrete details, light, palette, medium."""
+    return (
+        "- Artwork: the prompt for the song's square cover, painted by an image model. First read the song, in "
+        f"this order: (a) {source}: what it is about, its central motif, the feelings that could be shown as "
+        "something seen, the objects and places it names; (b) the title; (c) the genre, mood, voice, tempo and "
+        "language of the brief. Choose ONE strong visual idea from it - a concrete scene or a symbolic image that "
+        "tells the song at a glance; no singers, microphones or instruments unless the song is about them. Then "
+        "write 50 to 90 words in plain sentences, in this order: the main subject and what it does; the setting, "
+        "the season and the time of day; the composition for a square format (close-up, wide, from above, "
+        "centred with space around it); the light; two to four colours that carry the mood; the medium and style "
+        "that suit the genre (for example a cinematic photograph on 35mm film, an oil painting, a watercolour, a "
+        "risograph print, a paper collage, an ink drawing, a 3D render, a synthwave illustration); the texture "
+        "and the atmosphere. No text, letters, numbers, logos, frames or borders in the image."
+    )
 
 
 def _example_style(rules: Mapping[str, Any]) -> list[str]:
@@ -245,20 +303,33 @@ def _example_style(rules: Mapping[str, Any]) -> list[str]:
     return ["", "Example style:", example] if "\n" in example else ["", f"Example style: {example}"]
 
 
-def _layout(lyrics_example: str, *, multiline: bool = False) -> list[str]:
+def _layout(lyrics_example: str, *, multiline: bool = False, titles: bool = False) -> list[str]:
+    """The answer's layout; with ``titles`` the candidate titles come after the lyrics (they are taken from them)
+    instead of a title first."""
+    style = (
+        ["STYLE:", "<the style, on several lines as described>"] if multiline else ["STYLE: <the style line>"]
+    )
+    if titles:
+        return [
+            "Write your answer in exactly this layout. Keep the four labels STYLE:, LYRICS:, TITLES: and ARTWORK: "
+            "and replace the text in angle brackets; write nothing before or after it.",
+            "",
+            *style,
+            "LYRICS:",
+            lyrics_example,
+            "TITLES:",
+            *[f"{k}. <title>" for k in range(1, TITLE_CANDIDATES + 1)],
+            "ARTWORK: <the cover prompt, 50 to 90 words>",
+        ]
     return [
         "Write your answer in exactly this layout. Keep the four labels TITLE:, STYLE:, LYRICS: and ARTWORK: "
         "and replace the text in angle brackets; write nothing before or after it.",
         "",
         "TITLE: <the title>",
-        *(
-            ["STYLE:", "<the style, on several lines as described>"]
-            if multiline
-            else ["STYLE: <the style line>"]
-        ),
+        *style,
         "LYRICS:",
         lyrics_example,
-        "ARTWORK: <one sentence>",
+        "ARTWORK: <the cover prompt, 50 to 90 words>",
     ]
 
 
@@ -376,7 +447,13 @@ def _compose_cover(
         brief.to_text(),
         "",
         "RULES",
-        "- Title: 1 to 6 words, no quotes."
+        title_rule(
+            "the source's lyrics below"
+            if mode == "none" and reference_lyrics.strip()
+            else "the lyrics you write"
+            if mode == "write"
+            else "the brief's description and theme"
+        )
         if not request.fixed_title
         else f'- Title: use exactly "{request.fixed_title}".',
         f"- {rules['style']}{tempo}",
@@ -431,8 +508,22 @@ def _compose_cover(
             "the original lyrics of the source are used" if mode == "none" else "the cover is instrumental"
         )
         parts.append(f"- Lyrics: {reason}; write only the word none after LYRICS:.")
+        if mode == "none" and reference_lyrics.strip():
+            # the cover's picture (and title) come from what the song is about (owner's request 2026-10-23)
+            parts.append(
+                "- The source's lyrics, for the artwork (they are sung as they are; do not rewrite them):"
+            )
+            parts += [f"  {line}" for line in reference_lyrics.strip().splitlines() if line.strip()]
         example = "none"
-    parts.append("- Artwork: one sentence describing a square cover image; no text or letters in the image.")
+    parts.append(
+        artwork_rule(
+            "your lyrics"
+            if mode == "write"
+            else "the source's lyrics above"
+            if mode == "none" and reference_lyrics.strip()
+            else "the title of the source and the brief's description"
+        )
+    )
     parts += series_lines(brief)
     if DETAIL.get(detail):
         parts.append(f"- {DETAIL[detail]}")
@@ -445,7 +536,12 @@ def _compose_cover(
         lyrics="melody" if mode == "write" else "none",
         fixed_sections=True,
     )
-    parts += [*_example_style(rules), "", *_layout(example, multiline=bool(rules.get("style_multiline")))]
+    multiline = bool(rules.get("style_multiline"))
+    parts += [
+        *_example_style(rules),
+        "",
+        *_layout(example, multiline=multiline, titles=not request.fixed_title),
+    ]
     return "\n".join(parts), request
 
 
@@ -604,8 +700,43 @@ def _clean_lyrics(text: str, notes: list[str]) -> str:
     return lyrics_rules.parse_lyrics("\n".join(lines)).format()
 
 
-def parse_draft(text: str, request: Request) -> Draft:
-    """Extract and normalise the LLM answer. Raises when required blocks are missing."""
+_NUMBERING = re.compile(r"^\s*(?:\d{1,2}[.)]|[-*•])\s*")
+
+
+def title_candidates(text: str) -> list[str]:
+    """The titles of a TITLES block, one a line (numbering, quotes and emphasis taken off)."""
+    found: list[str] = []
+    for line in text.replace("\r\n", "\n").split("\n"):
+        title = _NUMBERING.sub("", line).strip().strip("\"'“”*#_ ").rstrip(".")
+        if title and len(title.split()) <= 8 and title.casefold() not in {t.casefold() for t in found}:
+            found.append(title[:80])
+    return found
+
+
+def _title_key(title: str) -> str:
+    return re.sub(r"[\W_]+", " ", title).strip().casefold()
+
+
+def pick_title(
+    candidates: Sequence[str], taken: Iterable[str] = (), *, seed_text: str = ""
+) -> tuple[str, str]:
+    """One of the writer's titles at random - not one a song has already (``taken``) while others are left,
+    and seeded by the answer, so the same answer gives the same title. The title and a note why."""
+    if not candidates:
+        return "", ""
+    used = {_title_key(t) for t in taken}
+    fresh = [t for t in candidates if _title_key(t) not in used]
+    pool = fresh or list(candidates)
+    seed = int(hashlib.sha256(seed_text.encode("utf-8")).hexdigest()[:16], 16)
+    title = pool[random.Random(seed).randrange(len(pool))]
+    skipped = len(candidates) - len(fresh)
+    left_out = f" ({skipped} left out: a song has it already)" if skipped and fresh else ""
+    return title, f"the title was picked at random from {len(candidates)} the writer proposed{left_out}"
+
+
+def parse_draft(text: str, request: Request, taken: Iterable[str] = ()) -> Draft:
+    """Extract and normalise the LLM answer. Raises when required blocks are missing. ``taken``: titles songs
+    have already (a proposed title among them is not picked while others are left)."""
     notes: list[str] = []
     body, had_thinking = _strip_thinking(text)
     if had_thinking:
@@ -638,6 +769,11 @@ def parse_draft(text: str, request: Request) -> Draft:
             "headings ### TITLE, ### STYLE, ### LYRICS and ### ARTWORK.",
         )
     title = request.fixed_title or blocks.get("TITLE", "").split("\n")[0].strip().strip("\"'“”*# ")
+    if not request.fixed_title and blocks.get("TITLES"):
+        picked, why = pick_title(title_candidates(blocks["TITLES"]), taken, seed_text=body)
+        if picked:
+            title = picked
+            notes.append(why)
     if not title:
         title = "Untitled"
         notes.append("no title was given; 'Untitled' is used")

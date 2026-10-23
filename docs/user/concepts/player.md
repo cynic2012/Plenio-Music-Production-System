@@ -299,6 +299,23 @@ left against right, the bass and the beats). There are two kinds.
 | Ripples | every beat drops a ring into still water |
 | Retro Grid | a synthwave horizon: the sun pulses, the grid races with the bass |
 
+**Twelve more classics** (2026-10-23: hypnotic and rhythmic, unusual, or very harmonious):
+
+| Visual | What you see | Suits |
+|---|---|---|
+| Digital Rain | glyphs falling in columns - faster with the highs, brighter where the spectrum is loud | electronic, energetic, dark |
+| LED Wall | a hi-fi's dot matrix: every band a column of lights, a peak light that sinks slowly | energetic, electronic, any |
+| VU Meters | two needles on warm-lit dials, left and right - swinging as a tape machine's do | acoustic, calm, any |
+| Spectrogram | the music's spectrum as it passes - the bass on the left, a waterfall of colour rising | calm, electronic, any |
+| Spirograph | three gear-drawn roses turning into one another - their reach breathing with the music | calm, acoustic, any |
+| Lava Lamp | warm blobs rising, melting into one another and parting again - swelling with the bass | calm, dark |
+| Wave Tunnel | every moment's waveform a ring, flying away into a twisting tunnel - shaken by the kick | electronic, dark, energetic |
+| Fireworks | every beat sends a rocket up; it bursts into a sphere of colour that falls slowly | energetic, any |
+| Honeycomb | a field of hexagons lit from the middle out - bass at the heart, highs at the edge, a ring on every beat | electronic, energetic |
+| Vinyl | a turning record that writes the music into its grooves as the needle passes - a ring of a song | acoustic, calm, any |
+| Harmonograph | two pendulums drawing in harmony - slowly drifting ratios, the music swaying the pen | calm, acoustic |
+| Spiral Galaxy | thousands of stars in spiral arms - the inner ones turning faster, the arms lit by the music | calm, electronic, dark |
+
 **Plenio Drop**: visuals like Winamp's MilkDrop, drawn by Plenio's own renderer on the graphics card (nothing
 is taken from MilkDrop). Each frame draws the last one again - zoomed, turned, bent, fading - and the music
 on top, so trails, tunnels and swirls build up. When one Drop visual follows another, the picture stays and
@@ -328,6 +345,41 @@ glides into the new one.
 | Drop · Album Kaleido | the cover folded into a turning mandala of ten mirrors, from the middle out to the edges |
 | Drop · Cover Echo | the cover and its echoes falling away into the depth, thrown further on every beat, its light all around |
 | Drop · Random | a preset made up now - a different one each time |
+
+**Thirty more Drop visuals after MilkDrop's classics** (2026-10-23): each takes the idea of a classic of the MilkDrop preset packs - Geiss's *Cosmic Dust*, *Two-Pointed Spiral* and *Tokamak*, Rovastar's *Fractopia* and *Altars of Madness*, Flexi's *mindblob* and *infinite fractal*, Martin's *frosty caves*, Aderrasi's *Ambient Fire*, Krash's *Digital Flame*, Zylot's *Rainbow Orb Peacock* and more - and builds it anew in Plenio Drop's own format, with six new warp patterns made for them (twist, fold, lens, tiles, spiral, drain). *Suits* is what the visuals' *auto* mode matches with the song's genre and mood.
+
+| Visual | What you see | Suits |
+|---|---|---|
+| Drop · Cosmic Dust | glittering dust drifting out of the middle, slowly turning - brighter where the highs sparkle | calm, electronic, any |
+| Drop · Twin Spiral | an endless spiral whose eye wanders from one side to the other, winding the colours in | electronic, energetic |
+| Drop · Living Coral | coral-like veins growing and branching slowly, as if the picture were alive | calm, dark |
+| Drop · Bipolar Swirl | two lights circling each other, the swirl around them turning one way, then the other | energetic, electronic |
+| Drop · Fractal Garden | the picture folded into itself frame by frame - a fractal of light that blooms and turns | electronic, dark |
+| Drop · Altar of Madness | a tunnel and its own image turned over, burning into negatives when the bass hits hard | dark, energetic |
+| Drop · Pyramid Dream | glowing triangles turning in a lens that breathes, mirrored into four | electronic, calm |
+| Drop · Polar Night | curtains of light swaying over a dark sky, drifting slowly sideways | calm, acoustic |
+| Drop · Mind Blob | a soft glowing blob that swells with the bass and wobbles in a breathing lens | calm, electronic |
+| Drop · Infinite Mosaic | the picture in tiles of itself, tiles in tiles - on every beat a step deeper | electronic, energetic |
+| Drop · Predator Prey | two spirals winding against each other - one hunts, the other turns away | electronic, dark |
+| Drop · Frost Caves | cold light whirling slowly into the depth of an ice cave, its mirror image above | calm, dark |
+| Drop · Liquid Diamonds | diamonds turning in a four-fold mirror, their light melting into soft facets | acoustic, calm |
+| Drop · Unified Drag | the whole picture dragged along by the beat, its flow drawn as a field of strokes | energetic, electronic |
+| Drop · Ember Rise | sparks of the spectrum rising from the ground in a warm, turbulent draught | dark, acoustic |
+| Drop · Frozen Time | rings standing still in a hall of mirrors, the image within the image slowly fading | calm, dark |
+| Drop · Digital Flame | the spectrum as a flame at the bottom, licking upward and narrowing to a point | energetic, electronic |
+| Drop · Glowsticks | thick glowing figures of the sound swung through the dark, mirrored into four | electronic, energetic |
+| Drop · Peacock Orb | rings of colour inside one another, swirled into the eyes of a peacock's tail | calm, electronic |
+| Drop · Tokamak | a ring of plasma held in a field, twisted round and round - flaring on the kick | electronic, dark |
+| Drop · Inkblot | a symmetric blot of ink spreading, folding and turning - what do you see in it? | calm, dark |
+| Drop · Jelly Lanterns | soft glowing jellies floating upward like lanterns, pulsing gently with the beat | calm |
+| Drop · Warp of Doom | everything pulled into a whirling drain, flashing into a negative on the hardest beats | dark, energetic |
+| Drop · Sea Star | a five-armed star of light opening and closing in a five-fold mirror | acoustic, calm |
+| Drop · Velvet Smoke | soft smoke curling upward from a quiet line of sound - slow, deep and warm | calm, acoustic |
+| Drop · Hypno Disc | rings winding into an endless spiral that turns the other way every four beats | energetic, electronic |
+| Drop · Strobe Lattice | a lattice of the picture in nine tiles, flashing on every beat - for the dance floor | energetic, electronic |
+| Drop · Mandala Breath | a twelve-fold mandala breathing in and out with the music - calm, round and endless | calm, acoustic |
+| Drop · Harmonic Rose | lights travelling along a three-petalled rose, their trails weaving a slow, harmonious flower | calm, acoustic |
+| Drop · Cover Droste | the song's cover inside itself, again and again, winding into an endless spiral | calm, electronic, any |
 
 **Write your own:** a Plenio Drop preset is a short text file of numbers and small formulas. *Edit a copy*
 in the visuals' settings saves the visual that plays into your presets folder; change it in any editor, save,

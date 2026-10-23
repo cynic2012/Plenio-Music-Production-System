@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 import { withDefaults } from '../src/player/visuals/chooser'
 import { BUILTIN, randomPreset } from '../src/player/visuals/drop/builtin'
+import { MILKDROP } from '../src/player/visuals/drop/milkdrop'
 import { FormulaError, compileFormula, compilePreset, readPreset, type PresetFile } from '../src/player/visuals/drop/format'
 import { DEFAULTS, mixParams, paramsOf, type DropParams, type Music } from '../src/player/visuals/drop/renderer'
 import { PRESETS } from '../src/player/visuals/presets'
@@ -127,7 +128,7 @@ describe('the preset format', () => {
     }
     expect(wrong('{"name": "A", "frame": {"zoom": "1 + bas"}}')).toBe('frame.zoom: unknown name "bas"')
     expect(wrong('{"name": "A", "base": {"zom": 1}}')).toMatch(/^base: "zom" is no parameter/)
-    expect(wrong('{"name": "A", "base": {"family": "spiral"}}')).toBe('family: "spiral" is none of plain, swirl, waves, tunnel, kaleidoscope, ripple')
+    expect(wrong('{"name": "A", "base": {"family": "helix"}}')).toBe('family: "helix" is none of plain, swirl, waves, tunnel, kaleidoscope, ripple, twist, fold, lens, tiles, spiral, drain')
     expect(wrong('{"name": "A", "waves": [{"mode": "circle", "colour": 1}]}')).toMatch(/^waves\[0\]: "colour" is not a field/)
     expect(wrong('{"name": "A", "shapes": [{"x": "1 +"}]}')).toBe('shapes[0].x: the formula ends too soon')
     expect(wrong('{"base": {}}')).toBe('"name" is missing')
@@ -156,6 +157,26 @@ describe('the preset format', () => {
     // they are visuals like the others, chosen the same way
     for (const id of ids) expect(PRESETS.some((p) => p.id === id && p.kind === 'drop')).toBe(true)
     expect(PRESETS.some((p) => p.id === 'drop-random')).toBe(true)
+  })
+
+  it('has thirty more after MilkDrop’s classics, each working, with the new warp families', () => {
+    expect(MILKDROP).toHaveLength(30)
+    const families = new Set<number>()
+    for (const preset of MILKDROP) {
+      const def = compilePreset(preset)
+      const vars = {}
+      for (const m of [music(), music({ beat: true, pulse: 1, bass: 2.5 }), music({ bass: 0, mid: 0, treb: 0, vol: 0 })]) {
+        const p = paramsOf(def, m, vars)
+        for (const [key, value] of Object.entries(p)) if (typeof value === 'number') expect(Number.isFinite(value), `${preset.name}.${key}`).toBe(true)
+        expect(p.waves.length + p.shapes.length + p.sprites.length, preset.name).toBeGreaterThan(0)
+        expect(p.decay, preset.name).toBeLessThan(1)
+        families.add(p.family)
+      }
+      expect(preset.suits?.length, preset.name).toBeGreaterThan(0)
+      expect(PRESETS.some((p) => p.id === def.id && p.kind === 'drop'), preset.name).toBe(true)
+    }
+    for (const family of [6, 7, 8, 9, 10, 11]) expect(families.has(family), `family ${family}`).toBe(true)
+    expect(new Set(MILKDROP.map((p) => p.name)).size).toBe(30)
   })
 
   it('makes up a working preset every time for Drop · Random', () => {
@@ -197,8 +218,14 @@ describe('the visuals settings with Plenio Drop', () => {
     expect(old.pool).not.toContain('gone')
     expect(old.dropsOffered).toBe(true)
     // once offered, a listener who unticks them keeps them unticked
-    const after = withDefaults({ pool: ['bars'], dropsOffered: true })
+    const after = withDefaults({ pool: ['bars'], dropsOffered: true, moreOffered: true })
     expect(after.pool).toEqual(['bars'])
+    // the visuals of 2026-10-23 join a pool saved before them once, as the Drop presets did
+    const before = withDefaults({ pool: ['bars'], dropsOffered: true })
+    expect(before.pool).toContain('matrix')
+    expect(before.pool).toContain('drop-hypno-disc')
+    expect(before.pool).not.toContain('drop-nebula-swirl')
+    expect(before.moreOffered).toBe(true)
     expect(withDefaults({ dropScale: 3 }).dropScale).toBe(0.75)
   })
 })

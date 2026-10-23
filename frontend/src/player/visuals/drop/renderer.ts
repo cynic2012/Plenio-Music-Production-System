@@ -3,8 +3,9 @@
  *
  * What makes MilkDrop is a feedback loop, and that is what this draws. Every frame:
  *  1. warp - the last frame drawn again through a warp field: zoom (with a curve over the radius), rotation,
- *     one of six families (plain, swirl, waves, tunnel, kaleidoscope, ripple), a sine warp field, stretch and
- *     drift around a centre - and faded (decay), its colours slowly turning;
+ *     one of twelve families (plain, swirl, waves, tunnel, kaleidoscope, ripple - and since 2026-10-23, after
+ *     MilkDrop's per-pixel classics, twist, fold, lens, tiles, spiral, drain), a sine warp field, stretch and
+ *     drift around a centre - and faded (decay), its middle darkened if asked, its colours slowly turning;
  *  2. draw - pictures (sprites: the song's cover, its title, the line sung, the word sung - owner's request
  *     2026-10-18: text and covers in the visual), then the waveform (circle, scope, line, spectrum, dots ...),
  *     shapes and motion vectors on top, as thick additive strips, so what is drawn now becomes tomorrow's smoke;
@@ -103,12 +104,17 @@ export interface DropParams {
   sx: number
   sy: number
   decay: number
-  /** 0 plain, 1 swirl, 2 waves, 3 tunnel, 4 kaleidoscope, 5 ripple. */
+  /** 0 plain, 1 swirl, 2 waves, 3 tunnel, 4 kaleidoscope, 5 ripple, 6 twist (the turn grows with the radius),
+   * 7 fold (mirror folds: a fractal grows in the feedback), 8 lens (a breathing fisheye), 9 tiles (the last
+   * frame repeated, smaller, in a grid), 10 spiral (a log-polar twist: arms that wind in for ever), 11 drain
+   * (the middle turns fastest). */
   family: number
   famA: number
   famB: number
   wrap: number
   hueShift: number
+  /** MilkDrop's darken_center: the middle darkened a little every frame (a zoom that piles light there). */
+  darkenCenter: number
   echoAlpha: number
   echoZoom: number
   echoOrient: number
@@ -145,6 +151,7 @@ export const DEFAULTS: DropParams = {
   famB: 1,
   wrap: 0,
   hueShift: 0,
+  darkenCenter: 0,
   echoAlpha: 0,
   echoZoom: 1,
   echoOrient: 0,
@@ -183,7 +190,7 @@ void main() { uv = a * 0.5 + 0.5; gl_Position = vec4(a, 0.0, 1.0); }`
 const WARP_FS = `#version 300 es
 precision highp float;
 uniform sampler2D prev;
-uniform float aspect, zoom, zoomExp, rot, warp, warpTime, warpScale, decay, famA, famB, hueShift, wrap;
+uniform float aspect, zoom, zoomExp, rot, warp, warpTime, warpScale, decay, famA, famB, hueShift, wrap, darkenCenter;
 uniform vec2 center, drift, stretch;
 uniform int family;
 in vec2 uv;
@@ -215,6 +222,22 @@ void main() {
   } else if (family == 5) {
     float d = length(q);
     q += (q / max(d, 1e-4)) * famA * sin(d * famB - warpTime * 4.0) * exp(-d * 2.0);
+  } else if (family == 6) {
+    q = r2(famA * pow(rn, max(famB, 0.1))) * q;
+  } else if (family == 7) {
+    q = r2(famB) * (abs(q) - famA);
+  } else if (family == 8) {
+    q *= 1.0 + famA * (rn * rn - famB);
+  } else if (family == 9) {
+    vec2 t = q;
+    t.x /= aspect;
+    t = fract(t * max(famB, 1.0) + 0.5) - 0.5;
+    t.x *= aspect;
+    q = mix(q, t, clamp(famA, 0.0, 1.0));
+  } else if (family == 10) {
+    q = r2(famA * log(max(rn, 0.002)) * max(famB, 0.1)) * q;
+  } else if (family == 11) {
+    q = r2(famA / (rn + max(famB, 0.02))) * q;
   }
   q += warp * 0.0035 * vec2(
     sin(warpTime * 0.333 + q.y * warpScale * 8.0) + sin(warpTime * 0.753 - q.x * warpScale * 5.3),
@@ -224,6 +247,7 @@ void main() {
   vec2 src = q + center - drift;
   if (wrap > 0.5) src = fract(src);
   vec3 c = texture(prev, src).rgb;
+  c *= 1.0 - darkenCenter * exp(-rn * rn * 30.0);
   o = vec4(max(hueRot(c, hueShift) * decay, 0.0), 1.0);
 }`
 
@@ -400,7 +424,9 @@ export function perFrame(p: DropParams, dt: number): DropParams {
   out.dy = p.dy * k
   out.hueShift = p.hueShift * k
   out.warp = p.warp * k
-  if (p.family !== 4) out.famA = p.famA * k // the kaleidoscope folds; the others pull a little every frame
+  // the kaleidoscope, the fold and the tiles place; the others pull a little every frame
+  if (![4, 7, 9].includes(Math.round(p.family))) out.famA = p.famA * k
+  out.darkenCenter = 1 - Math.pow(Math.max(0, 1 - p.darkenCenter), k)
   return out
 }
 
@@ -687,6 +713,7 @@ export class DropRenderer {
     gl.uniform1f(wu('famB'), p.famB)
     gl.uniform1f(wu('hueShift'), p.hueShift)
     gl.uniform1f(wu('wrap'), p.wrap)
+    gl.uniform1f(wu('darkenCenter'), Math.min(1, Math.max(0, p.darkenCenter)))
     gl.uniform2f(wu('center'), p.cx, p.cy)
     gl.uniform2f(wu('drift'), p.dx, p.dy)
     gl.uniform2f(wu('stretch'), p.sx, p.sy)

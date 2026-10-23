@@ -185,12 +185,13 @@ more (or fewer) frames a second the player scales it, so a preset moves equally 
 | `warp` | 0 | a wobbling bend of the whole picture: 0 none, 1 gentle, 3 wild |
 | `warpSpeed` | 1 | how fast the wobble moves |
 | `warpScale` | 1 | the size of the wobble's waves: larger numbers, smaller waves |
-| `family` | plain | one of six patterns that bend the picture (next table) |
+| `family` | plain | one of twelve patterns that bend the picture (next table) |
 | `famA` `famB` | 0, 1 | the pattern's two values |
 | `wrap` | 0 | 1: what leaves on one side comes back on the other; 0: the edges are repeated |
 | `hueShift` | 0 | turns the picture's colours a little every frame (0.01 goes once round the colours in about ten seconds) |
+| `darkenCenter` | 0 | darkens the middle a little every frame (MilkDrop's *darken center*): 0.03 to 0.06 keeps a zoom from piling white light there |
 
-**The six patterns** (`family`):
+**The twelve patterns** (`family`):
 
 | `family` | `famA` | `famB` |
 |---|---|---|
@@ -200,6 +201,12 @@ more (or fewer) frames a second the player scales it, so a preset moves equally 
 | `tunnel` | how strongly rings breathe (0.01 to 0.05) | how close the rings are (6 to 16) |
 | `kaleidoscope` | a small twist (0 to 1) | how many mirrored slices (3 to 12) |
 | `ripple` | how strong the ripples are (0.01 to 0.05) | how close the rings are (14 to 34) |
+| `twist` | the turn per frame, growing outwards (0.01 to 0.05) | how fast it grows with the distance (1 to 2.5) |
+| `fold` | how far each fold moves (0.05 to 0.2): a fractal grows in the feedback | the turn of each fold in radians (0.2 to 0.8) |
+| `lens` | how strongly the lens breathes (0.01 to 0.05, negative: the other way) | the distance where it neither grows nor shrinks (0.2 to 0.4) |
+| `tiles` | how much of the tiled picture is laid over the last one each frame (0.03 to 0.3) | how many tiles across (2 or 3) |
+| `spiral` | the twist of the endless spiral (0.005 to 0.03, negative: the other way) | a multiplier for it (1) |
+| `drain` | the turn at the middle (0.003 to 0.02): fastest there, as water into a drain | how far from the middle it eases (0.05 to 0.3) |
 
 **Drawing on top**
 

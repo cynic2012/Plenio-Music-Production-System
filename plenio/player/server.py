@@ -97,7 +97,16 @@ class State:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             temp = self.path.with_suffix(".tmp")
             temp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
-            temp.replace(self.path)
+            # Windows refuses the replace while another program reads the file for a moment (a virus scanner,
+            # a backup): it is tried again (seen in the owner's player.log, 2026-10)
+            for attempt in range(20):
+                try:
+                    temp.replace(self.path)
+                    break
+                except PermissionError:
+                    if attempt == 19:
+                        raise
+                    time.sleep(0.05)
             self.rev += 1
             return self.rev
 

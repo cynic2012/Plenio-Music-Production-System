@@ -69,9 +69,6 @@ def main(argv: list[str] | None = None) -> int:
     directory = state_dir()
     library = make_library(started, directory)
     folders = library.folders
-    say(f"Plenio Player {__version__}: reading the songs of {', '.join(str(f) for f in folders)} ...")
-    library.scan(force=True)
-    say(f"{len(library.songs())} songs ({len(library.errors)} records could not be read)")
     guests = GuestHub(library, directory, host=args.guests_host)
     ports: list[int] = []
     network = NetworkAccess(
@@ -99,7 +96,17 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     ports.append(server.server_address[1])
     url = f"http://{args.host}:{server.server_address[1]}/"
-    say(f"Plenio Player is running at {url} - stop it with Ctrl+C")
+    say(f"Plenio Player {__version__} is running at {url} - stop it with Ctrl+C")
+
+    # The songs are read while the player already answers (owner's report 2026-10-23: with thousands of
+    # records - all read anew after an update - the player took longer than ComfyUI's button waited, which
+    # then started a second player that found the port taken). The page waits for the library meanwhile.
+    def read_songs() -> None:
+        say(f"Reading the songs of {', '.join(str(f) for f in folders)} ...")
+        library.scan(force=True)
+        say(f"{len(library.songs())} songs ({len(library.errors)} records could not be read)")
+
+    threading.Thread(target=read_songs, name="plenio-library", daemon=True).start()
     guests.resume()
     network.resume()
     if network.status()["on"]:

@@ -2,14 +2,52 @@
 
 from __future__ import annotations
 
+import threading
+import time
+from collections import deque
 from typing import Any
 
 from comfy_api.latest import io
 
 from ...core.diagnostics import Finding, summarize
+from ...core.release import release_titles
 from ...core.reports import Report, Status
 from ...core.writing import draft_findings, parse_draft
+from .. import host
 from ..types import ReportType, Request
+
+TAKEN_EVERY = 120.0
+"""Seconds the titles of the songs in ``output/plenio`` are kept before they are read again."""
+_taken: tuple[float, frozenset[str]] = (-TAKEN_EVERY, frozenset())
+_picked: deque[str] = deque(maxlen=500)
+"""Titles this server picked (a song of a series not exported yet has its title too)."""
+_lock = threading.Lock()
+
+
+def _read_taken() -> None:
+    global _taken
+    try:
+        found = release_titles(host.output_directory() / "plenio")
+    except Exception:  # noqa: BLE001 - no output folder (headless tests): nothing is taken
+        found = set()
+    with _lock:
+        _taken = (time.monotonic(), frozenset(found))
+
+
+def taken_titles() -> set[str]:
+    """Titles songs have already: the release records below ``output/plenio`` and the titles picked since
+    ComfyUI started - so the writer's proposals that a song has are passed over (owner's request 2026-10-23:
+    the same titles came again and again). The folder is read in the background, every two minutes at most
+    (2 300 records: 0.1 s, but up to 20 s from a cold disk), so a run never waits for it."""
+    global _taken
+    with _lock:
+        stale = time.monotonic() - _taken[0] > TAKEN_EVERY
+        if stale:
+            _taken = (time.monotonic(), _taken[1])  # one reading at a time
+        known = {*_taken[1], *_picked}
+    if stale:
+        threading.Thread(target=_read_taken, daemon=True).start()
+    return known
 
 
 class PlenioParseDraft(io.ComfyNode):
@@ -23,7 +61,9 @@ class PlenioParseDraft(io.ComfyNode):
             category="Plenio/Writing",
             description=(
                 "Extracts title, style, lyrics and artwork prompt from the writing model's answer and enforces the "
-                "format (one-line style, [Tag] sections, tags only for instrumentals). Every change is reported."
+                "format (one-line style, [Tag] sections, tags only for instrumentals). Every change is reported. "
+                "Of the titles the writer proposes it picks one at random - none a song in output/plenio has "
+                "already, while others are left."
             ),
             inputs=[
                 io.String.Input(
@@ -47,7 +87,10 @@ class PlenioParseDraft(io.ComfyNode):
 
     @classmethod
     def execute(cls, text: str, request: Any) -> io.NodeOutput:
-        draft = parse_draft(text, request)
+        draft = parse_draft(text, request, taken_titles())
+        if not request.fixed_title:
+            with _lock:
+                _picked.append(draft.title)
         findings = draft_findings(draft, request)
         if any(f["severity"] == "error" for f in findings):
             status = Status.ERROR

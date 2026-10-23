@@ -12469,7 +12469,7 @@
     ],
     "extra": {},
     "category": "Plenio/Artwork",
-    "description": "Paints the cover from the Song Sheet's artwork prompt with FLUX.2 Klein 4B (distilled, 4 steps, native nodes; Apache-2.0). The templates keep it bypassed because it needs about 16 GB of extra model files: select it and press Ctrl+B to turn it on. The seed is fixed, so new takes keep the cover; change it for another cover. Replace the block with any text-to-image block that takes a prompt and gives an image."
+    "description": "Paints the cover from the Song Sheet's artwork prompt with FLUX.2 Klein 4B (distilled, 4 steps, native nodes; Apache-2.0). On in the song templates (about 16 GB of model files): the Cover Art card of HQ Mastering & Cover Art switches it off. The writer's artwork prompt is read from the song - its lyrics, its title, its genre and mood. The seed decides the picture; another seed, another cover. Replace the block with any text-to-image block that takes a prompt and gives an image."
    },
    {
     "id": "b15b93f5-aa6c-53d1-a081-d23166dcc913",

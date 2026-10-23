@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import subprocess
 import sys
+import threading
 import time
-import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -20,9 +21,14 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = PACKAGE_ROOT / "plenio_player.py"
 PORTS = range(8765, 8770)
 APP = "plenio-player"
+STARTING_S = 120.0
+"""A player this ComfyUI started is waited for this long before another one would be started."""
+_lock = threading.Lock()
+_started: dict[int, tuple[subprocess.Popen[bytes], float]] = {}
+"""The players this ComfyUI started (port -> process, when): a click while one starts waits for it."""
 
 
-def player_at(port: int, timeout: float = 0.6) -> dict[str, Any] | None:
+def player_at(port: int, timeout: float = 2.0) -> dict[str, Any] | None:
     """The Plenio Player answering on ``127.0.0.1:port`` (its ``/api/info``), else ``None``."""
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/info", timeout=timeout) as answer:  # noqa: S310 - loopback only
@@ -33,14 +39,11 @@ def player_at(port: int, timeout: float = 0.6) -> dict[str, Any] | None:
 
 
 def _port_free(port: int) -> bool:
-    """Nothing listens on ``127.0.0.1:port`` (any answer, even an error page, means taken)."""
-    try:
-        urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=0.4)  # noqa: S310 - loopback only
-    except urllib.error.HTTPError:
-        return False
-    except OSError:
-        return True
-    return False
+    """Nothing listens on ``127.0.0.1:port``: a connection is refused. A listener that is slow to answer (a
+    player busy reading its songs) holds the port all the same."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.settimeout(1.0)
+        return probe.connect_ex(("127.0.0.1", port)) != 0
 
 
 def _same_state(info: dict[str, Any], state: Path) -> bool:
@@ -98,23 +101,53 @@ def start_player(folder: Path, comfyui: str, port: int, state: Path) -> subproce
         log.close()
 
 
-def ensure_player(folder: Path, comfyui: str, state: Path, wait: float = 25.0) -> dict[str, Any]:
+def ensure_player(folder: Path, comfyui: str, state: Path, wait: float = 60.0) -> dict[str, Any]:
     """The address of a running Plenio Player - the one found, or one started now. ``started`` says which;
-    raises ``RuntimeError`` when the player did not come up (the end of its log says why)."""
+    raises ``RuntimeError`` when the player did not come up (the end of its log says why). One at a time: a
+    second click while a player starts waits for that one (owner's report 2026-10-23: two clicks started two
+    players, and the second found its port taken)."""
+    with _lock:
+        return _ensure(folder, comfyui, state, wait)
+
+
+def _ensure(folder: Path, comfyui: str, state: Path, wait: float) -> dict[str, Any]:
     found = find_player(state)
     if found:
         running, info = found
         return {"url": f"http://127.0.0.1:{running}/", "started": False, "version": info.get("version", "")}
-    port = next((p for p in PORTS if _port_free(p)), None)
-    if port is None:
-        raise RuntimeError(f"Ports {PORTS.start}-{PORTS.stop - 1} are all taken by other programs.")
-    process = start_player(folder, comfyui, port, state)
+    # a player this ComfyUI started a moment ago, still on its way up
+    starting = next(
+        (
+            (port, process)
+            for port, (process, at) in _started.items()
+            if process.poll() is None and time.monotonic() - at < STARTING_S
+        ),
+        None,
+    )
+    if starting is not None:
+        port, process = starting
+    else:
+        free = next((p for p in PORTS if _port_free(p)), None)
+        if free is None:
+            raise RuntimeError(f"Ports {PORTS.start}-{PORTS.stop - 1} are all taken by other programs.")
+        port = free
+        process = start_player(folder, comfyui, port, state)
+        _started[port] = (process, time.monotonic())
     deadline = time.monotonic() + wait
     while time.monotonic() < deadline:
         answer = player_at(port)
         if answer:
             return {"url": f"http://127.0.0.1:{port}/", "started": True, "version": answer.get("version", "")}
         if process.poll() is not None:
+            # it stopped - another player (started by hand, or by another ComfyUI) may have come up meanwhile
+            found = find_player(state)
+            if found:
+                running, info = found
+                return {
+                    "url": f"http://127.0.0.1:{running}/",
+                    "started": False,
+                    "version": info.get("version", ""),
+                }
             break
         time.sleep(0.3)
     tail = ""

@@ -8,6 +8,7 @@ import { shallowRef } from 'vue'
 import type { Preset, Scene, SceneOptions } from '../presets'
 import { BUILTIN, randomPreset } from './builtin'
 import { FormulaError, compilePreset, slug, type PresetFile } from './format'
+import { MILKDROP } from './milkdrop'
 import { dropRenderer, type DropDef } from './renderer'
 import { isPortable, portable } from '../../portable'
 
@@ -47,7 +48,7 @@ function asVisual(id: string, file: PresetFile, make: () => [DropDef, PresetFile
 }
 
 export const DROP_PRESETS: Preset[] = [
-  ...BUILTIN.map((file) => {
+  ...[...BUILTIN, ...MILKDROP].map((file) => {
     const def = compilePreset(file)
     return asVisual(def.id, file, () => [def, file], 'builtin')
   }),

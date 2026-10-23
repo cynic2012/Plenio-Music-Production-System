@@ -6,6 +6,8 @@
  * WebGL2, its built-in presets and the listener's own.
  */
 import type { Frame } from './analysis'
+import { MORE_CLASSIC } from './classics'
+import { buffer, fade, logBins, pixels } from './draw'
 import { DROP_PRESETS, myPresets } from './drop'
 import type { PresetFile } from './drop/format'
 
@@ -110,45 +112,6 @@ export function makeColors(hue: number, scheme: Scheme, time: number): Colors {
     return round
   }
   return { hue, scheme, time, at, lut, palette }
-}
-
-// --- helpers ------------------------------------------------------------------------------------------
-
-/** ``n`` magnitudes 0..1 on a logarithmic frequency scale (as the ear hears), from ~40 Hz to ~16 kHz. */
-export function logBins(freq: Uint8Array, n: number, low = 2, high = Math.min(700, freq.length - 1)): Float32Array {
-  const out = new Float32Array(n)
-  for (let i = 0; i < n; i++) {
-    const a = Math.floor(low * Math.pow(high / low, i / n))
-    const b = Math.max(a + 1, Math.floor(low * Math.pow(high / low, (i + 1) / n)))
-    let peak = 0
-    for (let k = a; k < b; k++) peak = Math.max(peak, freq[k])
-    out[i] = peak / 255
-  }
-  return out
-}
-
-function fade(ctx: CanvasRenderingContext2D, width: number, height: number, alpha: number, color = '0,0,0'): void {
-  ctx.globalCompositeOperation = 'source-over'
-  ctx.fillStyle = `rgba(${color},${alpha})`
-  ctx.fillRect(0, 0, width, height)
-}
-
-/** An offscreen canvas of the same size (for feedback scenes). */
-function buffer(width: number, height: number, old?: HTMLCanvasElement): HTMLCanvasElement {
-  if (old && old.width === width && old.height === height) return old
-  const canvas = old ?? document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  return canvas
-}
-
-/** A small canvas for the pixel scenes (plasma, fire), drawn smoothly scaled up. */
-function pixels(width: number, height: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; image: ImageData } {
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
-  return { canvas, ctx, image: ctx.createImageData(width, height) }
 }
 
 // --- the scenes ---------------------------------------------------------------------------------------
@@ -827,7 +790,9 @@ export function miniScene(): Scene {
 }
 
 /** The classic visuals, drawn on a 2D canvas. */
-export const CLASSIC: Preset[] = [bars, scope, vector, radial, tunnel, stars, plasma, fire, kaleido, fountain, mountains, ripples, retro]
+export const CLASSIC: Preset[] = [bars, scope, vector, radial, tunnel, stars, plasma, fire, kaleido, fountain, mountains, ripples, retro, ...MORE_CLASSIC]
+
+export { logBins }
 
 /** Every built-in visual: the classics and Plenio Drop's presets. */
 export const PRESETS: Preset[] = [...CLASSIC, ...DROP_PRESETS]

@@ -571,6 +571,52 @@ def test_stop_the_player_from_its_page(songs: Path, tmp_path: Path) -> None:
     running.server_close()
 
 
+def test_a_port_held_by_a_busy_listener_is_not_free() -> None:
+    """A player busy reading its songs holds its port without answering at once: not free (owner's report
+    2026-10-23 - the launcher took such a port for free and started a second player, which failed)."""
+    import socket
+
+    with socket.socket() as busy:
+        busy.bind(("127.0.0.1", 0))
+        busy.listen(1)
+        assert launch._port_free(busy.getsockname()[1]) is False
+        free = busy.getsockname()[1]
+    assert launch._port_free(free) is True
+
+
+def test_two_clicks_at_once_start_one_player(
+    songs: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import socket
+
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    monkeypatch.setattr(launch, "PORTS", range(port, port + 2))
+    state = tmp_path / "state"
+    answers: list[dict] = []
+    clicks = [
+        threading.Thread(target=lambda: answers.append(launch.ensure_player(songs, "", state, wait=40)))
+        for _ in range(2)
+    ]
+    for click in clicks:
+        click.start()
+    for click in clicks:
+        click.join()
+    try:
+        assert len(answers) == 2 and answers[0]["url"] == answers[1]["url"] == f"http://127.0.0.1:{port}/"
+        assert sorted(a["started"] for a in answers) == [False, True]
+        assert launch.player_at(port + 1) is None  # no second player
+    finally:
+        quit_request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/quit",
+            data=b"{}",
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(quit_request, timeout=5).close()
+
+
 def test_comfyui_starts_a_player_of_its_own_and_finds_it_again(
     songs: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
