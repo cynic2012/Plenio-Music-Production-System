@@ -62,16 +62,16 @@ class PlenioHQMastering(io.ComfyNode):
             display_name="HQ Mastering & Cover Art",
             category="Plenio/Mastering",
             description=(
-                "Two switches at the start of a template. HQ mastering: on, HQ 2 · Regenerate Highs (UniverSR) "
-                "runs in Plenio · Master - it can clearly reduce AI shimmer and artifacts, but the song takes about "
-                "twice as long; off (default), the master runs without UniverSR and its model file is not needed. "
+                "Two switches at the start of a template. HQ mastering (on by default): HQ 2 · Regenerate Highs "
+                "(UniverSR) runs in Plenio · Master - it can clearly reduce AI shimmer and artifacts, and the song "
+                "takes about twice as long; off, the master runs without UniverSR and its model file is not needed. "
                 "Cover Art (on by default): paints the song's cover - off, the template's cover nodes are bypassed."
             ),
             inputs=[
                 FinishSwitch.Input(
                     "hq_mastering",
                     display_name="HQ mastering",
-                    default=False,
+                    default=True,
                     tooltip=HQ_MASTERING_TOOLTIP,
                 )
             ],
@@ -84,7 +84,7 @@ class PlenioHQMastering(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, hq_mastering: Any = False) -> io.NodeOutput:
+    def execute(cls, hq_mastering: Any = True) -> io.NodeOutput:
         # a widget of its own: ComfyUI does not convert its value (a client may send "false")
         return io.NodeOutput(hq_mastering is True or str(hq_mastering).strip().lower() in ("true", "1", "on"))
 
@@ -230,7 +230,7 @@ class PlenioHQRegenerateHighs(io.ComfyNode):
                     label_on="on - UniverSR regenerates the highs",
                     label_off="off - the song passes unchanged",
                     tooltip="Off: skipped, the model is not even loaded. In the templates the HQ Mastering switch "
-                    "at the start sets it (off by default): on, fewer AI shimmer and artifacts, about twice the time.",
+                    "at the start sets it (on by default): on, fewer AI shimmer and artifacts, about twice the time.",
                 ),
                 # lazy: with HQ mastering off the loader never runs (and a missing model file is no error)
                 AudioModelType.Input("model", lazy=True, tooltip="Load Audio Model (super-resolution)."),

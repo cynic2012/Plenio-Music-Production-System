@@ -5,11 +5,13 @@ import { DOCUMENT_KINDS, parseState, serializeState, summarize } from '../shared
 import { lyricsTargetOf, scoreTargetOf, writeLyrics, writeScore } from './lyricsOwner'
 import { getAsrNote, getPayload, onPayload } from './payloads'
 import { displayState, onRunState, runState, setRunState, sheetLine } from './runStatus'
+import { SHEET_LOOKS, sheetKind, type SheetKind } from './sheetKind'
 import { codeIsStale, importOrReload, loadFresh } from './staleCode'
 
 export const SHEET_STATE_TYPE = 'PLENIO_SHEET_STATE'
-/** The widget's layout height: the button row (28 px), the status row (18 px) and the frontend's margins. */
-export const SHEET_WIDGET_HEIGHT = 68
+/** The widget's layout height: the editor button as a card (62 px), the summary and the status row (18 px
+ * each), their gaps and the frontend's margins (10 px above and below a DOM widget). */
+export const SHEET_WIDGET_HEIGHT = 128
 
 interface InputSlot {
   name: string
@@ -32,19 +34,37 @@ export const sheetStateWidget: WidgetConstructor = (node: ComfyNode, inputName: 
   let value = typeof inputData?.[1]?.default === 'string' ? (inputData[1].default as string) : ''
   const element = document.createElement('div')
   element.className = 'plenio-sheet-state'
-  const summary = document.createElement('span')
+  const summary = document.createElement('div')
   summary.className = 'plenio-sheet-summary'
+  // the editor button as a card: an icon and two lines that say what one edits here (sheetKind.ts)
   const button = document.createElement('button')
+  button.type = 'button'
   button.className = 'plenio-sheet-open'
-  button.textContent = 'Edit Song Sheet…'
+  button.innerHTML =
+    '<span class="icon"></span><span class="text"><span class="name"></span><span class="what"></span></span><span class="go">Edit</span>'
   // where the run stands at this sheet - a review stop, waiting for approval, approved - in words, so
   // App mode (which shows this widget but not the canvas badges) says it too
   const status = document.createElement('div')
   status.className = 'plenio-sheet-status'
   element.append(button, summary, status)
   let hookedReview = false
+  let kind: SheetKind | null = null
+
+  /** The card for the sheet's kind; its links come with the workflow, after the widget is made. */
+  const paintKind = () => {
+    const next = sheetKind(node)
+    if (next === kind) return
+    kind = next
+    const look = SHEET_LOOKS[next]
+    button.dataset.kind = next
+    button.title = `${look.name} - opens the Song Sheet editor (${look.what.toLowerCase()})`
+    ;(button.querySelector('.icon') as HTMLElement).innerHTML = look.icon
+    ;(button.querySelector('.name') as HTMLElement).textContent = look.name
+    ;(button.querySelector('.what') as HTMLElement).textContent = look.what
+  }
 
   const render = () => {
+    paintKind()
     const payload = getPayload(String(node.id))
     const state = displayState(node)
     // the last run's status, unless Approve has answered it since (it said "waiting for approval")
@@ -181,6 +201,12 @@ export const sheetStateWidget: WidgetConstructor = (node: ComfyNode, inputName: 
       if (changed === null || changed === node) render()
     })
   ]
+  // a link made or removed later (the score connected by hand) changes the card at the next frame
+  const draw = node.onDrawForeground
+  node.onDrawForeground = function (this: ComfyNode, ctx: CanvasRenderingContext2D) {
+    draw?.call(this, ctx)
+    paintKind()
+  }
   // a removed node (another workflow loaded, the node deleted) stops listening: its graph is gone
   const removed = node.onRemoved
   node.onRemoved = function (this: ComfyNode) {

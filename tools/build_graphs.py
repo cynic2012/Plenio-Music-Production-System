@@ -20,6 +20,9 @@ PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT / "tools"))
 
 from graph_builder import (  # noqa: E402
+    GROUP_GAP,
+    GROUP_PADDING,
+    NODE_GAP,
     App,
     Blueprint,
     BlueprintInput,
@@ -347,13 +350,20 @@ SEPARATION_MODEL = "model_bs_roformer_ep_17_sdr_9.6568.ckpt"
 
 
 def master() -> Blueprint:
-    """Audio HQ 1-3 (the owner's request, 2026-10-21: before the first EQ), EQ and Loudness.
+    """Stems, Audio HQ 1-3 (the owner's request, 2026-10-21: before the first EQ), EQ and Loudness.
 
-    HQ 1 runs, HQ 2 runs only with *HQ mastering* on (the block's input, linked from the templates' HQ Mastering
-    switch, off by default - the owner's request 2026-10-22: UniverSR about doubles a song's time), HQ 3 is
-    bypassed (the owner's listening test: it dulls the highs); their presets are on *auto*, so the brief's genre
-    picks the profile. The super-resolution model of HQ 2 is a collapsed loader inside the block, which runs only
-    when HQ 2 asks for it - all audio work after the render lives in this block now (the REFINE block is gone).
+    HQ 1 runs, HQ 2 runs with *HQ mastering* on (the block's input, linked from the templates' HQ Mastering
+    switch - on by default since the owner's request of 2026-10-24; 2026-10-22 had made it off: UniverSR about
+    doubles a song's time), HQ 3 is bypassed (the owner's listening test: it dulls the highs); their presets are
+    on *auto*, so the brief's genre picks the profile. The super-resolution model of HQ 2 is a collapsed loader
+    inside the block, which runs only when HQ 2 asks for it - all audio work after the render lives in this
+    block (the REFINE block is gone).
+
+    The stems come first (owner's request 2026-10-24: the STEMS block of the templates moved into the master):
+    Separate Stems and the Stem Mixer, switched by the block's *stems* input (off). A bypassed stage cannot
+    stand here - the mixer has no audio input a bypass could pass on - so three If/Else switches choose: off,
+    the song goes straight to HQ 1 and the two stem reports are empty; their inputs are lazy, so the separation
+    and its model never run then (the loader's missing file is no error either).
     """
     g = Graph(first_id=401)
     # two socket rows and the preset, the run summary below (custom's fields make the node grow by itself)
@@ -382,15 +392,48 @@ def master() -> Blueprint:
     eq = g.add(
         "PlenioEQ",
         (1360, 0),
-        size=(620, 320),
+        # the size the page gives the EQ's curve anyway (2026-10-24: at 320 it reached out of its group)
+        size=(760, 560 + SUMMARY_ROOM),
         widgets={"mode": "match preset", "mode.preset": WARM_GENTLE},
     )
     loudness = g.add(
         "PlenioLoudness",
-        (2040, 0),
+        (2180, 0),
         size=(360, 220),
         widgets={"target": MASTER_TARGET, "compression": MASTER_STYLE, "sample_rate": "keep"},
     )
+    # the stems, left of Audio HQ (made after it: the block's other node ids stay as they were)
+    stems_loader = g.add(
+        "PlenioAudioModelLoader",
+        (-1380, 0),
+        size=(340, 130),
+        collapsed=True,
+        title="Separation model (stems)",
+        widgets={"kind": "separation", "kind.model": SEPARATION_MODEL},
+        properties=model(SEPARATION_MODEL),
+    )
+    separate = g.add("PlenioSeparateStems", (-1380, 80), size=(340, 170))
+    mixer = g.add(
+        "PlenioStemMixer",
+        (-980, 0),
+        # five strips (the four stems and the rest) and the run summary
+        size=(420, 540 + SUMMARY_ROOM),
+        widgets={"mix": ""},
+        labels={"mix": "mixer"},
+    )
+    stems_audio = g.add(
+        "ComfySwitchNode", (-480, 0), size=(300, 90), title="Stems on: the mix · off: the song"
+    )
+    stems_mix_report = g.add("ComfySwitchNode", (-480, 170), size=(300, 90), title="Stems on: the mix report")
+    stems_split_report = g.add(
+        "ComfySwitchNode", (-480, 340), size=(300, 90), title="Stems on: the separation report"
+    )
+    g.link(stems_loader, "model", separate, "model")
+    g.link(separate, "stems", mixer, "stems")
+    g.link(mixer, "audio", stems_audio, "on_true")
+    g.link(mixer, "report", stems_mix_report, "on_true")
+    g.link(separate, "report", stems_split_report, "on_true")
+    g.link(stems_audio, "output", stereo, "audio")
     g.link(loader, "model", highs, "model")
     g.link(stereo, "audio", highs, "audio")
     g.link(highs, "audio", dereverb, "audio")
@@ -398,17 +441,29 @@ def master() -> Blueprint:
     g.link(eq, "audio", loudness, "audio")
     g.group("AUDIO HQ (before the EQ)", [stereo, loader, highs, dereverb])
     g.group("MASTER", [eq, loudness])
+    g.group(
+        "STEMS (the block's stems switch, off)",
+        [stems_loader, separate, mixer, stems_audio, stems_mix_report, stems_split_report],
+        color=OPTIONAL_GROUP,
+    )
+    g.align(["STEMS (the block's stems switch, off)", "AUDIO HQ (before the EQ)", "MASTER"])
     return Blueprint(
         "Plenio · Master",
         "Plenio/Mastering",
-        "Finishes a song: Audio HQ - HQ 1 · Stereo Cleanup runs, HQ 2 · Regenerate Highs (UniverSR) with HQ "
+        "Finishes a song: Stems (with the block's stems switch on: Separate Stems and the Stem Mixer, set the mix "
+        "inside the block) - Audio HQ: HQ 1 · Stereo Cleanup runs, HQ 2 · Regenerate Highs (UniverSR) with HQ "
         "mastering on (fewer AI shimmer and artifacts, about twice the time), HQ 3 · De-Reverb is bypassed; their "
         "presets follow the brief's genre - then a gentle tone match (EQ) "
         "and loudness for streaming (-14 LUFS, -1 dBTP true peak) with gentle compression. Open the block to "
-        "change a preset, bypass a stage (Ctrl+B), the EQ curve or the compression style.",
+        "mix the stems, change a preset, bypass a stage (Ctrl+B), the EQ curve or the compression style.",
         g,
         [
-            BlueprintInput("audio", "AUDIO", [(stereo, "audio")], tooltip="The song to master."),
+            BlueprintInput(
+                "audio",
+                "AUDIO",
+                [(separate, "audio"), (stems_audio, "on_false")],
+                tooltip="The song to master.",
+            ),
             BlueprintInput(
                 "reference",
                 "AUDIO",
@@ -426,9 +481,18 @@ def master() -> Blueprint:
                 "BOOLEAN",
                 [(highs, "hq_mastering")],
                 widget=True,
-                default=False,
+                default=True,
                 label="HQ mastering",
                 tooltip=HQ_MASTERING_TOOLTIP,
+            ),
+            BlueprintInput(
+                "stems",
+                "BOOLEAN",
+                [(stems_audio, "switch"), (stems_mix_report, "switch"), (stems_split_report, "switch")],
+                widget=True,
+                default=False,
+                label="stems",
+                tooltip=STEMS_TOOLTIP,
             ),
             BlueprintInput(
                 "sample_rate",
@@ -474,8 +538,30 @@ def master() -> Blueprint:
                 (dereverb, "report"),
                 tooltip="HQ 3 (bypassed in the templates): profile and the highs before/after.",
             ),
+            BlueprintOutput(
+                "stems_report",
+                "PLENIO_REPORT",
+                (stems_mix_report, "output"),
+                tooltip=(
+                    "Stems on: per strip audible, gain, gain reduction, muted time - and the strips marked save, "
+                    "which Export Release writes next to the song ('<name>-stems'). Empty with stems off."
+                ),
+            ),
+            BlueprintOutput(
+                "separation_report",
+                "PLENIO_REPORT",
+                (stems_split_report, "output"),
+                tooltip="Stems on: the stem names and how much the residual holds. Empty with stems off.",
+            ),
         ],
     )
+
+
+STEMS_TOOLTIP = (
+    "Off (default): the song goes straight to Audio HQ. On: Separate Stems splits it into vocals, drums, bass and "
+    "other, and the Stem Mixer inside this block mixes them back (gain, mute/solo, compression, reverb and delay, "
+    "muted time ranges; a neutral mix returns the song unchanged). Needs the BS-RoFormer model (527 MB)."
+)
 
 
 def refine() -> Blueprint:
@@ -541,7 +627,8 @@ def stems_stage(
     audio: tuple[Node, str],
     y: float = 430,
 ) -> tuple[tuple[Node, str], Node]:
-    """The STEMS block of a template (plan §11): bypassed and collapsed in every template."""
+    """The STEMS block of Enhance & Master (plan §11): bypassed and collapsed. The song templates have the stems
+    in their Master block since 2026-10-24, switched by its *stems* input."""
     node = g.add_subgraph(
         blueprints["stems"],
         (x, y),
@@ -551,7 +638,6 @@ def stems_stage(
         collapsed=True,
     )
     g.link(audio[0], audio[1], node, "audio")
-    g.group("STEMS (optional)", [node], color=OPTIONAL_GROUP)
     return (node, "audio"), node
 
 
@@ -1762,22 +1848,27 @@ summary its minimum, and ``tests/workflows/test_graphs.py`` checks the room."""
 
 
 HQ_MASTERING_TOOLTIP = hq.HQ_MASTERING_HINT
-HQ_SWITCH_SIZE = (460, 160)
-HQ_SWITCH_Y = -(HQ_SWITCH_SIZE[1] + 90)
-"""Above the first node of group 1: the first thing a template shows (owner's request 2026-10-22). Wide enough
-for both cards of *HQ Mastering & Cover Art* (owner's request 2026-10-23)."""
+HQ_SWITCH_SIZE = (520, 160)
+"""The first node of group 1, the first thing a template shows (owner's request 2026-10-22). Wide enough for
+both cards of *HQ Mastering & Cover Art* (owner's request 2026-10-23), as wide as the brief under it."""
+WRITER_Y = 250
+"""The writer model under the switches, in group 1 (owner's request 2026-10-24: chosen at the start)."""
+COLUMN_ONE_Y = 560
+"""Where group 1's own nodes start (the brief, the source recording): under the switches and the writer model,
+so that every section's first node stands at the top of the row (owner's request 2026-10-24)."""
 
 
 def hq_switch(g: Graph, target: Node, name: str = "hq_mastering") -> Node:
-    """The HQ Mastering switch at the start (off), wired into the Master block (``target``; Enhance & Master:
-    HQ 2 itself) only - so switching it runs the mastering again, not the song. Made last, so that the
-    template's other node ids stay as they were (continuing an older song maps its values by id)."""
+    """The HQ Mastering switch at the start (on since the owner's request of 2026-10-24), wired into the Master
+    block (``target``; Enhance & Master: HQ 2 itself) only - so switching it runs the mastering again, not the
+    song. Made last, so that the template's other node ids stay as they were (continuing an older song maps
+    its values by id)."""
     switch = g.add(
         "PlenioHQMastering",
-        (0, HQ_SWITCH_Y),
+        (0, 0),
         size=HQ_SWITCH_SIZE,
         title="HQ Mastering & Cover Art",
-        widgets={"hq_mastering": False},
+        widgets={"hq_mastering": True},
     )
     g.link(switch, "hq_mastering", target, name)
     return switch
@@ -1803,8 +1894,8 @@ CREATIVITY_ROW = 30
 
 def make_room(g: Graph, brief: Node, extra_height: float) -> None:
     """Room for the wider and taller brief, once the template stands: what is right of the old brief column
-    moves ``WIDEN`` to the right, what stands below the brief in the first two columns moves down by
-    ``extra_height`` (the field outputs' rows) - nodes and groups alike."""
+    moves ``WIDEN`` to the right, what stands below the brief in its column moves down by ``extra_height``
+    (the field outputs' rows) - nodes and groups alike."""
     left = brief.pos[0] + 380
     bottom = brief.pos[1] + brief.size[1] - extra_height
     for node in g.nodes:
@@ -1812,31 +1903,44 @@ def make_room(g: Graph, brief: Node, extra_height: float) -> None:
             continue
         x, y = node.pos
         x += WIDEN if x >= left else 0
-        y += extra_height if y >= bottom and node.pos[0] < left + 500 else 0
+        y += extra_height if y >= bottom and brief.pos[0] <= node.pos[0] < left else 0
         node.pos = (x, y)
     for group in g.groups:
         x, y, width, height = group["bounding"]
         if x >= left - 40:
             x += WIDEN
-        if y >= bottom - 80 and x < left + 500:
+        if y >= bottom - 80 and brief.pos[0] - 40 <= x < left:
             y += extra_height
         group["bounding"] = [x, y, width, height]
 
 
+COVER_BRIEF_X = 560
+"""The Cover Brief's column, right of group 1 (2026-10-24: before, the brief stood under the source)."""
 FOLLOW_BRIEF = {"review": "as the brief says"}
 """The sheets stop for review in the brief's mode 'one song/cover, stop to review' only."""
 
 
-def song_sheet(g: Graph, pos: tuple[float, float], title: str) -> Node:
-    """A Song Sheet that follows the brief's mode; its editor button carries the title (App mode label)."""
-    return g.add(
+SHEET_SIZE = (420, 420 + SUMMARY_ROOM)
+"""A Song Sheet: its editor button is a card with an icon since 2026-10-24 (``SHEET_WIDGET_HEIGHT`` in
+``frontend/src/extension/sheetStateWidget.ts``, 60 px more than the button row before)."""
+SHEET_LOOKS = {"text": ("#25695f", "#163d38"), "score": ("#5b4290", "#2b2244"), "daw": ("#2c5a8c", "#183250")}
+"""The sheets' colours (owner's request 2026-10-24: the nodes that stop a run for review stand out): teal where
+the words are edited, violet where the score is - the colours of their editor buttons (``sheetKind.ts``)."""
+
+
+def song_sheet(g: Graph, pos: tuple[float, float], title: str, kind: str = "text") -> Node:
+    """A Song Sheet that follows the brief's mode; its editor button carries the title (App mode label).
+    ``kind``: what its editor edits - ``text`` (title, style, lyrics, cover prompt) or ``score``."""
+    node = g.add(
         "PlenioSongSheet",
         pos,
-        size=(420, 360 + SUMMARY_ROOM),
+        size=SHEET_SIZE,
         title=title,
         widgets=FOLLOW_BRIEF,
         labels={"sheet_state": title},
     )
+    node.color, node.bgcolor = SHEET_LOOKS[kind]
+    return node
 
 
 WRITER_WIDTH = 400
@@ -1878,11 +1982,12 @@ def draft_seed(g: Graph, write: Node, pos: tuple[float, float], *, keep: bool) -
 
 def writer_model(g: Graph, pos: tuple[float, float]) -> Node:
     """The template's writer model: one list (ComfyUI's text models and every Local LLM model) for Write Song
-    and Arrange, so every writing step uses the same model; App mode shows it."""
+    and Arrange, so every writing step uses the same model; App mode shows it. In group 1 under the switches,
+    as wide as they are (owner's request 2026-10-24)."""
     return g.add(
         "PlenioWriterChoice",
         pos,
-        size=(WRITER_WIDTH, 120 + SUMMARY_ROOM),
+        size=(HQ_SWITCH_SIZE[0], 120 + SUMMARY_ROOM),
         title="Writer model",
         widgets={"model": WRITER},
         # the frontend's missing-model dialog reads the download from the node that shows the file name
@@ -1935,25 +2040,29 @@ def finish(
     reports: list[tuple[Node, str]],
     group: str,
     export_widgets: dict[str, object] | None = None,
-    cover_y: float = 560,
     export_size: tuple[float, float] = (380, 494 + SUMMARY_ROOM),
     sheet_music: str = "off",
     brief: Node | None = None,
     keep_seeds: bool = False,
     writer: Node | None = None,
 ) -> tuple[Node, Node, Node]:
-    """Master -> Preview + Export (the unmastered take as the original), and the optional Cover Art.
+    """Master (Stems, Audio HQ, EQ, Loudness) -> Preview + Export (the unmastered take as the original), and
+    Cover Art - laid out above the render by ``cover_over`` once the template stands.
 
-    ``cover_y``/``export_size`` carry the owner's layout choices (2026-09-28): the optional blocks sit
-    under the wired path, and a taller export shows more report slots. ``sheet_music``: the YuE2 templates
-    save the score's notation with the lyrics as ``<name>.pdf`` (owner's request 2026-10-08). ``brief`` goes into
-    Export Release: its tags take the brief's fields as variables (owner's request 2026-10-15), shown by the
-    *Tags & variables* note beside it; the tag fields and the brief socket make the export taller.
+    ``export_size`` carries the owner's layout choice (2026-09-28): a taller export shows more report slots.
+    ``sheet_music``: the YuE2 templates save the score's notation with the lyrics as ``<name>.pdf`` (owner's
+    request 2026-10-08). ``brief`` goes into Export Release: its tags take the brief's fields as variables
+    (owner's request 2026-10-15), shown by the *Tags & variables* note beside it; the tag fields and the brief
+    socket make the export taller.
     """
-    master = g.add_subgraph(blueprints["master"], (x, 0), size=(340, 170))
-    preview = g.add("PreviewAudio", (x, 230), size=(340, 120), title="Preview (mastered)")
+    master = g.add_subgraph(blueprints["master"], (x, 0), size=MASTER_SIZE)
+    preview_y = MASTER_SIZE[1] + 84
+    preview = g.add("PreviewAudio", (x, preview_y), size=(340, 120), title="Preview (mastered)")
     all_reports = [
         *reports,
+        # the stems are in the Master block since 2026-10-24: its two stem reports, where the STEMS block's were
+        (master, "stems_report"),
+        (master, "separation_report"),
         (master, "hq1_report"),
         (master, "hq2_report"),
         (master, "hq3_report"),
@@ -1962,7 +2071,6 @@ def finish(
     ]
     # + the three HQ report slots of the Master block (2026-10-21)
     export_size = (export_size[0] + EXPORT_WIDER, export_size[1] + EXPORT_TALLER + 3 * SLOT_HEIGHT)
-    cover_y = max(cover_y, export_size[1] + 120)
     export = g.add(
         "PlenioExportRelease",
         (x + 400, 0),
@@ -1974,12 +2082,13 @@ def finish(
         g.link(brief, "brief", export, "brief")
         g.link(brief, "brief", master, "brief")  # the HQ presets on auto follow the genre
     tags_note(g, (x + 400 + export_size[0] + 40, 0))
-    # on by default (owner's request 2026-10-23); the Cover Art switch at the top bypasses these three
-    cover = g.add_subgraph(blueprints["cover"], (x, cover_y), size=(340, 170), title="Cover Art")
+    # on by default (owner's request 2026-10-23); the Cover Art switch at the top bypasses these three. Above
+    # the finish for now: cover_over lays them out above the render
+    cover = g.add_subgraph(blueprints["cover"], (x, -1200), size=(340, 170), title="Cover Art")
     cover_preview = g.add(
-        "PreviewImage", (x + 400, cover_y), size=(300, 300), title="Cover preview", properties=COVER_SWITCH
+        "PreviewImage", (x + 400, -1200), size=(300, 300), title="Cover preview", properties=COVER_SWITCH
     )
-    cover_seed_node = cover_seed(g, cover, (x, cover_y + 230), keep=keep_seeds)
+    cover_seed_node = cover_seed(g, cover, (x, -960), keep=keep_seeds)
     cover.properties.update(COVER_SWITCH)
     cover_seed_node.properties.update(COVER_SWITCH)
     g.link(audio[0], audio[1], master, "audio")
@@ -1995,13 +2104,47 @@ def finish(
     finished = [master, preview, export]
     if writer is not None:
         # misheard words in the lyrics as sung, by the template's writer model (owner's request 2026-10-23)
-        check = g.add_subgraph(blueprints["sung_check"], (x, 420), size=(340, 140), title="Check Sung Words")
+        check = g.add_subgraph(
+            blueprints["sung_check"], (x, preview_y + 120 + 84), size=(340, 140), title="Check Sung Words"
+        )
         g.link(export, "record", check, "record")
         g.link(writer, "model", check, "model")
         finished.append(check)
     g.group(group, finished)
     g.group("COVER ART", [cover, cover_seed_node, cover_preview], color=COVER_GROUP)
     return master, preview, export
+
+
+MASTER_SIZE = (340, 260)
+"""The Master block: three sockets, three switches (HQ mastering, stems, sample rate) and eight outputs."""
+COLUMN_GAP = 60
+COVER_AIR = 20
+"""Between the cover's group and the row of sections, beyond the gap ``Graph.settle`` keeps."""
+
+
+def cover_over(g: Graph, render: str) -> None:
+    """Cover Art over the render section (owner's request 2026-10-24: up from under the finish, over the render,
+    overlapping neither the render nor the finish). The template is settled first, so that the sections stand
+    where they will; then the cover's block and its seed stand in the render section's first column with the
+    preview beside them - or under them where the section is too narrow -, their group a gap above the row."""
+    g.settle()
+    left, top, right, _bottom = g.bounds(render)
+    cover, seed, preview = g.members("COVER ART")
+    x = left + GROUP_PADDING
+    bottom = top - GROUP_GAP - GROUP_PADDING - COVER_AIR
+
+    def stack(nodes: list[Node], low: float) -> None:
+        """Bottom up: the last node's body ends at ``low``, each one above it a node gap higher."""
+        for node in reversed(nodes):
+            node.pos = (x, low - node.size[1])
+            low = Graph.box(node)[1] - NODE_GAP
+
+    if right - left - 2 * GROUP_PADDING >= cover.size[0] + COLUMN_GAP + preview.size[0]:
+        stack([cover, seed], bottom)
+        preview.pos = (x + cover.size[0] + COLUMN_GAP, cover.pos[1])
+    else:
+        stack([cover, seed, preview], bottom)
+    g.refit("COVER ART")
 
 
 EXPORT_WIDER = 60
@@ -2060,7 +2203,8 @@ def tags_note(g: Graph, pos: tuple[float, float]) -> Node:
 
 
 FINISH_TEXT = (
-    "**Finish:** *Plenio · Master* refines the take (*Audio HQ*, below) and brings it to -14 LUFS / -1 dBTP "
+    "**Finish:** *Plenio · Master* mixes the stems when you switch *stems* on, refines the take (*Audio HQ*, "
+    "below) and brings it to -14 LUFS / -1 dBTP "
     "with a gentle tone match (open the block to change a stage, the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered "
     "take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the "
     "**sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music "
@@ -2070,7 +2214,8 @@ FINISH_TEXT = (
     "beside Export lists them all."
 )
 COVER_TEXT = (
-    "**Cover art (on):** *Cover Art* paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about "
+    "**Cover art (on):** *Cover Art* (the COVER ART group above the render) paints a cover from the sheet's "
+    "artwork prompt with FLUX.2 Klein 4B (about "
     "16 GB of model files, Apache-2.0); Export embeds it in the FLAC and MP3 files and saves it as `.jpg`. The "
     "**Cover Art** card in *HQ Mastering & Cover Art* at the top switches it off - its three nodes are then "
     "bypassed and no image model loads.\n\n"
@@ -2080,17 +2225,17 @@ COVER_TEXT = (
     "corrected lines under *As sung*. Nothing runs for a song without sung lyrics or without such words."
 )
 STEMS_TEXT = (
-    "**Stems (optional, bypassed):** *Separate Stems* splits the take into vocals, drums, bass and other; "
-    "the *Stem Mixer* balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) "
-    "and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Select the block "
-    "and press **Ctrl+B**; the mixer is inside it - open the block with the icon at the top right of the "
-    "node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it."
+    "**Stems (in the Master block, off):** switch *stems* on the *Plenio · Master* node on: *Separate Stems* "
+    "splits the take into vocals, drums, bass and other, and the *Stem Mixer* - inside the block, open it with "
+    "the icon at the top right of the node - balances them (gain, mute/solo, compression, reverb/delay sends, "
+    "muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Off, "
+    "the separation does not run. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it."
 )
 HQ_TEXT = (
-    "**HQ Mastering & Cover Art** (the two cards at the top - click one to switch it): **HQ Mastering** (**off** "
-    "by default) runs the mastering at its highest quality - it can clearly reduce AI shimmer and artifacts, but "
-    "the song takes **about twice as long** (UniverSR, 229 MB in `models/audio_sr`, needed only then); **Cover "
-    "Art** (**on**) paints the song's cover.\n\n"
+    "**HQ Mastering & Cover Art** (the two cards at the top - click one to switch it): **HQ Mastering** (**on** "
+    "by default) runs the mastering at its highest quality - it can clearly reduce AI shimmer and artifacts, and "
+    "the song takes **about twice as long** (UniverSR, 229 MB in `models/audio_sr`; off, it does not run and is "
+    "not needed); **Cover Art** (**on**) paints the song's cover.\n\n"
     "**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer "
     "in the render's highs (always); *HQ 2 · Regenerate Highs*, with HQ mastering on, lets the UniverSR model "
     "generate new highs above 8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s "
@@ -2122,7 +2267,8 @@ APP_TEXT = (
     "*approved*) and the results. *Number of runs* next to Run renders a series."
 )
 WRITER_TEXT = (
-    "**Writer model:** one list in the *Writer model* node for every writing step (Write Song and Arrange): "
+    "**Writer model:** one list in the *Writer model* node - at the start, under the two cards - for every "
+    "writing step (Write Song and Arrange): "
     "ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, "
     "Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed "
     "is answered from Plenio's cache, without asking the model again."
@@ -2203,7 +2349,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     about_note(g, ABOUT_YUE2, height=1300)
     brief = g.add(
         "PlenioSongBrief",
-        (0, 0),
+        (0, COLUMN_ONE_Y),
         size=(
             BRIEF_WIDTH,
             690 + CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM,
@@ -2215,10 +2361,10 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             "vocals": "sung",
         },
     )
-    model_node = g.add_subgraph(bp["yue2_model"], (0, 940), size=(380, 140), collapsed=True)
+    model_node = g.add_subgraph(bp["yue2_model"], (0, COLUMN_ONE_Y + 940), size=(380, 140), collapsed=True)
     write = g.add_subgraph(bp["write"], (460, 0), size=(WRITER_WIDTH, 220))
     draft = draft_seed(g, write, (460, 280), keep=False)
-    writer = writer_model(g, (460, 520))
+    writer = writer_model(g, (0, WRITER_Y))
     text_sheet = song_sheet(g, (900, 0), "Song Sheet · Text")
     # the plan block's inputs take a row more since the creativity (owner's request 2026-10-19)
     plan = g.add_subgraph(bp["yue2_plan"], (1400, 0), size=(340, 250))
@@ -2231,10 +2377,9 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     )
     arrange_node = g.add_subgraph(bp["arrange"], (1400, 830), size=(WRITER_WIDTH, 260), title="Arrange")
     arrangement = arrangement_seed(g, arrange_node, (1400, 1140), keep=False)
-    score_sheet = song_sheet(g, (1820, 0), "Song Sheet · Score")
+    score_sheet = song_sheet(g, (1820, 0), "Song Sheet · Score", "score")
     seed = take_seed(g, (2320, 0))
     render = g.add_subgraph(bp["yue2_render"], (2320, 230), size=(320, 310))
-    audio, stems_node = stems_stage(g, bp, 2320, audio=(render, "AUDIO"), y=665)
     g.link(brief, "brief", write, "brief")
     g.link(brief, "song_seed", write, "song_seed")
     g.link(model_node, "engine", write, "engine")
@@ -2279,29 +2424,25 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         g,
         bp,
         2720,
-        audio=audio,
+        audio=(render, "AUDIO"),
         title=(text_sheet, "title"),
         artwork=(text_sheet, "artwork_prompt"),
-        reports=[
-            (text_sheet, "report"),
-            (score_sheet, "report"),
-            (stems_node, "report"),
-            (stems_node, "separation_report"),
-        ],
+        reports=[(text_sheet, "report"), (score_sheet, "report")],
         group="6 · FINISH",
-        cover_y=700,
         sheet_music="PDF (A4)",
         brief=brief,
         writer=writer,
     )
     switch = hq_switch(g, master_block)
-    g.group("1 · SONG", [switch, brief])
-    g.group("2 · WRITE", [write, draft, writer])
+    g.group("1 · SONG", [switch, writer, brief])
+    g.group("2 · WRITE", [write, draft])
     g.group("3 · TEXT", [text_sheet])
     g.group("4 · SCORE", [plan, plan_seed_node, tools, arrange_node, arrangement, score_sheet])
     g.group("5 · RENDER", [seed, render])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
+    g.align()
+    cover_over(g, "5 · RENDER")
     return g, song_app(
         brief,
         seed,
@@ -2352,9 +2493,10 @@ def song_app(
         "genre_closeness",
         "creativity",
     ]
-    inputs = [(brief, name) for name in controls] + [(writer, "model")]
-    if hq_mastering is not None:  # right after the template: the first choice of a run
-        inputs.insert(2, (hq_mastering, "hq_mastering"))
+    inputs = [(brief, name) for name in controls]
+    # right after the template: the first choices of a run, as in group 1 of the graph (owner's request
+    # 2026-10-24: the writer model at the start, after the switches)
+    inputs[2:2] = [*([(hq_mastering, "hq_mastering")] if hq_mastering is not None else []), (writer, "model")]
     inputs += [(node, name) for node in (seed, draft) for name in SEED_CONTROLS]
     if arrangement is not None:
         inputs += [(arrangement, name) for name in SEED_CONTROLS]
@@ -2404,10 +2546,12 @@ ABOUT_COVER = f"""# 2 · YuE2 · Cover
 def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g = Graph()
     about_note(g, ABOUT_COVER, height=1440)
-    source = g.add("LoadAudio", (0, 0), size=(360, 140), title="Source recording")
+    # group 1: the switches, the writer model, the source; the brief beside it in group 2 (owner's request
+    # 2026-10-24: every section at the top of one row - before, 2 · COVER stood under 1 · SOURCE)
+    source = g.add("LoadAudio", (0, COLUMN_ONE_Y), size=(360, 140), title="Source recording")
     excerpt = g.add(
         "TrimAudioDuration",
-        (0, 230),
+        (0, COLUMN_ONE_Y + 230),
         size=(360, 110),
         mode=4,
         title="Excerpt (optional)",
@@ -2415,7 +2559,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     )
     brief = g.add(
         "PlenioCoverBrief",
-        (0, 480),
+        (COVER_BRIEF_X, 0),
         size=(
             BRIEF_WIDTH,
             640 + CREATIVITY_ROW + COVER_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM,
@@ -2432,10 +2576,11 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             "harmony": "keep original chords",
         },
     )
-    model_node = g.add_subgraph(bp["yue2_model"], (0, 1395), size=(380, 140), collapsed=True)
+    # the music model under the row of sections
+    model_node = g.add_subgraph(bp["yue2_model"], (0, 1700), size=(380, 140), collapsed=True)
     adapter = g.add(
         "LoraLoader",
-        (0, 1475),
+        (0, 1780),
         size=(380, 130),
         title="Instrumental adapter",
         widgets={"lora_name": LORA, "strength_model": 0.0, "strength_clip": 1.0},
@@ -2444,41 +2589,47 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     # under the adapter, in the first column: right of it, the wider brief's room pushed it across the group's
     # edge (make_room moves what is right of the old brief column, not the group)
     adapter_switch = g.add(
-        "ComfySwitchNode", (0, 1665), size=(260, 90), title="Adapter for instrumental covers"
+        "ComfySwitchNode", (0, 1970), size=(260, 90), title="Adapter for instrumental covers"
     )
-    transcribe = g.add_subgraph(bp["transcribe"], (460, 0), size=(340, 160))
+    # the sections right of the brief: as before, the brief's column wider by COVER_BRIEF_X
+    dx = COVER_BRIEF_X
+    transcribe = g.add_subgraph(bp["transcribe"], (460 + dx, 0), size=(340, 160))
     tools = g.add(
         "PlenioScoreTools",
-        (460, 220),
+        (460 + dx, 220),
         size=(340, 120 + SUMMARY_ROOM),
         widgets={"operation": "prepare from brief"},
     )
-    score_sheet = song_sheet(g, (880, 0), "Song Sheet · Score")
-    arrange_node = g.add_subgraph(bp["arrange"], (460, 650), size=(WRITER_WIDTH, 260), title="Arrange")
-    arrangement = arrangement_seed(g, arrange_node, (460, 960), keep=False)
+    score_sheet = song_sheet(g, (880 + dx, 0), "Song Sheet · Score", "score")
+    arrange_node = g.add_subgraph(bp["arrange"], (460 + dx, 650), size=(WRITER_WIDTH, 260), title="Arrange")
+    arrangement = arrangement_seed(g, arrange_node, (460 + dx, 960), keep=False)
     # Original lyrics: the Cover Brief owns the source's language; new lyrics: this widget does (AUD-02).
     asr = g.add(
         "PlenioTranscribeLyrics",
-        (1380, 0),
+        (1380 + dx, 0),
         size=(340, 200 + SUMMARY_ROOM),
         title="Transcribe Lyrics",
         labels={"language": "source language (original lyrics: Cover Brief)"},
     )
-    write = g.add_subgraph(bp["write"], (1380, 360), size=(WRITER_WIDTH, 260))
-    draft = draft_seed(g, write, (1380, 680), keep=False)
-    writer = writer_model(g, (1380, 920))
-    source_switch = g.add("ComfySwitchNode", (1800, 0), size=(260, 90), title="Original or new lyrics")
-    tags_switch = g.add("ComfySwitchNode", (1800, 165), size=(260, 90), title="Instrumental: section tags")
-    text_sheet = song_sheet(g, (2135, 0), "Song Sheet · Text")
-    seed = take_seed(g, (2620, 0))
-    render = g.add_subgraph(bp["yue2_takes"], (2620, 230), size=(320, 330), title="YuE2 Takes")
-    check_vocals = g.add(
-        "PlenioVocalCheck", (3000, 0), size=(340, 120 + SUMMARY_ROOM), title="Check Vocals · best take"
+    write = g.add_subgraph(bp["write"], (1380 + dx, 360), size=(WRITER_WIDTH, 260))
+    draft = draft_seed(g, write, (1380 + dx, 680), keep=False)
+    writer = writer_model(g, (0, WRITER_Y))
+    source_switch = g.add("ComfySwitchNode", (1800 + dx, 0), size=(260, 90), title="Original or new lyrics")
+    tags_switch = g.add(
+        "ComfySwitchNode", (1800 + dx, 165), size=(260, 90), title="Instrumental: section tags"
     )
-    takes_preview = g.add("PreviewAudio", (3000, 280), size=(340, 120), title="Preview (all takes)")
+    text_sheet = song_sheet(g, (2135 + dx, 0), "Song Sheet · Text")
+    seed = take_seed(g, (2620 + dx, 0))
+    render = g.add_subgraph(bp["yue2_takes"], (2620 + dx, 230), size=(320, 330), title="YuE2 Takes")
+    check_vocals = g.add(
+        "PlenioVocalCheck", (3000 + dx, 0), size=(340, 120 + SUMMARY_ROOM), title="Check Vocals · best take"
+    )
+    takes_preview = g.add("PreviewAudio", (3000 + dx, 280), size=(340, 120), title="Preview (all takes)")
+    # in the render section, under the takes (2026-10-24: the sections reach the same bottom, so its own group
+    # under them would have overlapped)
     check_lyrics = g.add(
         "PlenioTranscribeLyrics",
-        (3015, 845),
+        (3000 + dx, 480),
         size=(340, 200 + SUMMARY_ROOM),
         mode=4,
         title="Check sung lyrics (optional)",
@@ -2546,12 +2697,11 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(check_vocals, "takes", takes_preview, "audio")
     g.link(check_vocals, "audio", check_lyrics, "audio")
     g.link(text_sheet, "lyrics", check_lyrics, "expected_lyrics")
-    audio, stems_node = stems_stage(g, bp, 3420, audio=(check_vocals, "audio"), y=715)
     master_block, preview, export = finish(
         g,
         bp,
-        3880,
-        audio=audio,
+        3880 + dx,
+        audio=(check_vocals, "audio"),
         title=(text_sheet, "title"),
         artwork=(text_sheet, "artwork_prompt"),
         reports=[
@@ -2560,11 +2710,8 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             (transcribe, "report"),
             (check_vocals, "report"),
             (check_lyrics, "report"),
-            (stems_node, "report"),
-            (stems_node, "separation_report"),
         ],
         group="7 · FINISH",
-        cover_y=804,
         sheet_music="PDF (A4)",
         export_size=(380, 584 + SUMMARY_ROOM),
         brief=brief,
@@ -2574,7 +2721,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     # the text sheet plays the source too, so the words can be checked against the singing
     sung_pitch = g.add(
         "PlenioSungPitch",
-        (460, 480),
+        (460 + dx, 480),
         size=(WRITER_WIDTH, 106),
         title="Sung Pitch (for the editor)",
         widgets={"separation": SEPARATION_MODEL},
@@ -2585,17 +2732,16 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(sung_pitch, "sung_pitch", score_sheet, "sung_pitch")
     g.link(sung_pitch, "sung_pitch", text_sheet, "sung_pitch")
     switch = hq_switch(g, master_block)
-    g.group("1 · SOURCE", [switch, source, excerpt])
+    g.group("1 · SOURCE", [switch, writer, source, excerpt])
     g.group("2 · COVER", [brief])
-    g.group(
-        "3 · SCORE", [transcribe, tools, score_sheet, sung_pitch, arrange_node, arrangement], min_height=700
-    )
-    g.group("4 · LYRICS", [asr, write, draft, writer, source_switch, tags_switch])
+    g.group("3 · SCORE", [transcribe, tools, score_sheet, sung_pitch, arrange_node, arrangement])
+    g.group("4 · LYRICS", [asr, write, draft, source_switch, tags_switch])
     g.group("5 · TEXT", [text_sheet])
-    g.group("6 · RENDER", [seed, render, check_vocals, takes_preview])
-    g.group("CHECK SUNG LYRICS (optional)", [check_lyrics], color=OPTIONAL_GROUP)
+    g.group("6 · RENDER", [seed, render, check_vocals, takes_preview, check_lyrics])
     g.group("MUSIC MODEL", [model_node, adapter, adapter_switch], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + COVER_FIELD_ROWS * SLOT_HEIGHT)
+    g.align()
+    cover_over(g, "6 · RENDER")
     # The options of the default vocals (original lyrics) only, as in song_app; the two review stops use
     # the sheets' editor buttons.
     controls = ["mode", "template", "description", "genre", "mood", "vocals"]
@@ -2604,8 +2750,8 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     inputs = [
         (source, "audio"),
         (switch, "hq_mastering"),
-        *[(brief, name) for name in controls],
         (writer, "model"),
+        *[(brief, name) for name in controls],
     ]
     inputs += [(node, name) for node in (seed, draft, arrangement) for name in SEED_CONTROLS]
     inputs += [(score_sheet, "sheet_state"), (text_sheet, "sheet_state")]
@@ -2652,7 +2798,7 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     about_note(g, ABOUT_MINIMAX, height=1080)
     brief = g.add(
         "PlenioSongBrief",
-        (0, 0),
+        (0, COLUMN_ONE_Y),
         size=(
             BRIEF_WIDTH,
             690 + CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM,
@@ -2664,10 +2810,10 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             "vocals": "sung",
         },
     )
-    model_node = g.add_subgraph(bp["minimax_model"], (0, 940), size=(380, 160), collapsed=True)
+    model_node = g.add_subgraph(bp["minimax_model"], (0, COLUMN_ONE_Y + 940), size=(380, 160), collapsed=True)
     write = g.add_subgraph(bp["write"], (460, 0), size=(WRITER_WIDTH, 220))
     draft = draft_seed(g, write, (460, 280), keep=False)
-    writer = writer_model(g, (460, 520))
+    writer = writer_model(g, (0, WRITER_Y))
     sheet = song_sheet(g, (900, 0), "Song Sheet")
     seed = take_seed(g, (1400, 0))
     render = g.add_subgraph(bp["minimax_render"], (1400, 230), size=(320, 250))
@@ -2687,31 +2833,27 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(seed, "seed", render, "seed")
     # the band-limited MiniMax highs are regenerated by HQ 2 inside the Master block (2026-10-21; until then
     # a REFINE block with UniverSR ran here)
-    audio, stems_node = stems_stage(g, bp, 1800, audio=(render, "AUDIO"), y=430)
     master_block, preview, export = finish(
         g,
         bp,
-        2320,
-        audio=audio,
+        1800,
+        audio=(render, "AUDIO"),
         title=(sheet, "title"),
         artwork=(sheet, "artwork_prompt"),
-        reports=[
-            (sheet, "report"),
-            (stems_node, "report"),
-            (stems_node, "separation_report"),
-        ],
+        reports=[(sheet, "report")],
         group="5 · FINISH",
-        cover_y=700,
         brief=brief,
         writer=writer,
     )
     switch = hq_switch(g, master_block)
-    g.group("1 · SONG", [switch, brief])
-    g.group("2 · WRITE", [write, draft, writer])
+    g.group("1 · SONG", [switch, writer, brief])
+    g.group("2 · WRITE", [write, draft])
     g.group("3 · SHEET", [sheet])
     g.group("4 · RENDER", [seed, render])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
+    g.align()
+    cover_over(g, "4 · RENDER")
     return g, song_app(brief, seed, draft, [sheet], preview, export, writer=writer, hq_mastering=switch)
 
 
@@ -2764,7 +2906,7 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     about_note(g, ABOUT_DAW, height=1300)
     brief = g.add(
         "PlenioSongBrief",
-        (0, 0),
+        (0, COLUMN_ONE_Y),
         size=(
             BRIEF_WIDTH,
             690 + CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT + SUMMARY_ROOM,
@@ -2776,10 +2918,10 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             "vocals": "sung",
         },
     )
-    model_node = g.add_subgraph(bp["yue2_model"], (0, 940), size=(380, 140), collapsed=True)
+    model_node = g.add_subgraph(bp["yue2_model"], (0, COLUMN_ONE_Y + 940), size=(380, 140), collapsed=True)
     write = g.add_subgraph(bp["write"], (460, 0), size=(WRITER_WIDTH, 220))
     draft = draft_seed(g, write, (460, 280), keep=True)
-    writer = writer_model(g, (460, 520))
+    writer = writer_model(g, (0, WRITER_Y))
     text_sheet = song_sheet(g, (900, 0), "Song Sheet · Text")
     tools = g.add(
         "PlenioScoreTools",
@@ -2794,12 +2936,13 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     score_sheet = g.add(
         "PlenioSongSheet",
         (1820, 0),
-        size=(420, 360 + SUMMARY_ROOM),
+        size=SHEET_SIZE,
         title="Song Sheet · DAW",
         widgets={"review": "stop for review"},
         labels={"sheet_state": "Song Sheet · DAW"},
         properties={"plenio_editor_layout": "daw"},
     )
+    score_sheet.color, score_sheet.bgcolor = SHEET_LOOKS["daw"]
     seed = take_seed(g, (2320, 0))
     render = g.add_subgraph(bp["yue2_render"], (2320, 230), size=(320, 310))
     g.link(brief, "brief", write, "brief")
@@ -2826,22 +2969,15 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(score_sheet, "score_seconds", render, "max_duration")
     g.link(seed, "seed", render, "seed")
     g.link(brief, "creativity", render, "creativity")
-    audio, stems_node = stems_stage(g, bp, 2320, audio=(render, "AUDIO"), y=670)
     master_block, preview, export = finish(
         g,
         bp,
         2720,
-        audio=audio,
+        audio=(render, "AUDIO"),
         title=(text_sheet, "title"),
         artwork=(text_sheet, "artwork_prompt"),
-        reports=[
-            (text_sheet, "report"),
-            (score_sheet, "report"),
-            (stems_node, "report"),
-            (stems_node, "separation_report"),
-        ],
+        reports=[(text_sheet, "report"), (score_sheet, "report")],
         group="6 · FINISH",
-        cover_y=755,
         sheet_music="PDF (A4)",
         export_size=(385, 554 + SUMMARY_ROOM),
         keep_seeds=True,
@@ -2849,13 +2985,15 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         writer=writer,
     )
     switch = hq_switch(g, master_block)
-    g.group("1 · SONG", [switch, brief])
-    g.group("2 · WRITE", [write, draft, writer])
+    g.group("1 · SONG", [switch, writer, brief])
+    g.group("2 · WRITE", [write, draft])
     g.group("3 · TEXT", [text_sheet])
     g.group("4 · DAW", [tools, score_sheet])
     g.group("5 · RENDER", [seed, render])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
+    g.align()
+    cover_over(g, "5 · RENDER")
     return g, song_app(
         brief, seed, draft, [text_sheet, score_sheet], preview, export, writer=writer, hq_mastering=switch
     )
@@ -2865,11 +3003,12 @@ ABOUT_ENHANCE = """# 4 · Enhance & Master
 
 **Load Audio -> Stems (optional) -> Audio HQ 1-3 -> EQ -> Loudness & Dynamics -> Export**
 
-Finishes an existing recording (for example a take you rendered earlier) without any music model.
+Finishes an existing recording (for example a take you rendered earlier) without any music model - with every
+stage of the song templates' *Plenio · Master* block, as plain nodes you can reach directly.
 
 1. Upload the file in **Load Audio**.
-2. **Audio HQ** runs before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the highs; with **HQ mastering** on (the switch at the top, off by default) *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 1.5 s per second of music on an RTX 5060 Ti) - it can clearly reduce AI shimmer and artifacts, and it is the cure for a **band-limited** source such as an old MP3; off, UniverSR does not run and is not needed. *HQ 3 · De-Reverb* is bypassed (select it, **Ctrl+B**). There is no brief here, so the presets are *standard*; pick *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) for your music (the user guide *Audio HQ* covers them).
-3. To rebalance a finished mix, select *Stems (optional)* and press **Ctrl+B**: *Separate Stems* splits the file into vocals, drums, bass and other, the *Stem Mixer* balances them (the residual *rest* keeps a neutral mix exact; the user guide *Stems* covers it). It is bypassed by default.
+2. **Audio HQ** runs before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the highs; with **HQ mastering** on (the switch at the top, **on** by default) *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 1.5 s per second of music on an RTX 5060 Ti) - it can clearly reduce AI shimmer and artifacts, and it is the cure for a **band-limited** source such as an old MP3; switched off, UniverSR does not run and is not needed. *HQ 3 · De-Reverb* is bypassed (select it, **Ctrl+B**). There is no brief here, so the presets are *standard*; pick *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) for your music (the user guide *Audio HQ* covers them).
+3. To rebalance a finished mix, select *Stems (optional)* (under Load Audio) and press **Ctrl+B**: *Separate Stems* splits the file into vocals, drums, bass and other, the *Stem Mixer* balances them (the residual *rest* keeps a neutral mix exact; the user guide *Stems* covers it). It is bypassed by default.
 4. **EQ** starts with a gentle warm tone match (*match preset*). Choose *manual* to draw your own curve, *flat* for no EQ, or connect a **reference** recording and pick a reference recipe.
 5. **Loudness & Dynamics** brings the song to -14 LUFS with a true peak of at most -1 dBTP (streaming); pick another target or compression style if you like.
 6. Press **Run**. Export writes FLAC 24-bit and MP3 V0 to `output/plenio/enhanced`, copies the source file's tags and cover, keeps the unmastered source as `(original).flac`, and writes a release record with the measured loudness.
@@ -2885,8 +3024,10 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     block. No brief here, so the HQ presets are *standard* (auto would say so and take standard too)."""
     g = Graph()
     about_note(g, ABOUT_ENHANCE, height=760)
-    source = g.add("LoadAudio", (0, 0), size=(340, 140), title="Source")
-    audio, stems_node = stems_stage(g, bp, 0, audio=(source, "AUDIO"), y=260)
+    # group 1: the HQ switch, the source and the optional stems under it (2026-10-24: every section at the top
+    # of one row, of one height)
+    source = g.add("LoadAudio", (0, 250), size=(340, 140), title="Source")
+    audio, stems_node = stems_stage(g, bp, 0, audio=(source, "AUDIO"), y=500)
     standard = hq.PRESET_LABELS[hq.STANDARD]
     hq_size = (380, 120 + SUMMARY_ROOM)
     stereo = g.add("PlenioHQStereoCleanup", (420, 0), size=hq_size, widgets={"preset": standard})
@@ -2960,10 +3101,11 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     for index, (node, output) in enumerate(reports):
         g.link(node, output, export, f"reports.report_{index}")
     switch = hq_switch(g, highs, "hq_mastering")
-    g.group("1 · SOURCE", [switch, source])
+    g.group("1 · SOURCE", [switch, source, stems_node])
     g.group("2 · AUDIO HQ (before the EQ)", [stereo, loader, highs, dereverb])
     g.group("3 · MASTER", [eq, loudness])
     g.group("4 · FINISH", [preview, export])
+    g.align()
     app = App(
         [
             (source, "audio"),
@@ -3072,8 +3214,8 @@ def templates(bp: dict[str, Blueprint]) -> list[tuple[str, Graph, list[Blueprint
     enhance, enhance_app = enhance_master(bp)
     check, check_app = system_check()
     # Refine is in no template since Audio HQ (2026-10-21): its blueprint ships in subgraphs/ for the node
-    # library only
-    finish_bps = [bp["master"], bp["cover"], bp["stems"], bp["sung_check"]]
+    # library only; the song templates' stems are inside Master since 2026-10-24 (the Stems block: Enhance)
+    finish_bps = [bp["master"], bp["cover"], bp["sung_check"]]
     return [
         ("0 · System Check", check, [], check_app),
         (

@@ -171,7 +171,7 @@ export default async function cover(s, { project }) {
   await s.read('Stop 1: Song Sheet · Score - ⏸ waiting for your approval.', 3400)
 
   // stop 1: the score - the score editor
-  await openSheet(s, SCORE, 'Open it with “Edit Song Sheet…”.')
+  await openSheet(s, SCORE, 'Open it with “Edit the score”.')
   await maximize(s, '⛶ gives the editor the whole window.')
   await s.say('This sheet holds the score SheetSage2 transcribed: melody, chords, sections. The words come at the next stop - they follow the score.', 6400)
   s.chapter('Score editor · Tour')

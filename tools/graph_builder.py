@@ -155,6 +155,8 @@ class Graph:
         self.groups: list[dict[str, Any]] = []
         self._members: list[list[Node]] = []
         self._min_heights: list[float] = []
+        self._row: list[int] = []
+        """The groups standing in one row (``align``): their tops and their bottoms line up."""
         self._next_node = first_id
         self._next_link = 1
 
@@ -384,6 +386,33 @@ class Graph:
         self._min_heights.append(min_height)
         self._fit(len(self.groups) - 1)
 
+    def align(self, titles: list[str] | None = None) -> None:
+        """The groups named (all numbered sections without ``titles``) stand in one row: their tops line up
+        with the highest and their bottoms with the lowest, so the sections read as columns of one height
+        (owner's request 2026-10-24). Their nodes stay where they are."""
+        self._row = [
+            index
+            for index, group in enumerate(self.groups)
+            if (group["title"] in titles if titles is not None else group["title"].split(" ", 1)[0].isdigit())
+        ]
+        if self._row:
+            self._fit(self._row[0])
+
+    def _index(self, title: str) -> int:
+        return next(i for i, group in enumerate(self.groups) if group["title"] == title)
+
+    def members(self, title: str) -> list[Node]:
+        return list(self._members[self._index(title)])
+
+    def bounds(self, title: str) -> tuple[float, float, float, float]:
+        """Left, top, right, bottom of the group ``title``."""
+        x, y, width, height = self.groups[self._index(title)]["bounding"]
+        return x, y, x + width, y + height
+
+    def refit(self, title: str) -> None:
+        """Lay the group ``title`` around its nodes again (after they moved)."""
+        self._fit(self._index(title))
+
     # --- layout ----------------------------------------------------------------------
 
     @staticmethod
@@ -394,14 +423,26 @@ class Graph:
         top = y - TITLE_HEIGHT - (BADGE_HEIGHT if node.type.startswith("Plenio") else 0)
         return (x, top, x + width, y if node.collapsed else y + node.size[1])
 
-    def _fit(self, index: int) -> None:
+    def _extent(self, index: int) -> tuple[float, float, float, float]:
+        """Left, top, right, bottom of a group around its nodes alone."""
         boxes = [self.box(n) for n in self._members[index]]
         left = min(b[0] for b in boxes) - GROUP_PADDING
         top = min(b[1] for b in boxes) - GROUP_HEADER
         right = max(b[2] for b in boxes) + GROUP_PADDING
-        bottom = max(b[3] for b in boxes) + GROUP_PADDING
-        height = max(bottom - top, self._min_heights[index])
-        self.groups[index]["bounding"] = [left, top, right - left, height]
+        bottom = max(max(b[3] for b in boxes) + GROUP_PADDING, top + self._min_heights[index])
+        return left, top, right, bottom
+
+    def _fit(self, index: int) -> None:
+        if index in self._row:
+            # one group of the row moved or grew: the whole row lines up again
+            extents = {i: self._extent(i) for i in self._row}
+            top = min(e[1] for e in extents.values())
+            bottom = max(e[3] for e in extents.values())
+            for i, (left, _top, right, _bottom) in extents.items():
+                self.groups[i]["bounding"] = [left, top, right - left, bottom - top]
+            return
+        left, top, right, bottom = self._extent(index)
+        self.groups[index]["bounding"] = [left, top, right - left, bottom - top]
 
     def settle(self) -> None:
         """Nothing overlaps: in a group, a node that reaches into the one above it in its column moves down;

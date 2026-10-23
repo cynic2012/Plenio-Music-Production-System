@@ -109,7 +109,7 @@ Press Run. [pause:0.3s] The transcription from part one is simply reused.
 First stop: the Score sheet waits for your approval.
 
 @ Open it with
-Open it with Edit Song Sheet,
+Open it with Edit the score,
 
 @ ⛶ gives the editor
 and give the editor the whole window.

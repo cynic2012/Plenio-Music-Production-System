@@ -186,7 +186,9 @@ def map_nodes(prompt: Mapping[str, Any], workflow: Mapping[str, Any]) -> dict[st
     A template's node ids change between versions while its nodes keep their class and title (*Take seed*,
     *Song Sheet · Text*): the top-level nodes are found by those. The nodes of a block (``"12:501"``) go to
     the block instance of the workflow that holds most of them by inner id and class - the blocks' inner ids
-    are fixed (501 ... in *Plenio · Write Song*) - and inside it by the same rules.
+    are fixed (501 ... in *Plenio · Write Song*) - and inside it by the same rules. A block that no instance
+    holds any more - its stages moved into another block, as the Stems into *Plenio · Master* on 2026-10-24 -
+    gives its nodes to the one inner node of their class that is left, wherever it is.
     """
     nodes = workflow_nodes(workflow)
     wanted = _prompt_nodes(prompt)
@@ -199,12 +201,14 @@ def map_nodes(prompt: Mapping[str, Any], workflow: Mapping[str, Any]) -> dict[st
             prefix, rest = node_id.split(":", 1)
             groups.setdefault(prefix, {})[rest] = value
     taken: set[str] = set()
+    moved: dict[str, tuple[str, str | None, str]] = {}
     for prefix in sorted(groups, key=lambda p: -len(groups[p])):
         members = groups[prefix]
         blocks = [i for i, n in top.items() if n.block and i not in taken]
         held = {block: _held(nodes, block, members) for block in blocks}
         scored = sorted(blocks, key=lambda b: (-held[b], b != prefix))
         if not scored or held[scored[0]] == 0:
+            moved.update({f"{prefix}:{rest}": (kind, title, "") for rest, (kind, title) in members.items()})
             continue
         block = scored[0]
         taken.add(block)
@@ -214,6 +218,9 @@ def map_nodes(prompt: Mapping[str, Any], workflow: Mapping[str, Any]) -> dict[st
             pool,
             mapping,
         )
+    if moved:
+        inner = {i: n for i, n in nodes.items() if ":" in i}
+        _assign({i: value for i, value in moved.items()}, inner, mapping)
     return mapping
 
 
@@ -422,6 +429,32 @@ def sheet_states(record: Mapping[str, Any], mapping: Mapping[str, str] | None = 
     return states
 
 
+SWITCHED_BY = {"PlenioSeparateStems": "stems"}
+"""Classes a block of the templates runs only with one of its switches on (the input on the block's instance):
+the Stems inside *Plenio · Master* since 2026-10-24. An older record that ran such a node - in the Stems block
+of before - turns the switch on; a newer one says itself (the switch's value is in its prompt)."""
+
+
+def _switched_on(
+    workflow: Mapping[str, Any], prompt: Mapping[str, Any], mapping: Mapping[str, str]
+) -> dict[str, dict[str, Any]]:
+    """The block switches (``SWITCHED_BY``) the record ran: instance id -> {switch: True}."""
+    instances = {
+        str(node.get("id")): node for node in workflow.get("nodes") or [] if isinstance(node, Mapping)
+    }
+    result: dict[str, dict[str, Any]] = {}
+    for prompt_id, target in mapping.items():
+        node = prompt.get(prompt_id)
+        switch = SWITCHED_BY.get(str(node.get("class_type"))) if isinstance(node, Mapping) else None
+        instance = instances.get(target.split(":")[0]) if switch and ":" in target else None
+        if instance is not None and any(
+            isinstance(slot, Mapping) and slot.get("name") == switch and slot.get("widget")
+            for slot in instance.get("inputs") or []
+        ):
+            result.setdefault(str(instance["id"]), {})[str(switch)] = True
+    return result
+
+
 def _activated(workflow: Mapping[str, Any], targets: Iterable[str]) -> list[str]:
     """The workflow's top-level nodes that are off (bypassed or muted) although the record ran them: the
     user had turned a block on (Stems, Refine, Cover Art ...). A block counts by its inner nodes."""
@@ -497,15 +530,19 @@ def continuation(
         return result
     workflow = templates[match.name]
     values = literal_inputs(prompt)
+    placed = place_values(
+        {match.mapping[i]: inputs for i, inputs in values.items() if i in match.mapping}, workflow
+    )
+    for holder, switches in _switched_on(workflow, prompt, match.mapping).items():
+        for name, on in switches.items():
+            placed.setdefault(holder, {}).setdefault(name, on)
     result.update(
         {
             "workflow": dict(workflow),
             "from": "template",
             "template": match.name,
             "sheets": sheet_states(record, match.mapping),
-            "values": place_values(
-                {match.mapping[i]: inputs for i, inputs in values.items() if i in match.mapping}, workflow
-            ),
+            "values": placed,
             "activate": _activated(workflow, match.mapping.values()),
             "unplaced": sorted(
                 {

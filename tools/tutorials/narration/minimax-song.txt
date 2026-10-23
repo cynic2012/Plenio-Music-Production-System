@@ -109,7 +109,7 @@ The writer drafts a new song,
 and the run stops, waiting for your approval.
 
 @ Open it with
-Open it with Edit Song Sheet,
+Open it with Edit lyrics and text,
 
 @ ⛶ gives the editor
 and give it the whole window.

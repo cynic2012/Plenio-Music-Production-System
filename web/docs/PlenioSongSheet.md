@@ -2,7 +2,7 @@
 
 The single place that decides which documents condition the music model. What leaves the sheet reaches the model unchanged, and the release record stores exactly these texts.
 
-Press **Edit Song Sheet…** (also available in App mode) to see and edit the documents:
+Press the sheet's edit button (also available in App mode) to see and edit the documents - a card that says what the sheet edits: **Edit lyrics & text** (title, style, lyrics, cover prompt), **Edit the score**, or **Compose the score** in the DAW template:
 
 - **auto** - the upstream draft is used.
 - **edited** - your edit is used while its draft is unchanged. When the draft changes, the run stops with a **conflict** so that your edit is never replaced silently.

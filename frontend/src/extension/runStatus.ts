@@ -68,7 +68,7 @@ export function sheetLine(state: RunState | null): string {
     case 'approved':
       return '✓ approved'
     case 'error':
-      return '✖ fix the sheet (Edit Song Sheet…)'
+      return '✖ fix the sheet (its Edit button)'
     case 'warning':
       return '⚠ warnings'
     case 'ok':
@@ -232,7 +232,7 @@ export function installRunStatus(nodeType: ComfyNodeType, host: StatusHost): voi
     if (state === 'waiting') {
       host.toast(
         `Stopped at ${this.title || 'the Song Sheet'}`,
-        'Waiting for your approval: open it with "Edit Song Sheet…", check the documents, press Approve, then run again.'
+        'Waiting for your approval: open it with its Edit button, check the documents, press Approve, then run again.'
       )
     }
   })

@@ -166,7 +166,7 @@ export default async function song(s) {
   await s.read('The run stopped at Song Sheet · Text: ⏸ waiting for your approval. Nothing is rendered yet.', 4600)
 
   // stop 1: the text
-  await openSheet(s, TEXT, 'Open it with “Edit Song Sheet…”.')
+  await openSheet(s, TEXT, 'Open it with “Edit lyrics & text”.')
   await tab(s, 'Lyrics', 'Lyrics: the words YuE2 will sing, section by section ([Verse], [Chorus] …). Edit anything - your edit wins.', { min: 5200 })
   await tab(s, 'Style', 'Style: the genre, the instruments and the voice YuE2 is given.', { min: 4200 })
   await tab(s, 'Title & artwork', 'Title & artwork: the song’s title and the prompt for the optional cover art.', { min: 4200 })

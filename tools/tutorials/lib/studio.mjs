@@ -169,7 +169,7 @@ const CAMERA = `(() => {
     const a = tut.toScreen(n.pos[0] + 15, n.pos[1] + y), b = tut.toScreen(n.pos[0] + n.size[0] - 15, n.pos[1] + y + h)
     return { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y }
   }
-  // a button inside a node's DOM widgets (the Song Sheet's "Edit Song Sheet...")
+  // a button inside a node's DOM widgets (the Song Sheet's edit card: "Edit lyrics & text", "Edit the score")
   tut.nodeButton = (nodeId, text) => {
     const n = tut.node(nodeId)
     for (const w of n?.widgets ?? []) {

@@ -338,7 +338,10 @@
     "tooltip": "Optional: Song Brief or Cover Brief - the HQ presets on auto follow its genre."
    },
    "hq_mastering": {
-    "tooltip": "Highest mastering quality: UniverSR (HQ 2) regenerates the highs - clearly fewer AI shimmer and artifacts, but the song takes about twice as long. Off (default): UniverSR does not run and is not needed."
+    "tooltip": "Highest mastering quality (on by default): UniverSR (HQ 2) regenerates the highs - clearly fewer AI shimmer and artifacts, and the song takes about twice as long. Off: faster, UniverSR does not run and is not needed."
+   },
+   "stems": {
+    "tooltip": "Off (default): the song goes straight to Audio HQ. On: Separate Stems splits it into vocals, drums, bass and other, and the Stem Mixer inside this block mixes them back (gain, mute/solo, compression, reverb and delay, muted time ranges; a neutral mix returns the song unchanged). Needs the BS-RoFormer model (527 MB)."
    },
    "sample_rate": {
     "tooltip": "keep, 44100 or 48000 Hz; converted before the limiter, so the true-peak ceiling holds."
@@ -362,6 +365,12 @@
    },
    "5": {
     "tooltip": "HQ 3 (bypassed in the templates): profile and the highs before/after."
+   },
+   "6": {
+    "tooltip": "Stems on: per strip audible, gain, gain reduction, muted time - and the strips marked save, which Export Release writes next to the song ('<name>-stems'). Empty with stems off."
+   },
+   "7": {
+    "tooltip": "Stems on: the stem names and how much the residual holds. Empty with stems off."
    }
   }
  },

@@ -125,7 +125,7 @@ The writer drafts a fresh text,
 and it stops at the Text sheet. Nothing is rendered yet.
 
 @ Open it with
-Open it with Edit Song Sheet.
+Open it with Edit lyrics and text.
 
 @ Lyrics: the words YuE2 will sing
 The Lyrics tab holds the words YuE2 will sing, section by section. Change whatever you like: your edit always wins.

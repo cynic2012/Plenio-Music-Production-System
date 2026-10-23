@@ -177,6 +177,10 @@ def model_files(template: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], se
     entries: dict[str, dict[str, Any]] = {}
     required: set[str] = set()
     optional: set[str] = set()
+    # HQ 2 asks for its super-resolution model only with HQ mastering on (lazy; on by default since
+    # 2026-10-24), the Master's stems for their separator only with its stems switch on (lazy, off)
+    hq_on = any(n["type"] == "PlenioHQMastering" and n["widgets_values"] == [True] for n in template["nodes"])
+    lazy_off = {"separation"} | (set() if hq_on else {"super-resolution"})
 
     def walk(nodes: list[dict[str, Any]], bypassed: bool) -> None:
         for node in nodes:
@@ -190,11 +194,7 @@ def model_files(template: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], se
                 index = 1 if node["type"] == "PlenioAudioModelLoader" else 0
                 assert entry["name"] == node["widgets_values"][index], node
                 entries[entry["name"]] = entry
-                # HQ 2 asks for its super-resolution model only with HQ mastering on (lazy; off by default)
-                lazy = (
-                    node["type"] == "PlenioAudioModelLoader"
-                    and node["widgets_values"][0] == "super-resolution"
-                )
+                lazy = node["type"] == "PlenioAudioModelLoader" and node["widgets_values"][0] in lazy_off
                 (optional if off or lazy else required).add(entry["name"])
 
     walk(template["nodes"], False)
@@ -412,7 +412,8 @@ def audio_chain(nodes: list[dict[str, Any]], links: list[Any], first: dict[str, 
 def test_audio_hq_runs_in_the_master_block_before_the_eq() -> None:
     """Owner's request (2026-10-21): HQ 1 and HQ 2 on, HQ 3 bypassed, before the first EQ, inside the Master
     block; the presets follow the brief's genre (auto); the REFINE block outside it is gone. HQ 2 runs only with
-    *HQ mastering* on: the switch at the top of the template, off, linked to the block alone (2026-10-22)."""
+    *HQ mastering* on: the switch at the top of the template, linked to the block alone (2026-10-22) - on by
+    default since the owner's request of 2026-10-24 (it had been off)."""
     from plenio.core.audio import hq
 
     for name in ("1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"):
@@ -444,9 +445,9 @@ def test_audio_hq_runs_in_the_master_block_before_the_eq() -> None:
         switch_slot = next(slot for slot in wrapper["inputs"] if slot["name"] == "hq_mastering")
         switch_link = next(link for link in template["links"] if link[0] == switch_slot["link"])
         switch = next(n for n in template["nodes"] if n["id"] == switch_link[1])
-        # off, at the top of group 1, and made last: the template's other node ids stay as they were
-        assert switch["type"] == "PlenioHQMastering" and switch["widgets_values"] == [False], name
-        assert switch["pos"][1] < 0 and switch["id"] == max(n["id"] for n in template["nodes"]), name
+        # on, the first node of group 1, and made last: the template's other node ids stay as they were
+        assert switch["type"] == "PlenioHQMastering" and switch["widgets_values"] == [True], name
+        assert switch["pos"] == [0, 0] and switch["id"] == max(n["id"] for n in template["nodes"]), name
         assert [link[3] for link in template["links"] if link[1] == switch["id"]] == [wrapper["id"]], name
         loader = next(n for n in nodes if n["type"] == "PlenioAudioModelLoader")
         assert loader["widgets_values"][:2] == ["super-resolution", "pytorch_model.bin"]
@@ -485,9 +486,9 @@ def test_enhance_runs_audio_hq_as_plain_nodes_with_standard_presets() -> None:
     assert [n.get("mode", 0) for n in path[:3]] == [0, 0, 4]
     # no brief in this template: the presets say what they are
     assert [n["widgets_values"][0] for n in path[:3]] == [hq.PRESET_LABELS[hq.STANDARD]] * 3
-    # the HQ Mastering switch (off) sets HQ 2's *hq_mastering*
+    # the HQ Mastering switch (on since 2026-10-24) sets HQ 2's *hq_mastering*
     switch = next(n for n in nodes if n["type"] == "PlenioHQMastering")
-    assert switch["widgets_values"] == [False] and switch["pos"][1] < 0
+    assert switch["widgets_values"] == [True] and switch["pos"] == [0, 0]
     hq_slot = next(slot for slot in path[1]["inputs"] if slot["name"] == "hq_mastering")
     assert next(link for link in template["links"] if link[0] == hq_slot["link"])[1] == switch["id"]
     app = template["extra"]["linearData"]["inputs"]
@@ -496,50 +497,123 @@ def test_enhance_runs_audio_hq_as_plain_nodes_with_standard_presets() -> None:
     assert shown[1] == ("PlenioHQMastering", "hq_mastering")
 
 
-def test_stems_is_bypassed_everywhere_and_mixes_neutrally() -> None:
-    """M6/D12: the STEMS block is bypassed and collapsed in every template (plan §11, §6.4)."""
-    for name in (
-        "1 · YuE2 · Song",
-        "2 · YuE2 · Cover",
-        "3 · MiniMax · Song",
-        "4 · Enhance & Master",
-        "5 · YuE2 · DAW",
-    ):
+def _stems_parts(stems: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    loader = next(
+        n for n in stems["nodes"] if n["type"] == "PlenioAudioModelLoader" and "Separation" in n["title"]
+    )
+    assert loader["widgets_values"][:2] == ["separation", "model_bs_roformer_ep_17_sdr_9.6568.ckpt"]
+    assert loader["properties"]["models"][0]["directory"] == "audio_separation"
+    mixer = next(n for n in stems["nodes"] if n["type"] == "PlenioStemMixer")
+    assert mixer["widgets_values"] == [""]  # neutral by default: the input comes back unchanged
+    return loader, mixer
+
+
+def test_the_stems_sit_in_the_master_block_behind_its_switch() -> None:
+    """Owner's request (2026-10-24): the STEMS block of the song templates moved into Plenio · Master - Separate
+    Stems and the Stem Mixer before HQ 1, switched by the block's *stems* input (off). A bypassed stage cannot
+    pass the song on there (the mixer has no audio input), so three If/Else switches choose the mix or the song
+    and the two reports; their inputs are lazy, so nothing of the stems runs while the switch is off."""
+    for name in ("1 · YuE2 · Song", "2 · YuE2 · Cover", "3 · MiniMax · Song", "5 · YuE2 · DAW"):
         template = TEMPLATES[name]
-        wrapper = next(n for n in template["nodes"] if "Stems" in str(n.get("title", "")))
-        assert wrapper.get("mode") == 4, name
-        assert wrapper["flags"]["collapsed"] is True, name
-        assert "(optional)" in str(wrapper["title"]), name
-        assert any("STEMS (optional)" == g["title"] for g in template["groups"]), name
-        definition = next(d for d in template["definitions"]["subgraphs"] if d["id"] == wrapper["type"])
-        assert definition["name"] == "Plenio · Stems"
-        loader = next(n for n in definition["nodes"] if n["type"] == "PlenioAudioModelLoader")
-        assert loader["widgets_values"][0] == "separation"
-        assert loader["widgets_values"][1] == "model_bs_roformer_ep_17_sdr_9.6568.ckpt"
-        assert loader["properties"]["models"][0]["directory"] == "audio_separation"
-        mixer = next(n for n in definition["nodes"] if n["type"] == "PlenioStemMixer")
-        assert mixer["widgets_values"] == [""]  # neutral by default: the input comes back unchanged
-        # both reports (separation and mix) reach the release record
+        assert not any("Stems" in str(n.get("title", "")) for n in template["nodes"]), name
+        assert not any("STEMS" in g["title"] for g in template["groups"]), name
+        assert all(d["name"] != "Plenio · Stems" for d in template["definitions"]["subgraphs"]), name
+        master = next(d for d in template["definitions"]["subgraphs"] if d["name"] == "Plenio · Master")
+        nodes = {n["id"]: n for n in master["nodes"]}
+        links = {link["id"]: link for link in master["links"]}
+        _loader, mixer = _stems_parts(master)
+        separate = next(n for n in nodes.values() if n["type"] == "PlenioSeparateStems")
+        stereo = next(n for n in nodes.values() if n["type"] == "PlenioHQStereoCleanup")
+        switches = [n for n in nodes.values() if n["type"] == "ComfySwitchNode"]
+        assert len(switches) == 3, name
+
+        def source(node: dict[str, Any], slot: str, links: dict[int, Any] = links) -> tuple[int, int]:
+            link = links[next(s for s in node["inputs"] if s["name"] == slot)["link"]]
+            return link["origin_id"], link["origin_slot"]
+
+        # HQ 1 hears the switch: on, the mix; off, the block's audio input (the song, as before)
+        audio_switch = nodes[source(stereo, "audio")[0]]
+        assert source(audio_switch, "on_true") == (mixer["id"], 0), name
+        block_inputs = [slot["name"] for slot in master["inputs"]]
+        assert source(audio_switch, "on_false") == (-10, block_inputs.index("audio")), name
+        assert source(separate, "audio") == (-10, block_inputs.index("audio")), name
+        # the three switches follow the block's stems input, off on the template's Master node
+        for switch in switches:
+            assert source(switch, "switch") == (-10, block_inputs.index("stems")), name
+        wrapper = next(n for n in template["nodes"] if n["type"] == master["id"])
+        widgets = [slot["name"] for slot in wrapper["inputs"] if slot.get("widget")]
+        assert wrapper["widgets_values"][widgets.index("stems")] is False, name
+        # both stem reports reach the release record through the block
+        outputs = [out["name"] for out in master["outputs"]]
         export = next(n for n in template["nodes"] if n["type"] == "PlenioExportRelease")
-        linked = {
-            link[1]
+        report_links = {slot["link"] for slot in export["inputs"] if slot["name"].startswith("reports.")}
+        from_master = {
+            outputs[link[2]]
             for link in template["links"]
-            if link[0] in {slot["link"] for slot in export["inputs"] if slot["name"].startswith("reports.")}
+            if link[0] in report_links and link[1] == wrapper["id"]
         }
-        assert wrapper["id"] in linked, name
+        assert {"stems_report", "separation_report"} <= from_master, name
 
 
-def test_the_stems_block_sits_after_the_render_and_before_master() -> None:
-    """Stems (optional) -> Master (Audio HQ, EQ, Loudness): the audio path of every song template."""
-    for name in ("1 · YuE2 · Song", "3 · MiniMax · Song"):
-        template = TEMPLATES[name]
-        titles = {n["id"]: n.get("title") or n["type"] for n in template["nodes"]}
-        stems = next(n for n in template["nodes"] if "Stems" in str(n.get("title", "")))
-        master = next(n for n in template["nodes"] if titles[n["id"]] == "Plenio · Master")
-        master_from = {
-            tuple(link[1:3]) for link in template["links"] if link[3] == master["id"] and link[5] == "AUDIO"
-        }
-        assert (stems["id"], 0) in master_from, name  # Stems -> Master
+def test_enhance_keeps_its_stems_block_bypassed_in_the_source_section() -> None:
+    """Enhance & Master: the Stems block (M6/D12, plan §11) bypassed and collapsed, under Load Audio in group
+    1 (2026-10-24), before Audio HQ - every stage of the Master block, as plain nodes."""
+    template = TEMPLATES["4 · Enhance & Master"]
+    wrapper = next(n for n in template["nodes"] if "Stems" in str(n.get("title", "")))
+    assert wrapper.get("mode") == 4 and wrapper["flags"]["collapsed"] is True
+    assert "(optional)" in str(wrapper["title"])
+    definition = next(d for d in template["definitions"]["subgraphs"] if d["id"] == wrapper["type"])
+    assert definition["name"] == "Plenio · Stems"
+    _stems_parts(definition)
+    source = next(n for n in template["nodes"] if n["type"] == "LoadAudio")
+    assert next(link for link in template["links"] if link[3] == wrapper["id"])[1] == source["id"]
+    stereo = next(n for n in template["nodes"] if n["type"] == "PlenioHQStereoCleanup")
+    assert (
+        next(link for link in template["links"] if link[3] == stereo["id"] and link[5] == "AUDIO")[1]
+        == wrapper["id"]
+    )
+    group = next(g for g in template["groups"] if g["title"] == "1 · SOURCE")
+    x, y, width, height = group["bounding"]
+    assert x <= wrapper["pos"][0] < x + width and y <= wrapper["pos"][1] < y + height
+    export = next(n for n in template["nodes"] if n["type"] == "PlenioExportRelease")
+    report_links = {slot["link"] for slot in export["inputs"] if slot["name"].startswith("reports.")}
+    assert wrapper["id"] in {link[1] for link in template["links"] if link[0] in report_links}
+
+
+@pytest.mark.parametrize("name", [n for n in sorted(TEMPLATES) if not n.startswith("0")])
+def test_the_sections_stand_in_one_row(name: str) -> None:
+    """Owner's request (2026-10-24): the numbered sections top-aligned and of one height; Cover Art above the
+    render section, overlapping neither it nor the finish; the writer model in group 1 under the switches."""
+    template = TEMPLATES[name]
+    groups = {g["title"]: g["bounding"] for g in template["groups"]}
+    numbered = [b for t, b in groups.items() if t.split(" ", 1)[0].isdigit()]
+    assert len({b[1] for b in numbered}) == 1 and len({b[1] + b[3] for b in numbered}) == 1, name
+    for (title, a), (other, b) in [
+        (p, q) for i, p in enumerate(groups.items()) for q in list(groups.items())[i + 1 :]
+    ]:
+        assert not (
+            a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
+        ), f"{name}: {title} / {other}"
+    nodes = template["nodes"]
+    if "COVER ART" in groups:
+        cover = groups["COVER ART"]
+        render = next(b for t, b in groups.items() if t.endswith("RENDER"))
+        assert (
+            cover[1] + cover[3] < render[1]
+            and render[0] <= cover[0]
+            and cover[0] + cover[2] <= render[0] + render[2]
+        ), name
+    group_one = next(b for t, b in groups.items() if t.startswith("1 "))
+    inside = [
+        n
+        for n in nodes
+        if group_one[0] <= n["pos"][0] < group_one[0] + group_one[2]
+        and group_one[1] <= n["pos"][1] < group_one[1] + group_one[3]
+    ]
+    column = [n["type"] for n in sorted(inside, key=lambda n: n["pos"][1])]
+    assert column[0] == "PlenioHQMastering", name
+    if any(n["type"] == "PlenioWriterChoice" for n in nodes):
+        assert column[1] == "PlenioWriterChoice", name
 
 
 def test_thumbnails_are_400px_jpegs() -> None:
@@ -550,7 +624,7 @@ def test_thumbnails_are_400px_jpegs() -> None:
 
 
 def test_validator_checks_the_template_anatomy(tmp_path: Path) -> None:
-    template = copy.deepcopy(TEMPLATES["1 · YuE2 · Song"])
+    template = copy.deepcopy(TEMPLATES["2 · YuE2 · Cover"])
     bypassed = next(n for n in template["nodes"] if n["mode"] == 4 and "(optional)" in (n.get("title") or ""))
     bypassed["title"] = bypassed["title"].replace(" (optional)", "")
     cover = next(n for n in template["nodes"] if n.get("title") == "Cover Art")

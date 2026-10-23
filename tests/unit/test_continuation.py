@@ -190,21 +190,42 @@ def test_an_older_record_opens_in_todays_template_with_its_settings() -> None:
     prompt = prompt_of(TEMPLATES[SONG], renumber=40)
     take = next(p for p, n in prompt.items() if n.get("_meta", {}).get("title") == "Take seed")
     prompt[take]["inputs"] = {"seed": 4242}
-    stems = next(p for p, n in prompt.items() if n["class_type"] == "PlenioSeparateStems")
     prompt["999"] = node("PlenioRetiredNode", "Gone since")
+    # Before 2026-10-24 the stems were a block of their own (inner ids 1101+) and today's Master block had no
+    # switches for them: a record that ran that block turns the Master's stems switch on, and its mix goes into
+    # the Master's mixer.
+    for prompt_id in [
+        p
+        for p, n in prompt.items()
+        if n["class_type"] in ("PlenioSeparateStems", "PlenioStemMixer")
+        or str(n.get("_meta", {}).get("title")).startswith("Stems on")
+    ]:
+        del prompt[prompt_id]
+    prompt["56:1102"] = node("PlenioSeparateStems")
+    prompt["56:1103"] = node("PlenioStemMixer", mix="vocals +2 dB")
     plan = c.continuation(record(prompt), TEMPLATES)
     assert plan["from"] == "template" and plan["template"] == SONG
     nodes = c.workflow_nodes(TEMPLATES[SONG])
     target = next(t for t, v in plan["values"].items() if v == {"seed": 4242})
     assert nodes[target].title == "Take seed"
-    # the Stems block ran: it is turned on (the template has it off)
-    block = next(
-        i
-        for i, n in nodes.items()
-        if ":" not in i and n.block and n.mode != 0 and n.title and n.title.startswith("Stems")
-    )
-    assert stems.split(":")[0] != block and block in plan["activate"]
-    assert plan["unplaced"] == ["Gone since"]
+    master = next(i for i, n in nodes.items() if n.title == "Plenio · Master")
+    assert plan["values"][master] == {"stems": True}
+    mixer = next(t for t, v in plan["values"].items() if v == {"mix": "vocals +2 dB"})
+    assert mixer.split(":")[0] == master and nodes[mixer].type == "PlenioStemMixer"
+    assert plan["activate"] == [] and plan["unplaced"] == ["Gone since"]
+
+
+def test_a_newer_record_says_itself_whether_the_stems_ran() -> None:
+    """Today's Master block holds the stems behind its stems switch: its prompt has the switch's value (the
+    stems nodes are in every prompt, run or not), so continuing never turns the stems on by their presence."""
+    prompt = prompt_of(TEMPLATES[SONG], renumber=40)
+    for n in prompt.values():
+        if str(n.get("_meta", {}).get("title")).startswith("Stems on"):
+            n["inputs"] = {"switch": False}
+    plan = c.continuation(record(prompt), TEMPLATES)
+    nodes = c.workflow_nodes(TEMPLATES[SONG])
+    master = next(i for i, n in nodes.items() if n.title == "Plenio · Master")
+    assert plan["values"][master] == {"stems": False}
 
 
 def test_a_record_no_workflow_can_be_rebuilt_for_gives_its_documents() -> None:

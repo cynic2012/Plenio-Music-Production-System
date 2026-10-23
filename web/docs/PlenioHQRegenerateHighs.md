@@ -8,7 +8,7 @@ The second Audio HQ stage, before the EQ: **erase and regenerate**. A super-reso
 
 Same rate and length as the input (a 44.1 kHz song stays 44.1 kHz), no normalisation.
 
-**hq_mastering** (*HQ mastering*) - **off**: the stage is skipped, the song passes unchanged and the model is **not even loaded** (its loader runs only when this node asks for it, so a missing model file is no error then). In the templates the **HQ Mastering** switch at the top sets it - **off by default**, because the model about doubles a song's time; on, it can clearly reduce AI shimmer and artifacts. A node you place yourself is on.
+**hq_mastering** (*HQ mastering*) - **off**: the stage is skipped, the song passes unchanged and the model is **not even loaded** (its loader runs only when this node asks for it, so a missing model file is no error then). In the templates the **HQ Mastering** switch at the top sets it - **on by default** (since 2026-10-24): it can clearly reduce AI shimmer and artifacts, and the model about doubles a song's time; switch it off for a faster run. A node you place yourself is on.
 
 **preset** - *auto* picks the profile from the connected brief's genre (*standard* without a brief), or choose one:
 

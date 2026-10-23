@@ -42,19 +42,23 @@ When you open a template, ComfyUI offers to download the model files it is missi
 Every template reads from left to right in numbered groups, with the same anatomy:
 
 ```text
+                                                       COVER ART (above the render)
 1 · SONG / SOURCE  ->  2 · WRITE  ->  3 · SHEET(S)  ->  4 · RENDER  ->  5 · FINISH
-   the brief           the writer     what the model    take seed,     Master -> Export
-                                      receives          the render     (+ Cover Art)
-                       MUSIC MODEL (collapsed, below): the model files
+   the two cards,      the draft      what the model    take seed,     Master (stems, Audio HQ,
+   the writer model,                  receives          the render     EQ, loudness) -> Export
+   the brief
+   MUSIC MODEL (collapsed, below): the model files
 ```
+
+The numbered sections stand in one row: they start at the same top and end at the same bottom.
 
 - **About this template** (the note on the left) explains the path in a few steps.
 - **Song Sheets** show exactly what the music model receives; you can edit every document there ([Song Sheet](concepts/song-sheet.md)).
-- **HQ Mastering & Cover Art** (the two cards at the top): click a card to switch it - HQ mastering (off: faster; on: fewer AI artifacts, about twice the time) and the song's cover (on; off needs no image model).
+- **HQ Mastering & Cover Art** (the two cards at the top): click a card to switch it - HQ mastering (on: fewer AI artifacts, about twice the time; off: faster) and the song's cover (on; off needs no image model). Under them, the **Writer model** for every writing step.
 - **Nodes and grey groups marked *(optional)*** are switched off (bypassed). Select the nodes and press **Ctrl+B** to switch them on.
 - **Seeds** follow the brief's mode: *new song every run* starts with every seed on 🎲 (something new every run), *one song, stop to review* keeps the song's seeds on 🔒 while you review it.
 - The **MUSIC MODEL** block is collapsed: expand it (the dot at its top left, or right-click > *Expand*), then open it with the icon at its top right to change the model files.
-- **Plenio · Master** finishes every song (tone match, -14 LUFS / -1 dBTP) before Export; Export also keeps the unmastered take as `(original).flac`.
+- **Plenio · Master** finishes every song (tone match, -14 LUFS / -1 dBTP) before Export - with the **stems** first when you switch *stems* on on the block; Export also keeps the unmastered take as `(original).flac`.
 
 ## Two ways to work
 

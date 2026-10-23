@@ -24,8 +24,9 @@ APP = "plenio-player"
 STARTING_S = 120.0
 """A player this ComfyUI started is waited for this long before another one would be started."""
 _lock = threading.Lock()
-_started: dict[int, tuple[subprocess.Popen[bytes], float]] = {}
-"""The players this ComfyUI started (port -> process, when): a click while one starts waits for it."""
+_started: dict[tuple[Path, int], tuple[subprocess.Popen[bytes], float]] = {}
+"""The players this ComfyUI started ((state folder, port) -> process, when): a click while one starts waits for
+it."""
 
 
 def player_at(port: int, timeout: float = 2.0) -> dict[str, Any] | None:
@@ -110,17 +111,20 @@ def ensure_player(folder: Path, comfyui: str, state: Path, wait: float = 60.0) -
         return _ensure(folder, comfyui, state, wait)
 
 
-def _ensure(folder: Path, comfyui: str, state: Path, wait: float) -> dict[str, Any]:
+def _ensure(folder: Path, comfyui: str, state: Path, wait: float, *, again: bool = True) -> dict[str, Any]:
     found = find_player(state)
     if found:
         running, info = found
         return {"url": f"http://127.0.0.1:{running}/", "started": False, "version": info.get("version", "")}
-    # a player this ComfyUI started a moment ago, still on its way up
+    # a player this ComfyUI started a moment ago for the same state, still on its way up
     starting = next(
         (
             (port, process)
-            for port, (process, at) in _started.items()
-            if process.poll() is None and time.monotonic() - at < STARTING_S
+            for (folder_of, port), (process, at) in _started.items()
+            if folder_of == state
+            and port in PORTS
+            and process.poll() is None
+            and time.monotonic() - at < STARTING_S
         ),
         None,
     )
@@ -132,7 +136,7 @@ def _ensure(folder: Path, comfyui: str, state: Path, wait: float) -> dict[str, A
             raise RuntimeError(f"Ports {PORTS.start}-{PORTS.stop - 1} are all taken by other programs.")
         port = free
         process = start_player(folder, comfyui, port, state)
-        _started[port] = (process, time.monotonic())
+        _started[(state, port)] = (process, time.monotonic())
     deadline = time.monotonic() + wait
     while time.monotonic() < deadline:
         answer = player_at(port)
@@ -148,6 +152,10 @@ def _ensure(folder: Path, comfyui: str, state: Path, wait: float) -> dict[str, A
                     "started": False,
                     "version": info.get("version", ""),
                 }
+            _started.pop((state, port), None)
+            if starting is not None and again:
+                # the player waited for had been quit a moment before: this click starts one of its own
+                return _ensure(folder, comfyui, state, wait, again=False)
             break
         time.sleep(0.3)
     tail = ""

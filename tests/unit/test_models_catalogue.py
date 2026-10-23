@@ -137,15 +137,12 @@ def test_inventory_and_readiness(tmp_path: Path) -> None:
     # the DAW template needs the same music model and writer as the song template
     assert daw.template == "5 · YuE2 · DAW" and daw.ready
     assert {m.file for m in daw.optional_missing} >= {"ar_lora_inst_v3abc_comfyui.safetensors"}
-    # Enhance & Master needs no model: UniverSR only with HQ mastering on (off by default), Stems bypassed
+    # Enhance & Master needs UniverSR alone: HQ mastering is on by default (2026-10-24), the Stems are bypassed
     assert enhance.ready
     assert {m.file for m in enhance.optional_missing} == {"model_bs_roformer_ep_17_sdr_9.6568.ckpt"}
     nothing = readiness(CATALOGUE, Inventory({}), ["4 · Enhance & Master"])[0]
-    assert nothing.ready and not nothing.missing
-    assert {m.file for m in nothing.optional_missing} == {
-        "pytorch_model.bin",
-        "model_bs_roformer_ep_17_sdr_9.6568.ckpt",
-    }
+    assert not nothing.ready and {m.file for m in nothing.missing} == {"pytorch_model.bin"}
+    assert {m.file for m in nothing.optional_missing} == {"model_bs_roformer_ep_17_sdr_9.6568.ckpt"}
 
 
 def test_size_text() -> None:

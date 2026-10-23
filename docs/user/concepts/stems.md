@@ -1,23 +1,32 @@
 # Stems (separate and mix)
 
 **Stems** splits a rendered (or uploaded) song into four stems - vocals, drums, bass, other - and mixes them back
-together with your own balance. It is one optional block of two nodes:
+together with your own balance: *Separate Stems* and the *Stem Mixer*.
 
 ```
-… Render (or Load Audio) ─► Separate Stems ─► Stem Mixer ─► Plenio · Master ─► Export
+song templates:        … Render ─► Plenio · Master [ Separate Stems ─► Stem Mixer ─► Audio HQ ─► EQ ─► Loudness ] ─► Export
+4 · Enhance & Master:  Load Audio ─► Stems (optional) ─► Audio HQ ─► EQ ─► Loudness ─► Export
 ```
 
-| Template | Stems | Why |
+| Template | Stems | To use them |
 |---|---|---|
-| 1 · YuE2 · Song, 2 · YuE2 · Cover, 3 · MiniMax · Song, 5 · YuE2 · DAW | bypassed | the render goes to Master unchanged; press **Ctrl+B** to switch the block on |
-| 4 · Enhance & Master | bypassed | switch it on to rebalance a recording you upload |
+| 1 · YuE2 · Song, 2 · YuE2 · Cover, 3 · MiniMax · Song, 5 · YuE2 · DAW | in the **Plenio · Master** block, switch *stems* **off** | switch *stems* on on the Master node, then **open the block** (the icon at the top right of the node) to set the mix |
+| 4 · Enhance & Master | the block *Stems (optional)* under Load Audio, **bypassed** | select it, press **Ctrl+B**, then open it |
 
-The block sits **before** mastering on purpose: the master then hears your mix, not the raw render.
+The stems come **before** the rest of the mastering on purpose: Audio HQ, the EQ and the loudness then hear your mix,
+not the raw render.
 
-In the templates the block is one collapsed node, *Stems (optional)* (a subgraph of the loader, *Separate Stems*
-and the *Stem Mixer*). To use it: select it, press **Ctrl+B**, then **open it** with the icon at the top right of
-the node - the mixer with its strips and waveforms is inside. The breadcrumb at the top of the canvas takes you back
-to the workflow.
+**In the song templates** (since 2026-10-24) the stems are the first stage of the **Plenio · Master** block: its
+*stems* switch (off) decides whether the song goes through them. Off, the song goes straight to Audio HQ - the
+separation does not run and its model is not loaded. On, *Separate Stems* splits the song and the *Stem Mixer* mixes
+it back; open the Master block to find the mixer with its strips and waveforms in its *STEMS* group (the breadcrumb at
+the top of the canvas takes you back). A bypassed stage cannot stand inside the block - the mixer has no audio input a
+bypass could pass on -, so three *If/Else* switches there choose the mix or the song and the two reports; leave them
+as they are and use the block's switch.
+
+**In 4 · Enhance & Master** the block is one collapsed node, *Stems (optional)* (a subgraph of the loader, *Separate
+Stems* and the *Stem Mixer*), under *Load Audio*. To use it: select it, press **Ctrl+B**, then **open it** with the icon
+at the top right of the node.
 
 ## The residual: why a neutral mix is exact
 
@@ -132,7 +141,7 @@ strips show the documented stems and an empty waveform, and the node says so.
 
 The inference code is vendored in `plenio/third_party/msst` (pinned commit and per-file hashes in its `NOTICE.md`).
 The checkpoint carries its own config, so a second file is not needed. `ComfyUI`'s missing-model dialog offers the
-file when you switch the block on; Plenio itself downloads nothing.
+file (its loader names the download); Plenio itself downloads nothing.
 
 The **0.3** release ships BS-RoFormer as the only separation model. An alternative checkpoint with the same
 architecture can be dropped into `models/audio_separation` and chosen in *Load Audio Model*; other architectures are

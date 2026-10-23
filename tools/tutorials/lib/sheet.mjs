@@ -7,12 +7,12 @@ export const DIALOG = '.plenio-overlay .plenio-dialog'
 
 export async function openSheet(s, nodeId, text) {
   if (text) s.caption(text)
-  let box = await s.nodeButton(nodeId, 'Edit Song Sheet')
+  let box = await s.nodeButton(nodeId, 'Edit')
   // a node off screen: its button's box is off screen too (a click there hit the workflow tabs)
   const view = s.page.viewportSize()
   if (!box || box.x < 70 || box.y < 70 || box.x + box.width > view.width - 20 || box.y + box.height > view.height - 20) {
     await s.flyNodes([nodeId], 1100, 0.9)
-    box = await s.nodeButton(nodeId, 'Edit Song Sheet')
+    box = await s.nodeButton(nodeId, 'Edit')
   }
   await s.spotlight(box, { ms: 1200 })
   await s.click(box, { pause: 400 })

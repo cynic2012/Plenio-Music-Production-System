@@ -74,7 +74,9 @@ Every other Plenio node shows its result the same way (✓, ⚠ warning, ✖ err
 
 ## The editor
 
-**Edit Song Sheet…** (on the node, and in App mode on the sheet's button) opens the editor with the draft, your text, the state badges and the findings of the engine's rules (updated while you type). It also shows:
+Every Song Sheet has an **edit button**, a card that says what you edit there (since 2026-10-24): **Edit lyrics & text** (teal, a page and a pen) on a sheet of the words - title, style, lyrics, cover prompt -, **Edit the score** (violet, notes on a staff) on a sheet that gets a score, **Compose the score** (blue, a piano roll) on the DAW template's sheet. The sheet nodes carry the same colours, so the places where a run stops for review stand out in the graph.
+
+The button (on the node, and in App mode) opens the editor with the draft, your text, the state badges and the findings of the engine's rules (updated while you type). It also shows:
 
 - **Changes against the draft**, word by word;
 - for ASR lyrics, the **unsure words** and what the ASR **left out** as not sung;

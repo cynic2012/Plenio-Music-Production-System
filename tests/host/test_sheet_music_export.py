@@ -46,7 +46,9 @@ def server(tmp_path_factory: pytest.TempPathFactory, comfy_path: Path) -> Iterat
     write_audio(
         base / "input" / "take.flac", 0.1 * np.vstack([np.sin(2 * np.pi * 220 * t)] * 2), 44100, "flac", {}
     )
-    comfy = ComfyServer(comfy_path, base, node_packs=[PACKAGE_NAME])
+    # tests never download: the export's lyrics subtitles would fetch the ASR assets (a stalled download held
+    # the whole run on 2026-10-24); without them the subtitles are reported as not written, the export goes on
+    comfy = ComfyServer(comfy_path, base, node_packs=[PACKAGE_NAME], extra_env={"PLENIO_OFFLINE": "1"})
     comfy.start()
     yield comfy
     comfy.stop()

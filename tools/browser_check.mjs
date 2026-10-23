@@ -3,9 +3,10 @@
 // For every template in example_workflows/:
 //   1. load    - loads like the template browser does; Plenio errors in the console fail the check
 //   2. reload  - serialize -> load -> serialize: widget values and the API prompt stay identical
-//   3. options - each optional block on/off (and Master bypassed): the frontend's API prompt has the
-//                expected shape and the server validates it (dummy model files, see below); Audio HQ 1
-//                and 2 run before the EQ and the bypassed HQ 3 is not in the prompt
+//   3. options - each optional block on/off, the Cover Art card's nodes off, the Master block's stems on
+//                (and Master bypassed): the frontend's API prompt has the expected shape and the server
+//                validates it (dummy model files, see below); Audio HQ 1 and 2 run before the EQ and the
+//                bypassed HQ 3 is not in the prompt
 //   4. app     - App Mode shows the configured controls and outputs
 //   5. summaries - after a run: every node's summary shows at least four lines, no text field
 //                shrinks below 60 px to make room, and no two nodes overlap once the nodes grew
@@ -50,12 +51,12 @@ function loadPlaywright() {
   throw new Error('Playwright not found: npm install -g playwright-core (or set PLAYWRIGHT_MODULE)')
 }
 
-// Expectations per template: the optional blocks (by node title) and what the API prompt must show.
+// Expectations per template: the optional nodes (by title, bypassed until switched on) and what the API prompt
+// must show. Cover Art is on in the song templates (2026-10-23): its card bypasses these three nodes.
 const OPTIONAL = {
-  '1 · YuE2 · Song': ['Cover Art (optional)', 'Cover preview (optional)'],
-  '2 · YuE2 · Cover': ['Cover Art (optional)', 'Cover preview (optional)', 'Check sung lyrics (optional)', 'Excerpt (optional)'],
-  '3 · MiniMax · Song': ['Cover Art (optional)', 'Cover preview (optional)'],
+  '2 · YuE2 · Cover': ['Check sung lyrics (optional)', 'Excerpt (optional)'],
 }
+const COVER_NODES = ['Cover Art', 'Cover seed', 'Cover preview']
 const INPUT_AUDIO = { '2 · YuE2 · Cover': 'cover_source.flac', '4 · Enhance & Master': 'browser-check.flac' }
 // The node classes that send a run summary (``plenio_summary`` in their UI output, plenio/comfy/nodes)
 const SUMMARY_TYPES = [
@@ -128,6 +129,15 @@ const setMode = (titles, mode) =>
     for (const node of window.app.graph.nodes) if (t.includes(node.title)) node.mode = m
     window.app.graph.setDirtyCanvas(true, true)
   }, [titles, mode])
+
+const setBlockWidget = (title, name, value) =>
+  page.evaluate(([t, n, v]) => {
+    const widget = window.app.graph.nodes.find((x) => x.title === t)?.widgets?.find((w) => w.name === n)
+    if (!widget) return false
+    widget.value = v
+    widget.callback?.(v)
+    return true
+  }, [title, name, value])
 
 const setWidget = (nodeType, name, value) =>
   page.evaluate(([t, n, v]) => {
@@ -208,24 +218,46 @@ for (const name of names) {
       eqNode?.inputs?.audio?.[0] === hq2[0][0] && hq2[0][1].inputs.audio?.[0] === hq1[0][0] &&
       Array.isArray(hq2[0][1].inputs.model)
     record(name, 'options: Audio HQ 1 and 2 run before the EQ, HQ 3 is bypassed', chained)
-    // HQ mastering (2026-10-22): the switch at the top, off, sets HQ 2 through the link
+    // HQ mastering (2026-10-22): the switch at the top - on since 2026-10-24 - sets HQ 2 through the link
     const switches = byType(defaults.output, 'PlenioHQMastering')
     const fed = hq2[0]?.[1]?.inputs?.hq_mastering
-    const switched = switches.length === 1 && switches[0][1].inputs.hq_mastering === false && Array.isArray(fed) && fed[0] === switches[0][0]
-    record(name, 'options: the HQ Mastering switch (off) sets HQ 2', switched, JSON.stringify({ switches: switches.length, fed }))
+    const switched = switches.length === 1 && switches[0][1].inputs.hq_mastering === true && Array.isArray(fed) && fed[0] === switches[0][0]
+    record(name, 'options: the HQ Mastering switch (on) sets HQ 2', switched, JSON.stringify({ switches: switches.length, fed }))
+  }
+  if (template.definitions?.subgraphs?.some((d) => d.name === 'Plenio · Master')) {
+    // the stems inside the Master block (2026-10-24): off, three If/Else switches pass the song to HQ 1
+    const stemSwitches = (output) => Object.entries(output).filter(([, n]) => n.class_type === 'ComfySwitchNode' && String(n._meta?.title).startsWith('Stems on'))
+    const hq1Of = (output) => byType(output, 'PlenioHQStereoCleanup')[0]?.[1]
+    const off = stemSwitches(defaults.output)
+    const songSwitch = off.find(([, n]) => String(n._meta.title).includes('the song'))
+    const stemsOff = off.length === 3 && off.every(([, n]) => n.inputs.switch === false) && hq1Of(defaults.output)?.inputs?.audio?.[0] === songSwitch?.[0]
+    record(name, 'options: the stems in Master are off (three switches, HQ 1 hears the song)', stemsOff, JSON.stringify(off.map(([id, n]) => [id, n.inputs.switch])))
+    await setBlockWidget('Plenio · Master', 'stems', true)
+    const on = await snapshot()
+    const onSwitches = stemSwitches(on.output)
+    const stemsOn = onSwitches.length === 3 && onSwitches.every(([, n]) => n.inputs.switch === true) && byType(on.output, 'PlenioStemMixer').length === 1
+    record(name, 'options: stems on -> the switches choose the mix', stemsOn)
+    const onProblem = await validate(on.output)
+    record(name, 'options: stems on validates', onProblem === '', onProblem)
+    await setBlockWidget('Plenio · Master', 'stems', false)
+  }
+  if (template.nodes.some((n) => n.title === 'Cover Art')) {
+    const exportOn = byType(defaults.output, 'PlenioExportRelease')[0]?.[1]
+    record(name, 'options: Cover Art on by default -> FLUX nodes and Export cover linked', byType(defaults.output, 'Flux2Scheduler').length === 1 && Array.isArray(exportOn?.inputs?.cover))
+    await setMode(COVER_NODES, 4)
+    const coverOff = await snapshot()
+    const exportOff = byType(coverOff.output, 'PlenioExportRelease')[0]?.[1]
+    record(name, 'options: the Cover Art card off -> no FLUX nodes, no cover in Export', byType(coverOff.output, 'Flux2Scheduler').length === 0 && exportOff && !('cover' in exportOff.inputs))
+    const offProblem = await validate(coverOff.output)
+    record(name, 'options: Cover Art off validates', offProblem === '', offProblem)
+    await setMode(COVER_NODES, 0)
   }
   const optional = OPTIONAL[name] ?? []
   if (optional.length) {
-    const flux = byType(defaults.output, 'Flux2Scheduler').length
-    record(name, 'options: Cover Art off by default (no FLUX nodes in the prompt)', flux === 0)
-    const exportNode = byType(defaults.output, 'PlenioExportRelease')[0]?.[1]
-    record(name, 'options: Export has no cover when Cover Art is off', exportNode && !('cover' in exportNode.inputs))
     await setMode(optional, 0)
     const all = await snapshot()
     const allProblem = await validate(all.output)
     record(name, 'options: all optional blocks on validate', allProblem === '', allProblem)
-    const exportAll = byType(all.output, 'PlenioExportRelease')[0]?.[1]
-    record(name, 'options: Cover Art on -> FLUX nodes and Export cover linked', byType(all.output, 'Flux2Scheduler').length === 1 && Array.isArray(exportAll?.inputs?.cover))
     await setMode(optional, 4)
   }
   if (name !== '0 · System Check' && name !== '4 · Enhance & Master') {
@@ -619,12 +651,12 @@ const pdfOk = (outcome) => !outcome.timeout && outcome.head === '%PDF-' && outco
       widget.value = value
       widget.callback?.(value)
     }
-    // settings at the top, a block's widget, a node inside a block, and a block turned on
+    // settings at the top, a block's widget, a node inside a block, and the Master's stems switched on
     set(g.nodes.find((n) => n.type === 'PlenioSongBrief'), 'description', 'a song to continue')
     set(g.nodes.find((n) => n.title === 'Take seed'), 'seed', 4242)
     set(g.getNodeById(4), 'thinking', true)
     set(g.getNodeById(4).subgraph.getNodeById(505), 'max_tokens', 1234)
-    g.nodes.find((n) => String(n.title).startsWith('Stems')).mode = 0
+    set(g.nodes.find((n) => n.title === 'Plenio · Master'), 'stems', true)
     const { output, workflow } = await app.graphToPrompt()
     return { prompt: output, workflow }
   })

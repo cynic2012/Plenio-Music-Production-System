@@ -132,7 +132,7 @@ export default async function minimax(s) {
   await s.flyNodes([SHEET], 1100, 0.9)
   await s.read('The run stopped at the Song Sheet: ⏸ waiting for your approval.', 4200)
 
-  await openSheet(s, SHEET, 'Open it with “Edit Song Sheet…”.')
+  await openSheet(s, SHEET, 'Open it with “Edit lyrics & text”.')
   await maximize(s, '⛶ gives the editor the whole window.')
   await tab(s, 'Caption', 'Caption: MiniMax reads it in three parts - Global Metadata (tempo, key, genre), Vocal Details and Arrangement.', { min: 7600 })
   await tab(s, 'Lyrics', 'Lyrics: section by section. MiniMax sings about one line every five seconds.', { min: 5600 })

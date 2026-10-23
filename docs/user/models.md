@@ -43,7 +43,7 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 |---|---|---|---|
 | `pytorch_model.bin` (UniverSR audio) | `audio_sr` | 229 MB | CC BY 4.0 (weights), MIT (inference code; vendored in `plenio/third_party/universr`) |
 
-**Needed only for HQ mastering** (the switch at the top of every template, off by default): with it on, [HQ 2 · Regenerate Highs](concepts/audio-hq.md) runs in the Master block (in 4 · Enhance & Master as a plain node); off, the model is not loaded and the file is not needed. ComfyUI offers the download when a template opens. The one file serves every template, and the *Refine (48 kHz)* node of the library uses it too (its *resample only* engine needs no model at all).
+**Needed for HQ mastering** (the switch at the top of every template, **on** by default since 2026-10-24): with it on, [HQ 2 · Regenerate Highs](concepts/audio-hq.md) runs in the Master block (in 4 · Enhance & Master as a plain node); switched off, the model is not loaded and the file is not needed. ComfyUI offers the download when a template opens. The one file serves every template, and the *Refine (48 kHz)* node of the library uses it too (its *resample only* engine needs no model at all).
 
 ### Stems (BS-RoFormer), the optional block of templates 1-5
 
@@ -51,7 +51,7 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 |---|---|---|---|
 | `model_bs_roformer_ep_17_sdr_9.6568.ckpt` | `audio_separation` | 527 MB | MIT (training code; vendored inference code in `plenio/third_party/msst`); the checkpoint was trained on MUSDB18-HQ, whose dataset terms are research-oriented |
 
-*Separate Stems* and *Stem Mixer* stay bypassed in every template until you turn them on. *2 · YuE2 · Cover* also uses the file for **Sung Pitch** (the source's vocal line in the score editor); without it the cover runs as before and the editor says that there is no sung pitch. Place the file in `ComfyUI/models/audio_separation` (create the folder if needed) - or in an `audio_separation` folder beside the model folders of your `extra_model_paths.yaml` (see [Existing model folders](#existing-model-folders)); the checkpoint is a plain `.ckpt` with its config inside, so no second file is required. Without it the template runs exactly as before.
+*Separate Stems* and *Stem Mixer* run only when you turn them on: the *stems* switch of the Master block in the song templates (off), the bypassed *Stems (optional)* block in 4 · Enhance & Master. *2 · YuE2 · Cover* also uses the file for **Sung Pitch** (the source's vocal line in the score editor); without it the cover runs as before and the editor says that there is no sung pitch. Place the file in `ComfyUI/models/audio_separation` (create the folder if needed) - or in an `audio_separation` folder beside the model folders of your `extra_model_paths.yaml` (see [Existing model folders](#existing-model-folders)); the checkpoint is a plain `.ckpt` with its config inside, so no second file is required. Without it the template runs exactly as before.
 
 The block is **experimental** until its listening check (L2) is accepted: the separation itself is measured (MUSDB18-HQ SDR 9.66 reported by the authors), but how the stems are used here is not.
 
@@ -67,7 +67,7 @@ The block stays bypassed until you turn it on, so a template runs without these 
 
 ### 0 · System Check and 4 · Enhance & Master (the other files)
 
-0 · System Check needs no model file. 4 · Enhance & Master needs none either: the UniverSR file of HQ 2 (above) only for HQ mastering, and the optional Stems block (bypassed) for material you upload.
+0 · System Check needs no model file. 4 · Enhance & Master needs only the UniverSR file of HQ 2 (above) for HQ mastering, which is on by default (switched off, none at all), and the optional Stems block (bypassed) for material you upload.
 
 ## Download sources
 

@@ -1,8 +1,8 @@
 {
  "id": "dac7a916-31bb-521d-b75c-0944f452bb94",
  "revision": 0,
- "last_node_id": 35,
- "last_link_id": 95,
+ "last_node_id": 34,
+ "last_link_id": 94,
  "nodes": [
   {
    "id": 1,
@@ -25,7 +25,7 @@
     "Node name for S&R": "MarkdownNote"
    },
    "widgets_values": [
-    "# 2 · YuE2 · Cover\n\n**Source -> Transcribe Score -> Arrange -> Song Sheet · Score -> lyrics (ASR, writer or section tags) -> Song Sheet · Text -> YuE2 Takes -> Check Vocals -> Master -> Export**\n\n1. Load the **source** recording (upload in *Load Audio*; up to 5:00 - trim longer songs with the optional *Excerpt* node).\n2. In **Cover Brief** choose the **mode** - *new cover every run* (default): every run writes and renders a **different version** (title, style and - with new lyrics - the lyrics) without stops, so a queue of covers runs through; the batch count next to **Run** makes a series. Or *one cover, stop to review* (steps 4-6) to check the transcription and the lyrics first. Then the target style and what happens to the vocals: *original lyrics* (default; transcribed from the source), *instrumental* (an instrument plays the melody, or accompaniment only) or *new lyrics* (written on the source's melody). *harmony* keeps or replaces the original chords.\n3. Press **Run**: SheetSage2 transcribes the source (once; later runs reuse it). With *new cover every run* the run goes on to the export.\n4. With *one cover, stop to review* the run **stops at Song Sheet · Score**. Open it, check the score (fix section names and boundaries), then *Approve*.\n5. Run again: the lyrics are drafted (ASR of the original, the writer's new lyrics, or the section tags) and the run **stops at Song Sheet · Text**. Correct or replace the lyrics - your text always wins - and *Approve*.\n6. Run again to render. Each further run is a new take (the take seed changes).\n\n**New lyrics** are understood only when they fit the melody - about one syllable per note - and the voice fits its range; Song Sheet · Text warns about both.\n\n**Creative modes (experimental):** *arrangement* in the brief. They can give unexpected results and are meant for experimenting - try a mode, listen, keep what you like. *off* (default, the dependable choice): no arrangement - the transcribed score stays as it is. A creative mode - from *standard*, *sterile* and *unplugged* over *call and response*, *signature motif*, *hypnotic* and *breakdown* to *jazz colours* and *fantasy* (the line under the brief says what the chosen one does), *key change* for one lift of the final chorus, or your own file in `user/plenio/arrangement` - adds its hints to the writing and lets the writer model plan every section of the score in **Arrange**: chords, what the instrument line plays, energy. *song flow closeness* sets how close it stays to the original: 100 exactly the original (no plan), 80 chords and key stay, 50 recognisable, 20 a free version, 0 only a hint - the form always remains, below 80 the melody follows the new chords. *lyrics closeness* (new lyrics) sets how close the new words stay to the source's: 0 without them (as before) up to 100, their meaning line by line. The writer answers with a small plan, never notes: Plenio writes every note itself and checks the result, so the score stays valid - a plan it cannot use leaves the score as it was, and Song Sheet · Score says so. A **harmony guard** keeps every chord in the key and the genre and on the melody, and the instrument line plays where the voice rests (*lines under the singing* in the brief lets it sound under the voice, calmly). **Arrangement seed:** another arrangement of the same song. Changing the mode or a slider writes the text again (the brief changed); a Local LLM answers from its cache when the request is the same.\n\n**Writer model:** one list in the *Writer model* node for every writing step (Write Song and Arrange): ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed is answered from Plenio's cache, without asking the model again.\n\n**Where the run stands:** a badge above each Plenio node shows its result - ✓ done, ⚠ warning, ✖ error; every Song Sheet that will stop carries ⏸ *review stop* before the run, ⏸ *waiting for your approval* (and an amber frame) when the run stopped there, ✓ *approved* once you approved it. A new run clears the badges, so they show how far this run got.\n\n**Creativity** (the brief's slider): 0 steady, 50 the reference - exactly as before -, 100 experimental. It shapes the writer's rules and the temperature of its draft (and of a creative mode's plan) and, with YuE2, how freely the plan and the takes are sampled. More surprises also bring more misses: try a few seeds. A workflow saved before the slider keeps 50.\n\n**Seeds:** each seed node has one switch - **🔒 same seed**: the next run keeps that part (the same draft, the same take), so you can change other things; **🎲 new seed**: every run draws a new number - something new each time. The number shown is always the one the last run used: liked a take? Switch its seed to 🔒. Blue nodes keep, amber nodes renew. The seeds follow the brief's **mode**: *new song (cover) every run* starts with every seed on 🎲, *one song (cover), stop to review* with the song's seeds on 🔒 and the take seed on 🎲 - switching the mode switches them (a toast says so).\n\n**Takes:** *YuE2 Takes* renders *takes* versions (seeds take seed, +1, ...); **Check Vocals** keeps the first instrumental take without vocal notes, the preview plays all takes. N takes cost N renders. **Instrumental adapter:** for instrumental covers YuE2 renders with the instrumental LoRA of the *Instrumental adapter* node (the optional adapter inside the model block stays bypassed here). **Check sung lyrics** (optional, bypassed) measures what a sung take actually sang.\n\n**Finish:** *Plenio · Master* refines the take (*Audio HQ*, below) and brings it to -14 LUFS / -1 dBTP with a gentle tone match (open the block to change a stage, the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the **sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export), and the lyrics as **subtitles** - `<name> (lines).srt` and `<name> (notes).srt`, timed by listening. The **tags** take the brief's fields as variables (`{genre}`, `{mood}` ...); the *Tags & variables* note beside Export lists them all.\n\n**Cover art (on):** *Cover Art* paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about 16 GB of model files, Apache-2.0); Export embeds it in the FLAC and MP3 files and saves it as `.jpg`. The **Cover Art** card in *HQ Mastering & Cover Art* at the top switches it off - its three nodes are then bypassed and no image model loads.\n\n**Check Sung Words** (after Export): the writer model reads the lyrics and what the take sings, as heard, and corrects the words the lyrics ASR misheard - only those it is sure of, each with a word of as many syllables. The release record keeps every correction with the word heard; the Plenio Player shows the corrected lines under *As sung*. Nothing runs for a song without sung lyrics or without such words.\n\n**Stems (optional, bypassed):** *Separate Stems* splits the take into vocals, drums, bass and other; the *Stem Mixer* balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Select the block and press **Ctrl+B**; the mixer is inside it - open the block with the icon at the top right of the node. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it.\n\n**HQ Mastering & Cover Art** (the two cards at the top - click one to switch it): **HQ Mastering** (**off** by default) runs the mastering at its highest quality - it can clearly reduce AI shimmer and artifacts, but the song takes **about twice as long** (UniverSR, 229 MB in `models/audio_sr`, needed only then); **Cover Art** (**on**) paints the song's cover.\n\n**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the render's highs (always); *HQ 2 · Regenerate Highs*, with HQ mastering on, lets the UniverSR model generate new highs above 8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s per second of music on an RTX 5060 Ti (its *model steps* 3: about 1.1 s); *HQ 3 · De-Reverb* (bypassed) dries the short metallic room but also dulls the highs. Their presets are on **auto**: the brief's genre picks *standard*, *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient). Open the block (the icon at the top right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). The user guide *Audio HQ* covers it.\n\n**App mode:** switch *Graph / App* at the top left for a simple form: the source file, the mode, the cover style, the creative mode with both closeness sliders, the creativity, the writer model, the seeds, the two Song Sheet buttons (the review stops work in the app; their status line says where the run stands) and the results. The other options of *original lyrics* and *new lyrics* are set in the graph.\n\n**Models** (downloaded on first use): YuE2 3B int8, SheetSage2, the instrumental adapter, the Gemma 4 E4B writer; the lyrics ASR (Qwen3-ASR 1.7B with Qwen3-ForcedAligner 0.6B, 4.1 + 1.8 GB; faster-whisper large-v3, 3.1 GB, only for a language the aligner does not know) is fetched by Plenio when first needed. YuE2, SheetSage2 and the adapter are **CC BY-NC 4.0 (non-commercial)**.\n"
+    "# 2 · YuE2 · Cover\n\n**Source -> Transcribe Score -> Arrange -> Song Sheet · Score -> lyrics (ASR, writer or section tags) -> Song Sheet · Text -> YuE2 Takes -> Check Vocals -> Master -> Export**\n\n1. Load the **source** recording (upload in *Load Audio*; up to 5:00 - trim longer songs with the optional *Excerpt* node).\n2. In **Cover Brief** choose the **mode** - *new cover every run* (default): every run writes and renders a **different version** (title, style and - with new lyrics - the lyrics) without stops, so a queue of covers runs through; the batch count next to **Run** makes a series. Or *one cover, stop to review* (steps 4-6) to check the transcription and the lyrics first. Then the target style and what happens to the vocals: *original lyrics* (default; transcribed from the source), *instrumental* (an instrument plays the melody, or accompaniment only) or *new lyrics* (written on the source's melody). *harmony* keeps or replaces the original chords.\n3. Press **Run**: SheetSage2 transcribes the source (once; later runs reuse it). With *new cover every run* the run goes on to the export.\n4. With *one cover, stop to review* the run **stops at Song Sheet · Score**. Open it, check the score (fix section names and boundaries), then *Approve*.\n5. Run again: the lyrics are drafted (ASR of the original, the writer's new lyrics, or the section tags) and the run **stops at Song Sheet · Text**. Correct or replace the lyrics - your text always wins - and *Approve*.\n6. Run again to render. Each further run is a new take (the take seed changes).\n\n**New lyrics** are understood only when they fit the melody - about one syllable per note - and the voice fits its range; Song Sheet · Text warns about both.\n\n**Creative modes (experimental):** *arrangement* in the brief. They can give unexpected results and are meant for experimenting - try a mode, listen, keep what you like. *off* (default, the dependable choice): no arrangement - the transcribed score stays as it is. A creative mode - from *standard*, *sterile* and *unplugged* over *call and response*, *signature motif*, *hypnotic* and *breakdown* to *jazz colours* and *fantasy* (the line under the brief says what the chosen one does), *key change* for one lift of the final chorus, or your own file in `user/plenio/arrangement` - adds its hints to the writing and lets the writer model plan every section of the score in **Arrange**: chords, what the instrument line plays, energy. *song flow closeness* sets how close it stays to the original: 100 exactly the original (no plan), 80 chords and key stay, 50 recognisable, 20 a free version, 0 only a hint - the form always remains, below 80 the melody follows the new chords. *lyrics closeness* (new lyrics) sets how close the new words stay to the source's: 0 without them (as before) up to 100, their meaning line by line. The writer answers with a small plan, never notes: Plenio writes every note itself and checks the result, so the score stays valid - a plan it cannot use leaves the score as it was, and Song Sheet · Score says so. A **harmony guard** keeps every chord in the key and the genre and on the melody, and the instrument line plays where the voice rests (*lines under the singing* in the brief lets it sound under the voice, calmly). **Arrangement seed:** another arrangement of the same song. Changing the mode or a slider writes the text again (the brief changed); a Local LLM answers from its cache when the request is the same.\n\n**Writer model:** one list in the *Writer model* node - at the start, under the two cards - for every writing step (Write Song and Arrange): ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed is answered from Plenio's cache, without asking the model again.\n\n**Where the run stands:** a badge above each Plenio node shows its result - ✓ done, ⚠ warning, ✖ error; every Song Sheet that will stop carries ⏸ *review stop* before the run, ⏸ *waiting for your approval* (and an amber frame) when the run stopped there, ✓ *approved* once you approved it. A new run clears the badges, so they show how far this run got.\n\n**Creativity** (the brief's slider): 0 steady, 50 the reference - exactly as before -, 100 experimental. It shapes the writer's rules and the temperature of its draft (and of a creative mode's plan) and, with YuE2, how freely the plan and the takes are sampled. More surprises also bring more misses: try a few seeds. A workflow saved before the slider keeps 50.\n\n**Seeds:** each seed node has one switch - **🔒 same seed**: the next run keeps that part (the same draft, the same take), so you can change other things; **🎲 new seed**: every run draws a new number - something new each time. The number shown is always the one the last run used: liked a take? Switch its seed to 🔒. Blue nodes keep, amber nodes renew. The seeds follow the brief's **mode**: *new song (cover) every run* starts with every seed on 🎲, *one song (cover), stop to review* with the song's seeds on 🔒 and the take seed on 🎲 - switching the mode switches them (a toast says so).\n\n**Takes:** *YuE2 Takes* renders *takes* versions (seeds take seed, +1, ...); **Check Vocals** keeps the first instrumental take without vocal notes, the preview plays all takes. N takes cost N renders. **Instrumental adapter:** for instrumental covers YuE2 renders with the instrumental LoRA of the *Instrumental adapter* node (the optional adapter inside the model block stays bypassed here). **Check sung lyrics** (optional, bypassed) measures what a sung take actually sang.\n\n**Finish:** *Plenio · Master* mixes the stems when you switch *stems* on, refines the take (*Audio HQ*, below) and brings it to -14 LUFS / -1 dBTP with a gentle tone match (open the block to change a stage, the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the **sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export), and the lyrics as **subtitles** - `<name> (lines).srt` and `<name> (notes).srt`, timed by listening. The **tags** take the brief's fields as variables (`{genre}`, `{mood}` ...); the *Tags & variables* note beside Export lists them all.\n\n**Cover art (on):** *Cover Art* (the COVER ART group above the render) paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about 16 GB of model files, Apache-2.0); Export embeds it in the FLAC and MP3 files and saves it as `.jpg`. The **Cover Art** card in *HQ Mastering & Cover Art* at the top switches it off - its three nodes are then bypassed and no image model loads.\n\n**Check Sung Words** (after Export): the writer model reads the lyrics and what the take sings, as heard, and corrects the words the lyrics ASR misheard - only those it is sure of, each with a word of as many syllables. The release record keeps every correction with the word heard; the Plenio Player shows the corrected lines under *As sung*. Nothing runs for a song without sung lyrics or without such words.\n\n**Stems (in the Master block, off):** switch *stems* on the *Plenio · Master* node on: *Separate Stems* splits the take into vocals, drums, bass and other, and the *Stem Mixer* - inside the block, open it with the icon at the top right of the node - balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Off, the separation does not run. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it.\n\n**HQ Mastering & Cover Art** (the two cards at the top - click one to switch it): **HQ Mastering** (**on** by default) runs the mastering at its highest quality - it can clearly reduce AI shimmer and artifacts, and the song takes **about twice as long** (UniverSR, 229 MB in `models/audio_sr`; off, it does not run and is not needed); **Cover Art** (**on**) paints the song's cover.\n\n**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the render's highs (always); *HQ 2 · Regenerate Highs*, with HQ mastering on, lets the UniverSR model generate new highs above 8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s per second of music on an RTX 5060 Ti (its *model steps* 3: about 1.1 s); *HQ 3 · De-Reverb* (bypassed) dries the short metallic room but also dulls the highs. Their presets are on **auto**: the brief's genre picks *standard*, *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient). Open the block (the icon at the top right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). The user guide *Audio HQ* covers it.\n\n**App mode:** switch *Graph / App* at the top left for a simple form: the source file, the mode, the cover style, the creative mode with both closeness sliders, the creativity, the writer model, the seeds, the two Song Sheet buttons (the review stops work in the app; their status line says where the run stands) and the results. The other options of *original lyrics* and *new lyrics* are set in the graph.\n\n**Models** (downloaded on first use): YuE2 3B int8, SheetSage2, the instrumental adapter, the Gemma 4 E4B writer; the lyrics ASR (Qwen3-ASR 1.7B with Qwen3-ForcedAligner 0.6B, 4.1 + 1.8 GB; faster-whisper large-v3, 3.1 GB, only for a language the aligner does not know) is fetched by Plenio when first needed. YuE2, SheetSage2 and the adapter are **CC BY-NC 4.0 (non-commercial)**.\n"
    ]
   },
   {
@@ -33,7 +33,7 @@
    "type": "LoadAudio",
    "pos": [
     0,
-    0
+    560
    ],
    "size": [
     360,
@@ -77,7 +77,7 @@
    "type": "TrimAudioDuration",
    "pos": [
     0,
-    230
+    790
    ],
    "size": [
     360,
@@ -121,8 +121,8 @@
       5,
       17,
       20,
-      91,
-      92
+      90,
+      91
      ]
     }
    ],
@@ -139,8 +139,8 @@
    "id": 4,
    "type": "PlenioCoverBrief",
    "pos": [
-    0.0,
-    520
+    620,
+    0.0
    ],
    "size": [
     520,
@@ -306,8 +306,8 @@
       24,
       42,
       61,
-      66,
-      67
+      65,
+      66
      ]
     },
     {
@@ -448,8 +448,8 @@
    "id": 5,
    "type": "be8d0fd4-8ce7-561b-8778-c59f81c6c6b4",
    "pos": [
-    0.0,
-    1706
+    0,
+    1700
    ],
    "size": [
     380,
@@ -521,8 +521,8 @@
    "id": 6,
    "type": "LoraLoader",
    "pos": [
-    0.0,
-    1786
+    0,
+    1780
    ],
    "size": [
     380,
@@ -609,8 +609,8 @@
    "id": 7,
    "type": "ComfySwitchNode",
    "pos": [
-    0.0,
-    1976
+    0,
+    1970
    ],
    "size": [
     260,
@@ -666,7 +666,7 @@
    "id": 8,
    "type": "54cc5314-66fa-573b-8998-d1f85431a348",
    "pos": [
-    620.0,
+    1240,
     0.0
    ],
    "size": [
@@ -708,7 +708,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      79
+      78
      ]
     },
     {
@@ -728,7 +728,7 @@
    "id": 9,
    "type": "PlenioScoreTools",
    "pos": [
-    620.0,
+    1240,
     238.0
    ],
    "size": [
@@ -796,12 +796,12 @@
    "id": 10,
    "type": "PlenioSongSheet",
    "pos": [
-    1040.0,
+    1660,
     0.0
    ],
    "size": [
     420,
-    460
+    520
    ],
    "flags": {},
    "order": 9,
@@ -882,7 +882,7 @@
      "name": "sung_pitch",
      "shape": 7,
      "type": "PLENIO_PITCH",
-     "link": 93
+     "link": 92
     },
     {
      "localized_name": "brief",
@@ -989,7 +989,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      77
+      76
      ]
     },
     {
@@ -1008,6 +1008,8 @@
     }
    ],
    "title": "Song Sheet · Score",
+   "color": "#5b4290",
+   "bgcolor": "#2b2244",
    "properties": {
     "Node name for S&R": "PlenioSongSheet"
    },
@@ -1020,7 +1022,7 @@
    "id": 11,
    "type": "eecfe9be-e841-57a2-9b80-b30da8f055f0",
    "pos": [
-    620.0,
+    1240,
     696.0
    ],
    "size": [
@@ -1118,7 +1120,7 @@
    "id": 12,
    "type": "PlenioSeed",
    "pos": [
-    620.0,
+    1240,
     1034.0
    ],
    "size": [
@@ -1175,7 +1177,7 @@
    "id": 13,
    "type": "PlenioTranscribeLyrics",
    "pos": [
-    1560.0,
+    2180,
     0.0
    ],
    "size": [
@@ -1294,7 +1296,7 @@
    "id": 14,
    "type": "ec9ff305-6d52-5283-8543-6c063df4002b",
    "pos": [
-    1560.0,
+    2180,
     360.0
    ],
    "size": [
@@ -1430,7 +1432,7 @@
    "id": 15,
    "type": "PlenioSeed",
    "pos": [
-    1560.0,
+    2180,
     698.0
    ],
    "size": [
@@ -1487,11 +1489,11 @@
    "id": 16,
    "type": "PlenioWriterChoice",
    "pos": [
-    1560.0,
-    966.0
+    0,
+    250
    ],
    "size": [
-    400,
+    520,
     220
    ],
    "flags": {},
@@ -1535,7 +1537,7 @@
      "links": [
       8,
       9,
-      90
+      89
      ]
     }
    ],
@@ -1558,7 +1560,7 @@
    "id": 17,
    "type": "ComfySwitchNode",
    "pos": [
-    1980.0,
+    2600,
     0.0
    ],
    "size": [
@@ -1615,7 +1617,7 @@
    "id": 18,
    "type": "ComfySwitchNode",
    "pos": [
-    1980.0,
+    2600,
     165.0
    ],
    "size": [
@@ -1672,12 +1674,12 @@
    "id": 19,
    "type": "PlenioSongSheet",
    "pos": [
-    2340.0,
+    2960,
     0.0
    ],
    "size": [
     420,
-    460
+    520
    ],
    "flags": {},
    "order": 18,
@@ -1751,14 +1753,14 @@
      "name": "reference_audio",
      "shape": 7,
      "type": "AUDIO",
-     "link": 91
+     "link": 90
     },
     {
      "localized_name": "sung_pitch",
      "name": "sung_pitch",
      "shape": 7,
      "type": "PLENIO_PITCH",
-     "link": 94
+     "link": 93
     },
     {
      "localized_name": "brief",
@@ -1814,7 +1816,7 @@
      "name": "title",
      "type": "STRING",
      "links": [
-      73
+      72
      ]
     },
     {
@@ -1845,7 +1847,7 @@
      "name": "artwork_prompt",
      "type": "STRING",
      "links": [
-      74
+      73
      ]
     },
     {
@@ -1865,7 +1867,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      78
+      77
      ]
     },
     {
@@ -1882,6 +1884,8 @@
     }
    ],
    "title": "Song Sheet · Text",
+   "color": "#25695f",
+   "bgcolor": "#163d38",
    "properties": {
     "Node name for S&R": "PlenioSongSheet"
    },
@@ -1894,7 +1898,7 @@
    "id": 20,
    "type": "PlenioSeed",
    "pos": [
-    2860.0,
+    3480,
     0.0
    ],
    "size": [
@@ -1951,7 +1955,7 @@
    "id": 21,
    "type": "869d4797-70fa-52d9-b9f6-120b2510d110",
    "pos": [
-    2860.0,
+    3480,
     244.0
    ],
    "size": [
@@ -2080,7 +2084,7 @@
    "id": 22,
    "type": "PlenioVocalCheck",
    "pos": [
-    3240.0,
+    3860,
     0.0
    ],
    "size": [
@@ -2127,7 +2131,8 @@
      "type": "AUDIO",
      "links": [
       63,
-      65
+      68,
+      71
      ]
     },
     {
@@ -2141,7 +2146,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      80
+      79
      ]
     },
     {
@@ -2165,7 +2170,7 @@
    "id": 23,
    "type": "PreviewAudio",
    "pos": [
-    3240.0,
+    3860,
     280.0
    ],
    "size": [
@@ -2201,8 +2206,8 @@
    "id": 24,
    "type": "PlenioTranscribeLyrics",
    "pos": [
-    3155,
-    845
+    3860,
+    480.0
    ],
    "size": [
     340,
@@ -2298,7 +2303,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      81
+      80
      ]
     }
    ],
@@ -2314,79 +2319,24 @@
   },
   {
    "id": 25,
-   "type": "b15b93f5-aa6c-53d1-a081-d23166dcc913",
-   "pos": [
-    3680.0,
-    715.0
-   ],
-   "size": [
-    340,
-    170
-   ],
-   "flags": {
-    "collapsed": true
-   },
-   "order": 24,
-   "mode": 4,
-   "inputs": [
-    {
-     "localized_name": "audio",
-     "name": "audio",
-     "type": "AUDIO",
-     "link": 65
-    }
-   ],
-   "outputs": [
-    {
-     "localized_name": "audio",
-     "name": "audio",
-     "type": "AUDIO",
-     "links": [
-      69,
-      72
-     ]
-    },
-    {
-     "localized_name": "report",
-     "name": "report",
-     "type": "PLENIO_REPORT",
-     "links": [
-      82
-     ]
-    },
-    {
-     "localized_name": "separation_report",
-     "name": "separation_report",
-     "type": "PLENIO_REPORT",
-     "links": [
-      83
-     ]
-    }
-   ],
-   "title": "Stems (optional)",
-   "properties": {},
-   "widgets_values": []
-  },
-  {
-   "id": 26,
    "type": "259b88ba-7c57-57fb-b73e-58f691fe4b56",
    "pos": [
-    4040.0,
-    0.0
+    4580,
+    0
    ],
    "size": [
     340,
-    170
+    260
    ],
    "flags": {},
-   "order": 25,
+   "order": 24,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 69
+     "link": 68
     },
     {
      "localized_name": "reference",
@@ -2398,7 +2348,7 @@
      "localized_name": "brief",
      "name": "brief",
      "type": "PLENIO_BRIEF",
-     "link": 67
+     "link": 66
     },
     {
      "localized_name": "hq_mastering",
@@ -2408,7 +2358,17 @@
      "widget": {
       "name": "hq_mastering"
      },
-     "link": 95
+     "link": 94
+    },
+    {
+     "localized_name": "stems",
+     "name": "stems",
+     "label": "stems",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "stems"
+     },
+     "link": null
     },
     {
      "localized_name": "sample_rate",
@@ -2427,8 +2387,8 @@
      "name": "audio",
      "type": "AUDIO",
      "links": [
-      70,
-      71
+      69,
+      70
      ]
     },
     {
@@ -2436,7 +2396,7 @@
      "name": "eq_report",
      "type": "PLENIO_REPORT",
      "links": [
-      87
+      86
      ]
     },
     {
@@ -2444,7 +2404,7 @@
      "name": "loudness_report",
      "type": "PLENIO_REPORT",
      "links": [
-      88
+      87
      ]
     },
     {
@@ -2452,7 +2412,7 @@
      "name": "hq1_report",
      "type": "PLENIO_REPORT",
      "links": [
-      84
+      83
      ]
     },
     {
@@ -2460,7 +2420,7 @@
      "name": "hq2_report",
      "type": "PLENIO_REPORT",
      "links": [
-      85
+      84
      ]
     },
     {
@@ -2468,37 +2428,54 @@
      "name": "hq3_report",
      "type": "PLENIO_REPORT",
      "links": [
-      86
+      85
+     ]
+    },
+    {
+     "localized_name": "stems_report",
+     "name": "stems_report",
+     "type": "PLENIO_REPORT",
+     "links": [
+      81
+     ]
+    },
+    {
+     "localized_name": "separation_report",
+     "name": "separation_report",
+     "type": "PLENIO_REPORT",
+     "links": [
+      82
      ]
     }
    ],
    "title": "Plenio · Master",
    "properties": {},
    "widgets_values": [
+    true,
     false,
     "keep"
    ]
   },
   {
-   "id": 27,
+   "id": 26,
    "type": "PreviewAudio",
    "pos": [
-    4040.0,
-    230.0
+    4580,
+    344
    ],
    "size": [
     340,
     120
    ],
    "flags": {},
-   "order": 26,
+   "order": 25,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 70
+     "link": 69
     }
    ],
    "outputs": [
@@ -2516,53 +2493,53 @@
    "widgets_values": []
   },
   {
-   "id": 28,
+   "id": 27,
    "type": "PlenioExportRelease",
    "pos": [
-    4440.0,
-    0.0
+    4980,
+    0
    ],
    "size": [
     440,
     1004
    ],
    "flags": {},
-   "order": 27,
+   "order": 26,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 71
+     "link": 70
     },
     {
      "localized_name": "title",
      "name": "title",
      "shape": 7,
      "type": "STRING",
-     "link": 73
+     "link": 72
     },
     {
      "localized_name": "original",
      "name": "original",
      "shape": 7,
      "type": "AUDIO",
-     "link": 72
+     "link": 71
     },
     {
      "localized_name": "cover",
      "name": "cover",
      "shape": 7,
      "type": "IMAGE",
-     "link": 75
+     "link": 74
     },
     {
      "localized_name": "brief",
      "name": "brief",
      "shape": 7,
      "type": "PLENIO_BRIEF",
-     "link": 66
+     "link": 65
     },
     {
      "localized_name": "reports.report_0",
@@ -2570,7 +2547,7 @@
      "label": "report_0",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 77
+     "link": 76
     },
     {
      "localized_name": "reports.report_1",
@@ -2578,7 +2555,7 @@
      "label": "report_1",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 78
+     "link": 77
     },
     {
      "localized_name": "reports.report_2",
@@ -2586,7 +2563,7 @@
      "label": "report_2",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 79
+     "link": 78
     },
     {
      "localized_name": "reports.report_3",
@@ -2594,7 +2571,7 @@
      "label": "report_3",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 80
+     "link": 79
     },
     {
      "localized_name": "reports.report_4",
@@ -2602,7 +2579,7 @@
      "label": "report_4",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 81
+     "link": 80
     },
     {
      "localized_name": "reports.report_5",
@@ -2610,7 +2587,7 @@
      "label": "report_5",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 82
+     "link": 81
     },
     {
      "localized_name": "reports.report_6",
@@ -2618,7 +2595,7 @@
      "label": "report_6",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 83
+     "link": 82
     },
     {
      "localized_name": "reports.report_7",
@@ -2626,7 +2603,7 @@
      "label": "report_7",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 84
+     "link": 83
     },
     {
      "localized_name": "reports.report_8",
@@ -2634,7 +2611,7 @@
      "label": "report_8",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 85
+     "link": 84
     },
     {
      "localized_name": "reports.report_9",
@@ -2642,7 +2619,7 @@
      "label": "report_9",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 86
+     "link": 85
     },
     {
      "localized_name": "reports.report_10",
@@ -2650,7 +2627,7 @@
      "label": "report_10",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 87
+     "link": 86
     },
     {
      "localized_name": "reports.report_11",
@@ -2658,7 +2635,7 @@
      "label": "report_11",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 88
+     "link": 87
     },
     {
      "localized_name": "reports.report_12",
@@ -2861,7 +2838,7 @@
      "name": "record",
      "type": "STRING",
      "links": [
-      89
+      88
      ]
     }
    ],
@@ -2892,10 +2869,10 @@
    ]
   },
   {
-   "id": 29,
+   "id": 28,
    "type": "MarkdownNote",
    "pos": [
-    4950.0,
+    5490,
     0.0
    ],
    "size": [
@@ -2903,7 +2880,7 @@
     760
    ],
    "flags": {},
-   "order": 28,
+   "order": 27,
    "mode": 0,
    "inputs": [],
    "outputs": [],
@@ -2916,18 +2893,18 @@
    ]
   },
   {
-   "id": 30,
+   "id": 29,
    "type": "9dbb5617-ccf9-5537-b674-405adb29958c",
    "pos": [
-    4020.0,
-    1160
+    3480,
+    -638
    ],
    "size": [
     340,
     170
    ],
    "flags": {},
-   "order": 29,
+   "order": 28,
    "mode": 0,
    "inputs": [
     {
@@ -2938,7 +2915,7 @@
      "widget": {
       "name": "text"
      },
-     "link": 74
+     "link": 73
     },
     {
      "localized_name": "noise_seed",
@@ -2948,7 +2925,7 @@
      "widget": {
       "name": "noise_seed"
      },
-     "link": 68
+     "link": 67
     },
     {
      "localized_name": "size",
@@ -2967,8 +2944,8 @@
      "name": "IMAGE",
      "type": "IMAGE",
      "links": [
-      75,
-      76
+      74,
+      75
      ]
     }
    ],
@@ -2983,25 +2960,25 @@
    ]
   },
   {
-   "id": 31,
+   "id": 30,
    "type": "PreviewImage",
    "pos": [
-    4420.0,
-    1160
+    3880,
+    -638
    ],
    "size": [
     300,
     300
    ],
    "flags": {},
-   "order": 30,
+   "order": 29,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "images",
      "name": "images",
      "type": "IMAGE",
-     "link": 76
+     "link": 75
     }
    ],
    "outputs": [
@@ -3020,18 +2997,18 @@
    "widgets_values": []
   },
   {
-   "id": 32,
+   "id": 31,
    "type": "PlenioSeed",
    "pos": [
-    4020.0,
-    1408
+    3480,
+    -390
    ],
    "size": [
     340,
     190
    ],
    "flags": {},
-   "order": 31,
+   "order": 30,
    "mode": 0,
    "inputs": [
     {
@@ -3060,7 +3037,7 @@
      "name": "seed",
      "type": "INT",
      "links": [
-      68
+      67
      ]
     }
    ],
@@ -3078,25 +3055,25 @@
    ]
   },
   {
-   "id": 33,
+   "id": 32,
    "type": "a6bf2f0a-374a-53a3-946b-0d236359d49e",
    "pos": [
-    4040.0,
-    420.0
+    4580,
+    548
    ],
    "size": [
     340,
     140
    ],
    "flags": {},
-   "order": 32,
+   "order": 31,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "record",
      "name": "record",
      "type": "STRING",
-     "link": 89
+     "link": 88
     },
     {
      "localized_name": "model",
@@ -3106,7 +3083,7 @@
      "widget": {
       "name": "model"
      },
-     "link": 90
+     "link": 89
     }
    ],
    "outputs": [
@@ -3124,10 +3101,10 @@
    ]
   },
   {
-   "id": 34,
+   "id": 33,
    "type": "PlenioSungPitch",
    "pos": [
-    620.0,
+    1240,
     536.0
    ],
    "size": [
@@ -3135,14 +3112,14 @@
     106
    ],
    "flags": {},
-   "order": 33,
+   "order": 32,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 92
+     "link": 91
     },
     {
      "localized_name": "separation",
@@ -3160,8 +3137,8 @@
      "name": "sung_pitch",
      "type": "PLENIO_PITCH",
      "links": [
-      93,
-      94
+      92,
+      93
      ]
     }
    ],
@@ -3181,18 +3158,18 @@
    ]
   },
   {
-   "id": 35,
+   "id": 34,
    "type": "PlenioHQMastering",
    "pos": [
     0,
-    -250
+    0
    ],
    "size": [
-    460,
+    520,
     160
    ],
    "flags": {},
-   "order": 34,
+   "order": 33,
    "mode": 0,
    "inputs": [
     {
@@ -3211,7 +3188,7 @@
      "name": "hq_mastering",
      "type": "BOOLEAN",
      "links": [
-      95
+      94
      ]
     }
    ],
@@ -3220,7 +3197,7 @@
     "Node name for S&R": "PlenioHQMastering"
    },
    "widgets_values": [
-    false
+    true
    ]
   }
  ],
@@ -3739,35 +3716,35 @@
   ],
   [
    65,
-   22,
+   4,
    0,
-   25,
-   0,
-   "AUDIO"
+   27,
+   4,
+   "PLENIO_BRIEF"
   ],
   [
    66,
    4,
    0,
-   28,
-   4,
-   "PLENIO_BRIEF"
-  ],
-  [
-   67,
-   4,
-   0,
-   26,
+   25,
    2,
    "PLENIO_BRIEF"
   ],
   [
-   68,
-   32,
+   67,
+   31,
    0,
-   30,
+   29,
    1,
    "INT"
+  ],
+  [
+   68,
+   22,
+   0,
+   25,
+   0,
+   "AUDIO"
   ],
   [
    69,
@@ -3779,7 +3756,7 @@
   ],
   [
    70,
-   26,
+   25,
    0,
    27,
    0,
@@ -3787,166 +3764,158 @@
   ],
   [
    71,
-   26,
+   22,
    0,
-   28,
-   0,
+   27,
+   2,
    "AUDIO"
   ],
   [
    72,
-   25,
-   0,
-   28,
-   2,
-   "AUDIO"
-  ],
-  [
-   73,
    19,
    0,
-   28,
+   27,
    1,
    "STRING"
   ],
   [
-   74,
+   73,
    19,
    4,
-   30,
+   29,
    0,
    "STRING"
   ],
   [
+   74,
+   29,
+   0,
+   27,
+   3,
+   "IMAGE"
+  ],
+  [
    75,
+   29,
+   0,
    30,
    0,
-   28,
-   3,
    "IMAGE"
   ],
   [
    76,
-   30,
-   0,
-   31,
-   0,
-   "IMAGE"
-  ],
-  [
-   77,
    10,
    7,
-   28,
+   27,
    5,
    "PLENIO_REPORT"
   ],
   [
-   78,
+   77,
    19,
    7,
-   28,
+   27,
    6,
    "PLENIO_REPORT"
   ],
   [
-   79,
+   78,
    8,
    2,
-   28,
+   27,
    7,
    "PLENIO_REPORT"
   ],
   [
-   80,
+   79,
    22,
    2,
-   28,
+   27,
    8,
    "PLENIO_REPORT"
   ],
   [
-   81,
+   80,
    24,
    3,
-   28,
+   27,
    9,
+   "PLENIO_REPORT"
+  ],
+  [
+   81,
+   25,
+   6,
+   27,
+   10,
    "PLENIO_REPORT"
   ],
   [
    82,
    25,
-   1,
-   28,
-   10,
+   7,
+   27,
+   11,
    "PLENIO_REPORT"
   ],
   [
    83,
    25,
-   2,
-   28,
-   11,
-   "PLENIO_REPORT"
-  ],
-  [
-   84,
-   26,
    3,
-   28,
+   27,
    12,
    "PLENIO_REPORT"
   ],
   [
-   85,
-   26,
+   84,
+   25,
    4,
-   28,
+   27,
    13,
    "PLENIO_REPORT"
   ],
   [
-   86,
-   26,
+   85,
+   25,
    5,
-   28,
+   27,
    14,
    "PLENIO_REPORT"
   ],
   [
-   87,
-   26,
+   86,
+   25,
    1,
-   28,
+   27,
    15,
    "PLENIO_REPORT"
   ],
   [
-   88,
-   26,
+   87,
+   25,
    2,
-   28,
+   27,
    16,
    "PLENIO_REPORT"
   ],
   [
-   89,
-   28,
+   88,
+   27,
    1,
-   33,
+   32,
    0,
    "STRING"
   ],
   [
-   90,
+   89,
    16,
    3,
-   33,
+   32,
    1,
    "*"
   ],
   [
-   91,
+   90,
    3,
    0,
    19,
@@ -3954,18 +3923,26 @@
    "AUDIO"
   ],
   [
-   92,
+   91,
    3,
    0,
-   34,
+   33,
    0,
    "AUDIO"
   ],
   [
-   93,
-   34,
+   92,
+   33,
    0,
    10,
+   10,
+   "PLENIO_PITCH"
+  ],
+  [
+   93,
+   33,
+   0,
+   19,
    10,
    "PLENIO_PITCH"
   ],
@@ -3973,15 +3950,7 @@
    94,
    34,
    0,
-   19,
-   10,
-   "PLENIO_PITCH"
-  ],
-  [
-   95,
-   35,
-   0,
-   26,
+   25,
    3,
    "BOOLEAN"
   ]
@@ -3989,37 +3958,24 @@
  "groups": [
   {
    "id": 1,
-   "title": "STEMS (optional)",
-   "bounding": [
-    3650.0,
-    629.0,
-    320.0,
-    116.0
-   ],
-   "color": "#555",
-   "font_size": 32,
-   "flags": {}
-  },
-  {
-   "id": 2,
    "title": "7 · FINISH",
    "bounding": [
-    4010.0,
-    -110.0,
-    900.0,
-    1144.0
+    4550,
+    -110,
+    900,
+    1364.0
    ],
    "color": "#3f5a9e",
    "font_size": 32,
    "flags": {}
   },
   {
-   "id": 3,
+   "id": 2,
    "title": "COVER ART",
    "bounding": [
-    3990.0,
-    1074,
-    760.0,
+    3450,
+    -724,
+    760,
     554
    ],
    "color": "#8a4f7d",
@@ -4027,38 +3983,38 @@
    "flags": {}
   },
   {
-   "id": 4,
+   "id": 3,
    "title": "1 · SOURCE",
    "bounding": [
     -30,
-    -360,
-    520,
-    730
+    -110,
+    580,
+    1364.0
    ],
    "color": "#3f789e",
    "font_size": 32,
    "flags": {}
   },
   {
-   "id": 5,
+   "id": 4,
    "title": "2 · COVER",
    "bounding": [
-    -30.0,
-    410,
-    580.0,
-    1170
+    590,
+    -110,
+    580,
+    1364.0
    ],
    "color": "#2f7d6d",
    "font_size": 32,
    "flags": {}
   },
   {
-   "id": 6,
+   "id": 5,
    "title": "3 · SCORE",
    "bounding": [
-    590.0,
-    -110.0,
-    900.0,
+    1210,
+    -110,
+    900,
     1364.0
    ],
    "color": "#557a35",
@@ -4066,64 +4022,51 @@
    "flags": {}
   },
   {
-   "id": 7,
+   "id": 6,
    "title": "4 · LYRICS",
    "bounding": [
-    1530.0,
-    -110.0,
-    740.0,
-    1326.0
+    2150,
+    -110,
+    740,
+    1364.0
    ],
    "color": "#6e4f9e",
    "font_size": 32,
    "flags": {}
   },
   {
-   "id": 8,
+   "id": 7,
    "title": "5 · TEXT",
    "bounding": [
-    2310.0,
-    -110.0,
-    480.0,
-    600.0
+    2930,
+    -110,
+    480,
+    1364.0
    ],
    "color": "#9a6a2c",
    "font_size": 32,
    "flags": {}
   },
   {
-   "id": 9,
+   "id": 8,
    "title": "6 · RENDER",
    "bounding": [
-    2830.0,
-    -110.0,
-    780.0,
-    714.0
+    3450,
+    -110,
+    780,
+    1364.0
    ],
    "color": "#9e4452",
    "font_size": 32,
    "flags": {}
   },
   {
-   "id": 10,
-   "title": "CHECK SUNG LYRICS (optional)",
-   "bounding": [
-    3125,
-    735,
-    400,
-    440
-   ],
-   "color": "#555",
-   "font_size": 32,
-   "flags": {}
-  },
-  {
-   "id": 11,
+   "id": 9,
    "title": "MUSIC MODEL",
    "bounding": [
-    -30.0,
-    1620,
-    440.0,
+    -30,
+    1614,
+    440,
     476
    ],
    "color": "#444",
@@ -10794,9 +10737,9 @@
     "id": "259b88ba-7c57-57fb-b73e-58f691fe4b56",
     "version": 1,
     "state": {
-     "lastGroupId": 2,
-     "lastNodeId": 406,
-     "lastLinkId": 18,
+     "lastGroupId": 3,
+     "lastNodeId": 412,
+     "lastLinkId": 30,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -10805,19 +10748,19 @@
     "inputNode": {
      "id": -10,
      "bounding": [
-      -260,
+      -1640,
       0,
       160,
-      140
+      160
      ]
     },
     "outputNode": {
      "id": -20,
      "bounding": [
-      2500,
+      2640,
       0,
       160,
-      160
+      200
      ]
     },
     "inputs": [
@@ -10826,7 +10769,8 @@
       "name": "audio",
       "type": "AUDIO",
       "linkIds": [
-       6
+       12,
+       13
       ],
       "pos": [
        0,
@@ -10838,7 +10782,7 @@
       "name": "reference",
       "type": "AUDIO",
       "linkIds": [
-       7
+       14
       ],
       "pos": [
        0,
@@ -10850,9 +10794,9 @@
       "name": "brief",
       "type": "PLENIO_BRIEF",
       "linkIds": [
-       8,
-       9,
-       10
+       15,
+       16,
+       17
       ],
       "pos": [
        0,
@@ -10864,7 +10808,7 @@
       "name": "hq_mastering",
       "type": "BOOLEAN",
       "linkIds": [
-       11
+       18
       ],
       "pos": [
        0,
@@ -10873,15 +10817,30 @@
       "label": "HQ mastering"
      },
      {
-      "id": "88af35db-67c6-5f32-9faa-8c9c73452a51",
-      "name": "sample_rate",
-      "type": "COMBO",
+      "id": "5cf1bebc-4a70-5897-9bd7-c68f7d1e86b1",
+      "name": "stems",
+      "type": "BOOLEAN",
       "linkIds": [
-       12
+       19,
+       20,
+       21
       ],
       "pos": [
        0,
        80
+      ],
+      "label": "stems"
+     },
+     {
+      "id": "88af35db-67c6-5f32-9faa-8c9c73452a51",
+      "name": "sample_rate",
+      "type": "COMBO",
+      "linkIds": [
+       22
+      ],
+      "pos": [
+       0,
+       100
       ],
       "label": "sample rate"
      }
@@ -10892,7 +10851,7 @@
       "name": "audio",
       "type": "AUDIO",
       "linkIds": [
-       13
+       23
       ],
       "pos": [
        0,
@@ -10904,7 +10863,7 @@
       "name": "eq_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       14
+       24
       ],
       "pos": [
        0,
@@ -10916,7 +10875,7 @@
       "name": "loudness_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       15
+       25
       ],
       "pos": [
        0,
@@ -10928,7 +10887,7 @@
       "name": "hq1_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       16
+       26
       ],
       "pos": [
        0,
@@ -10940,7 +10899,7 @@
       "name": "hq2_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       17
+       27
       ],
       "pos": [
        0,
@@ -10952,11 +10911,35 @@
       "name": "hq3_report",
       "type": "PLENIO_REPORT",
       "linkIds": [
-       18
+       28
       ],
       "pos": [
        0,
        100
+      ]
+     },
+     {
+      "id": "d4b8b8a2-e5e0-5ee2-a131-278122cc8e6f",
+      "name": "stems_report",
+      "type": "PLENIO_REPORT",
+      "linkIds": [
+       29
+      ],
+      "pos": [
+       0,
+       120
+      ]
+     },
+     {
+      "id": "8e12e141-7607-5a50-b6ac-98415b460fa0",
+      "name": "separation_report",
+      "type": "PLENIO_REPORT",
+      "linkIds": [
+       30
+      ],
+      "pos": [
+       0,
+       140
       ]
      }
     ],
@@ -10988,7 +10971,7 @@
         "name": "brief",
         "shape": 7,
         "type": "PLENIO_BRIEF",
-        "link": 8
+        "link": 15
        },
        {
         "localized_name": "preset",
@@ -11006,7 +10989,7 @@
         "name": "audio",
         "type": "AUDIO",
         "links": [
-         2
+         8
         ]
        },
        {
@@ -11014,7 +10997,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         16
+         26
         ]
        }
       ],
@@ -11067,7 +11050,7 @@
         "name": "model",
         "type": "PLENIO_AUDIO_MODEL",
         "links": [
-         1
+         7
         ]
        }
       ],
@@ -11106,20 +11089,20 @@
         "localized_name": "audio",
         "name": "audio",
         "type": "AUDIO",
-        "link": 2
+        "link": 8
        },
        {
         "localized_name": "model",
         "name": "model",
         "type": "PLENIO_AUDIO_MODEL",
-        "link": 1
+        "link": 7
        },
        {
         "localized_name": "brief",
         "name": "brief",
         "shape": 7,
         "type": "PLENIO_BRIEF",
-        "link": 9
+        "link": 16
        },
        {
         "localized_name": "preset",
@@ -11137,7 +11120,7 @@
         "widget": {
          "name": "hq_mastering"
         },
-        "link": 11
+        "link": 18
        },
        {
         "localized_name": "seed",
@@ -11164,7 +11147,7 @@
         "name": "audio",
         "type": "AUDIO",
         "links": [
-         3
+         9
         ]
        },
        {
@@ -11172,7 +11155,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         17
+         27
         ]
        }
       ],
@@ -11206,14 +11189,14 @@
         "localized_name": "audio",
         "name": "audio",
         "type": "AUDIO",
-        "link": 3
+        "link": 9
        },
        {
         "localized_name": "brief",
         "name": "brief",
         "shape": 7,
         "type": "PLENIO_BRIEF",
-        "link": 10
+        "link": 17
        },
        {
         "localized_name": "preset",
@@ -11231,7 +11214,7 @@
         "name": "audio",
         "type": "AUDIO",
         "links": [
-         4
+         10
         ]
        },
        {
@@ -11239,7 +11222,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         18
+         28
         ]
        }
       ],
@@ -11259,8 +11242,8 @@
        0
       ],
       "size": [
-       620,
-       320
+       760,
+       660
       ],
       "flags": {},
       "order": 4,
@@ -11270,14 +11253,14 @@
         "localized_name": "audio",
         "name": "audio",
         "type": "AUDIO",
-        "link": 4
+        "link": 10
        },
        {
         "localized_name": "reference",
         "name": "reference",
         "shape": 7,
         "type": "AUDIO",
-        "link": 7
+        "link": 14
        },
        {
         "localized_name": "mode",
@@ -11304,7 +11287,7 @@
         "name": "audio",
         "type": "AUDIO",
         "links": [
-         5
+         11
         ]
        },
        {
@@ -11312,7 +11295,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         14
+         24
         ]
        }
       ],
@@ -11328,7 +11311,7 @@
       "id": 406,
       "type": "PlenioLoudness",
       "pos": [
-       2040,
+       2180,
        0
       ],
       "size": [
@@ -11343,7 +11326,7 @@
         "localized_name": "audio",
         "name": "audio",
         "type": "AUDIO",
-        "link": 5
+        "link": 11
        },
        {
         "localized_name": "target",
@@ -11370,7 +11353,7 @@
         "widget": {
          "name": "sample_rate"
         },
-        "link": 12
+        "link": 22
        }
       ],
       "outputs": [
@@ -11379,7 +11362,7 @@
         "name": "audio",
         "type": "AUDIO",
         "links": [
-         13
+         23
         ]
        },
        {
@@ -11387,7 +11370,7 @@
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         15
+         25
         ]
        }
       ],
@@ -11399,6 +11382,347 @@
        "Balanced - gentle glue",
        "keep"
       ]
+     },
+     {
+      "id": 407,
+      "type": "PlenioAudioModelLoader",
+      "pos": [
+       -1380,
+       0
+      ],
+      "size": [
+       340,
+       130
+      ],
+      "flags": {
+       "collapsed": true
+      },
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "kind",
+        "name": "kind",
+        "type": "COMFY_DYNAMICCOMBO_V3",
+        "widget": {
+         "name": "kind"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "kind.model",
+        "name": "kind.model",
+        "type": "COMBO",
+        "widget": {
+         "name": "kind.model"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "model",
+        "name": "model",
+        "type": "PLENIO_AUDIO_MODEL",
+        "links": [
+         1
+        ]
+       }
+      ],
+      "title": "Separation model (stems)",
+      "properties": {
+       "Node name for S&R": "PlenioAudioModelLoader",
+       "models": [
+        {
+         "name": "model_bs_roformer_ep_17_sdr_9.6568.ckpt",
+         "url": "https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/v1.0.12/model_bs_roformer_ep_17_sdr_9.6568.ckpt",
+         "directory": "audio_separation"
+        }
+       ]
+      },
+      "widgets_values": [
+       "separation",
+       "model_bs_roformer_ep_17_sdr_9.6568.ckpt"
+      ]
+     },
+     {
+      "id": 408,
+      "type": "PlenioSeparateStems",
+      "pos": [
+       -1380,
+       80
+      ],
+      "size": [
+       340,
+       170
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "audio",
+        "name": "audio",
+        "type": "AUDIO",
+        "link": 12
+       },
+       {
+        "localized_name": "model",
+        "name": "model",
+        "type": "PLENIO_AUDIO_MODEL",
+        "link": 1
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "stems",
+        "name": "stems",
+        "type": "PLENIO_STEMS",
+        "links": [
+         2
+        ]
+       },
+       {
+        "localized_name": "report",
+        "name": "report",
+        "type": "PLENIO_REPORT",
+        "links": [
+         5
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "PlenioSeparateStems"
+      },
+      "widgets_values": []
+     },
+     {
+      "id": 409,
+      "type": "PlenioStemMixer",
+      "pos": [
+       -980,
+       0
+      ],
+      "size": [
+       420,
+       640
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "stems",
+        "name": "stems",
+        "type": "PLENIO_STEMS",
+        "link": 2
+       },
+       {
+        "localized_name": "mix",
+        "name": "mix",
+        "label": "mixer",
+        "type": "STRING",
+        "widget": {
+         "name": "mix"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "audio",
+        "name": "audio",
+        "type": "AUDIO",
+        "links": [
+         3
+        ]
+       },
+       {
+        "localized_name": "report",
+        "name": "report",
+        "type": "PLENIO_REPORT",
+        "links": [
+         4
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "PlenioStemMixer"
+      },
+      "widgets_values": [
+       ""
+      ]
+     },
+     {
+      "id": 410,
+      "type": "ComfySwitchNode",
+      "pos": [
+       -480,
+       0
+      ],
+      "size": [
+       300,
+       90
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "on_false",
+        "name": "on_false",
+        "shape": 7,
+        "type": "COMFY_MATCHTYPE_V3",
+        "link": 13
+       },
+       {
+        "localized_name": "on_true",
+        "name": "on_true",
+        "shape": 7,
+        "type": "COMFY_MATCHTYPE_V3",
+        "link": 3
+       },
+       {
+        "localized_name": "switch",
+        "name": "switch",
+        "type": "BOOLEAN",
+        "widget": {
+         "name": "switch"
+        },
+        "link": 19
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "output",
+        "name": "output",
+        "type": "COMFY_MATCHTYPE_V3",
+        "links": [
+         6
+        ]
+       }
+      ],
+      "title": "Stems on: the mix · off: the song",
+      "properties": {
+       "Node name for S&R": "ComfySwitchNode"
+      },
+      "widgets_values": [
+       null
+      ]
+     },
+     {
+      "id": 411,
+      "type": "ComfySwitchNode",
+      "pos": [
+       -480,
+       170
+      ],
+      "size": [
+       300,
+       90
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "on_false",
+        "name": "on_false",
+        "shape": 7,
+        "type": "COMFY_MATCHTYPE_V3",
+        "link": null
+       },
+       {
+        "localized_name": "on_true",
+        "name": "on_true",
+        "shape": 7,
+        "type": "COMFY_MATCHTYPE_V3",
+        "link": 4
+       },
+       {
+        "localized_name": "switch",
+        "name": "switch",
+        "type": "BOOLEAN",
+        "widget": {
+         "name": "switch"
+        },
+        "link": 20
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "output",
+        "name": "output",
+        "type": "COMFY_MATCHTYPE_V3",
+        "links": [
+         29
+        ]
+       }
+      ],
+      "title": "Stems on: the mix report",
+      "properties": {
+       "Node name for S&R": "ComfySwitchNode"
+      },
+      "widgets_values": [
+       null
+      ]
+     },
+     {
+      "id": 412,
+      "type": "ComfySwitchNode",
+      "pos": [
+       -480,
+       340
+      ],
+      "size": [
+       300,
+       90
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "on_false",
+        "name": "on_false",
+        "shape": 7,
+        "type": "COMFY_MATCHTYPE_V3",
+        "link": null
+       },
+       {
+        "localized_name": "on_true",
+        "name": "on_true",
+        "shape": 7,
+        "type": "COMFY_MATCHTYPE_V3",
+        "link": 5
+       },
+       {
+        "localized_name": "switch",
+        "name": "switch",
+        "type": "BOOLEAN",
+        "widget": {
+         "name": "switch"
+        },
+        "link": 21
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "output",
+        "name": "output",
+        "type": "COMFY_MATCHTYPE_V3",
+        "links": [
+         30
+        ]
+       }
+      ],
+      "title": "Stems on: the separation report",
+      "properties": {
+       "Node name for S&R": "ComfySwitchNode"
+      },
+      "widgets_values": [
+       null
+      ]
      }
     ],
     "groups": [
@@ -11409,7 +11733,7 @@
        -30,
        -110,
        1320,
-       520
+       800
       ],
       "color": "#3f789e",
       "font_size": 32,
@@ -11421,10 +11745,23 @@
       "bounding": [
        1330,
        -110,
-       1100,
-       460
+       1240,
+       800
       ],
       "color": "#3f789e",
+      "font_size": 32,
+      "flags": {}
+     },
+     {
+      "id": 3,
+      "title": "STEMS (the block's stems switch, off)",
+      "bounding": [
+       -1410,
+       -110,
+       1260,
+       800
+      ],
+      "color": "#555",
       "font_size": 32,
       "flags": {}
      }
@@ -11432,6 +11769,54 @@
     "links": [
      {
       "id": 1,
+      "origin_id": 407,
+      "origin_slot": 0,
+      "target_id": 408,
+      "target_slot": 1,
+      "type": "PLENIO_AUDIO_MODEL"
+     },
+     {
+      "id": 2,
+      "origin_id": 408,
+      "origin_slot": 0,
+      "target_id": 409,
+      "target_slot": 0,
+      "type": "PLENIO_STEMS"
+     },
+     {
+      "id": 3,
+      "origin_id": 409,
+      "origin_slot": 0,
+      "target_id": 410,
+      "target_slot": 1,
+      "type": "AUDIO"
+     },
+     {
+      "id": 4,
+      "origin_id": 409,
+      "origin_slot": 1,
+      "target_id": 411,
+      "target_slot": 1,
+      "type": "PLENIO_REPORT"
+     },
+     {
+      "id": 5,
+      "origin_id": 408,
+      "origin_slot": 1,
+      "target_id": 412,
+      "target_slot": 1,
+      "type": "PLENIO_REPORT"
+     },
+     {
+      "id": 6,
+      "origin_id": 410,
+      "origin_slot": 0,
+      "target_id": 401,
+      "target_slot": 0,
+      "type": "COMFY_MATCHTYPE_V3"
+     },
+     {
+      "id": 7,
       "origin_id": 402,
       "origin_slot": 0,
       "target_id": 403,
@@ -11439,7 +11824,7 @@
       "type": "PLENIO_AUDIO_MODEL"
      },
      {
-      "id": 2,
+      "id": 8,
       "origin_id": 401,
       "origin_slot": 0,
       "target_id": 403,
@@ -11447,7 +11832,7 @@
       "type": "AUDIO"
      },
      {
-      "id": 3,
+      "id": 9,
       "origin_id": 403,
       "origin_slot": 0,
       "target_id": 404,
@@ -11455,7 +11840,7 @@
       "type": "AUDIO"
      },
      {
-      "id": 4,
+      "id": 10,
       "origin_id": 404,
       "origin_slot": 0,
       "target_id": 405,
@@ -11463,7 +11848,7 @@
       "type": "AUDIO"
      },
      {
-      "id": 5,
+      "id": 11,
       "origin_id": 405,
       "origin_slot": 0,
       "target_id": 406,
@@ -11471,15 +11856,23 @@
       "type": "AUDIO"
      },
      {
-      "id": 6,
+      "id": 12,
       "origin_id": -10,
       "origin_slot": 0,
-      "target_id": 401,
+      "target_id": 408,
       "target_slot": 0,
       "type": "AUDIO"
      },
      {
-      "id": 7,
+      "id": 13,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 410,
+      "target_slot": 0,
+      "type": "AUDIO"
+     },
+     {
+      "id": 14,
       "origin_id": -10,
       "origin_slot": 1,
       "target_id": 405,
@@ -11487,7 +11880,7 @@
       "type": "AUDIO"
      },
      {
-      "id": 8,
+      "id": 15,
       "origin_id": -10,
       "origin_slot": 2,
       "target_id": 401,
@@ -11495,7 +11888,7 @@
       "type": "PLENIO_BRIEF"
      },
      {
-      "id": 9,
+      "id": 16,
       "origin_id": -10,
       "origin_slot": 2,
       "target_id": 403,
@@ -11503,7 +11896,7 @@
       "type": "PLENIO_BRIEF"
      },
      {
-      "id": 10,
+      "id": 17,
       "origin_id": -10,
       "origin_slot": 2,
       "target_id": 404,
@@ -11511,7 +11904,7 @@
       "type": "PLENIO_BRIEF"
      },
      {
-      "id": 11,
+      "id": 18,
       "origin_id": -10,
       "origin_slot": 3,
       "target_id": 403,
@@ -11519,15 +11912,39 @@
       "type": "BOOLEAN"
      },
      {
-      "id": 12,
+      "id": 19,
       "origin_id": -10,
       "origin_slot": 4,
+      "target_id": 410,
+      "target_slot": 2,
+      "type": "BOOLEAN"
+     },
+     {
+      "id": 20,
+      "origin_id": -10,
+      "origin_slot": 4,
+      "target_id": 411,
+      "target_slot": 2,
+      "type": "BOOLEAN"
+     },
+     {
+      "id": 21,
+      "origin_id": -10,
+      "origin_slot": 4,
+      "target_id": 412,
+      "target_slot": 2,
+      "type": "BOOLEAN"
+     },
+     {
+      "id": 22,
+      "origin_id": -10,
+      "origin_slot": 5,
       "target_id": 406,
       "target_slot": 3,
       "type": "COMBO"
      },
      {
-      "id": 13,
+      "id": 23,
       "origin_id": 406,
       "origin_slot": 0,
       "target_id": -20,
@@ -11535,7 +11952,7 @@
       "type": "AUDIO"
      },
      {
-      "id": 14,
+      "id": 24,
       "origin_id": 405,
       "origin_slot": 1,
       "target_id": -20,
@@ -11543,7 +11960,7 @@
       "type": "PLENIO_REPORT"
      },
      {
-      "id": 15,
+      "id": 25,
       "origin_id": 406,
       "origin_slot": 1,
       "target_id": -20,
@@ -11551,7 +11968,7 @@
       "type": "PLENIO_REPORT"
      },
      {
-      "id": 16,
+      "id": 26,
       "origin_id": 401,
       "origin_slot": 1,
       "target_id": -20,
@@ -11559,7 +11976,7 @@
       "type": "PLENIO_REPORT"
      },
      {
-      "id": 17,
+      "id": 27,
       "origin_id": 403,
       "origin_slot": 1,
       "target_id": -20,
@@ -11567,17 +11984,33 @@
       "type": "PLENIO_REPORT"
      },
      {
-      "id": 18,
+      "id": 28,
       "origin_id": 404,
       "origin_slot": 1,
       "target_id": -20,
       "target_slot": 5,
       "type": "PLENIO_REPORT"
+     },
+     {
+      "id": 29,
+      "origin_id": 411,
+      "origin_slot": 0,
+      "target_id": -20,
+      "target_slot": 6,
+      "type": "PLENIO_REPORT"
+     },
+     {
+      "id": 30,
+      "origin_id": 412,
+      "origin_slot": 0,
+      "target_id": -20,
+      "target_slot": 7,
+      "type": "PLENIO_REPORT"
      }
     ],
     "extra": {},
     "category": "Plenio/Mastering",
-    "description": "Finishes a song: Audio HQ - HQ 1 · Stereo Cleanup runs, HQ 2 · Regenerate Highs (UniverSR) with HQ mastering on (fewer AI shimmer and artifacts, about twice the time), HQ 3 · De-Reverb is bypassed; their presets follow the brief's genre - then a gentle tone match (EQ) and loudness for streaming (-14 LUFS, -1 dBTP true peak) with gentle compression. Open the block to change a preset, bypass a stage (Ctrl+B), the EQ curve or the compression style."
+    "description": "Finishes a song: Stems (with the block's stems switch on: Separate Stems and the Stem Mixer, set the mix inside the block) - Audio HQ: HQ 1 · Stereo Cleanup runs, HQ 2 · Regenerate Highs (UniverSR) with HQ mastering on (fewer AI shimmer and artifacts, about twice the time), HQ 3 · De-Reverb is bypassed; their presets follow the brief's genre - then a gentle tone match (EQ) and loudness for streaming (-14 LUFS, -1 dBTP true peak) with gentle compression. Open the block to mix the stems, change a preset, bypass a stage (Ctrl+B), the EQ curve or the compression style."
    },
    {
     "id": "9dbb5617-ccf9-5537-b674-405adb29958c",
@@ -12472,316 +12905,6 @@
     "description": "Paints the cover from the Song Sheet's artwork prompt with FLUX.2 Klein 4B (distilled, 4 steps, native nodes; Apache-2.0). On in the song templates (about 16 GB of model files): the Cover Art card of HQ Mastering & Cover Art switches it off. The writer's artwork prompt is read from the song - its lyrics, its title, its genre and mood. The seed decides the picture; another seed, another cover. Replace the block with any text-to-image block that takes a prompt and gives an image."
    },
    {
-    "id": "b15b93f5-aa6c-53d1-a081-d23166dcc913",
-    "version": 1,
-    "state": {
-     "lastGroupId": 0,
-     "lastNodeId": 1103,
-     "lastLinkId": 6,
-     "lastRerouteId": 0
-    },
-    "revision": 0,
-    "config": {},
-    "name": "Plenio · Stems",
-    "inputNode": {
-     "id": -10,
-     "bounding": [
-      -260,
-      0,
-      160,
-      60
-     ]
-    },
-    "outputNode": {
-     "id": -20,
-     "bounding": [
-      1300,
-      0,
-      160,
-      100
-     ]
-    },
-    "inputs": [
-     {
-      "id": "4eb631f3-0af4-5eae-9c97-06fc35a4593d",
-      "name": "audio",
-      "type": "AUDIO",
-      "linkIds": [
-       3
-      ],
-      "pos": [
-       0,
-       0
-      ]
-     }
-    ],
-    "outputs": [
-     {
-      "id": "d2ef4eca-e7cc-5086-9349-862bd7fa7b77",
-      "name": "audio",
-      "type": "AUDIO",
-      "linkIds": [
-       4
-      ],
-      "pos": [
-       0,
-       0
-      ]
-     },
-     {
-      "id": "61b46f3c-ebc7-5c17-8ddf-0c3d86596727",
-      "name": "report",
-      "type": "PLENIO_REPORT",
-      "linkIds": [
-       5
-      ],
-      "pos": [
-       0,
-       20
-      ]
-     },
-     {
-      "id": "8bd85dea-9e52-5813-ba16-61f0e6c06450",
-      "name": "separation_report",
-      "type": "PLENIO_REPORT",
-      "linkIds": [
-       6
-      ],
-      "pos": [
-       0,
-       40
-      ]
-     }
-    ],
-    "widgets": [],
-    "nodes": [
-     {
-      "id": 1101,
-      "type": "PlenioAudioModelLoader",
-      "pos": [
-       0,
-       0
-      ],
-      "size": [
-       340,
-       130
-      ],
-      "flags": {
-       "collapsed": true
-      },
-      "order": 0,
-      "mode": 0,
-      "inputs": [
-       {
-        "localized_name": "kind",
-        "name": "kind",
-        "type": "COMFY_DYNAMICCOMBO_V3",
-        "widget": {
-         "name": "kind"
-        },
-        "link": null
-       },
-       {
-        "localized_name": "kind.model",
-        "name": "kind.model",
-        "type": "COMBO",
-        "widget": {
-         "name": "kind.model"
-        },
-        "link": null
-       }
-      ],
-      "outputs": [
-       {
-        "localized_name": "model",
-        "name": "model",
-        "type": "PLENIO_AUDIO_MODEL",
-        "links": [
-         1
-        ]
-       }
-      ],
-      "title": "Separation model",
-      "properties": {
-       "Node name for S&R": "PlenioAudioModelLoader",
-       "models": [
-        {
-         "name": "model_bs_roformer_ep_17_sdr_9.6568.ckpt",
-         "url": "https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/v1.0.12/model_bs_roformer_ep_17_sdr_9.6568.ckpt",
-         "directory": "audio_separation"
-        }
-       ]
-      },
-      "widgets_values": [
-       "separation",
-       "model_bs_roformer_ep_17_sdr_9.6568.ckpt"
-      ]
-     },
-     {
-      "id": 1102,
-      "type": "PlenioSeparateStems",
-      "pos": [
-       400,
-       0
-      ],
-      "size": [
-       340,
-       170
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [
-       {
-        "localized_name": "audio",
-        "name": "audio",
-        "type": "AUDIO",
-        "link": 3
-       },
-       {
-        "localized_name": "model",
-        "name": "model",
-        "type": "PLENIO_AUDIO_MODEL",
-        "link": 1
-       }
-      ],
-      "outputs": [
-       {
-        "localized_name": "stems",
-        "name": "stems",
-        "type": "PLENIO_STEMS",
-        "links": [
-         2
-        ]
-       },
-       {
-        "localized_name": "report",
-        "name": "report",
-        "type": "PLENIO_REPORT",
-        "links": [
-         6
-        ]
-       }
-      ],
-      "properties": {
-       "Node name for S&R": "PlenioSeparateStems"
-      },
-      "widgets_values": []
-     },
-     {
-      "id": 1103,
-      "type": "PlenioStemMixer",
-      "pos": [
-       800,
-       0
-      ],
-      "size": [
-       400,
-       260
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [
-       {
-        "localized_name": "stems",
-        "name": "stems",
-        "type": "PLENIO_STEMS",
-        "link": 2
-       },
-       {
-        "localized_name": "mix",
-        "name": "mix",
-        "label": "mixer",
-        "type": "STRING",
-        "widget": {
-         "name": "mix"
-        },
-        "link": null
-       }
-      ],
-      "outputs": [
-       {
-        "localized_name": "audio",
-        "name": "audio",
-        "type": "AUDIO",
-        "links": [
-         4
-        ]
-       },
-       {
-        "localized_name": "report",
-        "name": "report",
-        "type": "PLENIO_REPORT",
-        "links": [
-         5
-        ]
-       }
-      ],
-      "properties": {
-       "Node name for S&R": "PlenioStemMixer"
-      },
-      "widgets_values": [
-       ""
-      ]
-     }
-    ],
-    "groups": [],
-    "links": [
-     {
-      "id": 1,
-      "origin_id": 1101,
-      "origin_slot": 0,
-      "target_id": 1102,
-      "target_slot": 1,
-      "type": "PLENIO_AUDIO_MODEL"
-     },
-     {
-      "id": 2,
-      "origin_id": 1102,
-      "origin_slot": 0,
-      "target_id": 1103,
-      "target_slot": 0,
-      "type": "PLENIO_STEMS"
-     },
-     {
-      "id": 3,
-      "origin_id": -10,
-      "origin_slot": 0,
-      "target_id": 1102,
-      "target_slot": 0,
-      "type": "AUDIO"
-     },
-     {
-      "id": 4,
-      "origin_id": 1103,
-      "origin_slot": 0,
-      "target_id": -20,
-      "target_slot": 0,
-      "type": "AUDIO"
-     },
-     {
-      "id": 5,
-      "origin_id": 1103,
-      "origin_slot": 1,
-      "target_id": -20,
-      "target_slot": 1,
-      "type": "PLENIO_REPORT"
-     },
-     {
-      "id": 6,
-      "origin_id": 1102,
-      "origin_slot": 1,
-      "target_id": -20,
-      "target_slot": 2,
-      "type": "PLENIO_REPORT"
-     }
-    ],
-    "extra": {},
-    "category": "Plenio/Audio",
-    "description": "Splits the song into up to four stems (vocals, drums, bass, other) and mixes them back: gain, mute/solo, compression, muted time ranges and one reverb and delay bus per mix. The residual (what the separator missed) is one more strip, so a neutral mix returns the render unchanged. A strip marked save is kept with the song: Export Release writes it into '<name>-stems' next to it. Bypassed by default in every template - select the block and press Ctrl+B to use it."
-   },
-   {
     "id": "a6bf2f0a-374a-53a3-946b-0d236359d49e",
     "version": 1,
     "state": {
@@ -13659,8 +13782,12 @@
      "audio"
     ],
     [
-     35,
+     34,
      "hq_mastering"
+    ],
+    [
+     16,
+     "model"
     ],
     [
      4,
@@ -13715,10 +13842,6 @@
      "creativity"
     ],
     [
-     16,
-     "model"
-    ],
-    [
      20,
      "seed"
     ],
@@ -13753,8 +13876,8 @@
    ],
    "outputs": [
     23,
-    27,
-    28
+    26,
+    27
    ]
   }
  },
