@@ -2967,8 +2967,8 @@
       "PLENIO_FINISH_SWITCH",
       {
        "display_name": "HQ mastering",
-       "tooltip": "Highest mastering quality (on by default): UniverSR (HQ 2) regenerates the highs - clearly fewer AI shimmer and artifacts, and the song takes about twice as long. Off: faster, UniverSR does not run and is not needed.",
-       "default": true,
+       "tooltip": "Highest mastering quality: UniverSR (HQ 2) regenerates the highs - clearly fewer AI shimmer and artifacts, but the song takes about twice as long. Off (default; on in Enhance & Master): UniverSR is not needed.",
+       "default": false,
        "socketless": true
       }
      ]
@@ -3089,7 +3089,7 @@
       "BOOLEAN",
       {
        "display_name": "HQ mastering",
-       "tooltip": "Off: skipped, the model is not even loaded. In the templates the HQ Mastering switch at the start sets it (on by default): on, fewer AI shimmer and artifacts, about twice the time.",
+       "tooltip": "Off: skipped, the model is not even loaded. In the templates the HQ Mastering switch at the start sets it (off by default, on in Enhance & Master): on, fewer AI shimmer and artifacts, about twice the time.",
        "default": true,
        "label_on": "on - UniverSR regenerates the highs",
        "label_off": "off - the song passes unchanged"

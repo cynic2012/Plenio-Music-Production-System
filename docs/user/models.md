@@ -43,7 +43,7 @@ The list below is the model catalogue Plenio's templates are built from (`resour
 |---|---|---|---|
 | `pytorch_model.bin` (UniverSR audio) | `audio_sr` | 229 MB | CC BY 4.0 (weights), MIT (inference code; vendored in `plenio/third_party/universr`) |
 
-**Needed for HQ mastering** (the switch at the top of every template, **on** by default since 2026-10-24): with it on, [HQ 2 · Regenerate Highs](concepts/audio-hq.md) runs in the Master block (in 4 · Enhance & Master as a plain node); switched off, the model is not loaded and the file is not needed. ComfyUI offers the download when a template opens. The one file serves every template, and the *Refine (48 kHz)* node of the library uses it too (its *resample only* engine needs no model at all).
+**Needed for HQ mastering** (the switch at the top of every template: off by default in the song templates, **on** in 4 · Enhance & Master since 2026-10-24): with it on, [HQ 2 · Regenerate Highs](concepts/audio-hq.md) runs in the Master block (in 4 · Enhance & Master as a plain node); switched off, the model is not loaded and the file is not needed. ComfyUI offers the download when a template opens. The one file serves every template, and the *Refine (48 kHz)* node of the library uses it too (its *resample only* engine needs no model at all).
 
 ### Stems (BS-RoFormer), the optional block of templates 1-5
 

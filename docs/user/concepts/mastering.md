@@ -2,7 +2,7 @@
 
 What the EQ, Loudness & Dynamics and Export Release nodes do exactly, how precise they are, and where their limits are. All processing runs on the CPU in 64-bit floating point; nothing is downloaded.
 
-In the templates' **Plenio · Master** block, the [Stems](stems.md) come first (with the block's *stems* switch on; off by default), then [Audio HQ](audio-hq.md) (HQ 1 · Stereo Cleanup on, HQ 2 · Regenerate Highs with the **HQ Mastering** switch on - on by default -, HQ 3 · De-Reverb bypassed); HQ 2 uses the UniverSR model on the GPU. Their pages cover them; this one starts at the EQ.
+In the templates' **Plenio · Master** block, the [Stems](stems.md) come first (with the block's *stems* switch on; off by default), then [Audio HQ](audio-hq.md) (HQ 1 · Stereo Cleanup on, HQ 2 · Regenerate Highs with the **HQ Mastering** switch on - off by default, on in Enhance & Master -, HQ 3 · De-Reverb bypassed); HQ 2 uses the UniverSR model on the GPU. Their pages cover them; this one starts at the EQ.
 
 ## Order of the chain
 

@@ -54,7 +54,7 @@ The numbered sections stand in one row: they start at the same top and end at th
 
 - **About this template** (the note on the left) explains the path in a few steps.
 - **Song Sheets** show exactly what the music model receives; you can edit every document there ([Song Sheet](concepts/song-sheet.md)).
-- **HQ Mastering & Cover Art** (the two cards at the top): click a card to switch it - HQ mastering (on: fewer AI artifacts, about twice the time; off: faster) and the song's cover (on; off needs no image model). Under them, the **Writer model** for every writing step.
+- **HQ Mastering & Cover Art** (the two cards at the top): click a card to switch it - HQ mastering (off by default, on in Enhance & Master; on: fewer AI artifacts, about twice the time) and the song's cover (on; off needs no image model). Under them, the **Writer model** for every writing step.
 - **Nodes and grey groups marked *(optional)*** are switched off (bypassed). Select the nodes and press **Ctrl+B** to switch them on.
 - **Seeds** follow the brief's mode: *new song every run* starts with every seed on 🎲 (something new every run), *one song, stop to review* keeps the song's seeds on 🔒 while you review it.
 - The **MUSIC MODEL** block is collapsed: expand it (the dot at its top left, or right-click > *Expand*), then open it with the icon at its top right to change the model files.

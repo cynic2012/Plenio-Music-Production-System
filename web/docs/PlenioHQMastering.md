@@ -2,7 +2,7 @@
 
 Two switches at the top of every template, drawn as cards with an icon so that you see at once what is on - in the graph and in App mode. Click a card to switch it. Under them, in the same first group, the template's *Writer model* (the song templates).
 
-**✨ HQ Mastering** (**on** by default since 2026-10-24) - the switch for the highest mastering quality:
+**✨ HQ Mastering** (**off** by default in the song templates, **on** in *4 · Enhance & Master* since 2026-10-24) - the switch for the highest mastering quality:
 
 - **on** - *HQ 2 · Regenerate Highs* runs inside **Plenio · Master**: the UniverSR model generates new highs above 8.2 kHz. It can **clearly reduce AI shimmer and artifacts**, but the song takes **about twice as long** - about 1.5 s per second of music on an RTX 5060 Ti (a song of 1:37 took 280 s with it, about 130 s without). UniverSR (229 MB) goes into `models/audio_sr`; ComfyUI offers the download when a template opens, and the System Check lists it.
 - **off** - the mastering runs without UniverSR: *HQ 1 · Stereo Cleanup*, the EQ and the loudness as always. The model is not loaded and not even needed - *HQ 2* says *off* in its badge, and the song passes it unchanged.

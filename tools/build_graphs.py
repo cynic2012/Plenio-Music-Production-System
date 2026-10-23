@@ -352,9 +352,9 @@ SEPARATION_MODEL = "model_bs_roformer_ep_17_sdr_9.6568.ckpt"
 def master() -> Blueprint:
     """Stems, Audio HQ 1-3 (the owner's request, 2026-10-21: before the first EQ), EQ and Loudness.
 
-    HQ 1 runs, HQ 2 runs with *HQ mastering* on (the block's input, linked from the templates' HQ Mastering
-    switch - on by default since the owner's request of 2026-10-24; 2026-10-22 had made it off: UniverSR about
-    doubles a song's time), HQ 3 is bypassed (the owner's listening test: it dulls the highs); their presets are
+    HQ 1 runs, HQ 2 runs only with *HQ mastering* on (the block's input, linked from the templates' HQ Mastering
+    switch, off by default - the owner's request 2026-10-22: UniverSR about doubles a song's time), HQ 3 is
+    bypassed (the owner's listening test: it dulls the highs); their presets are
     on *auto*, so the brief's genre picks the profile. The super-resolution model of HQ 2 is a collapsed loader
     inside the block, which runs only when HQ 2 asks for it - all audio work after the render lives in this
     block (the REFINE block is gone).
@@ -481,7 +481,7 @@ def master() -> Blueprint:
                 "BOOLEAN",
                 [(highs, "hq_mastering")],
                 widget=True,
-                default=True,
+                default=False,
                 label="HQ mastering",
                 tooltip=HQ_MASTERING_TOOLTIP,
             ),
@@ -1858,17 +1858,17 @@ COLUMN_ONE_Y = 560
 so that every section's first node stands at the top of the row (owner's request 2026-10-24)."""
 
 
-def hq_switch(g: Graph, target: Node, name: str = "hq_mastering") -> Node:
-    """The HQ Mastering switch at the start (on since the owner's request of 2026-10-24), wired into the Master
-    block (``target``; Enhance & Master: HQ 2 itself) only - so switching it runs the mastering again, not the
-    song. Made last, so that the template's other node ids stay as they were (continuing an older song maps
-    its values by id)."""
+def hq_switch(g: Graph, target: Node, name: str = "hq_mastering", *, on: bool = False) -> Node:
+    """The HQ Mastering switch at the start, wired into the Master block (``target``; Enhance & Master: HQ 2
+    itself) only - so switching it runs the mastering again, not the song. ``on``: off in the song templates
+    (UniverSR about doubles a song's time), on in Enhance & Master (owner's request 2026-10-24). Made last, so
+    that the template's other node ids stay as they were (continuing an older song maps its values by id)."""
     switch = g.add(
         "PlenioHQMastering",
         (0, 0),
         size=HQ_SWITCH_SIZE,
         title="HQ Mastering & Cover Art",
-        widgets={"hq_mastering": True},
+        widgets={"hq_mastering": on},
     )
     g.link(switch, "hq_mastering", target, name)
     return switch
@@ -2232,10 +2232,10 @@ STEMS_TEXT = (
     "the separation does not run. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it."
 )
 HQ_TEXT = (
-    "**HQ Mastering & Cover Art** (the two cards at the top - click one to switch it): **HQ Mastering** (**on** "
-    "by default) runs the mastering at its highest quality - it can clearly reduce AI shimmer and artifacts, and "
-    "the song takes **about twice as long** (UniverSR, 229 MB in `models/audio_sr`; off, it does not run and is "
-    "not needed); **Cover Art** (**on**) paints the song's cover.\n\n"
+    "**HQ Mastering & Cover Art** (the two cards at the top - click one to switch it): **HQ Mastering** (**off** "
+    "by default) runs the mastering at its highest quality - it can clearly reduce AI shimmer and artifacts, but "
+    "the song takes **about twice as long** (UniverSR, 229 MB in `models/audio_sr`, needed only then); **Cover "
+    "Art** (**on**) paints the song's cover.\n\n"
     "**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer "
     "in the render's highs (always); *HQ 2 · Regenerate Highs*, with HQ mastering on, lets the UniverSR model "
     "generate new highs above 8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s "
@@ -3100,7 +3100,7 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     ]
     for index, (node, output) in enumerate(reports):
         g.link(node, output, export, f"reports.report_{index}")
-    switch = hq_switch(g, highs, "hq_mastering")
+    switch = hq_switch(g, highs, "hq_mastering", on=True)
     g.group("1 · SOURCE", [switch, source, stems_node])
     g.group("2 · AUDIO HQ (before the EQ)", [stereo, loader, highs, dereverb])
     g.group("3 · MASTER", [eq, loudness])

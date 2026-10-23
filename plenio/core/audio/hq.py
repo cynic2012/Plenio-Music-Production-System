@@ -52,11 +52,11 @@ STANDARD, GENTLE, STRONG, WIDE = "standard", "gentle", "strong", "wide"
 PROFILES = (STANDARD, GENTLE, STRONG, WIDE)
 
 HQ_MASTERING_HINT = (
-    "Highest mastering quality (on by default): UniverSR (HQ 2) regenerates the highs - clearly fewer AI shimmer "
-    "and artifacts, and the song takes about twice as long. Off: faster, UniverSR does not run and is not needed."
+    "Highest mastering quality: UniverSR (HQ 2) regenerates the highs - clearly fewer AI shimmer and artifacts, "
+    "but the song takes about twice as long. Off (default; on in Enhance & Master): UniverSR is not needed."
 )
-"""The HQ Mastering switch's hint (on, HQ 2 runs; on by default since the owner's request of 2026-10-24 -
-2026-10-22 had made it off): the node, its tooltip and the templates' notes say the same."""
+"""The HQ Mastering switch's hint (on, HQ 2 runs; off by default - the owner's request 2026-10-22 -, on in Enhance
+& Master since 2026-10-24): the node, its tooltip and the templates' notes say the same."""
 
 AUTO = "auto - from the song's genre"
 CUSTOM = "custom - the fields below"

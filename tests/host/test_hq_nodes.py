@@ -156,7 +156,8 @@ def test_with_hq_mastering_off_hq2_passes_the_song_and_its_model_never_loads(
     with pytest.raises(ExecutionFailedError) as refused:
         server.run(missing)
     assert "pytorch_model.bin" in str(refused.value) and "models/audio_sr" in str(refused.value)
-    # the switch node gives its value on; the page draws it as a card (PLENIO_FINISH_SWITCH)
+    # the switch node gives its value on (off by default; Enhance & Master sets it on); the page draws it as a
+    # card (PLENIO_FINISH_SWITCH)
     info = server.get("/object_info/PlenioHQMastering")["PlenioHQMastering"]
     kind, switch = info["input"]["required"]["hq_mastering"]
     assert kind == "PLENIO_FINISH_SWITCH" and switch["default"] is False
