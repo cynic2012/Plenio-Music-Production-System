@@ -196,7 +196,7 @@ The first field of the **Song Brief** (and of the **Cover Brief**) is the **mode
 
 **Where the run stands** is shown on the nodes: before a run every Song Sheet that will stop carries **⏸ review stop**; after a run each Plenio node shows ✓, ⚠ or ✖, and the sheet where the run waits shows **⏸ waiting for your approval** with an amber frame (and a message says what to do). The line under the sheet's button says the same in App mode.
 
-The cover template has the same choice (*one cover, stop to review* is its default; *new cover every run* writes a new version - title, style and, with new lyrics, the lyrics - on the same transcription every time). The Song Sheets follow the brief (*review: as the brief says*); you can still set a single sheet to *continue* or *stop for review*.
+The cover template has the same choice (*new cover every run* is its default - a new version, title, style and, with new lyrics, the lyrics, on the same transcription every time, so a queue of covers runs through; *one cover, stop to review* stops to check the transcription and the lyrics first). The Song Sheets follow the brief (*review: as the brief says*); you can still set a single sheet to *continue* or *stop for review*.
 
 <p align="center">
   <img src="assets/branding/0.4.5/Screenshot%20YuE2-graph.png" alt="The 1 · YuE2 · Song template in ComfyUI: brief, writer, Song Sheets, render and finish in numbered groups" width="100%" />
@@ -226,7 +226,7 @@ The cover template has the same choice (*one cover, stop to review* is its defau
 
 1. Open **2 · YuE2 · Cover** and load the source recording.
 2. Choose the mode, the target style in the **Cover Brief**, the vocals (the template starts with the *original lyrics* on the style template *pop/dance-pop-vocal*; *instrumental* lets an instrument play the vocal melody) and the harmony (the template starts with *keep original chords*). With an empty title the cover is named after its source recording: `<title>-cover`.
-3. Queue: with *one cover, stop to review* the run stops at **Song Sheet · Score** and later at **Song Sheet · Text**, so you can inspect and edit the transcribed score and the lyrics before YuE2 renders. With *new cover every run* it renders straight through, a new version every run.
+3. Queue: with *new cover every run* (the default) it renders straight through, a new version every run. With *one cover, stop to review* the run stops at **Song Sheet · Score** and later at **Song Sheet · Text**, so you can inspect and edit the transcribed score and the lyrics before YuE2 renders.
 4. Optional: a **creative mode** re-arranges the transcription within the *song flow closeness* (100 the original ... 0 only a hint; the form always stays, below 80 the melody follows the new chords), and with *new lyrics* the *lyrics closeness* sets how close the new words stay to the original ones.
 
 <p align="center">

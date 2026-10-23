@@ -279,7 +279,7 @@ def test_every_field_of_the_brief_with_where_its_value_came_from() -> None:
             "1": {
                 "class_type": "PlenioCoverBrief",
                 "inputs": {
-                    "mode": "new cover every run",
+                    "mode": "one cover, stop to review",
                     "vocals": "new lyrics",
                     "vocals.language": "English",
                     "arrangement": "dramatic",

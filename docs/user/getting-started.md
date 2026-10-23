@@ -63,7 +63,7 @@ The first field of the **Song Brief** - and of the **Cover Brief** - is the **mo
 
 The writer's **Draft seed** (its own node next to *Write Song*, also in App mode) is 🔒 *same seed* by default - keep it so: in a series every song gets its own seeds anyway (the brief's *song seed* is added to the draft and plan seeds), and in *one song, stop to review* a kept seed keeps the approved text. Switch it to 🎲 *new seed* (or press *🎲 new seed now*) when you want another draft of the same song. Every seed node works the same way - blue keeps, amber renews; see [Seeds](concepts/seeds.md).
 
-The cover template offers *one cover, stop to review* (its default) and *new cover every run* (a new title, style and - for new lyrics - new lyrics on the same transcription every run). The Song Sheets' *review* is set to **as the brief says**; set a single sheet to *continue* or *stop for review* to override the brief.
+The cover template offers *new cover every run* (its default: a new title, style and - for new lyrics - new lyrics on the same transcription every run, without stops) and *one cover, stop to review*. The Song Sheets' *review* is set to **as the brief says**; set a single sheet to *continue* or *stop for review* to override the brief.
 
 ## Where your songs go
 

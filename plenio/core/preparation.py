@@ -54,11 +54,13 @@ count as a repeat."""
 def prepare_for_brief(text: str, brief: SongBrief | CoverBrief | None) -> native.Change:
     changes: list[str] = []
     warnings: list[str] = []
-    repaired = native.repair_truncated(text)
-    if repaired is not None:
-        text = repaired.abc
-        changes += repaired.changes
-        warnings += repaired.warnings
+    # a plan YuE2 wrote not quite in the dialect: its lines' measures, then a plan cut off at the token limit
+    for repair in (native.repair_groups, native.repair_truncated):
+        repaired = repair(text)
+        if repaired is not None:
+            text = repaired.abc
+            changes += repaired.changes
+            warnings += repaired.warnings
     if brief is None:
         native.validate(text)
         return native.Change(text, (*changes, "no brief connected: score unchanged"), tuple(warnings))

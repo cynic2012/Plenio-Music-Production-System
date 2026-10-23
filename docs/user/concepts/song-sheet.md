@@ -44,7 +44,9 @@ Neither happens when the other sheet's document changed after the last run: then
 | **stop for review** | always |
 | **continue** | never |
 
-A stopped run waits after the sheet until you **Approve** in the editor. The approval is bound to exactly the documents you saw (a fingerprint); if anything changes, the sheet waits again. The templates set every sheet to *as the brief says*, so the mode in the brief decides for the whole path: the song templates start with *new song every run* (no stops), the cover template with *one cover, stop to review* (both sheets stop). *Song Sheet · DAW* always stops: its score is composed there.
+A stopped run waits after the sheet until you **Approve** in the editor. The approval is bound to exactly the documents you saw (a fingerprint); if anything changes, the sheet waits again. The templates set every sheet to *as the brief says*, so the mode in the brief decides for the whole path: the song templates and the cover template start with *new song / new cover every run* (no stops), so a queue of runs goes through. *Song Sheet · DAW* always stops: its score is composed there.
+
+**Queued in a series**, a run that will stop waits for your Approve and renders nothing by itself: when such a run joins a queue that already has runs, or comes as several runs of one batch, a warning says so and names the mode that runs through (*These runs stop for your review*). Nothing is changed for you - for a series, choose *new song / new cover every run*.
 
 ### Every combination
 

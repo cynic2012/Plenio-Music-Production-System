@@ -30,7 +30,7 @@ Start with **0 · System Check**: it shows versions, GPUs, which model files of 
 
 | What you see | Why | What to do |
 |---|---|---|
-| The run stops at a **Song Sheet** without an error (*waiting for approval*) | the brief's mode is *one song / one cover, stop to review* (default in the Cover template) with the sheet's *review* on *as the brief says*, or the sheet is set to *stop for review* | Open the sheet (in App mode: its button), check the documents, press **Approve**, run again - or choose *new song every run* in the brief for runs without stops |
+| The run stops at a **Song Sheet** without an error (*waiting for approval*) | the brief's mode is *one song / one cover, stop to review* (default in the DAW template) with the sheet's *review* on *as the brief says*, or the sheet is set to *stop for review* | Open the sheet (in App mode: its button), check the documents, press **Approve**, run again - or choose *new song every run* in the brief for runs without stops |
 | *Song Sheet conflict - lyrics: ...* | you edited a document and its draft changed afterwards | Open the sheet and choose *Keep my edit (manual)*, *Use the new draft* or *Merge by hand* |
 | A conflict on the second run of a series (*new song every run*) | a series writes a new draft every run, so an *edited* document no longer matches | Make the document *manual* (the whole series keeps it) or press *Use draft* |
 | Every run writes a **new song** although you wanted a new take | the brief's mode is *new song every run* (default of the song templates) | Choose *one song, stop to review*: the song is written once, and after approval every run is a new take |

@@ -776,6 +776,116 @@ def _group_spans(lines: list[str]) -> list[tuple[int, int]]:
     return spans
 
 
+GROUP_BARS = 4
+"""The most measures a group (a line of the dialect) holds."""
+_PLANNED_REST = re.compile(r"Z(\d+)?")
+
+
+def _rest_run(count: int) -> list[str]:
+    """``count`` whole-bar rests as the dialect writes them (``Z``, ``Z2`` ... ``Z4``)."""
+    runs: list[str] = []
+    while count > 0:
+        size = min(count, GROUP_BARS)
+        runs.append("Z" if size == 1 else f"Z{size}")
+        count -= size
+    return runs
+
+
+def _written(bars: list[str]) -> str:
+    """Bars as a music line, runs of whole-bar rests joined again."""
+    parts: list[str] = []
+    run = 0
+    for bar in [*bars, ""]:
+        if bar == "Z":
+            run += 1
+            continue
+        parts += _rest_run(run)
+        run = 0
+        if bar:
+            parts.append(bar)
+    return "|".join(parts) + "|"
+
+
+def repair_groups(text: str) -> Change | None:
+    """Groups whose two voices do not have the same 1-4 measures, as a YuE2 plan sometimes writes them (the
+    owner's batch of 2026-10-23: ``...|E2E2E2z2E2z6|Z3|`` - five measures in the Instrument's line against the
+    Vocal's four, and the run stopped): the longer voice gives up surplus whole-bar rests (``Z``), the shorter
+    voice is filled with rests when notes stand over, and a group of more than four measures becomes several
+    groups. No note is lost. ``None`` when the score is valid or no group needed it; the result may still be
+    invalid for another reason (``repair_truncated`` and the validation see to that)."""
+    if analyze(text).ok:
+        return None
+    lines = text.splitlines()
+    out = lines[:8]
+    changes: list[str] = []
+    cursor = 8
+    group = 0
+    while cursor < len(lines):
+        start = cursor
+        labels: list[str] = []
+        while cursor < len(lines) and lines[cursor].startswith("% "):
+            labels.append(lines[cursor])
+            cursor += 1
+        voices: dict[str, tuple[list[str], list[str]]] = {}
+        for name in VOICES:
+            if cursor >= len(lines) or lines[cursor] != f"V: {name}":
+                break
+            cursor += 1
+            fields: list[str] = []
+            while cursor < len(lines) and lines[cursor].startswith(("M:", "K:")):
+                fields.append(lines[cursor])
+                cursor += 1
+            if cursor >= len(lines) or not lines[cursor].endswith("|"):
+                break
+            bars: list[str] = []
+            for bar in (part.strip() for part in lines[cursor][:-1].split("|")):
+                rest = _PLANNED_REST.fullmatch(bar)
+                bars += ["Z"] * int(rest.group(1) or 1) if rest else [bar]
+            cursor += 1
+            voices[name] = (fields, bars)
+        if len(voices) != len(VOICES) or any("" in bars for _fields, bars in voices.values()):
+            out += lines[start:]  # not a group this repair understands (a cut-off plan): left as it is
+            break
+        group += 1
+        vocal, ins = voices["Vocal"][1], voices["Ins"][1]
+        counts = (len(vocal), len(ins))
+        dropped = 0
+        for longer, shorter in ((vocal, ins), (ins, vocal)):
+            while len(longer) > len(shorter) and "Z" in longer:
+                del longer[len(longer) - 1 - longer[::-1].index("Z")]
+                dropped += 1
+            shorter += ["Z"] * (len(longer) - len(shorter))
+        if counts[0] == counts[1] and counts[0] <= GROUP_BARS:
+            out += lines[start:cursor]  # a sound group keeps its text
+            continue
+        what = f"group {group}: Vocal {counts[0]} and Instrument {counts[1]} measures"
+        if dropped:
+            what += f" - {dropped} surplus whole-bar rest(s) dropped"
+        if len(vocal) > counts[0] or len(ins) > counts[1]:
+            what += " - the shorter voice filled with rests"
+        if len(vocal) > GROUP_BARS:
+            what += f" - split into {-(-len(vocal) // GROUP_BARS)} lines"
+        changes.append(what)
+        for first in range(0, len(vocal), GROUP_BARS):
+            out += labels if first == 0 else []
+            for name in VOICES:
+                fields, bars = voices[name]
+                out += [
+                    f"V: {name}",
+                    *(fields if first == 0 else []),
+                    _written(bars[first : first + GROUP_BARS]),
+                ]
+    if not changes:
+        return None
+    return Change(
+        "\n".join(out) + "\n",
+        tuple(f"the plan's lines did not hold their measures ({c})" for c in changes),
+        (
+            "the music model planned a line with other measures than the dialect allows; check the repaired lines",
+        ),
+    )
+
+
 def repair_truncated(text: str) -> Change | None:
     """Remove an incomplete last group (a plan cut off at the planner's token limit).
 

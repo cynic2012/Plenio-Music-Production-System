@@ -317,6 +317,60 @@ def test_truncated_plan_is_repaired_and_reported() -> None:
     assert score_rules.analyze(prepared.abc).ok
 
 
+PLAN_HEAD = (
+    "X:1\nT:\nM:4/4\nL:1/8\nQ:1/4=120\n"
+    'V: Vocal clef=treble name="Vocal Melody" snm="Vocal"\n'
+    'V: Ins clef=treble name="Ins Melody" snm="Inst."\n'
+    "K:Em\n"
+)
+
+
+def plan_of(*groups: tuple[str, str]) -> str:
+    return PLAN_HEAD + "".join(f"% verse\nV: Vocal\n{v}\nV: Ins\n{i}\n" for v, i in groups)
+
+
+def test_a_plans_lines_with_other_measures_are_repaired_without_losing_a_note() -> None:
+    """The owner's batch of 2026-10-23: YuE2 planned an Instrument line of five measures (``Z3`` for ``Z2``)
+    against the Vocal's four, and Score Tools stopped the run."""
+    sound = ('"Em"z8|z8|z8|z8|', "E8|G8|B8|e8|")
+    surplus = plan_of(sound, ('"Em"z8|z8|z8|z8|', "E8|G8|Z3|"))
+    assert not score_rules.analyze(surplus).ok
+    repaired = score_rules.repair_groups(surplus)
+    assert repaired is not None and score_rules.analyze(repaired.abc).ok
+    assert (
+        "group 2: Vocal 4 and Instrument 5 measures - 1 surplus whole-bar rest(s) dropped"
+        in repaired.changes[0]
+    )
+    # only the broken line changes; the sound group keeps its text
+    assert [b for a, b in zip(surplus.splitlines(), repaired.abc.splitlines(), strict=True) if a != b] == [
+        "E8|G8|Z2|"
+    ]
+    # notes standing over: the shorter voice gets rests and the line becomes two
+    over = plan_of(('"Em"z8|z8|z8|z8|', "E8|G8|B8|e8|g8|"))
+    fixed = score_rules.repair_groups(over)
+    assert fixed is not None and score_rules.analyze(fixed.abc).ok
+    assert len(score_rules.analyze(fixed.abc).bars) == 5 and fixed.abc.count("V: Ins\n") == 2
+    assert (
+        "g8|" in fixed.abc
+        and "filled with rests" in fixed.changes[0]
+        and "split into 2 lines" in fixed.changes[0]
+    )
+    # a long planned rest in both voices
+    long = plan_of(("Z8|", "Z8|"))
+    assert score_rules.analyze(score_rules.repair_groups(long).abc).ok  # type: ignore[union-attr]
+    assert score_rules.repair_groups(plan_of(sound)) is None
+    # Score Tools prepares it for the brief instead of stopping
+    brief = build_song_brief(
+        {"genre": "synthwave", "length": "short (about 1:30)", "vocals": "instrumental"},
+        None,
+        mode="new song every run",
+    )
+    prepared = prepare_for_brief(surplus, brief)
+    assert score_rules.analyze(prepared.abc).ok and prepared.changes[0].startswith(
+        "the plan's lines did not hold"
+    )
+
+
 def test_phrasing_map_of_a_transcription() -> None:
     phrases = score_rules.phrasing(fixture("minimax-excerpt")["abc"])
     assert [p["tag"] for p in phrases] == ["[Verse]", "[Pre-Chorus]", "[Chorus]", "[Outro]"]

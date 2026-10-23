@@ -285,7 +285,7 @@ def test_app_configurations() -> None:
     ("name", "mode"),
     [
         ("1 · YuE2 · Song", "new song every run"),
-        ("2 · YuE2 · Cover", "one cover, stop to review"),
+        ("2 · YuE2 · Cover", "new cover every run"),
         ("3 · MiniMax · Song", "new song every run"),
         ("5 · YuE2 · DAW", "one song, stop to review"),
     ],

@@ -20,6 +20,7 @@ import { addEqCurve } from './eqWidget'
 import { MODE_BEFORE_0_2_2, migrateWidgetValues, renameWidgetValues } from './migrate'
 import { setAsrNote, setPayload } from './payloads'
 import { PLAYER_COMMAND, installContinueFromPlayer, installPlayerButton, openPlayer } from './player'
+import { ReviewQueue } from './reviewQueue'
 import {
   type StatusHost,
   clearRunStates,
@@ -62,6 +63,11 @@ function nodeById(id: unknown): ComfyNode | null {
   const text = String(id)
   return graph()?.getNodeById?.(text.includes(':') ? text : Number(text)) ?? null
 }
+
+/** Runs that stop for review, queued in a series: a warning (reviewQueue.ts). */
+const reviewQueue = new ReviewQueue((notice) =>
+  comfyApp.extensionManager?.toast?.add({ severity: 'warn', summary: notice.summary, detail: notice.detail, life: 20000 })
+)
 
 const statusHost: StatusHost = {
   scale: () => comfyApp.canvas?.ds?.scale ?? 1,
@@ -224,6 +230,12 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
     if (BRIEF_NODES.has(nodeData.name)) {
       // the template panel: what the template fills, and the explicit actions (M3/D6)
       installBriefTemplatePanel(nodeType, comfyApi)
+      // a run that stops for review, queued in a series: say so (reviewQueue.ts)
+      const created = (nodeType.prototype as ComfyNode & { onNodeCreated?: () => void }).onNodeCreated
+      ;(nodeType.prototype as ComfyNode & { onNodeCreated?: () => void }).onNodeCreated = function (this: ComfyNode) {
+        created?.call(this)
+        reviewQueue.watch(this)
+      }
     }
     if (nodeData.name === 'PlenioStemMixer') {
       // the mixer widget: strips, faders, sends and the muted ranges (M6/D12)
@@ -260,6 +272,10 @@ const sheetJobs = new SheetMusicJobs(sheetHost, (outcome) => {
       setPayload(String(payload.node_id), payload)
       const node = nodeById(payload.node_id)
       if (node) setRunState(node, sheetState(payload))
+    })
+    // the server's queue, for the warning about runs that stop for review (reviewQueue.ts)
+    comfyApi.addEventListener('status', (event: CustomEvent) => {
+      reviewQueue.status((event.detail as { exec_info?: { queue_remaining?: unknown } } | null)?.exec_info?.queue_remaining)
     })
     // A new run: the previous run's results go, so the canvas shows how far this run gets.
     comfyApi.addEventListener('execution_start', () => {

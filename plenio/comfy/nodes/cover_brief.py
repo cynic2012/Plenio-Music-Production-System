@@ -40,8 +40,8 @@ from .brief import (
 )
 
 MODE_TOOLTIP = (
-    "one cover, stop to review: the Song Sheets stop so you can check the transcription and the lyrics; later "
-    "runs render new takes. new cover every run: each run writes and renders another version."
+    "new cover every run (default): each run writes and renders another version, without stops. one cover, stop "
+    "to review: the Song Sheets stop so you can check the transcription and the lyrics; later runs render new takes."
 )
 COVER_INPUTS = ("mode", "template", "description", "genre", "mood", "vocals", "harmony", "title")
 ARRANGEMENT_TOOLTIP = (
@@ -143,7 +143,9 @@ class PlenioCoverBrief(io.ComfyNode):
                 io.Combo.Input(
                     "mode",
                     options=list(COVER_MODES),
-                    default="one cover, stop to review",
+                    # queued covers run through, as songs do (until 1.1.0 the review mode: the owner's batch of
+                    # 2026-10-23 stopped at the first sheet 68 times)
+                    default="new cover every run",
                     tooltip=MODE_TOOLTIP,
                 ),
                 io.Combo.Input(
@@ -315,7 +317,7 @@ class PlenioCoverBrief(io.ComfyNode):
 
     @classmethod
     def validate_inputs(cls, **kwargs: Any) -> bool | str:
-        if kwargs.get("mode", "one cover, stop to review") not in COVER_MODES:
+        if kwargs.get("mode", "new cover every run") not in COVER_MODES:
             return f"Unknown mode {kwargs.get('mode')!r}. Choose one of {list(COVER_MODES)}."
         template = kwargs.get("template", "none")
         if template != "none":

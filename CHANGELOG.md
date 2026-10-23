@@ -2,6 +2,16 @@
 
 All notable changes of the current version and the one before. Versions follow semantic versioning; published Registry versions are immutable. Earlier versions (0.2.0 to 1.0.1): the [changelog of 1.0.2](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.0.2/CHANGELOG.md) (1.0.1), the [changelog of 1.0.1](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.0.1/CHANGELOG.md) (1.0.0), the [changelog of 1.0.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.0.0/CHANGELOG.md) (0.8.0), the [changelog of 0.8.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.8.0/CHANGELOG.md) (0.7.0), the [changelog of 0.7.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.7.0/CHANGELOG.md) (0.6.1), the [changelog of 0.6.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.6.0/CHANGELOG.md) (0.5.0 and 0.6.0), the [changelog of 0.4.4](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.4.4/CHANGELOG.md) (0.2.0 to 0.4.4) and the [GitHub releases](https://github.com/jplenio/Plenio-Music-Production-System/releases).
 
+## Unreleased
+
+### Changed
+
+- **The cover template runs through** (the owner's batch of 2026-10-23: 68 queued covers each waited at Song Sheet · Score, and nothing was rendered): Cover Brief and the cover template start with *new cover every run*, like the song templates; *one cover, stop to review* stays the choice for checking a transcription first. When a run that stops for review joins a queue that already has runs, or comes as a batch, a warning says that it waits for the Approve and which mode runs through.
+
+### Fixed
+
+- **A YuE2 plan with a line of other measures no longer stops the run** (the owner's batch: one song of 44 ended in Score Tools with *group 4, Ins: expected 1–4 measures after expanding Z rests* - YuE2 had planned `Z3` for `Z2`, five measures against four): the plan is repaired before it is prepared - surplus whole-bar rests of the longer voice go, the shorter voice is filled with rests where notes stand over, a line of more than four measures becomes several (`native.repair_groups`); no note is lost, the changes are listed in Score Tools' summary.
+
 ## 1.1.0 - 2026-10-23
 
 **Audio HQ, a new ear for the lyrics, and the score in and out.** Every take now goes through **Audio HQ** before the EQ: *Stereo Cleanup* calms the unsteady stereo shimmer of AI renders and *Regenerate Highs* lets UniverSR generate fresh highs above 8.2 kHz - presets that follow the song's genre, in every template's Master block and in Enhance & Master. UniverSR about doubles a song's time, so it runs only with the **HQ Mastering** switch at the top of every template on (off by default). The lyrics are heard by **Qwen3-ASR** and timed word by word by **Qwen3-ForcedAligner**, for covers and for the lyrics subtitles; faster-whisper stays as the fallback for other languages. The System Check says where every model file and asset goes.

@@ -90,7 +90,7 @@ def template_fields(template_id: str) -> dict[str, str]:
 COVER_LANGUAGE_DEFAULTS = {"original lyrics": "auto", "new lyrics": "English"}
 """The Cover Brief's language field by its vocals choice (``comfy/nodes/cover_brief.py``)."""
 SONG_MODE_DEFAULT = "new song every run"
-COVER_MODE_DEFAULT = "one cover, stop to review"
+COVER_MODE_DEFAULT = "new cover every run"
 """The briefs' work mode by default (``comfy/nodes/brief.py``, ``cover_brief.py``)."""
 
 

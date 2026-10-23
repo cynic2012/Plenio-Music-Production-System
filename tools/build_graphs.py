@@ -2221,9 +2221,9 @@ ABOUT_COVER = f"""# 2 · YuE2 · Cover
 **Source -> Transcribe Score -> Arrange -> Song Sheet · Score -> lyrics (ASR, writer or section tags) -> Song Sheet · Text -> YuE2 Takes -> Check Vocals -> Master -> Export**
 
 1. Load the **source** recording (upload in *Load Audio*; up to 5:00 - trim longer songs with the optional *Excerpt* node).
-2. In **Cover Brief** choose the **mode** - *one cover, stop to review* (default, steps 4-6) or *new cover every run*: every run writes and renders a **different version** (title, style and - with new lyrics - the lyrics) without stops; the batch count next to **Run** makes a series. Then the target style and what happens to the vocals: *original lyrics* (default; transcribed from the source), *instrumental* (an instrument plays the melody, or accompaniment only) or *new lyrics* (written on the source's melody). *harmony* keeps or replaces the original chords.
-3. Press **Run**: SheetSage2 transcribes the source (once; later runs reuse it).
-4. The run **stops at Song Sheet · Score**. Open it, check the score (fix section names and boundaries), then *Approve*.
+2. In **Cover Brief** choose the **mode** - *new cover every run* (default): every run writes and renders a **different version** (title, style and - with new lyrics - the lyrics) without stops, so a queue of covers runs through; the batch count next to **Run** makes a series. Or *one cover, stop to review* (steps 4-6) to check the transcription and the lyrics first. Then the target style and what happens to the vocals: *original lyrics* (default; transcribed from the source), *instrumental* (an instrument plays the melody, or accompaniment only) or *new lyrics* (written on the source's melody). *harmony* keeps or replaces the original chords.
+3. Press **Run**: SheetSage2 transcribes the source (once; later runs reuse it). With *new cover every run* the run goes on to the export.
+4. With *one cover, stop to review* the run **stops at Song Sheet · Score**. Open it, check the score (fix section names and boundaries), then *Approve*.
 5. Run again: the lyrics are drafted (ASR of the original, the writer's new lyrics, or the section tags) and the run **stops at Song Sheet · Text**. Correct or replace the lyrics - your text always wins - and *Approve*.
 6. Run again to render. Each further run is a new take (the take seed changes).
 
@@ -2277,7 +2277,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         # the owner's defaults since 0.4.3: a pop style template (genre and mood come from it), the
         # original lyrics in the language detected from the singing, the original chords
         widgets={
-            "mode": "one cover, stop to review",
+            "mode": "new cover every run",
             "template": "pop/dance-pop-vocal",
             "genre": "",
             "mood": "",

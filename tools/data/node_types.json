@@ -1489,8 +1489,8 @@
      "mode": [
       "COMBO",
       {
-       "tooltip": "one cover, stop to review: the Song Sheets stop so you can check the transcription and the lyrics; later runs render new takes. new cover every run: each run writes and renders another version.",
-       "default": "one cover, stop to review",
+       "tooltip": "new cover every run (default): each run writes and renders another version, without stops. one cover, stop to review: the Song Sheets stop so you can check the transcription and the lyrics; later runs render new takes.",
+       "default": "new cover every run",
        "multiselect": false,
        "options": [
         "new cover every run",
