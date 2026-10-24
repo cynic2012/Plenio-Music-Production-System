@@ -1,13 +1,12 @@
 // Tutorial 3 · MiniMax · Song: open the template and walk its sections (one row; the HQ Mastering and Cover
 // Art cards and the writer model at the start; Cover Art above the render), one run straight through (new song
-// every run: the brief's lists opened, the seeds, the cover, Export, Check Sung Words, the Master block's stems
+// every run: the brief's lists opened, the seeds, the cover, Export, the Master block's stems
 // switch), then one song with its review stop - the Song Sheet (the caption in three parts, the lyrics, the
 // exact token budget, the title and the cover prompt, Approve) - and the finished song. MiniMax Music 3 takes
 // no score, so there is one sheet.
 
 import {
   afterRun,
-  checkSungWords,
   coverArtShown,
   exportExtras,
   masterDemo,
@@ -30,18 +29,17 @@ export const meta = {
 // the template's nodes by title or type (example_workflows/3 · MiniMax · Song.json)
 const BRIEF = 'PlenioSongBrief', SHEET = 'Song Sheet', WRITE = 'Plenio · Write Song', RENDER = 'Plenio · MiniMax Render'
 const MASTER = 'Plenio · Master', PREVIEW = 'Preview (mastered)', EXPORT = 'PlenioExportRelease'
-const MODEL = 'Plenio · MiniMax Model', WRITER = 'Writer model', COVER = 'Cover Art', CHECK = 'Check Sung Words'
+const MODEL = 'Plenio · MiniMax Model', WRITER = 'Writer model', COVER = 'Cover Art'
 const SECTIONS = ['1 · SONG', '2 · WRITE', '3 · SHEET', '4 · RENDER', '5 · FINISH']
 const GROUPS = {
   [WRITE]: '2 · WRITE', 'Draft seed': '2 · WRITE', [SHEET]: '3 · SHEET', [MODEL]: 'MUSIC MODEL', 'Take seed': '4 · RENDER',
-  [RENDER]: '4 · RENDER', [COVER]: 'COVER ART', [MASTER]: '5 · FINISH', [PREVIEW]: '5 · FINISH', [EXPORT]: '5 · FINISH', [CHECK]: '5 · FINISH',
+  [RENDER]: '4 · RENDER', [COVER]: 'COVER ART', [MASTER]: '5 · FINISH', [PREVIEW]: '5 · FINISH', [EXPORT]: '5 · FINISH',
 }
 const STAGES = {
   [WRITE]: 'The writer model drafts the caption and the lyrics, and ten titles to pick from.',
   [RENDER]: 'MiniMax Music 3 renders the song from the caption and the lyrics.',
   [COVER]: '',
   [MASTER]: 'Master and Export finish the song.',
-  [CHECK]: 'Check Sung Words reads what the take sings.',
 }
 const DESCRIPTION = 'A warm late-night jazz-pop song about a city that never quite sleeps, with soft piano and brushed drums.'
 
@@ -65,7 +63,7 @@ export default async function minimax(s) {
     ['2 · WRITE', 'WRITE - the writer drafts a caption and the lyrics, and ten titles; Plenio picks one no song of yours has yet.'],
     ['3 · SHEET', 'SHEET - the Song Sheet: exactly what MiniMax gets. MiniMax takes no score, so there is one sheet - teal, for the words.'],
     ['4 · RENDER', 'RENDER - MiniMax Music 3 renders the song.'],
-    ['5 · FINISH', 'FINISH - Master brings it to -14 LUFS, Export writes the files, and Check Sung Words looks at the words sung.'],
+    ['5 · FINISH', 'FINISH - Master brings it to -14 LUFS, and Export writes the files.'],
   ], { intro: 'Five numbered sections, from left to right - one row, side by side.' })
   const art = 'Above the render, COVER ART paints the song’s cover; below the brief, the MUSIC MODEL block holds the MiniMax files.'
   s.caption(art)
@@ -103,8 +101,8 @@ export default async function minimax(s) {
   await s.read('arrangement: MiniMax takes no score, so a creative mode (experimental) shapes only the writing here - off is fine.', 2600)
   await writerDemo(s, {
     text: 'Under the cards, the Writer model writes caption and lyrics: Gemma 4 by default - or a local LLM from your machine.',
-    uses: [WRITE, CHECK],
-    flows: 'It writes for every block that writes - the caption and the lyrics, and the check of the sung words.',
+    uses: [WRITE],
+    flows: 'It writes for every block that writes - the caption, the lyrics and the ten titles.',
   })
   await seedsDemo(s, { what: 'caption and lyrics' })
 
@@ -115,7 +113,6 @@ export default async function minimax(s) {
   await afterRun(s, 'Done: the finished song is in Preview (mastered).', { group: '5 · FINISH', preview: PREVIEW })
   await coverArtShown(s)
   await exportExtras(s, EXPORT)
-  await checkSungWords(s)
   await masterDemo(s, { open: false })
   s.caption('The stems, Audio HQ and the master are inside the block - tutorial 1 opens it. Run again for another song - or set a number next to Run for a whole series.')
   await s.hover(page.locator('button', { hasText: /^\s*Run\s*$/ }).first())
@@ -156,7 +153,7 @@ export default async function minimax(s) {
   await showApproved(s, SHEET, 'The node says ✓ approved at once. Run again: MiniMax renders the approved song.')
   await s.resetRunState()
   await s.run()
-  await s.follow({ stages: { [RENDER]: STAGES[RENDER], [COVER]: '', [MASTER]: STAGES[MASTER], [CHECK]: STAGES[CHECK] }, groups: GROUPS })
+  await s.follow({ stages: { [RENDER]: STAGES[RENDER], [COVER]: '', [MASTER]: STAGES[MASTER] }, groups: GROUPS })
   await afterRun(s, 'The approved song is finished and exported.', { group: '5 · FINISH', preview: PREVIEW })
   s.caption('Every further Run renders a new take of the same approved song.')
   await s.flyGroups(SECTIONS, 1600)

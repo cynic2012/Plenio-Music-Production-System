@@ -349,7 +349,7 @@ export default async function player(s) {
     if (await note.count()) {
       await s.spotlight(note, { ms: 3600, pad: 6 })
       await s.hover(note, { fx: 0.3 })
-      await talk(s, 'Auto: a take that departs far from its lyrics shows them as sung - and Check Sung Words corrected what the speech recognition misheard.')
+      await talk(s, 'Auto: a take that departs far from its lyrics shows them as sung - as its vocals were heard.')
     }
     await s.click(versions.locator('button', { hasText: 'As written' }))
     await s.wait(700)

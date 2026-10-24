@@ -673,7 +673,7 @@ export async function writerDemo(s, { writer = 'Writer model', uses = ['Plenio �
   await s.flyNodes([writer], 1000, 0.8)
   await s.showCombo(writer, 'model', { read: 1800, browse: 5 })
   await s.read(intro, 3400)
-  const flows = flowText ?? 'It writes for every block that writes - the lyrics and the style, the arrangement, the check of the sung words.'
+  const flows = flowText ?? 'It writes for every block that writes - the lyrics and the style, the ten titles, the arrangement.'
   s.caption(flows)
   await s.flyNodes([writer, ...uses], 1200, 0.92, 40)
   await s.wait(300)
@@ -731,9 +731,10 @@ export async function coverArtShown(s, { group = 'COVER ART', preview = 'Cover p
   await s.read(text, 7000)
 }
 
-// Check Sung Words after Export: the writer model corrects misheard words in the lyrics as sung.
-export async function checkSungWords(s, { node = 'Check Sung Words' } = {}) {
-  const text = 'Check Sung Words, after Export: the writer model reads what the take sings, as heard, and corrects words the speech recognition misheard - only those it is sure of. The Plenio Player shows them under “As sung”.'
+// Fix Misheard Words (1.2.1, covers with the original lyrics): before the render, the writer model corrects the
+// words the speech recognition misheard in the source - the Song Sheet lists them beside the words heard.
+export async function fixMisheardWords(s, { node = 'Fix Misheard Words' } = {}) {
+  const text = 'Fix Misheard Words: the writer reads what the speech recognition heard and corrects the words it is sure were misheard - only words that sound alike, with as many syllables. For original lyrics only.'
   s.caption(text)
   await s.flyNodes([node], 1100, 0.8)
   await s.spotlight(s.nodeBox(node), { ms: 3200, pad: 4 })
@@ -775,7 +776,7 @@ export async function exportExtras(s, node = 'PlenioExportRelease', { lyrics = t
   await s.wait(400)
   await s.flyNodes([node], 1100, 0.9)
   const subtitles = lyrics
-    ? 'Export also wrote the lyrics as subtitles: whole lines, and the lines painted on note by note - timed by listening to the song.'
+    ? 'Export also wrote the lyrics as subtitles: whole lines, and the lines painted on note by note - timed by listening to the vocals, separated from the take.'
     : 'A song with lyrics also gets them as subtitles, timed by listening: whole lines, and the lines note by note.'
   s.caption(subtitles)
   const summary = await box()

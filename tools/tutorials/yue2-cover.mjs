@@ -8,11 +8,11 @@ import path from 'node:path'
 import {
   afterRun,
   arrangeDemo,
-  checkSungWords,
   coverArtShown,
   cursorDemo,
   editorTour,
   exportExtras,
+  fixMisheardWords,
   filesDemo,
   masterDemo,
   openTemplate,
@@ -39,21 +39,21 @@ const SOURCE = 'Source recording', EXCERPT = 'Excerpt (optional)', BRIEF = 'Plen
 const TRANSCRIBE = 'Plenio · Transcribe Score', SCORE = 'Song Sheet · Score', LYRICS = 'Transcribe Lyrics', WRITE = 'Plenio · Write Song'
 const TEXT = 'Song Sheet · Text', TAKES = 'YuE2 Takes', CHECK = 'PlenioVocalCheck', MASTER = 'Plenio · Master'
 const PREVIEW = 'Preview (mastered)', EXPORT = 'PlenioExportRelease', ARRANGE = 'Arrange', SUNG = 'Sung Pitch (for the editor)'
-const WRITER = 'Writer model', COVER = 'Cover Art', SUNG_CHECK = 'Check Sung Words'
+const WRITER = 'Writer model', COVER = 'Cover Art', FIX = 'Fix Misheard Words'
 const GROUPS = {
   [TRANSCRIBE]: '3 · SCORE', PlenioScoreTools: '3 · SCORE', [SUNG]: '3 · SCORE', [ARRANGE]: '3 · SCORE', [SCORE]: '3 · SCORE',
-  [LYRICS]: '4 · LYRICS', [WRITE]: '4 · LYRICS', [TEXT]: '5 · TEXT', [TAKES]: '6 · RENDER', [CHECK]: '6 · RENDER',
-  [COVER]: 'COVER ART', [MASTER]: '7 · FINISH', [PREVIEW]: '7 · FINISH', [EXPORT]: '7 · FINISH', [SUNG_CHECK]: '7 · FINISH',
+  [LYRICS]: '4 · LYRICS', [FIX]: '4 · LYRICS', [WRITE]: '4 · LYRICS', [TEXT]: '5 · TEXT', [TAKES]: '6 · RENDER', [CHECK]: '6 · RENDER',
+  [COVER]: 'COVER ART', [MASTER]: '7 · FINISH', [PREVIEW]: '7 · FINISH', [EXPORT]: '7 · FINISH',
 }
 const STAGES = {
   [SUNG]: 'Sung Pitch separates the vocals once, for the curve in the editor.',
   [TRANSCRIBE]: 'SheetSage2 transcribes the recording into a score: melody, chords, sections and tempo.',
-  [LYRICS]: 'Qwen3-ASR hears the sung words, and they are placed into the score’s sections.',
+  [LYRICS]: 'Qwen3-ASR hears the sung words - in the recording and in its vocal stem - and keeps the surer hearing; the words go into the score’s sections.',
+  [FIX]: 'Fix Misheard Words: the writer looks for words the recognition misheard.',
   [TAKES]: 'YuE2 renders the cover from the score.',
   [CHECK]: 'Check Vocals listens to the take.',
   [COVER]: '',
   [MASTER]: 'Master and Export finish the cover.',
-  [SUNG_CHECK]: 'Check Sung Words reads what the take sings.',
 }
 
 export default async function cover(s, { project }) {
@@ -76,10 +76,10 @@ export default async function cover(s, { project }) {
     ['1 · SOURCE', 'SOURCE - the two switch cards and the Writer model at the top, then the recording to cover.'],
     ['2 · COVER', 'COVER - beside it, the Cover Brief: the new style, and what happens to the vocals.'],
     ['3 · SCORE', 'SCORE - SheetSage2 transcribes the music into a score, Arrange can re-arrange it, Song Sheet · Score - violet - shows it.'],
-    ['4 · LYRICS', 'LYRICS - the original words (speech recognition), new lyrics (the writer model) or section tags.'],
+    ['4 · LYRICS', 'LYRICS - the original words (speech recognition; the writer corrects misheard ones), new lyrics (the writer model) or section tags.'],
     ['5 · TEXT', 'TEXT - Song Sheet · Text, in teal: the lyrics and the style YuE2 gets.'],
     ['6 · RENDER', 'RENDER - YuE2 renders the cover; Check Vocals picks the best take.'],
-    ['7 · FINISH', 'FINISH - Master brings it to -14 LUFS, Export writes the files, Check Sung Words looks at the words sung.'],
+    ['7 · FINISH', 'FINISH - Master brings it to -14 LUFS, Export writes the files.'],
   ])
   const art = 'Above the render, COVER ART paints the cover; below the source, the MUSIC MODEL block holds YuE2 and its instrumental adapter.'
   s.caption(art)
@@ -136,7 +136,7 @@ export default async function cover(s, { project }) {
   s.caption('arrangement: “off” keeps the transcription as it is. The experimental creative modes, with their sliders, are tutorial 7.')
   await s.showCombo(BRIEF, 'arrangement', { read: 2400, browse: 5 })
   await s.read('arrangement: “off” keeps the transcription as it is. The experimental creative modes, with their sliders, are tutorial 7.', 2400)
-  await writerDemo(s, { uses: [WRITE, ARRANGE, SUNG_CHECK] })
+  await writerDemo(s, { uses: [WRITE, ARRANGE, FIX] })
 
   s.caption('Press Run.')
   await s.resetRunState()
@@ -202,7 +202,8 @@ export default async function cover(s, { project }) {
   await showApproved(s, SCORE, 'The node says ✓ approved at once. Run again: the words are transcribed, and the run stops at Song Sheet · Text.')
   await s.resetRunState()
   await s.run()
-  await s.follow({ stages: { [LYRICS]: STAGES[LYRICS] }, groups: GROUPS })
+  await s.follow({ stages: { [LYRICS]: STAGES[LYRICS], [FIX]: STAGES[FIX] }, groups: GROUPS })
+  await fixMisheardWords(s, { node: FIX })
   s.caption('Stop 2: Song Sheet · Text - ⏸ waiting for your approval.')
   await s.flyNodes([TEXT], 1100, 0.9)
   await s.read('Stop 2: Song Sheet · Text - ⏸ waiting for your approval.', 3400)
@@ -225,18 +226,17 @@ export default async function cover(s, { project }) {
     await s.spotlight(owner, { ms: 3400, pad: 4 })
     await s.read(note, 5400)
   }
-  await tab(s, 'Lyrics', 'Lyrics: the transcribed words, section by section. Unsure words are marked - correct anything; your text wins.', { min: 6200 })
+  await tab(s, 'Lyrics', 'Lyrics: the transcribed words, section by section. A word the writer corrected stands beside the word heard, unsure ones are marked - your text wins.', { min: 6800 })
   await tab(s, 'Style', 'Style: the new style, with the voice from the brief.', { min: 4200 })
   await tab(s, 'Title & artwork', 'Title & artwork: the title, picked from the writer’s ten - and the cover prompt, drawn from the original lyrics.', { min: 6000 })
   await approve(s, 'Approve: exactly these words go to YuE2.')
   await showApproved(s, TEXT, '✓ approved at once. Run again: YuE2 renders the cover.')
   await s.resetRunState()
   await s.run()
-  await s.follow({ stages: { [TAKES]: STAGES[TAKES], [CHECK]: STAGES[CHECK], [COVER]: '', [MASTER]: STAGES[MASTER], [SUNG_CHECK]: STAGES[SUNG_CHECK] }, groups: GROUPS })
+  await s.follow({ stages: { [TAKES]: STAGES[TAKES], [CHECK]: STAGES[CHECK], [COVER]: '', [MASTER]: STAGES[MASTER] }, groups: GROUPS })
   await afterRun(s, 'The approved cover is finished and exported.', { group: '7 · FINISH', preview: PREVIEW })
   await sheetMusicSaved(s, EXPORT, 'Export also saved the sheet music: your score with the original words under the notes, as a PDF next to the cover.')
   await exportExtras(s, EXPORT)
-  await checkSungWords(s)
   s.caption('Every further Run renders a new take of the same approved cover.')
   await s.flyGroups(all, 1600)
   await s.read('Every further Run renders a new take of the same approved cover.', 3800)

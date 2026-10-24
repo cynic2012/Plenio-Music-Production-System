@@ -28,7 +28,7 @@ The Song Sheet shows exactly what MiniMax gets. No score, so just one sheet, in 
 Then MiniMax renders the song.
 
 @ FINISH - Master
-Master and Export finish it, and Check Sung Words looks at the words that were sung.
+Master and Export finish it.
 
 @ Above the render, COVER ART
 Above the render, Cover Art paints the song's cover. [pause:0.3s] And below the brief, the music model block holds the MiniMax files.
@@ -64,7 +64,7 @@ MiniMax takes no score, so a creative mode only shapes the writing. Off is fine.
 Under the cards sits the writer model: Gemma 4 by default, or a local LLM from your machine.
 
 @ It writes for every block that writes
-It writes the caption and the lyrics, and checks the sung words after the export.
+It writes the caption, the lyrics and the ten titles.
 
 @ In this mode every seed is amber
 In this mode every seed is amber: each run draws new numbers, so every run writes a new caption and new lyrics, and renders a new take.
@@ -82,10 +82,7 @@ The writer drafts the caption and the lyrics, and ten titles to choose from,
 MiniMax renders the song from them,
 
 @ Master and Export finish
-Master and Export finish it,
-
-@ Check Sung Words reads | optional
-and Check Sung Words listens to what was sung.
+Master and Export finish it.
 
 @ Done: the finished song | +6
 Done! Let's listen.
@@ -94,16 +91,13 @@ Done! Let's listen.
 And above the render: the cover, painted from the song's artwork prompt. Export put it into the FLAC and the MP3.
 
 @ Export also wrote the lyrics as subtitles
-Export also wrote the lyrics as subtitles, timed by listening. Ready for a lyric video.
+Export also wrote the lyrics as subtitles, timed by listening to the vocals alone. Ready for a lyric video.
 
 @ The tags come from the brief
 And the tags come from the brief: genre, mood, even the lyrics, written as variables in curly braces.
 
 @ The note beside Export lists every variable
 The note right next to Export lists every variable you can use.
-
-@ Check Sung Words, after Export
-Check Sung Words comes after Export: the writer reads what the take sings, and corrects words the speech recognition misheard, only those it's sure of. The player shows them As sung.
 
 @ Plenio · Master finishes every take
 The Master block finishes every take: stems, Audio HQ, a gentle tone match, and the loudness.
@@ -160,10 +154,7 @@ The node turns green right away. [pause:0.3s] Run again, and MiniMax renders the
 MiniMax renders it,
 
 @ Master and Export finish
-Master and Export wrap it up,
-
-@ Check Sung Words reads | optional
-and Check Sung Words takes a last look at the words.
+Master and Export wrap it up.
 
 @ The approved song is finished | +6
 Here it is: the approved song, finished and exported.

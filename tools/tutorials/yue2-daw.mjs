@@ -9,7 +9,6 @@ import path from 'node:path'
 import {
   afterRun,
   barsDemo,
-  checkSungWords,
   coverArtShown,
   cursorDemo,
   editorTour,
@@ -37,11 +36,11 @@ export const meta = {
 const BRIEF = 'PlenioSongBrief', WRITE = 'Plenio · Write Song', TEXT = 'Song Sheet · Text'
 const TOOLS = 'Score Tools · new score from brief', DAW = 'Song Sheet · DAW', RENDER = 'Plenio · YuE2 Render'
 const MASTER = 'Plenio · Master', PREVIEW = 'Preview (mastered)', EXPORT = 'PlenioExportRelease', WRITER = 'Writer model'
-const COVER = 'Cover Art', CHECK = 'Check Sung Words'
+const COVER = 'Cover Art'
 const SECTIONS = ['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · DAW', '5 · RENDER', '6 · FINISH']
 const GROUPS = {
   [WRITE]: '2 · WRITE', [TEXT]: '3 · TEXT', [TOOLS]: '4 · DAW', [DAW]: '4 · DAW', 'Take seed': '5 · RENDER', [RENDER]: '5 · RENDER',
-  [COVER]: 'COVER ART', [MASTER]: '6 · FINISH', [PREVIEW]: '6 · FINISH', [EXPORT]: '6 · FINISH', [CHECK]: '6 · FINISH',
+  [COVER]: 'COVER ART', [MASTER]: '6 · FINISH', [PREVIEW]: '6 · FINISH', [EXPORT]: '6 · FINISH',
 }
 const STAGES = {
   [WRITE]: 'The writer model drafts the style and the lyrics, and ten titles to pick from.',
@@ -49,7 +48,6 @@ const STAGES = {
   [RENDER]: 'YuE2 renders exactly the approved score.',
   [COVER]: '',
   [MASTER]: 'Master and Export finish the song.',
-  [CHECK]: 'Check Sung Words reads what the take sings.',
 }
 const DESCRIPTION = 'A bright, hopeful pop song about opening the window on the first warm morning of spring.'
 
@@ -76,7 +74,7 @@ export default async function daw(s, { project }) {
     ['3 · TEXT', 'TEXT - Song Sheet · Text, in teal: the words YuE2 will sing.'],
     ['4 · DAW', 'DAW - Score Tools builds an empty score from the brief; you write the music in Song Sheet · DAW, in blue.'],
     ['5 · RENDER', 'RENDER - YuE2 renders exactly that score.'],
-    ['6 · FINISH', 'FINISH - Master and Export, and Check Sung Words.'],
+    ['6 · FINISH', 'FINISH - Master and Export.'],
   ])
   const art = 'Above the render, COVER ART paints the song’s cover.'
   s.caption(art)
@@ -105,7 +103,7 @@ export default async function daw(s, { project }) {
   await s.wait(900)
   await writerDemo(s, {
     text: 'Under the cards, the Writer model writes the words: Gemma 4 by default - or a local LLM from your machine.',
-    uses: [WRITE, CHECK],
+    uses: [WRITE],
     flows: 'It writes the style and the lyrics - and after the export it checks the words that were sung.',
   })
   s.caption('Press Run.')
@@ -205,12 +203,11 @@ export default async function daw(s, { project }) {
   // --- part 3: the song ---------------------------------------------------------------------------
   await s.resetRunState()
   await s.run()
-  await s.follow({ stages: { [RENDER]: STAGES[RENDER], [COVER]: '', [MASTER]: STAGES[MASTER], [CHECK]: STAGES[CHECK] }, groups: GROUPS })
+  await s.follow({ stages: { [RENDER]: STAGES[RENDER], [COVER]: '', [MASTER]: STAGES[MASTER] }, groups: GROUPS })
   await afterRun(s, 'Done: your melody, your chords - sung by YuE2.', { group: '6 · FINISH', preview: PREVIEW })
   await coverArtShown(s)
   await sheetMusicSaved(s, EXPORT, 'Export also saved your score as sheet music - both voices, the chords and the lyrics, as a PDF next to the song.')
   await exportExtras(s, EXPORT)
-  await checkSungWords(s)
   s.caption('Every further Run renders a new take of the same score.')
   await s.flyGroups(SECTIONS, 1600)
   await s.read('Every further Run renders a new take of the same score.', 3800)

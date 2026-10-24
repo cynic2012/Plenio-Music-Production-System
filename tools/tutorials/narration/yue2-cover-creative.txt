@@ -163,9 +163,6 @@ Check Vocals listens to the takes,
 @ Master and Export finish the cover
 and Master and Export finish it.
 
-@ Check Sung Words reads | optional
-and Check Sung Words takes a look at the new words.
-
 @ The arranged cover, with its new melody | +5
 Here's the arranged cover, with its new melody and new lyrics. [pause:0.4s] Listen for the fuller arrangement.
 

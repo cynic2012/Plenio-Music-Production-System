@@ -136,7 +136,7 @@ A music model doesn't always sing what it was given. It repeats a line, makes on
 So the player has both: the lyrics as written, and as sung. That's what the take really sings, heard when the song was exported.
 
 @ Auto: a take that departs | optional
-On Auto, a take that strays far from its lyrics shows them as sung. And Check Sung Words corrected the words the speech recognition misheard.
+On Auto, a take that strays far from its lyrics shows them as sung - as the take's vocals were heard.
 
 @ One click switches | optional
 One click switches, and the song keeps your choice.

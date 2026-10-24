@@ -1,7 +1,7 @@
 // Tutorial 1 · YuE2 · Song: open the template and walk its sections - one row of numbered sections, the
 // HQ Mastering and Cover Art cards, the writer model at the start, Cover Art above the render -, one run
-// straight through (new song every run: the brief's lists opened, the seeds, the cover, Export, Check Sung
-// Words and the Master block with its stems), then one song with its review stops - Song Sheet · Text
+// straight through (new song every run: the brief's lists opened, the seeds, the cover, Export and the Master
+// block with its stems), then one song with its review stops - Song Sheet · Text
 // (the tabs, Approve), Song Sheet · Score (the score editor: a tour of every area, then the lyrics lane,
 // notes, the cursor and playback, the sounds and presets, copy and paste, arranging - a copied chorus is
 // kept - recording with a (simulated) MIDI keyboard and the files), the text sheet again with the lyrics
@@ -11,7 +11,6 @@ import {
   afterRun,
   arrangeDemo,
   barsDemo,
-  checkSungWords,
   clipboardDemo,
   continueDemo,
   coverArtShown,
@@ -45,12 +44,12 @@ export const meta = {
 const BRIEF = 'PlenioSongBrief', TEXT = 'Song Sheet · Text', SCORE = 'Song Sheet · Score'
 const WRITE = 'Plenio · Write Song', PLAN = 'Plenio · YuE2 Plan', RENDER = 'Plenio · YuE2 Render', MASTER = 'Plenio · Master'
 const PREVIEW = 'Preview (mastered)', EXPORT = 'PlenioExportRelease', WRITER = 'Writer model', ARRANGE = 'Arrange'
-const COVER = 'Cover Art', CHECK = 'Check Sung Words'
+const COVER = 'Cover Art'
 const SECTIONS = ['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · SCORE', '5 · RENDER', '6 · FINISH']
 const GROUPS = {
   [WRITE]: '2 · WRITE', [TEXT]: '3 · TEXT', [PLAN]: '4 · SCORE', 'PlenioScoreTools': '4 · SCORE', [ARRANGE]: '4 · SCORE', [SCORE]: '4 · SCORE',
   'Take seed': '5 · RENDER', [RENDER]: '5 · RENDER', [COVER]: 'COVER ART', [MASTER]: '6 · FINISH', [PREVIEW]: '6 · FINISH',
-  [EXPORT]: '6 · FINISH', [CHECK]: '6 · FINISH',
+  [EXPORT]: '6 · FINISH',
 }
 const STAGES = {
   [WRITE]: 'The writer model drafts the style and the lyrics, and ten titles to pick from.',
@@ -58,7 +57,6 @@ const STAGES = {
   [RENDER]: 'YuE2 renders the song from the lyrics and the score.',
   [COVER]: '',
   [MASTER]: 'Master and Export finish the song.',
-  [CHECK]: 'Check Sung Words reads what the take sings.',
 }
 const DESCRIPTION = 'A hopeful song about leaving a small town at sunrise, with the whole road still ahead.'
 
@@ -88,7 +86,7 @@ export default async function song(s) {
     ['3 · TEXT', 'TEXT - Song Sheet · Text, in teal: exactly what YuE2 will sing. Here you edit the words.'],
     ['4 · SCORE', 'SCORE - YuE2 plans the melody as a score, Arrange can re-arrange it, and Song Sheet · Score shows it - violet: here you edit the score.'],
     ['5 · RENDER', 'RENDER - YuE2 renders the song.'],
-    ['6 · FINISH', 'FINISH - Master brings it to -14 LUFS, Export writes the files, and Check Sung Words looks at the words sung.'],
+    ['6 · FINISH', 'FINISH - Master brings it to -14 LUFS, and Export writes the files.'],
   ])
   const art = 'Above the render, COVER ART paints the song’s cover - with a seed of its own.'
   s.caption(art)
@@ -131,7 +129,7 @@ export default async function song(s) {
   await s.spotlight(slider, { ms: 3000, pad: 6 })
   await s.callout(slider, '50 · the reference', { ms: 3000 })
   await s.read(creativity, 5600)
-  await writerDemo(s, { uses: [WRITE, ARRANGE, CHECK] })
+  await writerDemo(s, { uses: [WRITE, ARRANGE] })
   await seedsDemo(s, { plan: 'Plan seed' })
 
   s.caption('Press Run.')
@@ -142,7 +140,6 @@ export default async function song(s) {
   await coverArtShown(s)
   await sheetMusicSaved(s, EXPORT, 'Export wrote the mastered FLAC - it carries the whole project - the unmastered take, a release record and the sheet music with the lyrics as a PDF.')
   await exportExtras(s, EXPORT)
-  await checkSungWords(s)
   await masterDemo(s)
   s.caption('Press Run again for another, different song - or set a number next to Run for a whole series.')
   const batch = page.locator('.actionbar input, .queue-button-group input, [data-testid="batch-count-edit"] input').first()
@@ -239,7 +236,6 @@ export default async function song(s) {
       [RENDER]: STAGES[RENDER],
       [COVER]: '',
       [MASTER]: STAGES[MASTER],
-      [CHECK]: STAGES[CHECK],
     },
     groups: GROUPS,
   })

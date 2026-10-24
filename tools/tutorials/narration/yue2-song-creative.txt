@@ -139,9 +139,6 @@ YuE2 sings the lyrics over the arranged score,
 @ Master and Export finish the song
 and Master and Export finish it.
 
-@ Check Sung Words reads | optional
-and Check Sung Words takes a look at the words.
-
 @ The dramatic song - listen | +5
 Here's our dramatic song. [pause:0.4s] Listen to how it builds.
 
@@ -177,9 +174,6 @@ YuE2 renders the new version,
 
 @ Master and Export finish the song
 and Master and Export finish it.
-
-@ Check Sung Words reads | optional
-and Check Sung Words takes a look at the words.
 
 @ The same song with its new arrangement | +5
 The same song, with its new arrangement. [pause:0.4s] Have a listen.

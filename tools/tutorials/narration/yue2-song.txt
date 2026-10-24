@@ -32,7 +32,7 @@ Next, YuE2 plans the melody as a score, and Arrange can re-arrange it. The Score
 Here, YuE2 renders the actual song.
 
 @ FINISH - Master brings
-And finally, Master sets the loudness, Export writes the files, and Check Sung Words looks at the words that were sung.
+And finally, Master sets the loudness, and Export writes the files.
 
 @ Above the render, COVER ART
 Above the render sits Cover Art: it paints the song's cover, with a seed of its own.
@@ -77,7 +77,7 @@ Creativity: fifty is the dependable middle. Higher brings more surprises, and mo
 Under the cards sits the writer model: one model for every writing step. Gemma 4 by default, or a local LLM from your machine.
 
 @ It writes for every block that writes
-It writes for every block that needs words: the lyrics and the style, the arrangement, and the check of the sung words.
+It writes for every block that needs words: the lyrics and the style, the ten titles, and the arrangement.
 
 @ In this mode every seed is amber
 In this mode every seed is amber: each run draws new numbers, so every run writes new lyrics and renders a new take.
@@ -101,10 +101,7 @@ YuE2 plans the melody and the chords,
 and renders the song from the lyrics and that score.
 
 @ Master and Export finish
-Master and Export add the finishing touches,
-
-@ Check Sung Words reads | optional
-and Check Sung Words listens to what was sung.
+Master and Export add the finishing touches.
 
 @ Done: the finished song | +5
 Done! The finished song is right here, in the mastered preview. [pause:0.5s] Have a listen.
@@ -116,16 +113,13 @@ And above the render: the cover, painted from the song's artwork prompt. Export 
 Export saved the mastered FLAC, with the whole project inside, the original take, and the sheet music as a PDF.
 
 @ Export also wrote the lyrics as subtitles
-Export also wrote the lyrics as subtitles, timed by listening. Ready for a lyric video.
+Export also wrote the lyrics as subtitles, timed by listening to the vocals alone. Ready for a lyric video.
 
 @ The tags come from the brief
 And the tags come from the brief: genre, mood, even the lyrics, written as variables in curly braces.
 
 @ The note beside Export lists every variable
 The note right next to Export lists every variable you can use.
-
-@ Check Sung Words, after Export
-Check Sung Words comes after Export: the writer reads what the take sings, and corrects words the speech recognition misheard, only those it's sure of. The player shows them As sung.
 
 @ Plenio · Master finishes every take
 The Master block finishes every take: stems, Audio HQ, a gentle tone match, and the loudness.
@@ -417,9 +411,6 @@ YuE2 renders the song,
 
 @ Master and Export finish
 and Master and Export finish it.
-
-@ Check Sung Words reads | optional
-Check Sung Words takes a last look at the words.
 
 @ The approved song is finished | +5
 And here it is: the approved song, finished and exported. [pause:0.5s] Take a listen.

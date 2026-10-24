@@ -31,7 +31,7 @@ Then Score Tools builds an empty score, and you write the music in the DAW sheet
 YuE2 renders exactly that score,
 
 @ FINISH - Master and Export
-and Master and Export finish the song. Check Sung Words looks at the words that were sung.
+and Master and Export finish the song.
 
 @ Above the render, COVER ART
 Above the render, Cover Art paints the song's cover.
@@ -255,9 +255,6 @@ YuE2 renders exactly the approved score,
 @ Master and Export finish
 and Master and Export finish it.
 
-@ Check Sung Words reads | optional
-and Check Sung Words listens to the words.
-
 @ Done: your melody | +5
 Done! Your melody, your chords, sung by YuE2. [pause:0.4s] Let's listen.
 
@@ -268,16 +265,13 @@ And above the render: the cover, painted from the song's artwork prompt. Export 
 Export also saved your score as sheet music, a PDF next to the song.
 
 @ Export also wrote the lyrics as subtitles
-Export also wrote the lyrics as subtitles, timed by listening. Ready for a lyric video.
+Export also wrote the lyrics as subtitles, timed by listening to the vocals alone. Ready for a lyric video.
 
 @ The tags come from the brief
 And the tags come from the brief: genre, mood, even the lyrics, written as variables in curly braces.
 
 @ The note beside Export lists every variable
 The note right next to Export lists every variable you can use.
-
-@ Check Sung Words, after Export
-Check Sung Words comes after Export: the writer reads what the take sings, and corrects words the speech recognition misheard, only those it's sure of.
 
 @ Every further Run
 Every further run renders a new take of the same score.

@@ -22,9 +22,9 @@ const SOURCE = 'Source recording', BRIEF = 'PlenioCoverBrief', TRANSCRIBE = 'Ple
 const SUNG = 'Sung Pitch (for the editor)', ARRANGE = 'Arrange', SEED = 'Arrangement seed', SCORE = 'Song Sheet · Score'
 const LYRICS = 'Transcribe Lyrics', WRITE = 'Plenio · Write Song', WRITER = 'Writer model', TEXT = 'Song Sheet · Text'
 const TAKES = 'YuE2 Takes', CHECK = 'PlenioVocalCheck', MASTER = 'Plenio · Master', PREVIEW = 'Preview (mastered)'
-const EXPORT = 'PlenioExportRelease', COVER = 'Cover Art', SUNG_CHECK = 'Check Sung Words'
+const EXPORT = 'PlenioExportRelease', COVER = 'Cover Art'
 const GROUPS = {
-  [COVER]: 'COVER ART', [SUNG_CHECK]: '7 · FINISH',
+  [COVER]: 'COVER ART',
   [TRANSCRIBE]: '3 · SCORE', PlenioScoreTools: '3 · SCORE', [SUNG]: '3 · SCORE', [ARRANGE]: '3 · SCORE', [SCORE]: '3 · SCORE',
   [LYRICS]: '4 · LYRICS', [WRITE]: '4 · LYRICS', [TEXT]: '5 · TEXT', [TAKES]: '6 · RENDER', [CHECK]: '6 · RENDER',
   [MASTER]: '7 · FINISH', [PREVIEW]: '7 · FINISH', [EXPORT]: '7 · FINISH',
@@ -39,7 +39,6 @@ const STAGES = {
   [CHECK]: 'Check Vocals listens to the take.',
   [COVER]: '',
   [MASTER]: 'Master and Export finish the cover.',
-  [SUNG_CHECK]: 'Check Sung Words reads what the take sings.',
 }
 
 export default async function coverCreative(s, { project }) {
@@ -177,7 +176,7 @@ export default async function coverCreative(s, { project }) {
   await showApproved(s, TEXT, '✓ approved. Run again: YuE2 renders the cover.')
   await s.resetRunState()
   await s.run()
-  await s.follow({ stages: { [TAKES]: STAGES[TAKES], [CHECK]: STAGES[CHECK], [COVER]: '', [MASTER]: STAGES[MASTER], [SUNG_CHECK]: STAGES[SUNG_CHECK] }, groups: GROUPS })
+  await s.follow({ stages: { [TAKES]: STAGES[TAKES], [CHECK]: STAGES[CHECK], [COVER]: '', [MASTER]: STAGES[MASTER] }, groups: GROUPS })
   await afterRun(s, 'The arranged cover, with its new melody and new lyrics. Listen for the fuller arrangement.', { group: '7 · FINISH', preview: PREVIEW, seconds: 22 })
   await sheetMusicSaved(s, EXPORT, 'Export saved the sheet music too: the arranged score with the new lyrics, as a PDF next to the cover.')
 

@@ -17,11 +17,11 @@ export const meta = {
 const BRIEF = 'PlenioSongBrief', TEXT = 'Song Sheet · Text', SCORE = 'Song Sheet · Score', WRITER = 'Writer model'
 const WRITE = 'Plenio · Write Song', PLAN = 'Plenio · YuE2 Plan', ARRANGE = 'Arrange', SEED = 'Arrangement seed'
 const RENDER = 'Plenio · YuE2 Render', MASTER = 'Plenio · Master', PREVIEW = 'Preview (mastered)', EXPORT = 'PlenioExportRelease'
-const COVER = 'Cover Art', CHECK = 'Check Sung Words'
+const COVER = 'Cover Art'
 const GROUPS = {
   [WRITE]: '2 · WRITE', [TEXT]: '3 · TEXT', [PLAN]: '4 · SCORE', PlenioScoreTools: '4 · SCORE', [ARRANGE]: '4 · SCORE',
   [SCORE]: '4 · SCORE', 'Take seed': '5 · RENDER', [RENDER]: '5 · RENDER', [COVER]: 'COVER ART', [MASTER]: '6 · FINISH',
-  [PREVIEW]: '6 · FINISH', [EXPORT]: '6 · FINISH', [CHECK]: '6 · FINISH',
+  [PREVIEW]: '6 · FINISH', [EXPORT]: '6 · FINISH',
 }
 const STAGES = {
   [WRITE]: 'The writer drafts title, style and lyrics - with the hints of the dramatic mode.',
@@ -30,7 +30,6 @@ const STAGES = {
   [RENDER]: 'YuE2 renders the song from the lyrics and the arranged score.',
   [COVER]: '',
   [MASTER]: 'Master and Export finish the song.',
-  [CHECK]: 'Check Sung Words reads what the take sings.',
 }
 const DESCRIPTION = 'A night drive along the coast after a long goodbye, from quiet doubt to a chorus that opens up like the sea.'
 
@@ -171,7 +170,7 @@ export default async function songCreative(s) {
   await showApproved(s, SCORE, '✓ approved. Run again: YuE2 renders the song.')
   await s.resetRunState()
   await s.run()
-  await s.follow({ stages: { [RENDER]: STAGES[RENDER], [COVER]: '', [MASTER]: STAGES[MASTER], [CHECK]: STAGES[CHECK] }, groups: GROUPS })
+  await s.follow({ stages: { [RENDER]: STAGES[RENDER], [COVER]: '', [MASTER]: STAGES[MASTER] }, groups: GROUPS })
   await afterRun(s, 'The dramatic song - listen to how it builds.', { group: '6 · FINISH', preview: PREVIEW, seconds: 20 })
   await sheetMusicSaved(s, EXPORT, 'Export also saved the sheet music: the arranged score with the lyrics as a PDF, next to the song.')
 
@@ -212,7 +211,7 @@ export default async function songCreative(s) {
   await approve(s, 'Approve.')
   await s.resetRunState()
   await s.run()
-  await s.follow({ stages: { [RENDER]: STAGES[RENDER], [COVER]: '', [MASTER]: STAGES[MASTER], [CHECK]: STAGES[CHECK] }, groups: GROUPS })
+  await s.follow({ stages: { [RENDER]: STAGES[RENDER], [COVER]: '', [MASTER]: STAGES[MASTER] }, groups: GROUPS })
   await afterRun(s, 'The same song with its new arrangement.', { group: '6 · FINISH', preview: PREVIEW, seconds: 20 })
 
   // --- the close ------------------------------------------------------------------------------------
