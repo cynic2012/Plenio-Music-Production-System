@@ -33,9 +33,8 @@ MAX_TAKES = {STANDARD: 1, HIGH: 2, HIGHEST: 3}
 TARGET = 0.95
 """highest: a third take only when no take sang at least this share of the lyrics' words as written."""
 FIDELITY_TOOLTIP = (
-    "How closely the song sings its lyrics. standard: one take. high: a second take, and the one that sings "
-    "more of the lyrics as written is kept. highest: a third take too, when neither sang 95 % of the words. "
-    "Higher fidelity makes the generation take longer - up to about twice (high) or three times (highest)."
+    "standard: one take. high: a second take; the one that sings more of the lyrics as written is kept. "
+    "highest: a third take when neither sang 95 % of the words. Higher fidelity takes longer (up to 2x or 3x)."
 )
 
 

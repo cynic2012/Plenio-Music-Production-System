@@ -401,6 +401,8 @@ const queueSheetExport = (folder, title, elsewhere = false) =>
     set(exporter, 'naming', '{title}')
     set(exporter, 'sheet_music', 'PDF (A4)')
     set(exporter, 'sheet_music_size', 'compact')
+    // the PDF is checked here: hear the song, not its vocal stem (a separation on a CPU server takes minutes)
+    set(exporter, 'lyrics_timing', 'the song')
     const out = (node, name) => node.outputs.findIndex((o) => o.name === name)
     const inp = (node, name) => node.inputs.findIndex((i) => i.name === name)
     audio.connect(out(audio, 'AUDIO'), exporter, inp(exporter, 'audio'))

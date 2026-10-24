@@ -2285,7 +2285,7 @@
       "COMBO",
       {
        "display_name": "lyrics fidelity",
-       "tooltip": "How closely the song sings its lyrics. standard: one take. high: a second take, and the one that sings more of the lyrics as written is kept. highest: a third take too, when neither sang 95 % of the words. Higher fidelity makes the generation take longer - up to about twice (high) or three times (highest).",
+       "tooltip": "standard: one take. high: a second take; the one that sings more of the lyrics as written is kept. highest: a third take when neither sang 95 % of the words. Higher fidelity takes longer (up to 2x or 3x).",
        "default": "standard",
        "multiselect": false,
        "options": [
@@ -4863,7 +4863,7 @@
       "COMBO",
       {
        "display_name": "lyrics fidelity",
-       "tooltip": "How closely the song sings its lyrics. standard: one take. high: a second take, and the one that sings more of the lyrics as written is kept. highest: a third take too, when neither sang 95 % of the words. Higher fidelity makes the generation take longer - up to about twice (high) or three times (highest).",
+       "tooltip": "standard: one take. high: a second take; the one that sings more of the lyrics as written is kept. highest: a third take when neither sang 95 % of the words. Higher fidelity takes longer (up to 2x or 3x).",
        "default": "standard",
        "multiselect": false,
        "options": [

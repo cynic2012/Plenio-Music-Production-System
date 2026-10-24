@@ -14,7 +14,14 @@
 
 Everything runs on your own machine, inside ComfyUI's own nodes: no cloud service, no API key, no extra Python packages. Before a single note is rendered, the **Song Sheet** shows you the title, style, lyrics and score that the model will receive. You can edit all of them, and your edits are never silently overwritten.
 
-**Free, open source - now 1.1.** Plenio costs nothing: no subscription, no credits, no account, Apache 2.0 code. After fourteen releases in three weeks, 1.0.0 was the milestone where the whole way holds together - from the first idea to the song people listen to - and the version to build on: saved workflows and release records keep working in every 1.x version. What changed in each version is in the [changelog](CHANGELOG.md).
+**Free, open source - now 1.2.** Plenio costs nothing: no subscription, no credits, no account, Apache 2.0 code. After fourteen releases in three weeks, 1.0.0 was the milestone where the whole way holds together - from the first idea to the song people listen to - and the version to build on: saved workflows and release records keep working in every 1.x version. What changed in each version is in the [changelog](CHANGELOG.md).
+
+## New in 1.2.1: lyrics sung as written, and heard more exactly
+
+- **Lyrics fidelity**: a music model does not always sing its lyrics. The brief's new *lyrics fidelity* renders a second take (*high*) or up to a third (*highest*) and keeps the one that sings most of its lyrics as written, as the lyrics ASR hears it. It takes longer - up to about twice or three times. [Details](docs/user/concepts/lyrics-fidelity.md)
+- **The lyrics heard on the vocal stem**: Export separates the take's vocals before it listens, so the subtitles, the lyrics as sung and the player's following are timed more exactly.
+- **Fix Misheard Words** in covers: the writer model corrects the words the transcription of the original misheard - before the render, only where it is sure. *Check Sung Words* is retired: what a take sings stays as heard.
+- **Fixed**: lyrics in Latin letters for another script (Hinglish ...) are matched with what was heard, and a YuE2 plan that left a verse without notes gets a second plan.
 
 ## New in 1.2: the lyrics as sung, a login for the player, and a tidier studio
 
