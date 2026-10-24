@@ -116,8 +116,8 @@ class Jobs:
 
 JOBS = Jobs()
 RECORD_LOCK = threading.Lock()
-"""Held while a release record is read and written again after its export (the sheet music PDF listed,
-the sung words corrected): two such writes never lose one another's change."""
+"""Held while a release record is read and written again after its export (the sheet music PDF listed): two
+such writes never lose one another's change."""
 
 
 def _workflow_node(workflow: Mapping[str, Any], node_id: str) -> Mapping[str, Any] | None:

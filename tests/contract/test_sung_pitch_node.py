@@ -31,16 +31,16 @@ def test_a_missing_model_or_a_failed_separation_never_stops_the_run(
     from plenio.comfy.nodes import sung_pitch
 
     monkeypatch.setattr(sung_pitch.host, "locate_model", lambda folder, file: None)
-    pitch = sung_pitch.PlenioSungPitch._pitch(audio(), "model.ckpt")
-    assert pitch.problem and "not in models/audio_separation" in pitch.problem
+    pitch, vocals = sung_pitch.PlenioSungPitch._pitch(audio(), "model.ckpt")
+    assert pitch.problem and "not in models/audio_separation" in pitch.problem and vocals is None
     monkeypatch.setattr(sung_pitch.host, "locate_model", lambda folder, file: Path("x.ckpt"))
 
     def broken(*_args: Any) -> Any:
         raise RuntimeError("out of memory")
 
     monkeypatch.setattr(sung_pitch.audio_models, "load", broken)
-    pitch = sung_pitch.PlenioSungPitch._pitch(audio(), "model.ckpt")
-    assert pitch.problem and "out of memory" in pitch.problem
+    pitch, vocals = sung_pitch.PlenioSungPitch._pitch(audio(), "model.ckpt")
+    assert pitch.problem and "out of memory" in pitch.problem and vocals is None
     assert pitch.to_dict() == {"problem": pitch.problem}
 
 
@@ -60,8 +60,10 @@ def test_the_vocal_stem_is_tracked_and_the_whole_mix_is_a_fallback(
 
     monkeypatch.setattr(sung_pitch.host, "locate_model", lambda folder, file: Path("x.ckpt"))
     monkeypatch.setattr(sung_pitch.audio_models, "load", lambda kind, file, path: Model())
-    pitch = sung_pitch.PlenioSungPitch._pitch(audio(midi=62), "model.ckpt")
+    pitch, vocals = sung_pitch.PlenioSungPitch._pitch(audio(midi=62), "model.ckpt")
     assert pitch.source == "vocals of Fake 2-stem"
+    # the stem goes on, for Transcribe Lyrics to hear it too
+    assert vocals is not None and tuple(vocals["waveform"].shape)[:2] == (1, 2) and vocals["sample_rate"] > 0
     assert abs(pitch.midi[25] - 62) < 0.2
-    whole = sung_pitch.PlenioSungPitch._pitch(audio(midi=57), sung_pitch.WHOLE_MIX)
-    assert "whole mix" in whole.source and abs(whole.midi[25] - 57) < 0.2
+    whole, none = sung_pitch.PlenioSungPitch._pitch(audio(midi=57), sung_pitch.WHOLE_MIX)
+    assert none is None and "whole mix" in whole.source and abs(whole.midi[25] - 57) < 0.2

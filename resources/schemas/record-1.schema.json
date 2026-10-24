@@ -81,6 +81,10 @@
           "take": { "type": "string" },
           "timing": { "enum": ["measured", "heard"] },
           "warp": { "type": ["array", "null"] },
+          "heard_from": {
+            "description": "Since 1.2.0: what the lyrics ASR listened to - the take's vocal stem, or the song itself.",
+            "enum": ["vocal stem", "the song"]
+          },
           "lines": { "type": "array", "items": { "type": "object", "required": ["text", "start", "end", "units"] } },
           "sung": {
             "description": "What the take sings, as heard - laid out like its lyrics, with their section tags - and how far it follows them.",
@@ -94,7 +98,7 @@
               "not_sung": { "type": "array", "items": { "type": "string" } },
               "sections": { "type": "array", "items": { "type": "object" } },
               "corrected": {
-                "description": "Since the writer model checked the words the lyrics do not have: the ones it found misheard, each with the word heard (empty: none). The lines and the text carry the corrections.",
+                "description": "Songs exported with 1.2.0's pre-release Check Sung Words (retired): the words the writer model found misheard, each with the word heard. The lines and the text carry the corrections.",
                 "type": "array",
                 "items": {
                   "type": "object",

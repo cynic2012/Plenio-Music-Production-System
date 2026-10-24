@@ -626,6 +626,12 @@ onBeforeUnmount(() => {
           </p>
           <p v-if="doc.kind === 'lyrics' && asr" class="asr">
             <span>Transcribed ({{ asr.language }}).</span>
+            <span v-if="asr.corrected?.length">
+              Corrected as misheard:
+              <span v-for="(fix, index) in asr.corrected" :key="'fix-' + index" class="fix"
+                ><s>{{ fix.heard }}</s> → {{ fix.word }}</span
+              >
+            </span>
             <span v-if="asr.low_confidence.length">
               Check these unsure words:
               <mark v-for="(word, index) in asr.low_confidence" :key="'low-' + index">{{ word }}</mark>

@@ -765,21 +765,20 @@ for that song. *Settings > Lyrics* sets the rule for every song (*Auto*, *As wri
 the songs' own choices with *Follow the rule again*. A song exported before Plenio kept what was sung shows its
 written lyrics. *Save as a video* starts with what the song shows (*Which*, next to the lyrics). The song's
 page says how far the take follows its lyrics - *This take sings 86 % of its lyrics' words as written, 12 words
-they do not have, 2 lines not heard* - names the sections it did not sing as written, and lists the words the
-writer model corrected.
+they do not have, 2 lines not heard* - and names the sections it did not sing as written.
 
-**Misheard words** (*Check Sung Words*, after Export Release in the templates): the lyrics ASR writes what it
-heard, and a word it misheard would stand in the lyrics as sung as it was heard. The writer model reads the
-lyrics and every line as heard, with the words the lyrics do not have marked, and corrects those it is sure were
-misheard - only with a word of as many syllables that fits the line. The record keeps each correction with the
-word heard; ad-libs and words the music model chose stay as they were sung.
+The lyrics as sung stay **as heard**: nothing corrects them after the export (a song exported with 1.2's
+pre-release *Check Sung Words* lists the words it corrected). Misheard words are corrected in one place only:
+a cover's original lyrics, before the render ([Fix Misheard Words](../paths/yue2-cover.md#misheard-words)).
 
 ## Where the times come from
 
 Since 1.0.0, Export Release listens to every song as it exports it. It writes when each lyrics line and
 syllable is sung into the release record and into the [subtitle files](tags-and-subtitles.md), and for songs
 with a score, where each syllable sits in the score. The player reads these times. On the songs measured
-for 1.0.0, half the words were within 0.16 seconds and 82 % within half a second.
+for 1.0.0, half the words were within 0.16 seconds and 82 % within half a second. Since 1.2.0 it listens to the
+take's vocal stem: words lit up while nobody sings went from 2.5 % to 0.3 % in the songs measured
+([how](tags-and-subtitles.md#lyrics-subtitles)).
 
 - **Songs without measured times** - exported before 1.0.0, with *lyrics subtitles (SRT)* off, or when the
   lyrics ASR could not run - follow the **score's** times instead (since 1.1.0): where the player finds the

@@ -37,7 +37,7 @@ Measured on an RTX 5060 Ti 16 GB for an 83-second source: transcription under 20
 | Mode | Lyrics come from | What you check in Song Sheet · Text |
 |---|---|---|
 | *instrumental* | the score's section tags (`[Verse]`, `[Chorus]` ...) | nothing to write; the style has no voice or language |
-| *original lyrics* | **Transcribe Lyrics** (Qwen3-ASR with Qwen3-ForcedAligner; faster-whisper for a language the aligner cannot time) on the sung parts of the source, placed into the score's sections; sentences an ASR invents in music ("Untertitelung des ZDF ...") are left out | unsure words are highlighted; correct misheard words and line breaks |
+| *original lyrics* | **Transcribe Lyrics** (Qwen3-ASR with Qwen3-ForcedAligner; faster-whisper for a language the aligner cannot time) on the sung parts of the source, placed into the score's sections; sentences an ASR invents in music ("Untertitelung des ZDF ...") are left out; then **Fix Misheard Words** (below) | the corrections beside the words heard, the unsure words highlighted; line breaks |
 | *new lyrics* | the writer model, written against the score's sections and phrasing | the syllable check: each section needs about one syllable per melody note |
 
 **Which lyrics are used - the order of precedence:**
@@ -47,6 +47,20 @@ Measured on an RTX 5060 Ti 16 GB for an 83-second source: transcription under 20
 3. Otherwise the **draft**: ASR (original lyrics), writer (new lyrics) or the section tags (instrumental).
 
 The same holds for the score in Song Sheet · Score: your edited or manual score is what YuE2 renders and what the lyrics are placed into.
+
+### Recording or vocal stem
+
+*Transcribe Lyrics* hears the source twice - the recording, and the vocal stem *Sung Pitch* separates - and keeps the hearing the ASR is more confident of (the mean probability of its words; the stem only when clearly ahead). The separation helps where the music drowns the voice, but its artefacts are misheard too: measured on 15 songs, the stem alone heard worse in 8 and better in 4; choosing the more confident hearing picked the better one in 13 and lowered the word error from 28.9 % to 27.3 %. The node's summary says which was kept. Without a separation model the recording is heard.
+
+### Misheard words
+
+An ASR sometimes hears a sung word as another one that sounds alike - and the cover would sing it as heard. So with *original lyrics*, **Fix Misheard Words** (in 4 · LYRICS, after *Transcribe Lyrics*) has the template's *Writer model* read the draft, with the words the ASR was unsure of marked, and name the words it is sure were misheard, each with the word most likely sung. Plenio takes a correction only when
+
+- the writer is sure enough: 80 % for a word the ASR was unsure of, 90 % for one it heard clearly,
+- the new word sounds like the one heard (their letters, and their consonants alone, compared),
+- and it has as many syllables - the melody's notes stay the same.
+
+Song Sheet · Text lists every correction beside the word heard (*Corrected as misheard: ~~doun~~ → down*); undo any of them like any other edit - your text always wins. The node's summary names the corrections and why others were not taken. Only original lyrics are checked: new lyrics, an instrumental cover, lyrics you made manual and the song templates' lyrics are never changed, and their runs ask no writer for it.
 
 ## Getting good new lyrics
 
@@ -87,7 +101,6 @@ For instrumental covers Plenio silences the Vocal voice of the score (the melody
 - **The title** is the source recording's with `-cover` (its title tag, else its file name: `Morning Song-cover`), so every cover is easy to match with its source - the files and the release record are named after it. Type a **title** in the Cover Brief (advanced) for another one.
 - **Export Release** writes the mastered song, the unmastered take as `(original).flac`, the release record and the **sheet music** as `<name>.pdf` - the final score with the lyrics under the notes, on A4 (*sheet music* on the node: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; an open ComfyUI page draws it right after the export, whichever workflow it shows). Formats (FLAC, MP3, WAV) and tags are set on the node.
 - **Cover Art** (on) paints a cover from the sheet's *artwork prompt* with FLUX.2 Klein 4B (4 steps, 1024 x 1024; about 16 GB of model files, Apache-2.0). The **Cover Art** card in *HQ Mastering & Cover Art* at the top switches it off (its three nodes are then bypassed, no image model loads). Export embeds the cover in the FLAC and MP3 files and saves it next to the song as `.jpg`. In *new cover every run* the cover seed is 🎲; with *one cover, stop to review* it is 🔒, so new takes keep the cover.
-- **Check Sung Words** (after Export) lets the writer model correct words the lyrics ASR misheard in the lyrics *as sung* - only those it is sure of, each with a word of as many syllables; the release record keeps every correction with the word heard ([Tags and subtitles](../concepts/tags-and-subtitles.md)).
 
 ## App mode
 

@@ -148,6 +148,8 @@ class Alignment:
     dropped: tuple[AsrWord, ...] = ()
     low_confidence: tuple[AsrWord, ...] = ()
     warnings: tuple[str, ...] = ()
+    heard_lines: tuple[tuple[AsrWord, ...], ...] = ()
+    """The heard words of every line of ``lyrics``, in order (the check of misheard words reads their p)."""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -157,6 +159,7 @@ class Alignment:
             "low_confidence": [w.to_dict() for w in self.low_confidence],
             "warnings": list(self.warnings),
             "lyrics": self.lyrics,
+            "heard_lines": [[[w.word, round(w.p, 3)] for w in line] for line in self.heard_lines],
         }
 
 
@@ -222,10 +225,10 @@ def join_tokens(tokens: Sequence[str]) -> str:
     return out
 
 
-def _lines(words: Sequence[AsrWord], order: Sequence[int] | None = None) -> list[str]:
+def _line_words(words: Sequence[AsrWord], order: Sequence[int] | None = None) -> list[list[AsrWord]]:
     """The words as lines: a pause, a new ASR segment or (``order``: their places in the recording) a
     jump in the recording starts a new line."""
-    lines: list[list[str]] = []
+    lines: list[list[AsrWord]] = []
     previous: AsrWord | None = None
     for index, word in enumerate(words):
         new_line = (
@@ -236,9 +239,9 @@ def _lines(words: Sequence[AsrWord], order: Sequence[int] | None = None) -> list
         )
         if new_line:
             lines.append([])
-        lines[-1].append(word.word)
+        lines[-1].append(word)
         previous = word
-    return [join_tokens(line) for line in lines if line]
+    return [line for line in lines if line]
 
 
 def place_by_bars(
@@ -342,9 +345,18 @@ def align(
             "The words could not be placed into the score's sections (no matching time grid); they are listed "
             "in source order under one tag. Add the section tags in the Song Sheet."
         )
-        text = "\n".join(["[Verse]", *_lines(kept)]) if kept else ""
+        heard = _line_words(kept)
+        text = (
+            "\n".join(["[Verse]", *(join_tokens([w.word for w in line]) for line in heard)]) if kept else ""
+        )
         return Alignment(
-            text, method, ({"tag": "[Verse]", "words": len(kept)},), tuple(dropped), low, tuple(warnings)
+            text,
+            method,
+            ({"tag": "[Verse]", "words": len(kept)},),
+            tuple(dropped),
+            low,
+            tuple(warnings),
+            tuple(tuple(line) for line in heard),
         )
     groups = [[i for i, s in enumerate(placed) if s == index] for index in range(len(sections))]
     return _draft(kept, groups, sections, method, dropped, low, warnings)
@@ -364,10 +376,12 @@ def _draft(
     """The draft from the words (indices into ``kept``) of every section."""
     blocks: list[str] = []
     summary: list[dict[str, Any]] = []
+    heard: list[tuple[AsrWord, ...]] = []
     for index, section in enumerate(sections):
         section_words = [kept[i] for i in groups[index]]
-        lines = _lines(section_words, list(groups[index]) if jumps else None)
-        blocks.append("\n".join([section.tag, *lines]))
+        lines = _line_words(section_words, list(groups[index]) if jumps else None)
+        heard += [tuple(line) for line in lines]
+        blocks.append("\n".join([section.tag, *(join_tokens([w.word for w in line]) for line in lines)]))
         summary.append(
             {
                 "tag": section.tag,
@@ -382,7 +396,9 @@ def _draft(
             warnings.append(
                 f"{section.tag} has {len(section_words)} word(s) but no vocal notes in the score."
             )
-    return Alignment("\n\n".join(blocks), method, tuple(summary), tuple(dropped), low, tuple(warnings))
+    return Alignment(
+        "\n\n".join(blocks), method, tuple(summary), tuple(dropped), low, tuple(warnings), tuple(heard)
+    )
 
 
 # --- sung-lyrics check ----------------------------------------------------------------------

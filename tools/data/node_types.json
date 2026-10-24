@@ -1265,6 +1265,77 @@
    "category": "Plenio/Score",
    "display_name": "Apply Arrangement"
   },
+  "PlenioApplyHeardCheck": {
+   "input": {
+    "required": {
+     "lyrics": [
+      "STRING",
+      {
+       "tooltip": "The lyrics draft Transcribe Lyrics made from the source's singing (its 'lyrics' output).",
+       "forceInput": true,
+       "multiline": false
+      }
+     ]
+    },
+    "optional": {
+     "answer": [
+      "STRING",
+      {
+       "tooltip": "The writer model's answer (asked only for a cover's original lyrics).",
+       "lazy": true,
+       "forceInput": true,
+       "multiline": false
+      }
+     ],
+     "report": [
+      "PLENIO_REPORT",
+      {
+       "tooltip": "Transcribe Lyrics' report: which words it heard unsure (they are marked for the writer)."
+      }
+     ],
+     "brief": [
+      "PLENIO_BRIEF",
+      {
+       "tooltip": "The Cover Brief: only original lyrics are checked; its title names the song for the writer."
+      }
+     ],
+     "language": [
+      "STRING",
+      {
+       "tooltip": "The language Transcribe Lyrics heard (its 'language' output).",
+       "forceInput": true,
+       "multiline": false
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "lyrics"
+    ],
+    "optional": [
+     "answer",
+     "report",
+     "brief",
+     "language"
+    ]
+   },
+   "output": [
+    "STRING",
+    "PLENIO_REPORT"
+   ],
+   "output_name": [
+    "lyrics",
+    "report"
+   ],
+   "output_is_list": [
+    false,
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Lyrics",
+   "display_name": "Apply Misheard Check"
+  },
   "PlenioApplySungCheck": {
    "input": {
     "required": {
@@ -1281,7 +1352,7 @@
      "answer": [
       "STRING",
       {
-       "tooltip": "The writer model's answer (asked only when there are words to check).",
+       "tooltip": "Never asked.",
        "lazy": true,
        "forceInput": true,
        "multiline": false
@@ -1290,7 +1361,7 @@
      "language": [
       "STRING",
       {
-       "tooltip": "The language the song is sung in (empty: the brief's, else guessed from the lyrics).",
+       "tooltip": "Not used.",
        "default": "",
        "multiline": false
       }
@@ -1332,7 +1403,7 @@
    ],
    "output_node": true,
    "category": "Plenio/Lyrics",
-   "display_name": "Apply Sung Check"
+   "display_name": "Apply Sung Check (retired)"
   },
   "PlenioAudioModelLoader": {
    "input": {
@@ -1465,6 +1536,67 @@
    "category": "Plenio/Score",
    "display_name": "Compose Arrangement"
   },
+  "PlenioComposeHeardCheck": {
+   "input": {
+    "required": {
+     "lyrics": [
+      "STRING",
+      {
+       "tooltip": "The lyrics draft Transcribe Lyrics made from the source's singing (its 'lyrics' output).",
+       "forceInput": true,
+       "multiline": false
+      }
+     ]
+    },
+    "optional": {
+     "report": [
+      "PLENIO_REPORT",
+      {
+       "tooltip": "Transcribe Lyrics' report: which words it heard unsure (they are marked for the writer)."
+      }
+     ],
+     "brief": [
+      "PLENIO_BRIEF",
+      {
+       "tooltip": "The Cover Brief: only original lyrics are checked; its title names the song for the writer."
+      }
+     ],
+     "language": [
+      "STRING",
+      {
+       "tooltip": "The language Transcribe Lyrics heard (its 'language' output).",
+       "forceInput": true,
+       "multiline": false
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "lyrics"
+    ],
+    "optional": [
+     "report",
+     "brief",
+     "language"
+    ]
+   },
+   "output": [
+    "STRING",
+    "STRING"
+   ],
+   "output_name": [
+    "prompt",
+    "schema"
+   ],
+   "output_is_list": [
+    false,
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Lyrics",
+   "display_name": "Compose Misheard Check"
+  },
   "PlenioComposePrompt": {
    "input": {
     "required": {
@@ -1568,7 +1700,7 @@
      "language": [
       "STRING",
       {
-       "tooltip": "The language the song is sung in (empty: the brief's, else guessed from the lyrics).",
+       "tooltip": "Not used.",
        "default": "",
        "multiline": false
       }
@@ -1597,7 +1729,7 @@
    ],
    "output_node": false,
    "category": "Plenio/Lyrics",
-   "display_name": "Compose Sung Check"
+   "display_name": "Compose Sung Check (retired)"
   },
   "PlenioCoverBrief": {
    "input": {
@@ -2699,6 +2831,20 @@
        "tooltip": "Write the lyrics as subtitles: '(lines).srt' whole lines, '(notes).srt' note by note, '(sung).srt' what the take really sings. Timed by listening (Qwen3-ASR and its aligner, 5.9 GB, fetched on first use).",
        "default": true
       }
+     ],
+     "lyrics_timing": [
+      "COMBO",
+      {
+       "display_name": "lyrics heard on",
+       "tooltip": "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the take's vocal stem (about half a minute more; fewer words timed in silence) or the song (quicker). Without the separation model the song.",
+       "advanced": true,
+       "default": "vocal stem",
+       "multiselect": false,
+       "options": [
+        "vocal stem",
+        "the song"
+       ]
+      }
      ]
     },
     "hidden": {
@@ -2730,7 +2876,8 @@
      "sheet_music",
      "sheet_music_size",
      "project_in_flac",
-     "lyrics_srt"
+     "lyrics_srt",
+     "lyrics_timing"
     ],
     "hidden": [
      "prompt",
@@ -5022,12 +5169,15 @@
     ]
    },
    "output": [
-    "PLENIO_PITCH"
+    "PLENIO_PITCH",
+    "AUDIO"
    ],
    "output_name": [
-    "sung_pitch"
+    "sung_pitch",
+    "vocals"
    ],
    "output_is_list": [
+    false,
     false
    ],
    "output_node": false,
@@ -5126,6 +5276,12 @@
      ]
     },
     "optional": {
+     "vocals": [
+      "AUDIO",
+      {
+       "tooltip": "The source's vocal stem (Sung Pitch): heard too, and the more confident hearing of the two is kept. Empty or unconnected: the recording alone."
+      }
+     ],
      "score": [
       "STRING",
       {
@@ -5164,6 +5320,7 @@
      "device"
     ],
     "optional": [
+     "vocals",
      "score",
      "timeline",
      "brief",

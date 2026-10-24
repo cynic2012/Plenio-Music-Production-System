@@ -64,18 +64,18 @@ heard, the words heard that they do not have, the lines not heard. The export's 
 (*86 % of the lyrics' words sung as written, 12 words the lyrics do not have*) and names a section not sung as
 written; the [Plenio Player](player.md#written-and-sung-lyrics) follows either version.
 
-**Misheard words.** What was heard may contain a word the ASR misheard - it then stood in the lyrics as sung as
-heard. In the templates **Check Sung Words** runs after the export: the writer model (the template's *Writer
-model*) reads the lyrics and every sung line, with the words the lyrics do not have at that place marked
-(and, where a similar word was heard instead of the lyrics' one, that word), and names those it is sure were
-misheard, each with the word most likely sung. Plenio takes a correction only when it replaces a marked word,
-the writer is at least 80 % sure, and the word has as many syllables as the word heard; ad-libs and words the
-music model chose stay. The corrections go into the record's sung lines and text - each kept with the word
-heard (`timing[].sung.corrected`) - and into `(sung).srt`; how far the take follows its lyrics is counted
-again. Nothing runs for a song without sung lyrics or without such words, and a record is checked once.
+**What was heard stays as heard.** The lyrics as sung are what the ASR heard - a word it misheard stands there
+as it was heard; nothing corrects them after the export. Misheard words are corrected only where the lyrics
+themselves come from an ASR: a cover's original lyrics, before the render
+([Fix Misheard Words](../paths/yue2-cover.md#misheard-words)).
 
-**How the times are measured.** The lyrics ASR listens to the exported song: **Qwen3-ASR 1.7B** hears the
-words and **Qwen3-ForcedAligner 0.6B** places every word on the audio (Apache-2.0, 4.1 + 1.8 GB, downloaded on
+**How the times are measured.** The lyrics ASR listens to the exported song's **vocal stem**: Export Release
+separates the take's vocals first (BS-RoFormer, the model of Stems and Sung Pitch - about 30 seconds for four
+minutes on a GPU), so the music does not pull words into the instrumental parts. Measured on 20 songs against
+the vocals' own onsets and silence: words timed where nobody sings 2.5 % -> 0.3 %, words within 0.3 s of a sung
+onset 86.7 % -> 88.8 %. *lyrics heard on* (an advanced option of Export Release) chooses *vocal stem* (default)
+or *the song* (quicker); without the separation model the song is heard, and the summary says so. **Qwen3-ASR
+1.7B** hears the words and **Qwen3-ForcedAligner 0.6B** places every word on the audio (Apache-2.0, 4.1 + 1.8 GB, downloaded on
 first use; its results are cached). It hears the song in pieces of at most 20 seconds, cut at quiet moments,
 each with a second and a half of its neighbours (a word heard by both at a cut is kept once): over a whole song
 with its music the aligner loses its place - in 1.1.0, when it heard a song in one piece, lines could come up

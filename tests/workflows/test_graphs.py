@@ -774,7 +774,8 @@ def test_export_takes_the_brief_and_writes_tags_with_variables(name: str) -> Non
         "",
         "{lyrics}",
     ]
-    assert values[-1] is True  # lyrics subtitles (SRT): on
+    assert values[-2] is True  # lyrics subtitles (SRT): on
+    assert values[-1] == "vocal stem"  # the lyrics heard on the take's vocal stem (1.2.0)
     note = next(n for n in nodes.values() if n.get("title") == "Tags & variables")
     for word in ("{genre}", "{mood}", "{lyrics}", "{take_seed}", "(notes).srt"):
         assert word in note["widgets_values"][0], word

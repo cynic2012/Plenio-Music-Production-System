@@ -5,7 +5,7 @@
  "nodes": [
   {
    "id": 1,
-   "type": "a6bf2f0a-374a-53a3-946b-0d236359d49e",
+   "type": "340b8cdd-6010-5018-b5e7-1bf0fd919dd8",
    "pos": [
     0,
     0
@@ -19,8 +19,26 @@
    "mode": 0,
    "inputs": [
     {
-     "localized_name": "record",
-     "name": "record",
+     "localized_name": "lyrics",
+     "name": "lyrics",
+     "type": "STRING",
+     "link": null
+    },
+    {
+     "localized_name": "report",
+     "name": "report",
+     "type": "PLENIO_REPORT",
+     "link": null
+    },
+    {
+     "localized_name": "brief",
+     "name": "brief",
+     "type": "PLENIO_BRIEF",
+     "link": null
+    },
+    {
+     "localized_name": "language",
+     "name": "language",
      "type": "STRING",
      "link": null
     },
@@ -37,13 +55,19 @@
    ],
    "outputs": [
     {
+     "localized_name": "lyrics",
+     "name": "lyrics",
+     "type": "STRING",
+     "links": null
+    },
+    {
      "localized_name": "report",
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": null
     }
    ],
-   "title": "Plenio · Check Sung Words",
+   "title": "Plenio · Fix Misheard Words",
    "properties": {},
    "widgets_values": [
     "gemma4_e4b_it_fp8_scaled.safetensors"
@@ -55,24 +79,24 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "a6bf2f0a-374a-53a3-946b-0d236359d49e",
+    "id": "340b8cdd-6010-5018-b5e7-1bf0fd919dd8",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 1407,
-     "lastLinkId": 14,
+     "lastLinkId": 21,
      "lastRerouteId": 0
     },
     "revision": 0,
     "config": {},
-    "name": "Plenio · Check Sung Words",
+    "name": "Plenio · Fix Misheard Words",
     "inputNode": {
      "id": -10,
      "bounding": [
       -260,
       0,
       160,
-      80
+      140
      ]
     },
     "outputNode": {
@@ -81,13 +105,13 @@
       1640,
       0,
       160,
-      60
+      80
      ]
     },
     "inputs": [
      {
-      "id": "e46b2164-48d8-5023-81fd-dd642c370a20",
-      "name": "record",
+      "id": "5e6bba99-3a64-5ab3-93fe-8a19938ca409",
+      "name": "lyrics",
       "type": "STRING",
       "linkIds": [
        11,
@@ -99,30 +123,81 @@
       ]
      },
      {
-      "id": "cf1589e8-19ea-55ef-a4fb-60c74a19691c",
-      "name": "model",
-      "type": "COMBO",
+      "id": "c2f613b6-bf9b-5c75-8f8f-5403079e1ce7",
+      "name": "report",
+      "type": "PLENIO_REPORT",
       "linkIds": [
-       13
+       13,
+       14
       ],
       "pos": [
        0,
        20
+      ]
+     },
+     {
+      "id": "b8eafbff-66b3-54b1-b287-934bcb1d7925",
+      "name": "brief",
+      "type": "PLENIO_BRIEF",
+      "linkIds": [
+       15,
+       16
+      ],
+      "pos": [
+       0,
+       40
+      ]
+     },
+     {
+      "id": "79e0b25c-62b6-5ab3-864f-a41f7447372c",
+      "name": "language",
+      "type": "STRING",
+      "linkIds": [
+       17,
+       18
+      ],
+      "pos": [
+       0,
+       60
+      ]
+     },
+     {
+      "id": "c4740c41-f95c-57ee-8095-282a8c19ace1",
+      "name": "model",
+      "type": "COMBO",
+      "linkIds": [
+       19
+      ],
+      "pos": [
+       0,
+       80
       ],
       "label": "writer model"
      }
     ],
     "outputs": [
      {
-      "id": "6a40001d-27fb-5886-bb2a-25ba8d506e58",
-      "name": "report",
-      "type": "PLENIO_REPORT",
+      "id": "71824834-bab6-590e-afb6-d6324978985a",
+      "name": "lyrics",
+      "type": "STRING",
       "linkIds": [
-       14
+       20
       ],
       "pos": [
        0,
        0
+      ]
+     },
+     {
+      "id": "8fa873ab-8be9-5aec-9f56-6e2633a034f9",
+      "name": "report",
+      "type": "PLENIO_REPORT",
+      "linkIds": [
+       21
+      ],
+      "pos": [
+       0,
+       20
       ]
      }
     ],
@@ -130,33 +205,45 @@
     "nodes": [
      {
       "id": 1401,
-      "type": "PlenioComposeSungCheck",
+      "type": "PlenioComposeHeardCheck",
       "pos": [
        0,
        0
       ],
       "size": [
        320,
-       110
+       150
       ],
       "flags": {},
       "order": 0,
       "mode": 0,
       "inputs": [
        {
-        "localized_name": "record",
-        "name": "record",
+        "localized_name": "lyrics",
+        "name": "lyrics",
         "type": "STRING",
         "link": 11
        },
        {
+        "localized_name": "report",
+        "name": "report",
+        "shape": 7,
+        "type": "PLENIO_REPORT",
+        "link": 13
+       },
+       {
+        "localized_name": "brief",
+        "name": "brief",
+        "shape": 7,
+        "type": "PLENIO_BRIEF",
+        "link": 15
+       },
+       {
         "localized_name": "language",
         "name": "language",
+        "shape": 7,
         "type": "STRING",
-        "widget": {
-         "name": "language"
-        },
-        "link": null
+        "link": 17
        }
       ],
       "outputs": [
@@ -179,18 +266,16 @@
        }
       ],
       "properties": {
-       "Node name for S&R": "PlenioComposeSungCheck"
+       "Node name for S&R": "PlenioComposeHeardCheck"
       },
-      "widgets_values": [
-       ""
-      ]
+      "widgets_values": []
      },
      {
       "id": 1402,
       "type": "PlenioWriterChoice",
       "pos": [
        0.0,
-       204
+       244
       ],
       "size": [
        400,
@@ -207,7 +292,7 @@
         "widget": {
          "name": "model"
         },
-        "link": 13
+        "link": 19
        }
       ],
       "outputs": [
@@ -735,22 +820,22 @@
      },
      {
       "id": 1407,
-      "type": "PlenioApplySungCheck",
+      "type": "PlenioApplyHeardCheck",
       "pos": [
        1180,
        0
       ],
       "size": [
        360,
-       220
+       260
       ],
       "flags": {},
       "order": 6,
       "mode": 0,
       "inputs": [
        {
-        "localized_name": "record",
-        "name": "record",
+        "localized_name": "lyrics",
+        "name": "lyrics",
         "type": "STRING",
         "link": 12
        },
@@ -762,37 +847,49 @@
         "link": 10
        },
        {
+        "localized_name": "report",
+        "name": "report",
+        "shape": 7,
+        "type": "PLENIO_REPORT",
+        "link": 14
+       },
+       {
+        "localized_name": "brief",
+        "name": "brief",
+        "shape": 7,
+        "type": "PLENIO_BRIEF",
+        "link": 16
+       },
+       {
         "localized_name": "language",
         "name": "language",
+        "shape": 7,
         "type": "STRING",
-        "widget": {
-         "name": "language"
-        },
-        "link": null
+        "link": 18
        }
       ],
       "outputs": [
        {
-        "localized_name": "record",
-        "name": "record",
+        "localized_name": "lyrics",
+        "name": "lyrics",
         "type": "STRING",
-        "links": null
+        "links": [
+         20
+        ]
        },
        {
         "localized_name": "report",
         "name": "report",
         "type": "PLENIO_REPORT",
         "links": [
-         14
+         21
         ]
        }
       ],
       "properties": {
-       "Node name for S&R": "PlenioApplySungCheck"
+       "Node name for S&R": "PlenioApplyHeardCheck"
       },
-      "widgets_values": [
-       ""
-      ]
+      "widgets_values": []
      }
     ],
     "groups": [],
@@ -897,22 +994,78 @@
       "id": 13,
       "origin_id": -10,
       "origin_slot": 1,
+      "target_id": 1401,
+      "target_slot": 1,
+      "type": "PLENIO_REPORT"
+     },
+     {
+      "id": 14,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 1407,
+      "target_slot": 2,
+      "type": "PLENIO_REPORT"
+     },
+     {
+      "id": 15,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 1401,
+      "target_slot": 2,
+      "type": "PLENIO_BRIEF"
+     },
+     {
+      "id": 16,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 1407,
+      "target_slot": 3,
+      "type": "PLENIO_BRIEF"
+     },
+     {
+      "id": 17,
+      "origin_id": -10,
+      "origin_slot": 3,
+      "target_id": 1401,
+      "target_slot": 3,
+      "type": "STRING"
+     },
+     {
+      "id": 18,
+      "origin_id": -10,
+      "origin_slot": 3,
+      "target_id": 1407,
+      "target_slot": 4,
+      "type": "STRING"
+     },
+     {
+      "id": 19,
+      "origin_id": -10,
+      "origin_slot": 4,
       "target_id": 1402,
       "target_slot": 0,
       "type": "COMBO"
      },
      {
-      "id": 14,
+      "id": 20,
+      "origin_id": 1407,
+      "origin_slot": 0,
+      "target_id": -20,
+      "target_slot": 0,
+      "type": "STRING"
+     },
+     {
+      "id": 21,
       "origin_id": 1407,
       "origin_slot": 1,
       "target_id": -20,
-      "target_slot": 0,
+      "target_slot": 1,
       "type": "PLENIO_REPORT"
      }
     ],
     "extra": {},
     "category": "Plenio/Lyrics",
-    "description": "Misheard words in the lyrics as sung: the writer model reads the lyrics and every line the take sings, with the words the lyrics do not have there marked, and corrects those it is sure were misheard - with a word of as many syllables that fits the line. The release record keeps each correction with the word heard; (sung).srt is written again. Nothing runs for a song without sung lyrics or without such words."
+    "description": "Misheard words in a cover's original lyrics, before the render: the writer model reads the lyrics Transcribe Lyrics heard in the source, with the words it was unsure of marked, and corrects those it is sure were misheard - with a word that sounds alike, fits the line and has as many syllables. The Song Sheet lists each correction with the word heard. Only a Cover Brief with original lyrics asks the writer; new lyrics, an instrumental and lyrics you write yourself are never changed."
    }
   ]
  },

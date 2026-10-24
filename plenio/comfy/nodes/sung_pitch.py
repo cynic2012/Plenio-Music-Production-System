@@ -5,6 +5,9 @@ The vocal stem comes from a separation model in ``models/audio_separation`` (the
 uses), the curve from ``core.audio.pitch`` (YIN, NumPy). The curve is display only: Song Sheet shows
 it in the piano roll and never sends it anywhere. Without a separation model - or when the separation
 fails - the node still finishes: its output says why there is no curve, and the run goes on.
+
+The stem itself is an output too (owner 2026-10-24): Transcribe Lyrics hears it besides the mix and keeps the
+more confident hearing. Without a stem the output is empty, and Transcribe Lyrics hears the mix alone.
 """
 
 from __future__ import annotations
@@ -60,15 +63,21 @@ class PlenioSungPitch(io.ComfyNode):
             outputs=[
                 PitchType.Output(
                     display_name="sung_pitch", tooltip="For Song Sheet: the curve in the piano roll."
-                )
+                ),
+                io.Audio.Output(
+                    display_name="vocals",
+                    tooltip="The vocal stem (empty without a separation), for Transcribe Lyrics: it hears the stem "
+                    "too and keeps the more confident hearing.",
+                ),
             ],
         )
 
     @classmethod
     def execute(cls, audio: dict[str, Any], separation: str) -> io.NodeOutput:
-        pitch = cls._pitch(audio, separation)
+        pitch, vocals = cls._pitch(audio, separation)
         return io.NodeOutput(
             pitch,
+            vocals,
             ui={
                 "plenio_summary": [
                     {"status": "warning" if pitch.problem else "ok", "markdown": _summary(pitch)}
@@ -77,28 +86,29 @@ class PlenioSungPitch(io.ComfyNode):
         )
 
     @classmethod
-    def _pitch(cls, audio: dict[str, Any], separation: str) -> SungPitch:
+    def _pitch(cls, audio: dict[str, Any], separation: str) -> tuple[SungPitch, dict[str, Any] | None]:
+        """The curve, and the vocal stem it was tracked on (``None``: no separation)."""
         items, rate = host.audio_items(audio)
         if not items:
-            return missing("No audio came in.")
+            return missing("No audio came in."), None
         samples = items[0]
         if separation == WHOLE_MIX:
-            return track(samples, rate, source="the whole mix (no separation)")
+            return track(samples, rate, source="the whole mix (no separation)"), None
         path = host.locate_model(FOLDER, separation) if separation else None
         if path is None:
             return missing(
                 f"The separation model {separation or '(none)'} is not in models/{FOLDER}; put it there "
                 "(Separate Stems uses the same file) or choose 'whole mix'."
-            )
+            ), None
         host.raise_if_interrupted()
         try:
             model = audio_models.load("separation", separation, path)
             stems = model.engine.separate(samples, rate)
         except Exception as error:  # display only: a failed separation must not stop the cover
             LOG.warning("Sung Pitch: the separation failed: %s", error)
-            return missing(f"The separation failed ({error}); the editor shows no sung pitch.")
+            return missing(f"The separation failed ({error}); the editor shows no sung pitch."), None
         vocals = stems.get("vocals")
         if vocals is None:
-            return missing(f"{model.engine.name} gives no vocal stem ({', '.join(stems)}).")
+            return missing(f"{model.engine.name} gives no vocal stem ({', '.join(stems)})."), None
         host.raise_if_interrupted()
-        return track(vocals, rate, source=f"vocals of {model.engine.name}")
+        return track(vocals, rate, source=f"vocals of {model.engine.name}"), host.make_audio([vocals], rate)

@@ -179,7 +179,7 @@ def test_subtitles_from_what_the_asr_heard(comfy_path: Path, monkeypatch: pytest
     samples = np.zeros((2, 48000 * 10))
     sheet = {"lyrics": "[Verse]\nHold on to the light\nNever let it go", "score": "", "engine": ""}
     notes: list[str] = []
-    timed, sung, why = export._subtitles(samples, 48000, sheet, [], None, notes)
+    timed, sung, why, heard_from = export._subtitles(samples, 48000, sheet, [], None, notes)
     assert (
         timed is not None and why == "" and notes == [] and asked[0].language == "en"
     )  # guessed from the lyrics
@@ -195,8 +195,24 @@ def test_subtitles_from_what_the_asr_heard(comfy_path: Path, monkeypatch: pytest
         None,
         None,
         "an instrumental: no words",
+        "",
     )
-    assert len(asked) == 1
+    assert len(asked) == 1 and heard_from == "the song"
+    # heard on the take's vocal stem when it can be separated (owner 2026-10-24: the timing as good as possible)
+    heard_audio: list[Any] = []
+
+    def on_stem(audio: Any, settings: Any, source: str, progress: Any) -> AsrResult:
+        heard_audio.append(audio)
+        return fake_asr(audio, settings, source, progress)
+
+    monkeypatch.setattr(export, "run_asr", on_stem)
+    monkeypatch.setattr(export, "vocal_stem", lambda x, rate: (x * 0.5, ""))
+    timed, sung, why, heard_from = export._subtitles(samples, 48000, sheet, [], None, notes, on_stem=True)
+    assert timed is not None and heard_from == "vocal stem" and len(heard_audio) == 1
+    # no separation model: the song is heard, and the summary says why
+    monkeypatch.setattr(export, "vocal_stem", lambda x, rate: (None, "the separation model is not installed"))
+    _timed, _sung, _why, heard_from = export._subtitles(samples, 48000, sheet, [], None, notes, on_stem=True)
+    assert heard_from == "the song" and any("heard on the song - the separation model" in n for n in notes)
 
 
 def test_subtitles_are_left_out_with_a_note_when_the_asr_cannot_run(
@@ -213,7 +229,7 @@ def test_subtitles_are_left_out_with_a_note_when_the_asr_cannot_run(
     monkeypatch.setattr(export, "run_asr", offline)
     notes: list[str] = []
     sheet = {"lyrics": "[Verse]\nHold on", "score": "", "engine": ""}
-    timed, sung, why = export._subtitles(np.zeros((1, 4800)), 48000, sheet, [], None, notes)
+    timed, sung, why, _heard = export._subtitles(np.zeros((1, 4800)), 48000, sheet, [], None, notes)
     assert (
         timed is None
         and sung is None

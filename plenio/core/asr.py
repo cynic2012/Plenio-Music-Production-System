@@ -18,7 +18,8 @@ ComfyUI restart gives the same draft.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+import math
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -295,3 +296,26 @@ def weak_segments(result: AsrResult) -> set[int]:
         if 0 < len(words) <= WEAK_SEGMENT_MAX_WORDS and min(w.p for w in words) < WEAK_SEGMENT_WORD_P:
             weak.add(index)
     return weak
+
+
+STEM_MARGIN = 0.02
+"""How much more confident the ASR must hear a cover's vocal stem than its mix - the mean natural log of the kept
+words' probabilities - for the lyrics to be taken from the stem (owner 2026-10-24: the vocal stem only where it
+hears better). Measured on 15 of the owner's songs (their lyrics as the reference): the stem heard better in 4,
+worse in 8 (separation artefacts) - word error 28.9 % from the mix, 30.0 % from the stem; the more confident
+hearing with this margin was the better one in 13 of 15 - 27.3 % (choosing the better one every time: 26.7 %)."""
+
+
+def confidence(words: Sequence[AsrWord]) -> float | None:
+    """How sure the ASR was of what it heard: the mean natural log of the words' probabilities (None: none)."""
+    if not words:
+        return None
+    return sum(math.log(max(w.p, 1e-4)) for w in words) / len(words)
+
+
+def prefer_stem(mix: Sequence[AsrWord], stem: Sequence[AsrWord]) -> bool:
+    """Whether the vocal stem was heard more confidently than the mix, by ``STEM_MARGIN``."""
+    heard_mix, heard_stem = confidence(mix), confidence(stem)
+    if heard_stem is None:
+        return False
+    return heard_mix is None or heard_stem > heard_mix + STEM_MARGIN

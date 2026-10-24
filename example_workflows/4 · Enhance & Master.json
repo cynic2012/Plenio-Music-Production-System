@@ -612,7 +612,7 @@
    ],
    "size": [
     380,
-    630
+    654
    ],
    "flags": {},
    "order": 10,
@@ -814,6 +814,15 @@
       "name": "lyrics_srt"
      },
      "link": null
+    },
+    {
+     "localized_name": "lyrics_timing",
+     "name": "lyrics_timing",
+     "type": "COMBO",
+     "widget": {
+      "name": "lyrics_timing"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -844,7 +853,8 @@
     "off",
     "standard",
     true,
-    true
+    true,
+    "vocal stem"
    ]
   },
   {

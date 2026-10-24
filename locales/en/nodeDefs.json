@@ -107,10 +107,19 @@
    }
   }
  },
- "a6bf2f0a-374a-53a3-946b-0d236359d49e": {
+ "340b8cdd-6010-5018-b5e7-1bf0fd919dd8": {
   "inputs": {
-   "record": {
-    "tooltip": "The release record Export Release wrote (its 'record' output)."
+   "lyrics": {
+    "tooltip": "The lyrics draft Transcribe Lyrics made from the source's singing."
+   },
+   "report": {
+    "tooltip": "Transcribe Lyrics' report: which words it heard unsure."
+   },
+   "brief": {
+    "tooltip": "The Cover Brief: only original lyrics are checked."
+   },
+   "language": {
+    "tooltip": "The language Transcribe Lyrics heard."
    },
    "model": {
     "tooltip": "The writer: a text model of ComfyUI (a bare file name, written by Generate Text; Gemma 4 E4B by default) or a Local LLM model (GGUF files, LM Studio, Ollama ...). Only the chosen one is loaded; the templates link it to the Writer model node. Press R to refresh the list."
@@ -118,6 +127,9 @@
   },
   "outputs": {
    "0": {
+    "tooltip": "The draft, with the misheard words corrected."
+   },
+   "1": {
     "tooltip": "What was corrected, and why not the rest."
    }
   }

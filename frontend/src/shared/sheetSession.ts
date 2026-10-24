@@ -131,13 +131,15 @@ export interface TimelinePayload {
   bar_prints?: [string, string][]
 }
 
-/** What Transcribe Lyrics reports about the draft it produced (``plenio_asr``). */
+/** What Transcribe Lyrics reports about the draft it produced (``plenio_asr``) - and, for a cover's original
+ * lyrics, Fix Misheard Words about the draft it corrected: each word heard and the word put in its place. */
 export interface AsrNote {
   draft_sha256: string
   engine: string
   language: string
   low_confidence: string[]
   left_out: string[]
+  corrected?: { heard: string; word: string }[]
 }
 
 export interface SectionTime {

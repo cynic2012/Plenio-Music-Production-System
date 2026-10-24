@@ -546,7 +546,8 @@ def sung_detail(found: Any) -> dict[str, Any]:
         "extra_words": found.get("extra_words"),
         "not_sung": [str(x) for x in found.get("not_sung") or []],
         "sections": [dict(s) for s in found.get("sections") or [] if isinstance(s, Mapping)],
-        # the words the writer model found misheard, each with the word heard (Check Sung Words)
+        # the words the writer model found misheard, each with the word heard (Check Sung Words, retired in 1.2.0:
+        # songs exported before keep them)
         "corrected": [dict(c) for c in found.get("corrected") or [] if isinstance(c, Mapping)],
     }
 

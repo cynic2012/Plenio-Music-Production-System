@@ -1,5 +1,9 @@
 """Transcribe Lyrics: sung words of a recording, placed into the final score's sections.
 
+With ``vocals`` connected (a cover: Sung Pitch's vocal stem of the source) it hears the stem too and keeps the
+hearing it was more confident of (``core.asr.prefer_stem``; owner 2026-10-24: the stem only where it hears
+better - a separation also leaves artefacts that are misheard).
+
 Also the *sung-lyrics check*: with ``expected_lyrics`` connected it compares what is sung in a take
 with the lyrics the take was given (WER overall and per section).
 """
@@ -12,7 +16,7 @@ from comfy_api.latest import io
 
 from ...core import score as score_rules
 from ...core.alignment import LOW_CONFIDENCE, align, check_sung_lyrics, drop_inventions, join_tokens
-from ...core.asr import DEFAULT_ENGINE, ENGINES, AsrSettings, weak_segments
+from ...core.asr import DEFAULT_ENGINE, ENGINES, AsrSettings, confidence, prefer_stem, weak_segments
 from ...core.brief import CoverBrief
 from ...core.errors import PlenioCancelledError, PlenioUserError
 from ...core.hashing import sha256_text
@@ -64,6 +68,12 @@ class PlenioTranscribeLyrics(io.ComfyNode):
             inputs=[
                 io.Audio.Input(
                     "audio", tooltip="The source recording, or a rendered take for the lyrics check."
+                ),
+                io.Audio.Input(
+                    "vocals",
+                    optional=True,
+                    tooltip="The source's vocal stem (Sung Pitch): heard too, and the more confident hearing of the "
+                    "two is kept. Empty or unconnected: the recording alone.",
                 ),
                 io.String.Input(
                     "score",
@@ -134,6 +144,7 @@ class PlenioTranscribeLyrics(io.ComfyNode):
         timeline: Any = None,
         expected_lyrics: str | None = None,
         brief: Any = None,
+        vocals: Any = None,
     ) -> io.NodeOutput:
         checking = expected_lyrics is not None
         language = asr_language(language, brief)
@@ -155,10 +166,21 @@ class PlenioTranscribeLyrics(io.ComfyNode):
         progress = host.Progress()
         try:
             result = _run_asr(audio, settings, source, progress)
+            stem = None
+            if vocals is not None and not checking:
+                stem = _run_asr(vocals, settings, host.audio_sha256(vocals), progress)
         except PlenioCancelledError:
             host.raise_if_interrupted()  # ComfyUI's interrupt, not an error dialog (AUD-10)
             raise
         progress.update(1.0)
+        heard_from = "the recording"
+        sure: dict[str, float | None] = {}
+        if stem is not None:
+            mix_words = [w for w in result.words if w.segment not in weak_segments(result)]
+            stem_words = [w for w in stem.words if w.segment not in weak_segments(stem)]
+            sure = {"recording": confidence(mix_words), "vocal stem": confidence(stem_words)}
+            if prefer_stem(mix_words, stem_words):
+                result, heard_from = stem, "the vocal stem"
         for key in ("engine_note", "device_note"):
             if result.settings.get(key):
                 warnings.append(str(result.settings[key]))
@@ -175,6 +197,9 @@ class PlenioTranscribeLyrics(io.ComfyNode):
             "words": len(result.words),
             "asr": result.to_dict(),
         }
+        if stem is not None:
+            data["heard_from"] = heard_from
+            data["confidence"] = {k: None if v is None else round(v, 4) for k, v in sure.items()}
         if checking:
             check = check_sung_lyrics(expected_lyrics or "", list(result.words))
             data["check"] = check.to_dict()
@@ -233,6 +258,7 @@ class PlenioTranscribeLyrics(io.ComfyNode):
             f"{len(kept)} words in {len([s for s in alignment.sections if s['words']])} section(s), {detected}"
             + (f" ({result.language_probability:.0%})" if result.language_probability > 0 else "")
             + f", placement: {alignment.method}"
+            + (f", heard from {heard_from} (the more confident hearing)" if stem is not None else "")
             + (", from the cache" if result.cached else f", {result.seconds:.0f} s on {result.device}")
             + f" ({result.engine})"
         )

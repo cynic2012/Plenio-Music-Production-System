@@ -1241,18 +1241,19 @@ def arrange() -> Blueprint:
     )
 
 
-SUNG_CHECK_MAX_TOKENS = 1024  # a few corrections in JSON
-SUNG_CHECK_CONTEXT = 8192  # the lyrics and the lines as heard (1 000-3 000 tokens) and the answer
-SUNG_CHECK_TEMPERATURE = 0.2
+HEARD_CHECK_MAX_TOKENS = 1024  # a few corrections in JSON
+HEARD_CHECK_CONTEXT = 8192  # the lyrics as heard (1 000-3 000 tokens) and the answer
+HEARD_CHECK_TEMPERATURE = 0.2
 """A judgement, not a song: little sampling."""
 
 
-def check_sung() -> Blueprint:
-    """Compose Sung Check -> writer (the same list as Write Song) -> Apply Sung Check, after Export Release
-    (owner's request 2026-10-23). Apply's answer is lazy: a record without what its take sings, or without a
-    word its lyrics lack, asks no writer - no model loads."""
+def check_heard() -> Blueprint:
+    """Compose Misheard Check -> writer (the same list as Write Song) -> Apply Misheard Check, between Transcribe
+    Lyrics and the cover's Song Sheet (owner's rule 2026-10-24: misheard words are corrected only in a cover's
+    transcribed original lyrics, before the render). Apply's answer is lazy: anything but a Cover Brief with
+    original lyrics asks no writer - no model loads."""
     g = Graph(first_id=1401)
-    compose = g.add("PlenioComposeSungCheck", (0, 0), size=(320, 110))
+    compose = g.add("PlenioComposeHeardCheck", (0, 0), size=(320, 150))
     choice = g.add(
         "PlenioWriterChoice",
         (0, 170),
@@ -1276,9 +1277,9 @@ def check_sung() -> Blueprint:
         title="Generate Text (ComfyUI)",
         widgets={
             "prompt": "",
-            "max_length": SUNG_CHECK_MAX_TOKENS,
+            "max_length": HEARD_CHECK_MAX_TOKENS,
             "sampling_mode": "on",
-            "sampling_mode.temperature": SUNG_CHECK_TEMPERATURE,
+            "sampling_mode.temperature": HEARD_CHECK_TEMPERATURE,
             "sampling_mode.top_k": 64,
             "sampling_mode.top_p": 0.95,
             "sampling_mode.min_p": 0.05,
@@ -1299,17 +1300,17 @@ def check_sung() -> Blueprint:
             "model": CHOOSE,
             "seed": 0,
             "seed.control": "fixed",
-            "max_tokens": SUNG_CHECK_MAX_TOKENS,
-            "temperature": SUNG_CHECK_TEMPERATURE,
+            "max_tokens": HEARD_CHECK_MAX_TOKENS,
+            "temperature": HEARD_CHECK_TEMPERATURE,
             "thinking": False,
-            "context": SUNG_CHECK_CONTEXT,
+            "context": HEARD_CHECK_CONTEXT,
             "keep_loaded": False,
             "system_prompt": "",
             "reuse_answers": True,
         },
     )
     switch = g.add("ComfySwitchNode", (860, 170), size=(260, 90), title="ComfyUI or Local LLM")
-    apply = g.add("PlenioApplySungCheck", (1180, 0), size=(360, 220))
+    apply = g.add("PlenioApplyHeardCheck", (1180, 0), size=(360, 260))
     g.link(compose, "prompt", generate, "prompt")
     g.link(compose, "prompt", local_llm, "prompt")
     g.link(compose, "schema", local_llm, "schema")
@@ -1321,20 +1322,38 @@ def check_sung() -> Blueprint:
     g.link(local_llm, "text", switch, "on_true")
     g.link(switch, "output", apply, "answer")
     return Blueprint(
-        "Plenio · Check Sung Words",
+        "Plenio · Fix Misheard Words",
         "Plenio/Lyrics",
-        "Misheard words in the lyrics as sung: the writer model reads the lyrics and every line the take sings, "
-        "with the words the lyrics do not have there marked, and corrects those it is sure were misheard - "
-        "with a word of as many syllables that fits the line. The release record keeps each correction with "
-        "the word heard; (sung).srt is written again. Nothing runs for a song without sung lyrics or without "
-        "such words.",
+        "Misheard words in a cover's original lyrics, before the render: the writer model reads the lyrics "
+        "Transcribe Lyrics heard in the source, with the words it was unsure of marked, and corrects those it is "
+        "sure were misheard - with a word that sounds alike, fits the line and has as many syllables. The Song "
+        "Sheet lists each correction with the word heard. Only a Cover Brief with original lyrics asks the "
+        "writer; new lyrics, an instrumental and lyrics you write yourself are never changed.",
         g,
         [
             BlueprintInput(
-                "record",
+                "lyrics",
                 "STRING",
-                [(compose, "record"), (apply, "record")],
-                tooltip="The release record Export Release wrote (its 'record' output).",
+                [(compose, "lyrics"), (apply, "lyrics")],
+                tooltip="The lyrics draft Transcribe Lyrics made from the source's singing.",
+            ),
+            BlueprintInput(
+                "report",
+                "PLENIO_REPORT",
+                [(compose, "report"), (apply, "report")],
+                tooltip="Transcribe Lyrics' report: which words it heard unsure.",
+            ),
+            BlueprintInput(
+                "brief",
+                "PLENIO_BRIEF",
+                [(compose, "brief"), (apply, "brief")],
+                tooltip="The Cover Brief: only original lyrics are checked.",
+            ),
+            BlueprintInput(
+                "language",
+                "STRING",
+                [(compose, "language"), (apply, "language")],
+                tooltip="The language Transcribe Lyrics heard.",
             ),
             BlueprintInput(
                 "model",
@@ -1347,6 +1366,12 @@ def check_sung() -> Blueprint:
             ),
         ],
         [
+            BlueprintOutput(
+                "lyrics",
+                "STRING",
+                (apply, "lyrics"),
+                tooltip="The draft, with the misheard words corrected.",
+            ),
             BlueprintOutput(
                 "report",
                 "PLENIO_REPORT",
@@ -2044,7 +2069,6 @@ def finish(
     sheet_music: str = "off",
     brief: Node | None = None,
     keep_seeds: bool = False,
-    writer: Node | None = None,
 ) -> tuple[Node, Node, Node]:
     """Master (Stems, Audio HQ, EQ, Loudness) -> Preview + Export (the unmastered take as the original), and
     Cover Art - laid out above the render by ``cover_over`` once the template stands.
@@ -2101,16 +2125,7 @@ def finish(
     g.link(cover, "IMAGE", cover_preview, "images")
     for index, (node, output) in enumerate(all_reports):
         g.link(node, output, export, f"reports.report_{index}")
-    finished = [master, preview, export]
-    if writer is not None:
-        # misheard words in the lyrics as sung, by the template's writer model (owner's request 2026-10-23)
-        check = g.add_subgraph(
-            blueprints["sung_check"], (x, preview_y + 120 + 84), size=(340, 140), title="Check Sung Words"
-        )
-        g.link(export, "record", check, "record")
-        g.link(writer, "model", check, "model")
-        finished.append(check)
-    g.group(group, finished)
+    g.group(group, [master, preview, export])
     g.group("COVER ART", [cover, cover_seed_node, cover_preview], color=COVER_GROUP)
     return master, preview, export
 
@@ -2218,11 +2233,7 @@ COVER_TEXT = (
     "artwork prompt with FLUX.2 Klein 4B (about "
     "16 GB of model files, Apache-2.0); Export embeds it in the FLAC and MP3 files and saves it as `.jpg`. The "
     "**Cover Art** card in *HQ Mastering & Cover Art* at the top switches it off - its three nodes are then "
-    "bypassed and no image model loads.\n\n"
-    "**Check Sung Words** (after Export): the writer model reads the lyrics and what the take sings, as heard, "
-    "and corrects the words the lyrics ASR misheard - only those it is sure of, each with a word of as many "
-    "syllables. The release record keeps every correction with the word heard; the Plenio Player shows the "
-    "corrected lines under *As sung*. Nothing runs for a song without sung lyrics or without such words."
+    "bypassed and no image model loads."
 )
 STEMS_TEXT = (
     "**Stems (in the Master block, off):** switch *stems* on the *Plenio · Master* node on: *Separate Stems* "
@@ -2431,7 +2442,6 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         group="6 · FINISH",
         sheet_music="PDF (A4)",
         brief=brief,
-        writer=writer,
     )
     switch = hq_switch(g, master_block)
     g.group("1 · SONG", [switch, writer, brief])
@@ -2514,6 +2524,8 @@ ABOUT_COVER = f"""# 2 · YuE2 · Cover
 4. With *one cover, stop to review* the run **stops at Song Sheet · Score**. Open it, check the score (fix section names and boundaries), then *Approve*.
 5. Run again: the lyrics are drafted (ASR of the original, the writer's new lyrics, or the section tags) and the run **stops at Song Sheet · Text**. Correct or replace the lyrics - your text always wins - and *Approve*.
 6. Run again to render. Each further run is a new take (the take seed changes).
+
+**Original lyrics** are what *Transcribe Lyrics* hears in the source (Qwen3-ASR), placed into the score's sections. It hears the recording and the vocal stem *Sung Pitch* separates, and keeps the hearing it is more confident of - the stem only where it hears better (a separation also leaves artefacts that get misheard). **Fix Misheard Words** then has the writer model read them, with the words the ASR was unsure of marked, and correct the words it is sure were misheard - each with a word that sounds alike, fits the line and has as many syllables. Song Sheet · Text lists every correction beside the word heard; your text always wins. Only original lyrics are checked: new lyrics, an instrumental and lyrics you write yourself are never changed.
 
 **New lyrics** are understood only when they fit the melody - about one syllable per note - and the voice fits its range; Song Sheet · Text warns about both.
 
@@ -2614,6 +2626,11 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     write = g.add_subgraph(bp["write"], (1380 + dx, 360), size=(WRITER_WIDTH, 260))
     draft = draft_seed(g, write, (1380 + dx, 680), keep=False)
     writer = writer_model(g, (0, WRITER_Y))
+    # misheard words in the original lyrics, before the render (owner's rule 2026-10-24); its writer is asked
+    # only for original lyrics - the switch after it does not even ask for its output otherwise
+    heard = g.add_subgraph(
+        bp["heard_check"], (1380 + dx, 960), size=(WRITER_WIDTH, 170), title="Fix Misheard Words"
+    )
     source_switch = g.add("ComfySwitchNode", (1800 + dx, 0), size=(260, 90), title="Original or new lyrics")
     tags_switch = g.add(
         "ComfySwitchNode", (1800 + dx, 165), size=(260, 90), title="Instrumental: section tags"
@@ -2663,8 +2680,13 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(score_sheet, "score", write, "score")
     g.link(asr, "language", write, "language")
     g.link(asr, "lyrics", write, "reference_lyrics")  # sectioned: line-by-line syllable targets
+    g.link(asr, "lyrics", heard, "lyrics")
+    g.link(asr, "report", heard, "report")
+    g.link(brief, "brief", heard, "brief")
+    g.link(asr, "language", heard, "language")
+    g.link(writer, "model", heard, "model")
     g.link(brief, "use_source_lyrics", source_switch, "switch")
-    g.link(asr, "lyrics", source_switch, "on_true")
+    g.link(heard, "lyrics", source_switch, "on_true")
     g.link(write, "lyrics", source_switch, "on_false")
     g.link(brief, "instrumental", tags_switch, "switch")
     g.link(score_sheet, "section_tags", tags_switch, "on_true")
@@ -2710,12 +2732,12 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             (transcribe, "report"),
             (check_vocals, "report"),
             (check_lyrics, "report"),
+            (heard, "report"),
         ],
         group="7 · FINISH",
         sheet_music="PDF (A4)",
         export_size=(380, 584 + SUMMARY_ROOM),
         brief=brief,
-        writer=writer,
     )
     # Sung Pitch (0.4.4): the source's vocals as a pitch curve for both sheets' editors, once per source;
     # the text sheet plays the source too, so the words can be checked against the singing
@@ -2731,11 +2753,13 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(excerpt, "AUDIO", sung_pitch, "audio")
     g.link(sung_pitch, "sung_pitch", score_sheet, "sung_pitch")
     g.link(sung_pitch, "sung_pitch", text_sheet, "sung_pitch")
+    # the original lyrics are heard in the mix and in the vocal stem; the more confident hearing is kept
+    g.link(sung_pitch, "vocals", asr, "vocals")
     switch = hq_switch(g, master_block)
     g.group("1 · SOURCE", [switch, writer, source, excerpt])
     g.group("2 · COVER", [brief])
     g.group("3 · SCORE", [transcribe, tools, score_sheet, sung_pitch, arrange_node, arrangement])
-    g.group("4 · LYRICS", [asr, write, draft, source_switch, tags_switch])
+    g.group("4 · LYRICS", [asr, heard, write, draft, source_switch, tags_switch])
     g.group("5 · TEXT", [text_sheet])
     g.group("6 · RENDER", [seed, render, check_vocals, takes_preview, check_lyrics])
     g.group("MUSIC MODEL", [model_node, adapter, adapter_switch], color=MODEL_GROUP)
@@ -2843,7 +2867,6 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         reports=[(sheet, "report")],
         group="5 · FINISH",
         brief=brief,
-        writer=writer,
     )
     switch = hq_switch(g, master_block)
     g.group("1 · SONG", [switch, writer, brief])
@@ -2982,7 +3005,6 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         export_size=(385, 554 + SUMMARY_ROOM),
         keep_seeds=True,
         brief=brief,
-        writer=writer,
     )
     switch = hq_switch(g, master_block)
     g.group("1 · SONG", [switch, writer, brief])
@@ -3070,8 +3092,9 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     export = g.add(
         "PlenioExportRelease",
         (2490, 180),
-        # 1.0.0: the brief socket and lyrics subtitles (SRT); 2026-10-21: two more report slots (Audio HQ)
-        size=(380, 490 + SUMMARY_ROOM + 2 * SLOT_HEIGHT),
+        # 1.0.0: the brief socket and lyrics subtitles (SRT); 2026-10-21: two more report slots (Audio HQ);
+        # 1.2.0: what the lyrics are heard on
+        size=(380, 514 + SUMMARY_ROOM + 2 * SLOT_HEIGHT),
         autogrow={"reports": 7},
         widgets={
             "folder": "plenio/enhanced",
@@ -3192,7 +3215,7 @@ def blueprints() -> dict[str, Blueprint]:
         "yue2_model": yue2_model(),
         "write": write_song(),
         "arrange": arrange(),
-        "sung_check": check_sung(),
+        "heard_check": check_heard(),
         "yue2_plan": yue2_plan(),
         "yue2_render": yue2_render(),
         "transcribe": transcribe_score(),
@@ -3215,7 +3238,7 @@ def templates(bp: dict[str, Blueprint]) -> list[tuple[str, Graph, list[Blueprint
     check, check_app = system_check()
     # Refine is in no template since Audio HQ (2026-10-21): its blueprint ships in subgraphs/ for the node
     # library only; the song templates' stems are inside Master since 2026-10-24 (the Stems block: Enhance)
-    finish_bps = [bp["master"], bp["cover"], bp["sung_check"]]
+    finish_bps = [bp["master"], bp["cover"]]
     return [
         ("0 · System Check", check, [], check_app),
         (
@@ -3227,7 +3250,15 @@ def templates(bp: dict[str, Blueprint]) -> list[tuple[str, Graph, list[Blueprint
         (
             "2 · YuE2 · Cover",
             cover,
-            [bp["yue2_model"], bp["write"], bp["transcribe"], bp["arrange"], bp["yue2_takes"], *finish_bps],
+            [
+                bp["yue2_model"],
+                bp["write"],
+                bp["transcribe"],
+                bp["arrange"],
+                bp["heard_check"],
+                bp["yue2_takes"],
+                *finish_bps,
+            ],
             cover_app,
         ),
         (

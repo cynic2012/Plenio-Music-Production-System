@@ -1,5 +1,5 @@
-import { d as Dt, m as Re, a as zn, i as b, c as C, b as p, t as I, F as de, r as we, n as ze, j as ae, e as G, g as z, h as O, o as Xs, u as L, w as Oe, v as dt, p as ot, f as Ue, q as Nt, s as ri, x as ws, y as Gi, z as Cn, A as ut, B as ji, C as no, D as Zt, E as Jf, G as In, H as En, I as Zf, k as Qf, l as ep } from "./dialog-DWJD1bua.mjs";
-import { a as tp, P as Jc, b as np, t as ip, c as sp, T as Do, d as op, s as Wo, f as rp, e as lp, g as ap, h as up, j as cp, k as hp, m as dp, n as fp, o as Ua, q as pp, r as mp, I as Zc, u as Fo, w as gp, x as vp, y as yp, z as bp, A as kp, B as wp, R as xp, C as Sp, S as Cp, D as Mp, N as Ap, E as Tp, F as jt, v as $p, G as Lo, H as Ga, J as Dp, K as ja, L as Lp, M as Bp, O as Op, Q as Ep, U as Ip, V as qa, W as Rp, X as Pp, Y as Rr, Z as Ya, _ as Xa, $ as Np, a0 as Ja, a1 as Vp, a2 as Hp, a3 as zp, a4 as Za, a5 as Qa, a6 as eu, a7 as Pr, a8 as Wp } from "./main-DoO0m-0Z.mjs";
+import { d as Dt, m as Re, a as zn, i as b, c as C, b as p, t as I, F as he, r as we, n as ze, j as ae, e as U, g as z, h as O, o as Xs, u as L, w as Oe, v as ft, p as ot, f as Ue, q as Nt, s as ri, x as ws, y as Gi, z as Cn, A as ct, B as ji, C as no, D as Zt, E as Jf, G as In, H as En, I as Zf, k as Qf, l as ep } from "./dialog-B4MUL7Ty.mjs";
+import { a as tp, P as Jc, b as np, t as ip, c as sp, T as Do, d as op, s as Wo, f as rp, e as lp, g as ap, h as up, j as cp, k as hp, m as dp, n as fp, o as Ua, q as pp, r as mp, I as Zc, u as Fo, w as gp, x as vp, y as yp, z as bp, A as kp, B as wp, R as xp, C as Sp, S as Cp, D as Mp, N as Ap, E as Tp, F as jt, v as $p, G as Lo, H as Ga, J as Dp, K as ja, L as Lp, M as Bp, O as Op, Q as Ep, U as Ip, V as qa, W as Rp, X as Pp, Y as Rr, Z as Ya, _ as Xa, $ as Np, a0 as Ja, a1 as Vp, a2 as Hp, a3 as zp, a4 as Za, a5 as Qa, a6 as eu, a7 as Pr, a8 as Wp } from "./main-C61bsaoH.mjs";
 import { a as Fp, r as Kp, n as _p, e as Nr, b as Up, s as Gp, p as jp } from "./notationExport-DkCMgjck.mjs";
 import { lineKey as Ko, parseSpans as ia, editRange as io, sameSpans as Bo, partOf as qp, settle as Yp, placedLines as tu, withBlockSpans as Xp, parseLineKey as Jp, clipOfLines as nu, partAt as Zp, remapSpans as Qp, followSpans as em } from "./lyricPlacement-DGoRXeqW.mjs";
 import { SHIFTABLE as Jn, shiftBlock as xs, notesLabel as tm, trackRows as nm, parseGuide as im, sameGuide as Ss, guideNotes as sm, remapGuide as om } from "./tracks-ClAVjvds.mjs";
@@ -109,14 +109,14 @@ const cm = {
           ])
         ], -1)),
         p("tbody", null, [
-          (b(!0), C(de, null, we(l.value, (c, d) => (b(), C("tr", {
+          (b(!0), C(he, null, we(l.value, (c, d) => (b(), C("tr", {
             key: d,
             class: ze({ mismatch: c.mismatch })
           }, [
             p("td", null, "[" + I(c.tag) + "]", 1),
             p("td", null, [
               ae(I(c.score_section ?? "—"), 1),
-              c.mismatch ? (b(), C("span", fm, " ≠")) : G("", !0)
+              c.mismatch ? (b(), C("span", fm, " ≠")) : U("", !0)
             ]),
             p("td", null, I(c.lines), 1),
             p("td", null, I(c.syllables), 1),
@@ -126,9 +126,9 @@ const cm = {
             }, I(c.ratio === null ? "" : `${c.ratio.toFixed(2)} · ${c.fit}`), 3)
           ], 2))), 128))
         ])
-      ])) : G("", !0),
+      ])) : U("", !0),
       u[2] || (u[2] = p("p", { class: "hint" }, "About one syllable per vocal note sings clearly; melismas (one syllable on several notes) are fine.", -1))
-    ])) : G("", !0);
+    ])) : U("", !0);
   }
 });
 function pm(i) {
@@ -11299,8 +11299,8 @@ function ky(i) {
     let { id: W, start: T, end: H, size: me } = l, ve = c, ie = u;
     if (me < 0)
       if (l.next(), me == -1) {
-        let Me = o[W];
-        E.push(Me), _.push(T - R);
+        let Ae = o[W];
+        E.push(Ae), _.push(T - R);
         return;
       } else if (me == -3) {
         u = W;
@@ -11312,17 +11312,17 @@ function ky(i) {
         throw new RangeError(`Unrecognized record size: ${me}`);
     let le = a[W], Ee, Se, Be = T - R;
     if (H - T <= s && (Se = v(l.pos - V, N))) {
-      let Me = new Uint16Array(Se.size - Se.skip), j = l.pos - Se.size, Qe = Me.length;
+      let Ae = new Uint16Array(Se.size - Se.skip), j = l.pos - Se.size, Qe = Ae.length;
       for (; l.pos > j; )
-        Qe = k(Se.start, Me, Qe);
-      Ee = new hi(Me, H - Se.start, n), Be = Se.start - R;
+        Qe = k(Se.start, Ae, Qe);
+      Ee = new hi(Ae, H - Se.start, n), Be = Se.start - R;
     } else {
-      let Me = l.pos - me;
+      let Ae = l.pos - me;
       l.next();
-      let j = [], Qe = [], ce = W >= r ? W : -1, Ae = 0, te = H;
-      for (; l.pos > Me; )
-        ce >= 0 && l.id == ce && l.size >= 0 ? (l.end <= te - s && (m(j, Qe, T, Ae, l.end, te, ce, ve, ie), Ae = j.length, te = l.end), l.next()) : ne > 2500 ? h(T, Me, j, Qe) : d(T, Me, j, Qe, ce, ne + 1);
-      if (ce >= 0 && Ae > 0 && Ae < j.length && m(j, Qe, T, Ae, T, te, ce, ve, ie), j.reverse(), Qe.reverse(), ce > -1 && Ae > 0) {
+      let j = [], Qe = [], ce = W >= r ? W : -1, Ce = 0, te = H;
+      for (; l.pos > Ae; )
+        ce >= 0 && l.id == ce && l.size >= 0 ? (l.end <= te - s && (m(j, Qe, T, Ce, l.end, te, ce, ve, ie), Ce = j.length, te = l.end), l.next()) : ne > 2500 ? h(T, Ae, j, Qe) : d(T, Ae, j, Qe, ce, ne + 1);
+      if (ce >= 0 && Ce > 0 && Ce < j.length && m(j, Qe, T, Ce, T, te, ce, ve, ie), j.reverse(), Qe.reverse(), ce > -1 && Ce > 0) {
         let K = f(le, ie);
         Ee = Sa(le, j, Qe, 0, j.length, 0, H - T, K, K);
       } else
@@ -15140,11 +15140,11 @@ const a1 = {
       T.length && R({ op: W ? "delete_close_gap" : "delete", ids: T });
     }
     return (W, T) => (b(), C("aside", a1, [
-      t.value ? (b(), C(de, { key: 1 }, [
+      t.value ? (b(), C(he, { key: 1 }, [
         n.value.notes.length ? (b(), C("section", c1, [
           p("h4", null, [
             ae(I(s.value ? `${d.value === "vocal" ? "Vocal" : "Ins"} note` : `${n.value.notes.length} notes`) + " ", 1),
-            c.value ? (b(), C("span", h1, I(c.value.text), 1)) : G("", !0)
+            c.value ? (b(), C("span", h1, I(c.value.text), 1)) : U("", !0)
           ]),
           p("div", d1, [
             T[36] || (T[36] = p("span", { class: "name" }, "voice", -1)),
@@ -15180,8 +15180,8 @@ const a1 = {
               onKeydown: ot(Ue(V, ["prevent"]), ["enter"]),
               onChange: V
             }, null, 40, y1)), [
-              [dt, h.value]
-            ]) : G("", !0),
+              [ft, h.value]
+            ]) : U("", !0),
             p("button", {
               disabled: !l.value,
               title: "Semitone up",
@@ -15193,7 +15193,7 @@ const a1 = {
               onClick: T[6] || (T[6] = (H) => R(L(Xn)(n.value.notes, 12, n.value.chords)))
             }, "+8va", 8, k1)
           ]),
-          s.value ? (b(), C(de, { key: 0 }, [
+          s.value ? (b(), C(he, { key: 0 }, [
             p("div", w1, [
               T[38] || (T[38] = p("span", { class: "name" }, "start", -1)),
               T[39] || (T[39] = ae(" bar ", -1)),
@@ -15208,7 +15208,7 @@ const a1 = {
                 onChange: E
               }, null, 40, x1), [
                 [
-                  dt,
+                  ft,
                   f.value,
                   void 0,
                   { number: !0 }
@@ -15226,7 +15226,7 @@ const a1 = {
                 onChange: E
               }, null, 40, S1), [
                 [
-                  dt,
+                  ft,
                   m.value,
                   void 0,
                   { number: !0 }
@@ -15247,7 +15247,7 @@ const a1 = {
                 onChange: T[11] || (T[11] = (H) => _())
               }, null, 40, A1), [
                 [
-                  dt,
+                  ft,
                   y.value,
                   void 0,
                   { number: !0 }
@@ -15263,7 +15263,7 @@ const a1 = {
                   value: "",
                   disabled: ""
                 }, "note value…", -1)),
-                (b(!0), C(de, null, we(a.value, (H) => (b(), C("option", {
+                (b(!0), C(he, null, we(a.value, (H) => (b(), C("option", {
                   key: H.label,
                   value: H.units
                 }, I(H.label), 9, $1))), 128))
@@ -15290,10 +15290,10 @@ const a1 = {
                 onKeydown: ot(Ue(N, ["prevent"]), ["enter"]),
                 onChange: N
               }, null, 40, O1), [
-                [dt, k.value]
+                [ft, k.value]
               ])
             ])
-          ], 64)) : G("", !0),
+          ], 64)) : U("", !0),
           p("div", E1, [
             p("button", {
               disabled: !l.value,
@@ -15309,7 +15309,7 @@ const a1 = {
         ])) : o.value ? (b(), C("section", P1, [
           p("h4", null, [
             T[45] || (T[45] = ae(" Chord symbol ", -1)),
-            c.value ? (b(), C("span", N1, I(c.value.text), 1)) : G("", !0)
+            c.value ? (b(), C("span", N1, I(c.value.text), 1)) : U("", !0)
           ]),
           p("div", V1, [
             T[46] || (T[46] = p("span", { class: "name" }, "name", -1)),
@@ -15321,7 +15321,7 @@ const a1 = {
               onKeydown: ot(Ue(N, ["prevent"]), ["enter"]),
               onChange: N
             }, null, 40, H1), [
-              [dt, k.value]
+              [ft, k.value]
             ])
           ]),
           p("div", z1, [
@@ -15351,7 +15351,7 @@ const a1 = {
               onChange: E
             }, null, 40, _1), [
               [
-                dt,
+                ft,
                 f.value,
                 void 0,
                 { number: !0 }
@@ -15369,7 +15369,7 @@ const a1 = {
               onChange: E
             }, null, 40, U1), [
               [
-                dt,
+                ft,
                 m.value,
                 void 0,
                 { number: !0 }
@@ -15407,7 +15407,7 @@ const a1 = {
               onClick: T[25] || (T[25] = (H) => ne(!1))
             }, "remove", 8, ek)
           ])
-        ])) : G("", !0),
+        ])) : U("", !0),
         r.value ? (b(), C("section", {
           key: 3,
           class: "panel",
@@ -15450,10 +15450,10 @@ const a1 = {
               onKeydown: T[31] || (T[31] = ot(Ue((H) => R(L(Bc)(r.value, w.value)), ["prevent"]), ["enter"])),
               onChange: T[32] || (T[32] = (H) => R(L(Bc)(r.value, w.value)))
             }, null, 40, uk), [
-              [dt, w.value]
+              [ft, w.value]
             ]),
             p("datalist", ck, [
-              (b(!0), C(de, null, we(L(Ub), (H) => (b(), C("option", {
+              (b(!0), C(he, null, we(L(Ub), (H) => (b(), C("option", {
                 key: H,
                 value: H
               }, null, 8, hk))), 128))
@@ -15467,7 +15467,7 @@ const a1 = {
               "aria-label": "Key from this bar on",
               onChange: T[34] || (T[34] = (H) => R(L(o1)(r.value, $.value)))
             }, [
-              (b(!0), C(de, null, we(L(Cf), (H) => (b(), C("option", {
+              (b(!0), C(he, null, we(L(Cf), (H) => (b(), C("option", {
                 key: H,
                 value: H
               }, I(H), 9, pk))), 128))
@@ -15479,11 +15479,11 @@ const a1 = {
               disabled: !l.value,
               title: "Remove the key change at this bar",
               onClick: T[35] || (T[35] = (H) => R(L(r1)(t.value, r.value)))
-            }, "remove change", 8, mk)) : G("", !0)
+            }, "remove change", 8, mk)) : U("", !0)
           ])
-        ], 8, tk)) : G("", !0),
-        !n.value.notes.length && !o.value && !r.value ? (b(), C("p", gk, " Select a note (piano roll or notation), a chord symbol or a bar. ")) : G("", !0),
-        P.value ? (b(), C("p", vk, I(P.value), 1)) : G("", !0)
+        ], 8, tk)) : U("", !0),
+        !n.value.notes.length && !o.value && !r.value ? (b(), C("p", gk, " Select a note (piano roll or notation), a chord symbol or a bar. ")) : U("", !0),
+        P.value ? (b(), C("p", vk, I(P.value), 1)) : U("", !0)
       ], 64)) : (b(), C("p", u1, I(i.view?.model_error?.message ?? "No score."), 1))
     ]));
   }
@@ -15564,18 +15564,18 @@ const a1 = {
           "aria-label": "Close",
           onClick: s[1] || (s[1] = (o) => e.value = !1)
         }, "×"),
-        (b(), C(de, null, we(t, (o) => p("section", {
+        (b(), C(he, null, we(t, (o) => p("section", {
           key: o.title
         }, [
           p("h5", null, I(o.title), 1),
           p("table", null, [
-            (b(!0), C(de, null, we(o.rows, ([r, l]) => (b(), C("tr", { key: r }, [
+            (b(!0), C(he, null, we(o.rows, ([r, l]) => (b(), C("tr", { key: r }, [
               p("th", null, I(r), 1),
               p("td", null, I(l), 1)
             ]))), 128))
           ])
         ])), 64))
-      ])) : G("", !0)
+      ])) : U("", !0)
     ]));
   }
 }), Sk = [
@@ -15719,22 +15719,22 @@ function Ek(i, e) {
   ), _ = O(
     () => s.value !== null && s.value !== i.text && !!t.value && !t.value.ok
   );
-  function N(ce, Ae) {
+  function N(ce, Ce) {
     if (t.value = ce, a.value = null, ce.ok) {
-      n.value = ce, s.value = Ae;
+      n.value = ce, s.value = Ce;
       const te = pm(ce);
       c.value = c.value.filter((K) => te.has(K));
     }
   }
   async function ne() {
-    const ce = i.text, Ae = ++m;
+    const ce = i.text, Ce = ++m;
     if (f = ce, !ce.trim()) {
       t.value = null, o.value = !1;
       return;
     }
     try {
       const te = await np(e.fetcher, ce, e.lyrics?.() ?? null, e.lyricSpans?.() ?? null);
-      if (Ae !== m || f !== ce || i.text !== ce) return;
+      if (Ce !== m || f !== ce || i.text !== ce) return;
       N(te, ce), l.value = null;
     } catch (te) {
       i.text === ce && (l.value = Ci(te), a.value = l.value);
@@ -15747,24 +15747,24 @@ function Ek(i, e) {
       ne();
     }, ce);
   }
-  function T(ce, Ae, te, K) {
-    ce !== i.text && (v = !0, i.text = ce, v = !1, d.record(ce, Ae, { group: te, extra: K }), h.value++, e.onEdit?.());
+  function T(ce, Ce, te, K) {
+    ce !== i.text && (v = !0, i.text = ce, v = !1, d.record(ce, Ce, { group: te, extra: K }), h.value++, e.onEdit?.());
   }
   function H(ce) {
     T(ce, "typing", "typing"), W();
   }
-  function me(ce, Ae, te = null, K) {
-    return ce === i.text ? !1 : (d.seal(), K && d.annotate(K.before), T(ce, Ae, void 0, K?.after), d.seal(), clearTimeout(y), f = ce, o.value = !1, u.value = [], te && te.ok && (te.lyrics || !e.lyrics?.()) ? (N(te, ce), l.value = null) : W(0), !0);
+  function me(ce, Ce, te = null, K) {
+    return ce === i.text ? !1 : (d.seal(), K && d.annotate(K.before), T(ce, Ce, void 0, K?.after), d.seal(), clearTimeout(y), f = ce, o.value = !1, u.value = [], te && te.ok && (te.lyrics || !e.lyrics?.()) ? (N(te, ce), l.value = null) : W(0), !0);
   }
   async function ve(ce) {
-    const Ae = i.text;
+    const Ce = i.text;
     if (t.value && !t.value.ok)
       return l.value = "The ABC text is not valid; fix it or revert to the last valid score before editing the notation.", !1;
     r.value = !0, l.value = null;
     try {
       ++m;
-      const te = await ip(e.fetcher, Ae, ce, e.lyrics?.() ?? null, e.lyricSpans?.() ?? null);
-      if (i.text !== Ae)
+      const te = await ip(e.fetcher, Ce, ce, e.lyrics?.() ?? null, e.lyricSpans?.() ?? null);
+      if (i.text !== Ce)
         return l.value = "The score changed while the edit was computed; it was not applied.", !1;
       const K = e.onTransform?.(te, ce);
       return d.seal(), K && d.annotate(K.before), T(te.abc, te.changes[0] ?? ce.op, void 0, K?.after), d.seal(), clearTimeout(y), o.value = !1, f = te.abc, N(te.analysis, te.abc), u.value = [...te.changes, ...te.warnings.map((Q) => `warning: ${Q}`)], te.select.length && (c.value = mm(te.analysis, te.select)), !0;
@@ -15785,8 +15785,8 @@ function Ek(i, e) {
   function Be(ce) {
     c.value = ce;
   }
-  function Me(ce, Ae, te) {
-    d.seal(), d.annotate(Ae), d.record(i.text, ce, { extra: te, side: !0 }), d.seal(), h.value++;
+  function Ae(ce, Ce, te) {
+    d.seal(), d.annotate(Ce), d.record(i.text, ce, { extra: te, side: !0 }), d.seal(), h.value++;
   }
   function j() {
     r.value ? setTimeout(j, 60) : i.text.trim() && !o.value && ne();
@@ -15827,7 +15827,7 @@ function Ek(i, e) {
     select: Be,
     analyze: ne,
     refreshLyrics: j,
-    recordSide: Me,
+    recordSide: Ae,
     dispose: Qe
   });
 }
@@ -15907,9 +15907,9 @@ const Ik = {
           }, "×")
         ]),
         p("div", Pk, [
-          s.value ? (b(), C("p", Nk, "Reading the file…")) : G("", !0),
-          o.value ? (b(), C("p", Vk, I(o.value), 1)) : G("", !0),
-          r.value && !o.value ? (b(), C(de, { key: 2 }, [
+          s.value ? (b(), C("p", Nk, "Reading the file…")) : U("", !0),
+          o.value ? (b(), C("p", Vk, I(o.value), 1)) : U("", !0),
+          r.value && !o.value ? (b(), C(he, { key: 2 }, [
             p("table", Hk, [
               w[11] || (w[11] = p("thead", null, [
                 p("tr", null, [
@@ -15918,7 +15918,7 @@ const Ik = {
                 ])
               ], -1)),
               p("tbody", null, [
-                (b(!0), C(de, null, we(d.value, ($) => (b(), C("tr", {
+                (b(!0), C(he, null, we(d.value, ($) => (b(), C("tr", {
                   key: $.index
                 }, [
                   p("td", null, [
@@ -15931,7 +15931,7 @@ const Ik = {
                       "aria-label": `Role of track ${$.number}`,
                       onChange: w[1] || (w[1] = (P) => v())
                     }, [
-                      (b(!0), C(de, null, we(L(Sk), (P) => (b(), C("option", {
+                      (b(!0), C(he, null, we(L(Sk), (P) => (b(), C("option", {
                         key: P.value,
                         value: P.value,
                         title: P.title
@@ -15943,7 +15943,7 @@ const Ik = {
                 ]))), 128))
               ])
             ]),
-            h.value.length ? (b(), C("p", Kk, " Empty track(s) not shown: " + I(h.value.map(($) => $.number).join(", ")) + ". ", 1)) : G("", !0),
+            h.value.length ? (b(), C("p", Kk, " Empty track(s) not shown: " + I(h.value.map(($) => $.number).join(", ")) + ". ", 1)) : U("", !0),
             p("p", _k, [
               p("label", Uk, [
                 w[12] || (w[12] = ae(" grid ", -1)),
@@ -15952,7 +15952,7 @@ const Ik = {
                   "aria-label": "Import grid",
                   onChange: w[3] || (w[3] = ($) => v())
                 }, [
-                  (b(!0), C(de, null, we(L(ta), ($) => (b(), C("option", {
+                  (b(!0), C(he, null, we(L(ta), ($) => (b(), C("option", {
                     key: $,
                     value: $
                   }, "1/" + I($), 9, Gk))), 128))
@@ -15985,14 +15985,14 @@ const Ik = {
                   [Nt, c.value]
                 ]),
                 w[14] || (w[14] = ae(" keep the Guide notes ", -1))
-              ])) : G("", !0)
+              ])) : U("", !0)
             ]),
             w[15] || (w[15] = p("h3", null, "What the import did", -1)),
             p("ul", Yk, [
-              (b(!0), C(de, null, we(f.value, ($, P) => (b(), C("li", { key: P }, I($), 1))), 128)),
-              f.value.length ? G("", !0) : (b(), C("li", Xk, "The file maps cleanly onto the score; nothing was lost or guessed."))
+              (b(!0), C(he, null, we(f.value, ($, P) => (b(), C("li", { key: P }, I($), 1))), 128)),
+              f.value.length ? U("", !0) : (b(), C("li", Xk, "The file maps cleanly onto the score; nothing was lost or guessed."))
             ])
-          ], 64)) : G("", !0)
+          ], 64)) : U("", !0)
         ]),
         p("footer", null, [
           w[16] || (w[16] = p("span", { class: "spacer" }, null, -1)),
@@ -16108,8 +16108,8 @@ const Ik = {
     return (w, $) => (b(), C("div", {
       class: ze(["notation-wrap", { stale: i.stale }])
     }, [
-      i.stale ? (b(), C("p", Qk, " The text has errors - the notation shows the last valid score. Fix the ABC to continue. ")) : G("", !0),
-      r.value ? (b(), C("p", ew, I(r.value), 1)) : G("", !0),
+      i.stale ? (b(), C("p", Qk, " The text has errors - the notation shows the last valid score. Fix the ABC to continue. ")) : U("", !0),
+      r.value ? (b(), C("p", ew, I(r.value), 1)) : U("", !0),
       p("div", {
         ref_key: "host",
         ref: o,
@@ -16491,13 +16491,13 @@ const yw = ["aria-label"], bw = {
   }),
   emits: /* @__PURE__ */ Zt(["select", "locate", "clipboard", "lyricEdit", "lyricPlace", "lyricDelete"], ["update:lyricSelection", "update:zoom", "update:audition", "update:rowHeight", "update:follow", "update:sungVisible", "update:waveVisible", "update:track"]),
   setup(i, { expose: e, emit: t }) {
-    const n = i, s = t, o = ut(i, "lyricSelection"), r = ut(i, "zoom"), l = ut(i, "audition"), a = ut(i, "rowHeight"), u = ut(i, "follow"), c = ut(i, "sungVisible"), d = ut(i, "waveVisible"), h = O(() => !!n.source && d.value), f = z(null), m = z(null), y = z(null), v = z(null), k = ut(i, "track"), w = z("draw"), $ = z("auto"), P = z(null), R = z(null), V = z(!1), E = z(0), _ = z(0), N = z(0), ne = z(0);
+    const n = i, s = t, o = ct(i, "lyricSelection"), r = ct(i, "zoom"), l = ct(i, "audition"), a = ct(i, "rowHeight"), u = ct(i, "follow"), c = ct(i, "sungVisible"), d = ct(i, "waveVisible"), h = O(() => !!n.source && d.value), f = z(null), m = z(null), y = z(null), v = z(null), k = ct(i, "track"), w = z("draw"), $ = z("auto"), P = z(null), R = z(null), V = z(!1), E = z(0), _ = z(0), N = z(0), ne = z(0);
     let W = !1;
     const T = z(null), H = z(null), me = z(null);
     let ve = !1;
     const ie = z(null);
     let le = null, Ee = null;
-    const Se = O(() => n.view?.model ?? null), Be = O(() => Se.value ? Ea(Se.value) : []), Me = O(() => Se.value?.tracks.chords ?? []), j = O(
+    const Se = O(() => n.view?.model ?? null), Be = O(() => Se.value ? Ea(Se.value) : []), Ae = O(() => Se.value?.tracks.chords ?? []), j = O(
       () => Se.value ? $b(Se.value, {
         pxPerQuarter: r.value,
         snap: $.value,
@@ -16509,21 +16509,21 @@ const yw = ["aria-label"], bw = {
     function ce(x) {
       l.value && na(x, 0.35, n.sound);
     }
-    const Ae = O(() => !n.readonly && !n.stale && !n.busy && !V.value), te = O(() => us(n.view, n.selection)), K = O(() => qs(n.selection)), Q = O(() => us(n.view, n.playing)), Fe = O(() => Fb(P.value)), nt = O(() => Wb(P.value)), Ge = O(() => {
+    const Ce = O(() => !n.readonly && !n.stale && !n.busy && !V.value), te = O(() => us(n.view, n.selection)), K = O(() => qs(n.selection)), Q = O(() => us(n.view, n.playing)), Fe = O(() => Fb(P.value)), nt = O(() => Wb(P.value)), Ge = O(() => {
       const x = j.value, A = R.value;
       if (!x || !A) return null;
       const M = Sf(A, x, _.value, E.value), q = new Set(A.keep);
       for (const ke of Eb(Be.value, M, x)) q.add(ke.id);
       const F = new Set(A.keepChords);
-      for (const ke of Ib(Me.value, A, x, _.value, E.value)) F.add(ke.id);
+      for (const ke of Ib(Ae.value, A, x, _.value, E.value)) F.add(ke.id);
       const re = Ob(A, _.value);
       return { rect: M, ids: q, chords: F, lane: re };
     }), xt = O(
       () => w.value === "draw" ? "click: a note (the last length) · drag: draw · Shift+drag: frame · drag a note: move (↕ pitch, Alt: copy) · drag its end: length (stops at the next note, Alt: over it) · double-click the lane: chord · Del: rest · Shift+Del: close the gap · Ctrl+wheel or G / H: zoom" : "drag: frame the notes to select (Shift: add) · click: note (Shift: add or remove) · drag a selected note: move them all (Alt: copy) · into the chord lane: chords too · Ctrl+A: all · ↑↓←→: move · Del: rest · Shift+Del: close the gap · Ctrl+C / Ctrl+X: copy / cut · Ctrl+V: paste at the cursor · Ctrl+Shift+V: insert · Ctrl+D: duplicate · Ctrl+wheel or G / H: zoom"
     ), ee = O(
       () => n.lyrics && n.lyricsEditable ? " · lyrics lane: double-click: edit the words · drag a line: move · drag its start or end: longer / shorter · Del · Ctrl+C / Ctrl+V" : ""
-    ), U = O(() => Se.value && n.locator !== null ? $f(Se.value, n.locator) : "");
-    function he(x, A, M) {
+    ), G = O(() => Se.value && n.locator !== null ? $f(Se.value, n.locator) : "");
+    function de(x, A, M) {
       const q = ie.value;
       return !q || !q.delta ? [A, M] : q.kind === "move" && q.keys.includes(x) ? [A + q.delta, M + q.delta] : q.key !== x ? [A, M] : q.kind === "start" ? [Math.min(A + q.delta, M - 1), M] : q.kind === "end" ? [A, Math.max(M + q.delta, A + 1)] : [A, M];
     }
@@ -16531,27 +16531,27 @@ const yw = ["aria-label"], bw = {
       const A = ie.value;
       return A?.delta ? A.kind === "move" ? A.keys.includes(x) : A.key === x : !1;
     }
-    const Ce = O(() => {
+    const Me = O(() => {
       const x = j.value, A = n.lyrics;
       if (!x || !A) return [];
       const M = A.parts.flatMap(
         (F) => F.lines.filter((re) => re.text).map((re) => {
-          const ke = Ko(re.block, re.line), [Ne, be] = he(ke, re.start, re.end);
+          const ke = Ko(re.block, re.line), [Ne, be] = de(ke, re.start, re.end);
           return { ...re, start: Ne, end: be, key: ke };
         })
       ).sort((F, re) => F.start - re.start || F.line - re.line), q = new Set(o.value);
       return M.map((F, re) => {
-        const ke = Ke(F.start, x), Ne = M.slice(re + 1).find((yt) => yt.start > F.start), be = Ne ? Ke(Ne.start, x) - ke - 2 : 640, Le = Math.max(16, Ke(F.end, x) - ke), je = Math.max(1, Math.floor((Math.max(Le, Math.min(be, F.text.length * Pc + 8)) - 8) / Pc)), ht = F.text.length > je ? `${F.text.slice(0, Math.max(1, je - 1))}…` : F.text;
-        return { ...F, x: ke, width: Le, shown: ht, selected: q.has(F.key), dragged: xe(F.key) };
+        const ke = Ke(F.start, x), Ne = M.slice(re + 1).find((yt) => yt.start > F.start), be = Ne ? Ke(Ne.start, x) - ke - 2 : 640, Le = Math.max(16, Ke(F.end, x) - ke), je = Math.max(1, Math.floor((Math.max(Le, Math.min(be, F.text.length * Pc + 8)) - 8) / Pc)), dt = F.text.length > je ? `${F.text.slice(0, Math.max(1, je - 1))}…` : F.text;
+        return { ...F, x: ke, width: Le, shown: dt, selected: q.has(F.key), dragged: xe(F.key) };
       }).filter((F) => Ct(F.start, Math.max(F.end, F.start + 64)));
     });
     function Fn(x) {
-      const A = Ce.value.filter((F) => x >= F.x - ks && x <= F.x + F.width + ks), M = A.find((F) => x >= F.x && x <= F.x + F.width) ?? A[0];
+      const A = Me.value.filter((F) => x >= F.x - ks && x <= F.x + F.width + ks), M = A.find((F) => x >= F.x && x <= F.x + F.width) ?? A[0];
       if (!M) return null;
       const q = x >= M.x + M.width - ks ? "end" : x <= M.x + ks && M.width > 3 * ks ? "start" : "move";
       return { key: M.key, start: M.start, end: M.end, part: q };
     }
-    function ft(x) {
+    function pt(x) {
       const A = [];
       for (const M of n.lyrics?.parts.flatMap((q) => q.lines.map((F) => ({ ...F, key: Ko(F.block, F.line) }))) ?? []) {
         if (!(x.kind === "move" ? x.keys.includes(M.key) : M.key === x.key)) continue;
@@ -16576,7 +16576,7 @@ const yw = ["aria-label"], bw = {
         return { key: A.id, x: M.x + 1, y: M.y - 2, text: It.value.get(A.onset) };
       });
     });
-    function ct(x) {
+    function ht(x) {
       const M = n.lyrics?.parts.find((be) => x >= be.start && x < be.end);
       if (!M) return null;
       const q = M.lines.length ? Math.max(...M.lines.map((be) => be.line)) + 1 : 0, F = M.lines.find((be) => be.text && x >= be.start && x < Math.max(be.end, be.start + 1)), re = (be) => ({
@@ -16594,7 +16594,7 @@ const yw = ["aria-label"], bw = {
       return re(Ne ?? { line: q, text: "", start: M.start });
     }
     function Ii(x) {
-      const A = ct(x);
+      const A = ht(x);
       A && (ve = !1, me.value = A, Cn(() => {
         H.value?.focus(), H.value?.select();
       }));
@@ -16616,7 +16616,7 @@ const yw = ["aria-label"], bw = {
       const A = N.value || 1e5;
       return [xn(E.value - 200, x), xn(E.value + A + 200, x)];
     }), Ct = (x, A) => A >= Ut.value[0] && x <= Ut.value[1], fi = O(() => Be.value.filter((x) => Ct(x.onset, x.onset + x.duration))), fn = O(
-      () => Me.value.map((x, A) => ({ chord: x, next: Me.value[A + 1] })).filter(({ chord: x }) => Ct(x.onset, x.onset + 64))
+      () => Ae.value.map((x, A) => ({ chord: x, next: Ae.value[A + 1] })).filter(({ chord: x }) => Ct(x.onset, x.onset + 64))
     ), en = O(() => Se.value ? Bb(Se.value).filter((x) => Ct(x.unit, x.unit)) : []), Un = O(() => {
       const x = j.value;
       return x ? Array.from({ length: x.high - x.low + 1 }, (A, M) => x.high - M) : [];
@@ -16650,7 +16650,7 @@ const yw = ["aria-label"], bw = {
       const A = j.value;
       if (!A || x.button !== 0) return;
       f.value?.focus({ preventScroll: !0 });
-      const [M, q] = Bn(x), F = $c(M, q, Be.value, Me.value, A, k.value, _.value, E.value);
+      const [M, q] = Bn(x), F = $c(M, q, Be.value, Ae.value, A, k.value, _.value, E.value);
       if (F.area === "keys") {
         l.value && na(F.pitch, 0.35, n.sound);
         return;
@@ -16667,7 +16667,7 @@ const yw = ["aria-label"], bw = {
           return;
         }
         n.selection.length && Mt([]);
-        const je = o.value, ht = je.includes(Le.key), yt = re ? ht ? je.filter((Yn) => Yn !== Le.key) : [...je, Le.key] : ht ? je : [Le.key];
+        const je = o.value, dt = je.includes(Le.key), yt = re ? dt ? je.filter((Yn) => Yn !== Le.key) : [...je, Le.key] : dt ? je : [Le.key];
         if (yt !== je && (o.value = yt), n.lyricsEditable && (yt.includes(Le.key) || Le.part !== "move")) {
           const Yn = Le.part === "move" ? [...yt] : [Le.key];
           le = { x: M, y: q, start: null, started: !1, clear: !1, keep: null, lyric: { kind: Le.part, key: Le.key, keys: Yn, origin: xn(M, A), delta: 0 } }, Rt(x);
@@ -16680,21 +16680,21 @@ const yw = ["aria-label"], bw = {
         const Le = te.value.has(F.note.id);
         let je;
         if (re) {
-          const ht = new Set(te.value);
-          Le ? ht.delete(F.note.id) : ht.add(F.note.id), je = Be.value.filter((yt) => ht.has(yt.id)), Mt(Ao(je, Me.value.filter((yt) => K.value.has(yt.id))));
-        } else Le ? je = Be.value.filter((ht) => te.value.has(ht.id)) : (je = [F.note], Mt(Ao(je)));
-        Ae.value && je.some((ht) => ht.id === F.note.id) && (ke = F.edge === "end" && je.length === 1 ? Pb(F.note, Be.value, A.total) : Rb(je, F.note, xn(M, A), or(q, A))), ce(F.note.pitch);
+          const dt = new Set(te.value);
+          Le ? dt.delete(F.note.id) : dt.add(F.note.id), je = Be.value.filter((yt) => dt.has(yt.id)), Mt(Ao(je, Ae.value.filter((yt) => K.value.has(yt.id))));
+        } else Le ? je = Be.value.filter((dt) => te.value.has(dt.id)) : (je = [F.note], Mt(Ao(je)));
+        Ce.value && je.some((dt) => dt.id === F.note.id) && (ke = F.edge === "end" && je.length === 1 ? Pb(F.note, Be.value, A.total) : Rb(je, F.note, xn(M, A), or(q, A))), ce(F.note.pitch);
       } else if (F.area === "chord") {
         if (re) {
           const Le = new Set(K.value);
           Le.has(F.chord.id) ? Le.delete(F.chord.id) : Le.add(F.chord.id), Mt([...n.selection.filter((je) => !je.startsWith("chord:")), ...Le]);
         } else K.value.has(F.chord.id) || Mt([F.chord.id]);
-        Ae.value && (ke = Vb(F.chord, xn(M, A)));
+        Ce.value && (ke = Vb(F.chord, xn(M, A)));
       } else if ((F.area === "grid" || F.area === "lane") && (w.value === "select" || x.shiftKey))
-        be = re ? { notes: [...te.value], chords: Me.value.filter((Le) => K.value.has(Le.id)) } : { notes: [], chords: [] }, Ne = !re;
+        be = re ? { notes: [...te.value], chords: Ae.value.filter((Le) => K.value.has(Le.id)) } : { notes: [], chords: [] }, Ne = !re;
       else if (F.area === "grid") {
         const Le = !n.selection.length && !o.value.length;
-        Ae.value && !re && (ke = Nb(k.value, F.unit, F.pitch, A), ce(F.pitch)), Ne = !re, le = { x: M, y: q, start: ke, started: !1, clear: Ne, keep: be, insert: Ae.value && !re && Le }, Rt(x);
+        Ce.value && !re && (ke = Nb(k.value, F.unit, F.pitch, A), ce(F.pitch)), Ne = !re, le = { x: M, y: q, start: ke, started: !1, clear: Ne, keep: be, insert: Ce.value && !re && Le }, Rt(x);
         return;
       } else
         Ne = !re;
@@ -16715,7 +16715,7 @@ const yw = ["aria-label"], bw = {
       if (x.clientY < q.top + M.top + 12) A.scrollTop = Math.max(0, A.scrollTop - F);
       else if (x.clientY > q.bottom - 16) A.scrollTop = A.scrollTop + F;
       else return;
-      pt();
+      mt();
     }
     function pn(x) {
       const A = j.value;
@@ -16762,7 +16762,7 @@ const yw = ["aria-label"], bw = {
       if (le = null, !x || x.ruler) return;
       if (x.lyric) {
         const q = ie.value;
-        ie.value = null, x.started && q?.delta && s("lyricPlace", ft(q));
+        ie.value = null, x.started && q?.delta && s("lyricPlace", pt(q));
         return;
       }
       if (!x.started) {
@@ -16776,7 +16776,7 @@ const yw = ["aria-label"], bw = {
       }
       if (x.keep) {
         const q = Ge.value?.ids ?? /* @__PURE__ */ new Set(), F = Ge.value?.chords ?? new Set(x.keep.chords.map((re) => re.id));
-        R.value = null, Mt(Ao(Be.value.filter((re) => q.has(re.id)), Me.value.filter((re) => F.has(re.id))));
+        R.value = null, Mt(Ao(Be.value.filter((re) => q.has(re.id)), Ae.value.filter((re) => F.has(re.id))));
         return;
       }
       const A = P.value, M = A ? zb(A, n.resizeMode) : null;
@@ -16792,12 +16792,12 @@ const yw = ["aria-label"], bw = {
     function Ri(x) {
       const A = j.value;
       if (!A) return;
-      const [M, q] = Bn(x), F = $c(M, q, Be.value, Me.value, A, k.value, _.value, E.value);
+      const [M, q] = Bn(x), F = $c(M, q, Be.value, Ae.value, A, k.value, _.value, E.value);
       if (F.area === "lyrics") {
         n.lyricsEditable && Ii(F.unit);
         return;
       }
-      if (Ae.value) {
+      if (Ce.value) {
         if (F.area === "grid") {
           if (w.value !== "draw") return;
           const re = Math.min(Ql(F.unit, A.snap), A.total - 1), ke = Math.min(A.drawLength, A.total - re);
@@ -16833,7 +16833,7 @@ const yw = ["aria-label"], bw = {
         const Ne = x.key === "ArrowLeft" ? -M.snap : x.key === "ArrowRight" ? M.snap : 0;
         if (x.key === "Delete" || x.key === "Backspace" || Ne || x.key === "Escape") {
           if (x.preventDefault(), x.stopPropagation(), x.key === "Escape") o.value = [];
-          else if (n.lyricsEditable) Ne ? s("lyricPlace", ft({ kind: "move", key: "", keys: [...o.value], delta: Ne })) : s("lyricDelete", [...o.value]);
+          else if (n.lyricsEditable) Ne ? s("lyricPlace", pt({ kind: "move", key: "", keys: [...o.value], delta: Ne })) : s("lyricDelete", [...o.value]);
           else return;
           return;
         }
@@ -16855,10 +16855,10 @@ const yw = ["aria-label"], bw = {
         return;
       }
       if (x.key.toLowerCase() === "a" && (x.ctrlKey || x.metaKey) && !x.altKey) {
-        x.preventDefault(), x.stopPropagation(), Mt(Ao(Be.value, Me.value));
+        x.preventDefault(), x.stopPropagation(), Mt(Ao(Be.value, Ae.value));
         return;
       }
-      const F = Be.value.filter((Ne) => te.value.has(Ne.id)), re = Me.value.filter((Ne) => K.value.has(Ne.id)), ke = Kb(
+      const F = Be.value.filter((Ne) => te.value.has(Ne.id)), re = Ae.value.filter((Ne) => K.value.has(Ne.id)), ke = Kb(
         x.key,
         { shift: x.shiftKey, alt: x.altKey },
         F,
@@ -16866,14 +16866,14 @@ const yw = ["aria-label"], bw = {
         M,
         n.resizeMode
       );
-      ke !== void 0 && (x.preventDefault(), x.stopPropagation(), ke && Ae.value && Gt(ke));
+      ke !== void 0 && (x.preventDefault(), x.stopPropagation(), ke && Ce.value && Gt(ke));
     }
-    function pt() {
+    function mt() {
       E.value = m.value?.scrollLeft ?? 0, _.value = m.value?.scrollTop ?? 0, N.value = m.value?.clientWidth ?? 0, ne.value = m.value?.clientHeight ?? 0;
     }
     function gn() {
       const x = j.value, A = m.value;
-      W || !x || !A || !A.clientHeight || (W = !0, A.scrollTop = wf(x, A.clientHeight, x.focus[0], x.focus[1]), pt());
+      W || !x || !A || !A.clientHeight || (W = !0, A.scrollTop = wf(x, A.clientHeight, x.focus[0], x.focus[1]), mt());
     }
     function qn(x, A = !0) {
       const M = j.value, q = m.value, F = Be.value.find((Ne) => x.has(Ne.id));
@@ -16881,7 +16881,7 @@ const yw = ["aria-label"], bw = {
       const re = Ke(F.onset, M);
       A && (re < q.scrollLeft + qt || re > q.scrollLeft + q.clientWidth - 40) && (q.scrollLeft = Math.max(0, re - q.clientWidth / 3));
       const ke = q.clientHeight ? Tc(M, q.scrollTop, q.clientHeight, F.pitch) : null;
-      ke !== null && (q.scrollTop = ke), pt();
+      ke !== null && (q.scrollTop = ke), mt();
     }
     function Pt(x, A) {
       const M = m.value, q = j.value, F = Math.max(12, Math.min(240, Math.round(r.value * x)));
@@ -16893,7 +16893,7 @@ const yw = ["aria-label"], bw = {
       const re = M.getBoundingClientRect(), ke = n.locator !== null ? Ke(n.locator, q) - M.scrollLeft : null, Ne = A !== void 0 ? A - re.left : ke !== null && ke >= qt && ke <= M.clientWidth ? ke : M.clientWidth / 2, be = xn(M.scrollLeft + Ne, q);
       r.value = F, Cn(() => {
         const Le = j.value;
-        Le && (M.scrollLeft = Math.max(0, Ke(be, Le) - Ne), pt());
+        Le && (M.scrollLeft = Math.max(0, Ke(be, Le) - Ne), mt());
       });
     }
     function Pi(x) {
@@ -16914,12 +16914,12 @@ const yw = ["aria-label"], bw = {
       const re = M.getBoundingClientRect(), ke = A !== void 0 ? A - re.top : M.clientHeight / 2, Ne = q.high - (M.scrollTop + ke - q.top) / q.rowHeight;
       a.value = F, Cn(() => {
         const be = j.value;
-        be && (M.scrollTop = Math.max(0, be.top + (be.high - Ne) * be.rowHeight - ke), pt());
+        be && (M.scrollTop = Math.max(0, be.top + (be.high - Ne) * be.rowHeight - ke), mt());
       });
     }
     function B(x) {
       const A = j.value;
-      if (!A || !Ae.value) return;
+      if (!A || !Ce.value) return;
       const M = te.value.size ? Be.value.filter((q) => te.value.has(q.id)) : Be.value;
       M.length && Gt({ op: "quantize", ids: M.map((q) => q.id), grid: A.snap, lengths: x });
     }
@@ -16940,14 +16940,14 @@ const yw = ["aria-label"], bw = {
       const Ne = (be) => x.top + (x.high - be) * x.rowHeight + x.rowHeight / 2;
       return vw(A, M.bars, M.curve, re, ke, M.offset).map((be, Le) => ({
         key: `c${re}-${Le}`,
-        d: be.map(([je, ht], yt) => `${yt ? "L" : "M"}${Ke(je, x).toFixed(1)} ${Ne(ht).toFixed(1)}`).join("")
+        d: be.map(([je, dt], yt) => `${yt ? "L" : "M"}${Ke(je, x).toFixed(1)} ${Ne(dt).toFixed(1)}`).join("")
       }));
     }), ge = O(() => {
       const x = n.sung?.offset ?? 0;
       if (!x) return "sung";
       const A = Math.abs(x / 12);
       return `sung ${x > 0 ? "+" : "−"}${A > 1 ? A : ""}8va`;
-    }), mt = O(() => {
+    }), at = O(() => {
       const x = n.sung;
       if (!x) return "";
       if (x.problem) return `No sung pitch: ${x.problem}`;
@@ -16964,9 +16964,9 @@ const yw = ["aria-label"], bw = {
           re.push({ key: `w${Ne}`, d: "", missing: !0, x: be, width: Le });
           return;
         }
-        const ht = Math.max(1, Math.floor(Le / 2)), yt = [];
-        dw(M.envelope, je[0], je[1], ht).forEach(([Yn, On], it) => {
-          const nn = (be + (it + 0.5) * (Le / ht)).toFixed(1);
+        const dt = Math.max(1, Math.floor(Le / 2)), yt = [];
+        dw(M.envelope, je[0], je[1], dt).forEach(([Yn, On], it) => {
+          const nn = (be + (it + 0.5) * (Le / dt)).toFixed(1);
           yt.push(`M${nn} ${(q - On * F - 0.5).toFixed(1)}V${(q - Yn * F + 0.5).toFixed(1)}`);
         }), re.push({ key: `w${Ne}`, d: yt.join(""), missing: !1, x: be, width: Le });
       }), re;
@@ -16975,7 +16975,7 @@ const yw = ["aria-label"], bw = {
       const A = j.value, M = m.value;
       if (x === null || !A || !M || !M.clientWidth) return;
       const q = Ke(x, A);
-      q >= M.scrollLeft + qt && q <= M.scrollLeft + M.clientWidth - 24 || (M.scrollLeft = Math.max(0, q - qt - 24), pt());
+      q >= M.scrollLeft + qt && q <= M.scrollLeft + M.clientWidth - 24 || (M.scrollLeft = Math.max(0, q - qt - 24), mt());
     }
     return Re(te, (x) => qn(x)), Re(Q, (x) => {
       n.recorded && n.playhead !== null || (u.value || n.playhead === null) && qn(x, n.playhead === null);
@@ -16990,7 +16990,7 @@ const yw = ["aria-label"], bw = {
         const A = j.value, M = m.value;
         if (x === void 0 || !A || !M?.clientHeight) return;
         const q = Tc(A, M.scrollTop, M.clientHeight, x);
-        q !== null && (M.scrollTop = q, pt());
+        q !== null && (M.scrollTop = q, mt());
       }
     ), Re(
       () => !!Se.value,
@@ -16998,8 +16998,8 @@ const yw = ["aria-label"], bw = {
         x ? Cn(gn) : W = !1;
       }
     ), Xs(() => {
-      pt(), gn(), m.value && typeof ResizeObserver < "u" && (Ee = new ResizeObserver(() => {
-        pt(), gn();
+      mt(), gn(), m.value && typeof ResizeObserver < "u" && (Ee = new ResizeObserver(() => {
+        mt(), gn();
       }), Ee.observe(m.value));
     }), zn(() => Ee?.disconnect()), e({ zoomBy: Pt, zoomRows: tn }), (x, A) => (b(), C("div", {
       ref_key: "root",
@@ -17084,17 +17084,17 @@ const yw = ["aria-label"], bw = {
             onClick: A[5] || (A[5] = (M) => s("clipboard", "copy"))
           }, " Copy ", 8, Dw),
           p("button", {
-            disabled: !i.selection.length || !Ae.value,
+            disabled: !i.selection.length || !Ce.value,
             title: "Cut: copy the selection, its notes become rests (Ctrl+X)",
             onClick: A[6] || (A[6] = (M) => s("clipboard", "cut"))
           }, " Cut ", 8, Lw),
           p("button", {
-            disabled: !i.clip || !Ae.value || i.locator === null,
+            disabled: !i.clip || !Ce.value || i.locator === null,
             title: i.clip ? `Paste ${i.clip} at the cursor, replacing what its voices play there (Ctrl+V)` : "Paste at the cursor (Ctrl+V) - copy notes, chord symbols or sections first",
             onClick: A[7] || (A[7] = (M) => s("clipboard", "paste"))
           }, " Paste ", 8, Bw),
           p("button", {
-            disabled: !i.clip || !Ae.value || i.locator === null,
+            disabled: !i.clip || !Ce.value || i.locator === null,
             title: i.clip ? `Insert ${i.clip} at the cursor: everything from the cursor on moves later by whole bars (Ctrl+Shift+V; Cubase: Paste Time)` : "Insert at the cursor, moving what follows (Ctrl+Shift+V) - copy notes, chord symbols or sections first",
             onClick: A[8] || (A[8] = (M) => s("clipboard", "insert"))
           }, " Insert ", 8, Ow)
@@ -17110,7 +17110,7 @@ const yw = ["aria-label"], bw = {
           A[28] || (A[28] = ae(" hear ", -1))
         ]),
         p("button", {
-          disabled: !Ae.value,
+          disabled: !Ce.value,
           title: `Quantize (Q): the selected notes - all notes when none is selected - to the grid (${Ln.value}); Shift+Q: their lengths too`,
           onClick: A[10] || (A[10] = (M) => B(!1))
         }, " Q ", 8, Iw),
@@ -17145,10 +17145,10 @@ const yw = ["aria-label"], bw = {
             [Nt, d.value]
           ]),
           A[29] || (A[29] = ae(" wave ", -1))
-        ])) : G("", !0),
+        ])) : U("", !0),
         i.sung ? (b(), C("label", {
           key: 1,
-          title: mt.value,
+          title: at.value,
           class: ze({ unavailable: !!i.sung.problem })
         }, [
           Oe(p("input", {
@@ -17160,7 +17160,7 @@ const yw = ["aria-label"], bw = {
             [Nt, c.value]
           ]),
           ae(" " + I(ge.value), 1)
-        ], 10, Nw)) : G("", !0),
+        ], 10, Nw)) : U("", !0),
         p("label", Hw, [
           Oe(p("input", {
             "onUpdate:modelValue": A[17] || (A[17] = (M) => u.value = M),
@@ -17179,7 +17179,7 @@ const yw = ["aria-label"], bw = {
         ref: m,
         class: "roll-scroll",
         style: ji({ height: `${Math.min(i.height, j.value.height + 16)}px` }),
-        onScroll: pt,
+        onScroll: mt,
         onWheel: Pi
       }, [
         (b(), C("svg", {
@@ -17194,7 +17194,7 @@ const yw = ["aria-label"], bw = {
           onPointercancel: Ft,
           onDblclick: Ri
         }, [
-          (b(!0), C(de, null, we(Un.value, (M) => (b(), C("rect", {
+          (b(!0), C(he, null, we(Un.value, (M) => (b(), C("rect", {
             key: "row" + M,
             class: ze(["row", { black: L(Db)(M), c: M % 12 === 0 }]),
             x: 0,
@@ -17202,7 +17202,7 @@ const yw = ["aria-label"], bw = {
             width: j.value.width,
             height: j.value.rowHeight
           }, null, 10, Kw))), 128)),
-          (b(!0), C(de, null, we(en.value, (M) => (b(), C("line", {
+          (b(!0), C(he, null, we(en.value, (M) => (b(), C("line", {
             key: "l" + M.unit,
             class: ze(M.kind),
             x1: L(Ke)(M.unit, j.value),
@@ -17210,41 +17210,41 @@ const yw = ["aria-label"], bw = {
             y1: j.value.top,
             y2: j.value.height
           }, null, 10, _w))), 128)),
-          (b(!0), C(de, null, we(fi.value, (M) => (b(), C("rect", no({
+          (b(!0), C(he, null, we(fi.value, (M) => (b(), C("rect", no({
             key: M.id,
             class: vt(M)
           }, { ref_for: !0 }, L(ii)(M, j.value), { rx: "2" }), [
             p("title", null, I(ds(M)), 1)
           ], 16))), 128)),
-          (b(!0), C(de, null, we(St.value, (M) => (b(), C("text", {
+          (b(!0), C(he, null, we(St.value, (M) => (b(), C("text", {
             key: "p" + M.key,
             class: "note-name",
             x: M.x,
             y: M.y
           }, I(M.text), 9, Uw))), 128)),
-          (b(!0), C(de, null, we(Kn.value, (M) => (b(), C("text", {
+          (b(!0), C(he, null, we(Kn.value, (M) => (b(), C("text", {
             key: "y" + M.key,
             class: "syllable",
             x: M.x,
             y: M.y
           }, I(M.text), 9, Gw))), 128)),
-          (b(!0), C(de, null, we(Z.value, (M) => (b(), C("path", {
+          (b(!0), C(he, null, we(Z.value, (M) => (b(), C("path", {
             key: M.key,
             class: "sung-pitch",
             d: M.d
           }, null, 8, jw))), 128)),
-          i.recorded ? (b(!0), C(de, { key: 0 }, we(i.recorded.notes, (M, q) => (b(), C("rect", no({
+          i.recorded ? (b(!0), C(he, { key: 0 }, we(i.recorded.notes, (M, q) => (b(), C("rect", no({
             key: "rec" + q,
             class: "rec-note"
-          }, { ref_for: !0 }, L(ii)({ onset: M.onset, duration: Math.max(M.duration, 0.5), pitch: M.pitch }, j.value), { rx: "2" }), null, 16))), 128)) : G("", !0),
-          (b(!0), C(de, null, we(nt.value, (M, q) => (b(), C("rect", no({
+          }, { ref_for: !0 }, L(ii)({ onset: M.onset, duration: Math.max(M.duration, 0.5), pitch: M.pitch }, j.value), { rx: "2" }), null, 16))), 128)) : U("", !0),
+          (b(!0), C(he, null, we(nt.value, (M, q) => (b(), C("rect", no({
             key: "ghost" + q,
             class: ["ghost", M.track]
           }, { ref_for: !0 }, L(ii)(M, j.value), { rx: "2" }), null, 16))), 128)),
           Ge.value && Ge.value.rect.height > 0 ? (b(), C("rect", no({
             key: 1,
             class: "band"
-          }, Ge.value.rect), null, 16)) : G("", !0),
+          }, Ge.value.rect), null, 16)) : U("", !0),
           i.locator !== null ? (b(), C("line", {
             key: 2,
             class: "locator",
@@ -17252,7 +17252,7 @@ const yw = ["aria-label"], bw = {
             x2: L(Ke)(i.locator, j.value),
             y1: j.value.top,
             y2: j.value.height
-          }, null, 8, qw)) : G("", !0),
+          }, null, 8, qw)) : U("", !0),
           i.playhead !== null ? (b(), C("line", {
             key: 3,
             class: "playhead",
@@ -17260,7 +17260,7 @@ const yw = ["aria-label"], bw = {
             x2: L(Ke)(i.playhead, j.value),
             y1: j.value.top,
             y2: j.value.height
-          }, null, 8, Yw)) : G("", !0),
+          }, null, 8, Yw)) : U("", !0),
           p("g", {
             class: "keys",
             transform: `translate(${E.value} 0)`
@@ -17274,7 +17274,7 @@ const yw = ["aria-label"], bw = {
             }, [...A[31] || (A[31] = [
               p("title", null, "Click a key to hear its pitch", -1)
             ])], 8, Jw),
-            (b(!0), C(de, null, we(Un.value.filter((M) => M % 12 === 0), (M) => (b(), C("text", {
+            (b(!0), C(he, null, we(Un.value.filter((M) => M % 12 === 0), (M) => (b(), C("text", {
               key: "k" + M,
               class: "key-label",
               x: 4,
@@ -17308,7 +17308,7 @@ const yw = ["aria-label"], bw = {
               width: j.value.width,
               height: L(ki)
             }, null, 8, nx),
-            i.source && j.value.sourceTop !== null ? (b(), C(de, { key: 0 }, [
+            i.source && j.value.sourceTop !== null ? (b(), C(he, { key: 0 }, [
               p("rect", {
                 class: "source-lane",
                 x: 0,
@@ -17318,7 +17318,7 @@ const yw = ["aria-label"], bw = {
               }, [...A[33] || (A[33] = [
                 p("title", null, "The source recording, bar by bar where the transcription puts it - click to set the cursor", -1)
               ])], 8, ix),
-              (b(!0), C(de, null, we(Dr.value, (M) => (b(), C(de, {
+              (b(!0), C(he, null, we(Dr.value, (M) => (b(), C(he, {
                 key: M.key
               }, [
                 M.missing ? (b(), C("rect", {
@@ -17341,8 +17341,8 @@ const yw = ["aria-label"], bw = {
                 x: E.value + 3,
                 y: j.value.sourceTop + 11
               }, "source", 8, rx)
-            ], 64)) : G("", !0),
-            i.lyrics ? (b(), C(de, { key: 1 }, [
+            ], 64)) : U("", !0),
+            i.lyrics ? (b(), C(he, { key: 1 }, [
               p("rect", {
                 class: "lyrics-lane",
                 x: 0,
@@ -17350,7 +17350,7 @@ const yw = ["aria-label"], bw = {
                 width: j.value.width,
                 height: L(As)
               }, null, 8, lx),
-              (b(!0), C(de, null, we(Ce.value, (M) => (b(), C("g", {
+              (b(!0), C(he, null, we(Me.value, (M) => (b(), C("g", {
                 key: M.key,
                 class: ze(["lyric-line", { unsung: !M.syllables.length, selected: M.selected, dragged: M.dragged }])
               }, [
@@ -17368,15 +17368,15 @@ const yw = ["aria-label"], bw = {
                   y: L(Pn) + 5,
                   width: 3,
                   height: L(As) - 10
-                }, null, 8, ux)) : G("", !0),
+                }, null, 8, ux)) : U("", !0),
                 p("text", {
                   x: M.x + 4,
                   y: L(Pn) + L(As) / 2 + 4
                 }, I(M.shown), 9, cx),
                 p("title", null, I(M.text) + I(i.lyricsEditable ? " - click: select · drag: move · drag its start or end: longer / shorter · double-click: edit the words" : ""), 1)
               ], 2))), 128))
-            ], 64)) : G("", !0),
-            (b(!0), C(de, null, we(en.value.filter((M) => M.kind === "bar"), (M) => (b(), C("line", {
+            ], 64)) : U("", !0),
+            (b(!0), C(he, null, we(en.value.filter((M) => M.kind === "bar"), (M) => (b(), C("line", {
               key: "t" + M.unit,
               class: "bar",
               x1: L(Ke)(M.unit, j.value),
@@ -17384,19 +17384,19 @@ const yw = ["aria-label"], bw = {
               y1: 0,
               y2: j.value.top
             }, null, 8, hx))), 128)),
-            (b(!0), C(de, null, we(en.value.filter((M) => M.bar), (M) => (b(), C("text", {
+            (b(!0), C(he, null, we(en.value.filter((M) => M.bar), (M) => (b(), C("text", {
               key: "n" + M.unit,
               class: "bar-number",
               x: L(Ke)(M.unit, j.value) + 3,
               y: 12
             }, I(M.bar), 9, dx))), 128)),
-            (b(!0), C(de, null, we(pi.value, (M) => (b(), C("text", {
+            (b(!0), C(he, null, we(pi.value, (M) => (b(), C("text", {
               key: "s" + M.unit,
               class: "section-label",
               x: L(Ke)(M.unit, j.value) + 22,
               y: 12
             }, I(M.label), 9, fx))), 128)),
-            (b(!0), C(de, null, we(fn.value, ({ chord: M, next: q }) => (b(), C("g", {
+            (b(!0), C(he, null, we(fn.value, ({ chord: M, next: q }) => (b(), C("g", {
               key: M.id,
               class: ze(["chord", {
                 selected: (Ge.value?.chords ?? K.value).has(M.id),
@@ -17428,7 +17428,7 @@ const yw = ["aria-label"], bw = {
                 x: L(Ke)(P.value.to, j.value) + 4,
                 y: L(Sn) + L(ki) / 2 + 4
               }, I(P.value.chord.name), 9, yx)
-            ])) : G("", !0),
+            ])) : U("", !0),
             Ge.value?.lane && Ge.value.rect.width > 0 ? (b(), C("rect", {
               key: 3,
               class: "band",
@@ -17436,7 +17436,7 @@ const yw = ["aria-label"], bw = {
               y: L(Sn),
               width: Ge.value.rect.width,
               height: L(ki)
-            }, null, 8, bx)) : G("", !0),
+            }, null, 8, bx)) : U("", !0),
             i.playhead !== null ? (b(), C("line", {
               key: 4,
               class: "playhead",
@@ -17444,7 +17444,7 @@ const yw = ["aria-label"], bw = {
               x2: L(Ke)(i.playhead, j.value),
               y1: 0,
               y2: j.value.top
-            }, null, 8, kx)) : G("", !0),
+            }, null, 8, kx)) : U("", !0),
             i.locator !== null ? (b(), C("g", {
               key: 5,
               class: "locator-mark",
@@ -17457,8 +17457,8 @@ const yw = ["aria-label"], bw = {
                 y2: j.value.top
               }, null, 8, xx),
               A[35] || (A[35] = p("path", { d: "M-5 0 H5 L0 7 Z" }, null, -1)),
-              p("title", null, "Cursor at " + I(U.value) + " - click or drag in the ruler to move it", 1)
-            ], 8, wx)) : G("", !0)
+              p("title", null, "Cursor at " + I(G.value) + " - click or drag in the ruler to move it", 1)
+            ], 8, wx)) : U("", !0)
           ], 8, Qw)
         ], 40, Fw)),
         T.value ? Oe((b(), C("input", {
@@ -17476,8 +17476,8 @@ const yw = ["aria-label"], bw = {
           ],
           onBlur: mn
         }, null, 44, Sx)), [
-          [dt, T.value.name]
-        ]) : G("", !0),
+          [ft, T.value.name]
+        ]) : U("", !0),
         me.value ? Oe((b(), C("input", {
           key: 1,
           ref_key: "lyricInput",
@@ -17493,9 +17493,9 @@ const yw = ["aria-label"], bw = {
           ],
           onBlur: Wt
         }, null, 44, Cx)), [
-          [dt, me.value.text]
-        ]) : G("", !0)
-      ], 36)) : G("", !0)
+          [ft, me.value.text]
+        ]) : U("", !0)
+      ], 36)) : U("", !0)
     ], 42, yw));
   }
 }), lr = (i) => [...new Set(i)].sort((e, t) => e - t);
@@ -17699,31 +17699,31 @@ const Ox = {
     let m = null;
     const y = z("sections"), v = z(!1), k = z(null), w = O(() => t.view?.sections ?? []), $ = O(() => t.view?.bars ?? []), P = O(() => t.view && t.bar ? cl(t.view, t.bar) : -1), R = O(() => new Set(t.errorBars)), V = O(() => !t.readonly && !!t.view?.model && w.value.length > 0);
     Re(w, (ee) => {
-      l.value = (u ?? l.value).filter((U) => U < ee.length), u = null;
+      l.value = (u ?? l.value).filter((G) => G < ee.length), u = null;
     }), Re($, (ee) => {
-      h.value = (m ?? h.value).filter((U) => U < ee.length), m = null;
+      h.value = (m ?? h.value).filter((G) => G < ee.length), m = null;
     });
-    function E(ee, U) {
-      s.value = ee, o.value = U;
+    function E(ee, G) {
+      s.value = ee, o.value = G;
     }
     function _(ee) {
-      const U = o.value.trim();
-      s.value = null, U && U !== w.value[ee]?.label && n("operate", { op: "rename_section", section: ee + 1, label: U });
+      const G = o.value.trim();
+      s.value = null, G && G !== w.value[ee]?.label && n("operate", { op: "rename_section", section: ee + 1, label: G });
     }
-    function N(ee, U) {
-      const he = w.value[ee];
-      he && n("operate", { op: "move_section_boundary", section: ee + 1, start_bar: he.start_bar + U });
+    function N(ee, G) {
+      const de = w.value[ee];
+      de && n("operate", { op: "move_section_boundary", section: ee + 1, start_bar: de.start_bar + G });
     }
     function ne(ee) {
-      const U = t.sourceStarts?.[ee - 1];
-      return typeof U == "number" ? Oo(U) : null;
+      const G = t.sourceStarts?.[ee - 1];
+      return typeof G == "number" ? Oo(G) : null;
     }
-    function W(ee, U) {
+    function W(ee, G) {
       y.value = "sections";
-      const he = U.ctrlKey || U.metaKey;
-      l.value = Nc(l.value, ee, { toggle: he, range: U.shiftKey }, a.value), U.shiftKey || (a.value = ee);
+      const de = G.ctrlKey || G.metaKey;
+      l.value = Nc(l.value, ee, { toggle: de, range: G.shiftKey }, a.value), G.shiftKey || (a.value = ee);
       const xe = w.value[ee];
-      xe && !he && !U.shiftKey && n("goto", xe.start_bar);
+      xe && !de && !G.shiftKey && n("goto", xe.start_bar);
     }
     function T(ee) {
       !ee || !V.value || (u = ee.selection, n("operate", { op: "arrange_sections", order: ee.order }));
@@ -17732,48 +17732,48 @@ const Ox = {
     function ie() {
       const ee = t.view?.model;
       if (!ee || !l.value.length) return;
-      const U = Tx(ee, l.value, t.sectionLyrics ?? null);
-      U && (ei.value = U, n("notice", `copied ${U.label} - paste it at the cursor in the piano roll (Ctrl+V; Ctrl+Shift+V moves what follows)`));
+      const G = Tx(ee, l.value, t.sectionLyrics ?? null);
+      G && (ei.value = G, n("notice", `copied ${G.label} - paste it at the cursor in the piano roll (Ctrl+V; Ctrl+Shift+V moves what follows)`));
     }
-    function le(ee, U) {
+    function le(ee, G) {
       y.value = "bars";
-      const he = U.ctrlKey || U.metaKey;
-      h.value = Nc(h.value, ee, { toggle: he, range: U.shiftKey }, f.value), U.shiftKey || (f.value = ee);
+      const de = G.ctrlKey || G.metaKey;
+      h.value = Nc(h.value, ee, { toggle: de, range: G.shiftKey }, f.value), G.shiftKey || (f.value = ee);
       const xe = $.value[ee];
-      xe && !he && !U.shiftKey && n("goto", xe.index);
+      xe && !de && !G.shiftKey && n("goto", xe.index);
     }
     function Ee(ee) {
-      !ee || !V.value || (m = ee.selection, n("operate", { op: "arrange_measures", order: ee.order.map((U) => U - 1) }));
+      !ee || !V.value || (m = ee.selection, n("operate", { op: "arrange_measures", order: ee.order.map((G) => G - 1) }));
     }
-    const Se = () => Ee(Hc($.value.length, h.value)), Be = () => Ee(Vc($.value.length, h.value)), Me = (ee) => Ee(zc($.value.length, h.value, ee));
+    const Se = () => Ee(Hc($.value.length, h.value)), Be = () => Ee(Vc($.value.length, h.value)), Ae = (ee) => Ee(zc($.value.length, h.value, ee));
     function j() {
       const ee = t.view?.model;
       if (!ee || !h.value.length) return;
-      const U = Dx(ee, h.value);
-      U && (ei.value = U, n("notice", `copied ${U.label} - paste it at the cursor in the piano roll (Ctrl+V; Ctrl+Shift+V moves what follows)`));
+      const G = Dx(ee, h.value);
+      G && (ei.value = G, n("notice", `copied ${G.label} - paste it at the cursor in the piano roll (Ctrl+V; Ctrl+Shift+V moves what follows)`));
     }
     function Qe(ee) {
-      const U = ee.ctrlKey || ee.metaKey, he = ee.key.toLowerCase();
+      const G = ee.ctrlKey || ee.metaKey, de = ee.key.toLowerCase();
       if (ee.key === "Delete" || ee.key === "Backspace") Be();
-      else if (U && he === "d") Se();
-      else if (U && he === "c") j();
-      else if (U && he === "x" && h.value.length < $.value.length)
+      else if (G && de === "d") Se();
+      else if (G && de === "c") j();
+      else if (G && de === "x" && h.value.length < $.value.length)
         j(), Be();
-      else if (U && (ee.key === "ArrowLeft" || ee.key === "ArrowUp")) Me(-1);
-      else if (U && (ee.key === "ArrowRight" || ee.key === "ArrowDown")) Me(1);
-      else if (U && he === "a") h.value = $.value.map((xe, Ce) => Ce);
+      else if (G && (ee.key === "ArrowLeft" || ee.key === "ArrowUp")) Ae(-1);
+      else if (G && (ee.key === "ArrowRight" || ee.key === "ArrowDown")) Ae(1);
+      else if (G && de === "a") h.value = $.value.map((xe, Me) => Me);
       else if (ee.key === "Escape" && h.value.length) h.value = [];
       else return !1;
       return !0;
     }
-    function ce(ee, U) {
-      V.value && (y.value = "bars", h.value.includes(ee) || (h.value = [ee]), v.value = !0, U.dataTransfer?.setData("text/plain", "plenio-bars"), U.dataTransfer && (U.dataTransfer.effectAllowed = "copyMove"));
+    function ce(ee, G) {
+      V.value && (y.value = "bars", h.value.includes(ee) || (h.value = [ee]), v.value = !0, G.dataTransfer?.setData("text/plain", "plenio-bars"), G.dataTransfer && (G.dataTransfer.effectAllowed = "copyMove"));
     }
-    function Ae(ee, U) {
+    function Ce(ee, G) {
       if (!v.value) return;
-      U.preventDefault();
-      const he = U.currentTarget.getBoundingClientRect();
-      k.value = U.clientX < he.left + he.width / 2 ? ee : ee + 1, U.dataTransfer && (U.dataTransfer.dropEffect = U.altKey || U.ctrlKey ? "copy" : "move");
+      G.preventDefault();
+      const de = G.currentTarget.getBoundingClientRect();
+      k.value = G.clientX < de.left + de.width / 2 ? ee : ee + 1, G.dataTransfer && (G.dataTransfer.dropEffect = G.altKey || G.ctrlKey ? "copy" : "move");
     }
     function te(ee) {
       !v.value || k.value === null || (ee.preventDefault(), Ee(Wc($.value.length, h.value, k.value, ee.altKey || ee.ctrlKey)), K());
@@ -17787,18 +17787,18 @@ const Ox = {
         Qe(ee) && (ee.preventDefault(), ee.stopPropagation());
         return;
       }
-      const U = ee.ctrlKey || ee.metaKey, he = ee.key.toLowerCase();
+      const G = ee.ctrlKey || ee.metaKey, de = ee.key.toLowerCase();
       let xe = !0;
-      ee.key === "Delete" || ee.key === "Backspace" ? me() : U && he === "d" ? H() : U && he === "c" ? ie() : U && he === "x" && l.value.length < w.value.length ? (ie(), me()) : U && ee.key === "ArrowUp" ? ve(-1) : U && ee.key === "ArrowDown" ? ve(1) : U && he === "a" ? l.value = w.value.map((Ce, Fn) => Fn) : ee.key === "Escape" && l.value.length ? l.value = [] : xe = !1, xe && (ee.preventDefault(), ee.stopPropagation());
+      ee.key === "Delete" || ee.key === "Backspace" ? me() : G && de === "d" ? H() : G && de === "c" ? ie() : G && de === "x" && l.value.length < w.value.length ? (ie(), me()) : G && ee.key === "ArrowUp" ? ve(-1) : G && ee.key === "ArrowDown" ? ve(1) : G && de === "a" ? l.value = w.value.map((Me, Fn) => Fn) : ee.key === "Escape" && l.value.length ? l.value = [] : xe = !1, xe && (ee.preventDefault(), ee.stopPropagation());
     }
-    function Fe(ee, U) {
-      V.value && (l.value.includes(ee) || (l.value = [ee]), c.value = !0, U.dataTransfer?.setData("text/plain", "plenio-sections"), U.dataTransfer && (U.dataTransfer.effectAllowed = "copyMove"));
+    function Fe(ee, G) {
+      V.value && (l.value.includes(ee) || (l.value = [ee]), c.value = !0, G.dataTransfer?.setData("text/plain", "plenio-sections"), G.dataTransfer && (G.dataTransfer.effectAllowed = "copyMove"));
     }
-    function nt(ee, U) {
+    function nt(ee, G) {
       if (!c.value) return;
-      U.preventDefault();
-      const he = U.currentTarget.getBoundingClientRect();
-      d.value = U.clientY < he.top + he.height / 2 ? ee : ee + 1, U.dataTransfer && (U.dataTransfer.dropEffect = U.altKey || U.ctrlKey ? "copy" : "move");
+      G.preventDefault();
+      const de = G.currentTarget.getBoundingClientRect();
+      d.value = G.clientY < de.top + de.height / 2 ? ee : ee + 1, G.dataTransfer && (G.dataTransfer.dropEffect = G.altKey || G.ctrlKey ? "copy" : "move");
     }
     function Ge(ee) {
       !c.value || d.value === null || (ee.preventDefault(), T(Wc(w.value.length, l.value, d.value, ee.altKey || ee.ctrlKey)), xt());
@@ -17806,7 +17806,7 @@ const Ox = {
     function xt() {
       c.value = !1, d.value = null;
     }
-    return (ee, U) => (b(), C("nav", {
+    return (ee, G) => (b(), C("nav", {
       class: "navigator",
       "aria-label": "Sections and bars",
       tabindex: "0",
@@ -17828,13 +17828,13 @@ const Ox = {
           disabled: !l.value.length,
           title: "Move the selected sections one place earlier (Ctrl+↑)",
           "aria-label": "Move up",
-          onClick: U[0] || (U[0] = (he) => ve(-1))
+          onClick: G[0] || (G[0] = (de) => ve(-1))
         }, "↑", 8, Px),
         p("button", {
           disabled: !l.value.length,
           title: "Move the selected sections one place later (Ctrl+↓)",
           "aria-label": "Move down",
-          onClick: U[1] || (U[1] = (he) => ve(1))
+          onClick: G[1] || (G[1] = (de) => ve(1))
         }, "↓", 8, Nx),
         p("button", {
           disabled: !l.value.length || l.value.length >= w.value.length,
@@ -17842,12 +17842,12 @@ const Ox = {
           title: "Delete the selected sections; the rest closes up (Del)",
           onClick: me
         }, " Delete ", 8, Vx)
-      ])) : G("", !0),
+      ])) : U("", !0),
       p("ol", {
         class: "sections",
-        onDragleave: U[5] || (U[5] = Ue((he) => d.value = null, ["self"]))
+        onDragleave: G[5] || (G[5] = Ue((de) => d.value = null, ["self"]))
       }, [
-        (b(!0), C(de, null, we(w.value, (he, xe) => (b(), C("li", {
+        (b(!0), C(he, null, we(w.value, (de, xe) => (b(), C("li", {
           key: xe,
           class: ze({
             current: xe === P.value,
@@ -17857,64 +17857,64 @@ const Ox = {
           }),
           draggable: V.value,
           "aria-selected": l.value.includes(xe),
-          onDragstart: (Ce) => Fe(xe, Ce),
-          onDragover: (Ce) => nt(xe, Ce),
+          onDragstart: (Me) => Fe(xe, Me),
+          onDragover: (Me) => nt(xe, Me),
           onDrop: Ge,
           onDragend: xt
         }, [
           p("div", {
             class: "section-head",
-            onClick: (Ce) => W(xe, Ce)
+            onClick: (Me) => W(xe, Me)
           }, [
             p("button", {
               class: "link",
-              title: `Select (Ctrl+click: add, Shift+click: range) and go to bar ${he.start_bar}`
+              title: `Select (Ctrl+click: add, Shift+click: range) and go to bar ${de.start_bar}`
             }, [
-              s.value !== xe ? (b(), C("strong", Fx, I(he.label), 1)) : G("", !0)
+              s.value !== xe ? (b(), C("strong", Fx, I(de.label), 1)) : U("", !0)
             ], 8, Wx),
             s.value === xe ? Oe((b(), C("input", {
               key: 0,
-              "onUpdate:modelValue": U[2] || (U[2] = (Ce) => o.value = Ce),
+              "onUpdate:modelValue": G[2] || (G[2] = (Me) => o.value = Me),
               class: "rename",
               "aria-label": "Section name",
-              onClick: U[3] || (U[3] = Ue(() => {
+              onClick: G[3] || (G[3] = Ue(() => {
               }, ["stop"])),
               onKeydown: [
-                ot(Ue((Ce) => _(xe), ["prevent"]), ["enter"]),
-                U[4] || (U[4] = ot(Ue((Ce) => s.value = null, ["stop", "prevent"]), ["esc"]))
+                ot(Ue((Me) => _(xe), ["prevent"]), ["enter"]),
+                G[4] || (G[4] = ot(Ue((Me) => s.value = null, ["stop", "prevent"]), ["esc"]))
               ],
-              onBlur: (Ce) => _(xe)
+              onBlur: (Me) => _(xe)
             }, null, 40, Kx)), [
-              [dt, o.value]
-            ]) : G("", !0),
+              [ft, o.value]
+            ]) : U("", !0),
             p("span", _x, [
-              ae(" bars " + I(he.start_bar) + "-" + I(he.start_bar + he.bars - 1) + " · " + I(L(Oo)(he.start_s)) + " ", 1),
-              ne(he.start_bar) ? (b(), C(de, { key: 0 }, [
-                ae(" · source " + I(ne(he.start_bar)), 1)
-              ], 64)) : G("", !0)
+              ae(" bars " + I(de.start_bar) + "-" + I(de.start_bar + de.bars - 1) + " · " + I(L(Oo)(de.start_s)) + " ", 1),
+              ne(de.start_bar) ? (b(), C(he, { key: 0 }, [
+                ae(" · source " + I(ne(de.start_bar)), 1)
+              ], 64)) : U("", !0)
             ])
           ], 8, zx),
-          i.readonly ? G("", !0) : (b(), C("div", Ux, [
+          i.readonly ? U("", !0) : (b(), C("div", Ux, [
             p("button", {
               title: "Rename this section",
-              onClick: (Ce) => E(xe, he.label)
+              onClick: (Me) => E(xe, de.label)
             }, "Rename", 8, Gx),
-            xe > 0 ? (b(), C(de, { key: 0 }, [
+            xe > 0 ? (b(), C(he, { key: 0 }, [
               p("button", {
                 title: "Start this section one bar earlier",
                 "aria-label": "Start one bar earlier",
-                onClick: (Ce) => N(xe, -1)
+                onClick: (Me) => N(xe, -1)
               }, "◀ bar", 8, jx),
               p("button", {
                 title: "Start this section one bar later",
                 "aria-label": "Start one bar later",
-                onClick: (Ce) => N(xe, 1)
+                onClick: (Me) => N(xe, 1)
               }, "bar ▶", 8, qx),
               p("button", {
                 title: "Join this section to the one before",
-                onClick: (Ce) => n("operate", { op: "merge_section", section: xe + 1 })
+                onClick: (Me) => n("operate", { op: "merge_section", section: xe + 1 })
               }, " Join ↑ ", 8, Yx)
-            ], 64)) : G("", !0)
+            ], 64)) : U("", !0)
           ]))
         ], 42, Hx))), 128))
       ], 32),
@@ -17922,18 +17922,18 @@ const Ox = {
         p("label", null, [
           ae(" New section at bar " + I(i.bar) + ": ", 1),
           Oe(p("input", {
-            "onUpdate:modelValue": U[6] || (U[6] = (he) => r.value = he),
+            "onUpdate:modelValue": G[6] || (G[6] = (de) => r.value = de),
             "aria-label": "Name of the new section"
           }, null, 512), [
-            [dt, r.value]
+            [ft, r.value]
           ])
         ]),
         p("button", {
           disabled: i.bar <= 1 || !r.value.trim(),
           title: "Start a new section at the selected bar",
-          onClick: U[7] || (U[7] = (he) => n("operate", { op: "split_section", bar: i.bar, label: r.value }))
+          onClick: G[7] || (G[7] = (de) => n("operate", { op: "split_section", bar: i.bar, label: r.value }))
         }, " Split ", 8, Jx)
-      ])) : G("", !0),
+      ])) : U("", !0),
       V.value ? (b(), C("div", Zx, [
         p("span", Qx, I(h.value.length ? `${h.value.length} bar${h.value.length > 1 ? "s" : ""} selected` : "Bars: click to select (Ctrl / Shift: more)"), 1),
         p("button", {
@@ -17950,13 +17950,13 @@ const Ox = {
           disabled: !h.value.length,
           title: "Move the selected bars one place earlier (Ctrl+←)",
           "aria-label": "Move bars earlier",
-          onClick: U[8] || (U[8] = (he) => Me(-1))
+          onClick: G[8] || (G[8] = (de) => Ae(-1))
         }, "←", 8, nS),
         p("button", {
           disabled: !h.value.length,
           title: "Move the selected bars one place later (Ctrl+→)",
           "aria-label": "Move bars later",
-          onClick: U[9] || (U[9] = (he) => Me(1))
+          onClick: G[9] || (G[9] = (de) => Ae(1))
         }, "→", 8, iS),
         p("button", {
           disabled: !h.value.length || h.value.length >= $.value.length,
@@ -17964,33 +17964,33 @@ const Ox = {
           title: "Delete the selected bars; what follows moves up (Del)",
           onClick: Be
         }, " Delete ", 8, sS)
-      ])) : G("", !0),
+      ])) : U("", !0),
       p("div", {
         class: "bar-strip",
         role: "list",
         "aria-label": "Bars",
-        onDragleave: U[10] || (U[10] = Ue((he) => k.value = null, ["self"]))
+        onDragleave: G[10] || (G[10] = Ue((de) => k.value = null, ["self"]))
       }, [
-        (b(!0), C(de, null, we($.value, (he, xe) => (b(), C("button", {
-          key: he.index,
+        (b(!0), C(he, null, we($.value, (de, xe) => (b(), C("button", {
+          key: de.index,
           role: "listitem",
           class: ze(["bar", {
-            selected: he.index === i.bar,
+            selected: de.index === i.bar,
             picked: h.value.includes(xe),
-            error: R.value.has(he.index),
-            alt: i.view ? L(cl)(i.view, he.index) % 2 === 1 : !1,
+            error: R.value.has(de.index),
+            alt: i.view ? L(cl)(i.view, de.index) % 2 === 1 : !1,
             "drop-before": k.value === xe,
             "drop-after": k.value === xe + 1 && xe === $.value.length - 1
           }]),
           draggable: V.value,
           "aria-selected": h.value.includes(xe),
-          title: `Bar ${he.index} · ${L(Oo)(he.start_s)} · ${he.chords.join(" ") || "no chord"}${V.value ? " - click to select (Ctrl+click: add, Shift+click: range), drag to move (Alt: copy)" : ""}`,
-          onClick: (Ce) => le(xe, Ce),
-          onDragstart: (Ce) => ce(xe, Ce),
-          onDragover: (Ce) => Ae(xe, Ce),
+          title: `Bar ${de.index} · ${L(Oo)(de.start_s)} · ${de.chords.join(" ") || "no chord"}${V.value ? " - click to select (Ctrl+click: add, Shift+click: range), drag to move (Alt: copy)" : ""}`,
+          onClick: (Me) => le(xe, Me),
+          onDragstart: (Me) => ce(xe, Me),
+          onDragover: (Me) => Ce(xe, Me),
           onDrop: te,
           onDragend: K
-        }, I(he.index), 43, oS))), 128))
+        }, I(de.index), 43, oS))), 128))
       ], 32)
     ], 32));
   }
@@ -18107,7 +18107,7 @@ const Ox = {
           disabled: !i.primary || i.busy,
           onKeydown: w[11] || (w[11] = ot(Ue(($) => i.primary && s.value.trim() && n("operate", { op: "set_chord", id: i.primary.id, name: s.value }), ["prevent"]), ["enter"]))
         }, null, 40, xS), [
-          [dt, s.value]
+          [ft, s.value]
         ]),
         p("button", {
           disabled: !i.primary || !s.value.trim() || i.busy,
@@ -18133,7 +18133,7 @@ const Ox = {
             title: "Transpose everything a semitone up",
             onClick: w[15] || (w[15] = ($) => n("operate", { op: "transpose", semitones: 1 }))
           }, " transpose +1 ", 8, $S),
-          (b(!0), C(de, null, we(L(m), ([$, P]) => (b(), C("span", {
+          (b(!0), C(he, null, we(L(m), ([$, P]) => (b(), C("span", {
             key: $,
             class: "track-octave",
             role: "group",
@@ -18162,7 +18162,7 @@ const Ox = {
               "aria-label": "Tempo in BPM"
             }, null, 512), [
               [
-                dt,
+                ft,
                 o.value,
                 void 0,
                 { number: !0 }
@@ -18251,7 +18251,7 @@ const Ox = {
   }),
   emits: /* @__PURE__ */ Zt(["cursor", "time", "stopped"], ["update:voices", "update:speed", "update:metronome", "update:hear", "update:sourceLevel", "update:sourceShift"]),
   setup(i, { expose: e, emit: t }) {
-    const n = i, s = ut(i, "voices"), o = ut(i, "speed"), r = ut(i, "metronome"), l = ut(i, "hear"), a = ut(i, "sourceLevel"), u = ut(i, "sourceShift"), c = z(!1);
+    const n = i, s = ct(i, "voices"), o = ct(i, "speed"), r = ct(i, "metronome"), l = ct(i, "hear"), a = ct(i, "sourceLevel"), u = ct(i, "sourceShift"), c = z(!1);
     function d(te) {
       u.value = Math.max(-10, Math.min(10, Math.round((u.value + te) * 1e3) / 1e3));
     }
@@ -18294,26 +18294,26 @@ const Ox = {
         guide: n.guide ?? [],
         clock: xt
       };
-      const U = V;
+      const G = V;
       k = K ? Ee(Q, nt, K.countIn, xt) : 0;
-      const he = ap(Q, U).map((Ce) => ({ ...Ce, at: Ce.at + k }));
-      k && he.unshift(...Se(Q, nt, K?.countIn ?? 0, k));
-      const xe = Ge && xt && n.source ? up(xt, nt, U.to).map((Ce) => ({ ...Ce, at: Ce.at + k })) : [];
+      const de = ap(Q, G).map((Me) => ({ ...Me, at: Me.at + k }));
+      k && de.unshift(...Se(Q, nt, K?.countIn ?? 0, k));
+      const xe = Ge && xt && n.source ? up(xt, nt, G.to).map((Me) => ({ ...Me, at: Me.at + k })) : [];
       try {
-        m.play(he, {
+        m.play(de, {
           source: xe.length && n.source ? { buffer: n.source.buffer, segments: xe } : null,
           levels: H(),
-          length: k + dp(Q, U),
+          length: k + dp(Q, G),
           sounds: n.sounds,
-          onTick: (Ce) => {
-            v.value = Ce < k, !(Ce < k) && (P.value = cp(U, Ce - k), f("cursor", hp(Q, P.value, U.voices)), f("time", P.value));
+          onTick: (Me) => {
+            v.value = Me < k, !(Me < k) && (P.value = cp(G, Me - k), f("cursor", hp(Q, P.value, G.voices)), f("time", P.value));
           },
           onEnd: () => {
-            $.value && y.value && !K ? ie(Fe?.[0] ?? U.from) : Me();
+            $.value && y.value && !K ? ie(Fe?.[0] ?? G.from) : Ae();
           }
         }), y.value = !0, v.value = k > 0, R.value = null;
-      } catch (Ce) {
-        R.value = Ce instanceof Error ? Ce.message : String(Ce);
+      } catch (Me) {
+        R.value = Me instanceof Error ? Me.message : String(Me);
       }
     }
     function le(te, K, Q) {
@@ -18332,7 +18332,7 @@ const Ox = {
     function Be() {
       m.stop(), y.value = !1, v.value = !1, w = null;
     }
-    function Me() {
+    function Ae() {
       const te = y.value;
       Be(), f("cursor", []), f("time", null), te && f("stopped");
     }
@@ -18346,9 +18346,9 @@ const Ox = {
       return Fe ? pp(Fe, mp(Fe, K.from) + nt) : K.from + nt;
     }
     function ce() {
-      y.value ? Me() : ie();
+      y.value ? Ae() : ie();
     }
-    function Ae() {
+    function Ce() {
       l.value = l.value === "source" ? "notes" : "source";
     }
     return Re(
@@ -18364,7 +18364,7 @@ const Ox = {
       (te, K) => {
         y.value && !w && te !== null && te !== void 0 && te !== K && ie(te);
       }
-    ), e({ toggle: ce, stop: Me, swap: Ae, playing: y, record: j, scoreSecondAt: Qe, countingIn: v }), zn(() => m.close()), (te, K) => (b(), C("div", NS, [
+    ), e({ toggle: ce, stop: Ae, swap: Ce, playing: y, record: j, scoreSecondAt: Qe, countingIn: v }), zn(() => m.close()), (te, K) => (b(), C("div", NS, [
       p("button", {
         disabled: !ne.value,
         title: y.value ? "Stop (Space)" : `Play from ${N.value} (Space)`,
@@ -18375,7 +18375,7 @@ const Ox = {
         countingIn: v.value
       }),
       i.reference ? (b(), C("span", HS, [
-        (b(), C(de, null, we(["both", "notes", "source"], (Q) => p("button", {
+        (b(), C(he, null, we(["both", "notes", "source"], (Q) => p("button", {
           key: Q,
           role: "radio",
           "aria-checked": l.value === Q,
@@ -18391,7 +18391,7 @@ const Ox = {
         p("button", {
           disabled: !W.value,
           title: "A/B: the notes or the source alone - switched at once, also while it plays",
-          onClick: Ae
+          onClick: Ce
         }, "A/B", 8, WS),
         p("label", {
           class: "level",
@@ -18408,7 +18408,7 @@ const Ox = {
             "aria-label": "Source level"
           }, null, 8, KS), [
             [
-              dt,
+              ft,
               a.value,
               void 0,
               { number: !0 }
@@ -18446,10 +18446,10 @@ const Ox = {
               title: "Back to the transcription's beat grid",
               onClick: K[6] || (K[6] = (Q) => u.value = 0)
             }, "reset", 8, YS)
-          ])) : G("", !0)
+          ])) : U("", !0)
         ]),
-        T.value ? (b(), C("span", XS, I(T.value), 1)) : G("", !0)
-      ])) : G("", !0),
+        T.value ? (b(), C("span", XS, I(T.value), 1)) : U("", !0)
+      ])) : U("", !0),
       p("label", {
         title: i.loopRange ? `Play to the end of the selection (${i.loopRange.label}), then repeat it` : "Play to the end of the cursor's section, then repeat it (select notes to loop their bars)"
       }, [
@@ -18506,7 +18506,7 @@ const Ox = {
             onChange: K[12] || (K[12] = (Q) => s.value = { ...s.value, guide: Q.target.checked })
           }, null, 40, tC),
           K[20] || (K[20] = ae(" Guide ", -1))
-        ])) : G("", !0)
+        ])) : U("", !0)
       ]),
       p("label", nC, [
         K[22] || (K[22] = ae(" speed ", -1)),
@@ -18528,7 +18528,7 @@ const Ox = {
         ])
       ]),
       p("span", iC, I(y.value ? `▶ ${L(Oo)(P.value)}` : `${i.position ? `cursor ${i.position} · ` : ""}a guide to the notes, not the model's sound`), 1),
-      R.value ? (b(), C("span", sC, I(R.value), 1)) : G("", !0)
+      R.value ? (b(), C("span", sC, I(R.value), 1)) : U("", !0)
     ]));
   }
 }), rC = {
@@ -18557,7 +18557,7 @@ const Ox = {
   }),
   emits: /* @__PURE__ */ Zt(["clearGuide", "shiftTrack"], ["update:voices", "update:sounds"]),
   setup(i, { emit: e }) {
-    const t = i, n = ut(i, "voices"), s = ut(i, "sounds"), o = { Vocal: "Vocal", Ins: "Ins", chords: "chord", guide: "guide" };
+    const t = i, n = ct(i, "voices"), s = ct(i, "sounds"), o = { Vocal: "Vocal", Ins: "Ins", chords: "chord", guide: "guide" };
     function r(d, h) {
       const f = o[d];
       s.value && f && (s.value = { ...s.value, [f]: h });
@@ -18574,7 +18574,7 @@ const Ox = {
     return (d, h) => (b(), C("div", rC, [
       h[2] || (h[2] = p("h4", null, "Tracks", -1)),
       p("ul", null, [
-        (b(!0), C(de, null, we(a.value, (f) => (b(), C("li", {
+        (b(!0), C(he, null, we(a.value, (f) => (b(), C("li", {
           key: f.voice,
           class: ze({ guide: f.voice === "guide", active: f.voice === "guide" && i.guideActive })
         }, [
@@ -18596,12 +18596,12 @@ const Ox = {
             title: `The ${f.name} track’s sound in the playback`,
             onChange: (m) => r(f.voice, m.target.value)
           }, [
-            (b(!0), C(de, null, we(L(Zc), (m) => (b(), C("option", {
+            (b(!0), C(he, null, we(L(Zc), (m) => (b(), C("option", {
               key: m,
               value: m,
               title: L(Fo)[m].hint
             }, I(L(Fo)[m].label), 9, cC))), 128))
-          ], 40, uC)) : G("", !0),
+          ], 40, uC)) : U("", !0),
           p("label", {
             class: "play",
             title: `Play the ${f.name} track`
@@ -18631,13 +18631,13 @@ const Ox = {
               title: L(xs)(i.view, L(Jn)[f.voice].track, 12) ?? `Every ${f.name} note an octave up`,
               onClick: (m) => l("shiftTrack", L(Jn)[f.voice].track, 12)
             }, " +8va ", 8, mC)
-          ], 8, fC)) : G("", !0),
+          ], 8, fC)) : U("", !0),
           f.voice === "guide" && f.notes > 0 && !i.readonly ? (b(), C("button", {
             key: 2,
             class: "link",
             title: "Remove every Guide note from this sheet",
             onClick: h[0] || (h[0] = (m) => l("clearGuide"))
-          }, " clear ")) : G("", !0)
+          }, " clear ")) : U("", !0)
         ], 2))), 128))
       ]),
       i.keepsGuide ? (b(), C("p", gC, [...h[1] || (h[1] = [
@@ -18978,7 +18978,7 @@ const KC = {
   }),
   emits: /* @__PURE__ */ Zt(["record", "stop", "step", "rest", "enable"], ["update:settings"]),
   setup(i, { emit: e }) {
-    const t = i, n = ut(i, "settings"), s = e, o = z(!1), r = z(null);
+    const t = i, n = ct(i, "settings"), s = e, o = z(!1), r = z(null);
     function l() {
       o.value = !1, Cn(() => r.value?.focus());
     }
@@ -19019,7 +19019,7 @@ const KC = {
         key: 0,
         title: "A rest: the cursor moves on by one step",
         onClick: v[2] || (v[2] = (k) => s("rest"))
-      }, "rest ▶")) : G("", !0),
+      }, "rest ▶")) : U("", !0),
       p("span", {
         class: ze(["midi-light", { active: d.value, ready: i.hub.status.value === "ready" }]),
         title: h.value,
@@ -19055,7 +19055,7 @@ const KC = {
               onChange: v[4] || (v[4] = (k) => i.hub.selected.value = k.target.value)
             }, [
               v[12] || (v[12] = p("option", { value: "all" }, "all keyboards", -1)),
-              (b(!0), C(de, null, we(i.hub.devices.value.filter((k) => k.connected), (k) => (b(), C("option", {
+              (b(!0), C(he, null, we(i.hub.devices.value.filter((k) => k.connected), (k) => (b(), C("option", {
                 key: k.id,
                 value: k.id
               }, I(k.name), 9, QC))), 128)),
@@ -19063,13 +19063,13 @@ const KC = {
                 key: 0,
                 value: i.hub.selected.value,
                 disabled: ""
-              }, I(c.value) + " (unplugged)", 9, e2)) : G("", !0)
+              }, I(c.value) + " (unplugged)", 9, e2)) : U("", !0)
             ], 40, ZC)
           ])) : i.hub.status.value !== "asking" ? (b(), C("button", {
             key: 1,
             title: "Ask the browser for MIDI access",
             onClick: v[5] || (v[5] = (k) => s("enable"))
-          }, "use MIDI")) : G("", !0),
+          }, "use MIDI")) : U("", !0),
           p("label", t2, [
             p("input", {
               checked: n.value.thru,
@@ -19144,7 +19144,7 @@ const KC = {
               p("option", { value: 16 }, "1/16", -1)
             ])], 40, c2)
           ])
-        ], 40, YC)) : G("", !0)
+        ], 40, YC)) : U("", !0)
       ])
     ]));
   }
@@ -19162,7 +19162,7 @@ const KC = {
   }),
   emits: /* @__PURE__ */ Zt(["done", "failed"], ["update:paper", "update:size"]),
   setup(i, { emit: e }) {
-    const t = i, n = ut(i, "paper"), s = ut(i, "size"), o = e, r = z(!1), l = z(!1), a = z(null);
+    const t = i, n = ct(i, "paper"), s = ct(i, "size"), o = e, r = z(!1), l = z(!1), a = z(null);
     function u() {
       r.value = !1, Cn(() => a.value?.focus());
     }
@@ -19256,7 +19256,7 @@ const KC = {
           }, "Print…", 8, w2)
         ]),
         p("span", x2, I(l.value ? "drawing the pages…" : "What the notation shows: both voices, chord symbols, sections and the lyrics."), 1)
-      ], 40, p2)) : G("", !0)
+      ], 40, p2)) : U("", !0)
     ]));
   }
 }), C2 = { class: "sounds-settings" }, M2 = ["aria-expanded"], A2 = ["onKeydown"], T2 = { class: "row" }, $2 = { label: "Built in" }, D2 = ["value", "title"], L2 = {
@@ -19284,7 +19284,7 @@ const KC = {
   }),
   emits: /* @__PURE__ */ Zt(["apply"], ["update:sounds"]),
   setup(i, { emit: e }) {
-    const t = i, n = ut(i, "sounds"), s = e, o = z(!1), r = z(null), l = z([]), a = z(null), u = z(!1), c = z(""), d = z(!1), h = z(""), f = z(null), m = O(
+    const t = i, n = ct(i, "sounds"), s = e, o = z(!1), r = z(null), l = z([]), a = z(null), u = z(!1), c = z(""), d = z(!1), h = z(""), f = z(null), m = O(
       () => [
         ["Vocal", "Vocal"],
         ["Ins", "Instrument"],
@@ -19363,18 +19363,18 @@ const KC = {
           }, [
             _[5] || (_[5] = p("option", { value: "" }, "- choose a preset -", -1)),
             p("optgroup", $2, [
-              (b(!0), C(de, null, we(L($o), (N) => (b(), C("option", {
+              (b(!0), C(he, null, we(L($o), (N) => (b(), C("option", {
                 key: N.name,
                 value: N.name,
                 title: N.note
               }, I(N.name), 9, D2))), 128))
             ]),
             l.value.length ? (b(), C("optgroup", L2, [
-              (b(!0), C(de, null, we(l.value, (N) => (b(), C("option", {
+              (b(!0), C(he, null, we(l.value, (N) => (b(), C("option", {
                 key: "own-" + N.name,
                 value: N.name
               }, I(N.name), 9, B2))), 128))
-            ])) : G("", !0)
+            ])) : U("", !0)
           ], 512), [
             [ri, c.value]
           ]),
@@ -19387,11 +19387,11 @@ const KC = {
             key: 0,
             title: "Delete this preset of yours",
             onClick: P
-          }, "delete")) : G("", !0)
+          }, "delete")) : U("", !0)
         ]),
-        c.value ? (b(), C("span", E2, I([...L($o), ...l.value].find((N) => N.name === c.value)?.note ?? "Your preset"), 1)) : G("", !0),
+        c.value ? (b(), C("span", E2, I([...L($o), ...l.value].find((N) => N.name === c.value)?.note ?? "Your preset"), 1)) : U("", !0),
         p("span", I2, [
-          d.value ? (b(), C(de, { key: 0 }, [
+          d.value ? (b(), C(he, { key: 0 }, [
             Oe(p("input", {
               "onUpdate:modelValue": _[2] || (_[2] = (N) => h.value = N),
               maxlength: "60",
@@ -19402,7 +19402,7 @@ const KC = {
                 _[3] || (_[3] = ot(Ue((N) => d.value = !1, ["stop", "prevent"]), ["esc"]))
               ]
             }, null, 40, R2), [
-              [dt, h.value]
+              [ft, h.value]
             ]),
             p("button", {
               disabled: !h.value.trim(),
@@ -19414,9 +19414,9 @@ const KC = {
             onClick: _[4] || (_[4] = (N) => d.value = !0)
           }, " save current as preset… "))
         ]),
-        f.value ? (b(), C("span", N2, I(f.value), 1)) : a.value === "browser" ? (b(), C("span", V2, "Your presets are kept in this browser (ComfyUI’s user data could not be reached).")) : G("", !0),
+        f.value ? (b(), C("span", N2, I(f.value), 1)) : a.value === "browser" ? (b(), C("span", V2, "Your presets are kept in this browser (ComfyUI’s user data could not be reached).")) : U("", !0),
         _[7] || (_[7] = p("strong", null, "Sounds", -1)),
-        (b(!0), C(de, null, we(m.value, ([N, ne]) => (b(), C("label", {
+        (b(!0), C(he, null, we(m.value, ([N, ne]) => (b(), C("label", {
           key: N,
           class: "row"
         }, [
@@ -19426,7 +19426,7 @@ const KC = {
             "aria-label": `Sound of the ${ne} track`,
             onChange: (W) => R(N, W.target.value)
           }, [
-            (b(!0), C(de, null, we(L(Zc), (W) => (b(), C("option", {
+            (b(!0), C(he, null, we(L(Zc), (W) => (b(), C("option", {
               key: W,
               value: W,
               title: L(Fo)[W].hint
@@ -19439,7 +19439,7 @@ const KC = {
           }, "▶", 8, F2)
         ]))), 128)),
         _[8] || (_[8] = p("span", { class: "facts" }, "Synthesized in the browser - a sketch of each instrument to tell the tracks apart; YuE2 renders the song itself.", -1))
-      ], 40, A2)) : G("", !0)
+      ], 40, A2)) : U("", !0)
     ]));
   }
 });
@@ -19894,12 +19894,12 @@ const iM = {
           Ss(et, ue) || (n("guideChange", et), D.guide = [...ue], X.guide = et);
         }
         const pe = St(), Ie = o.value, De = ie.value?.model, Te = g.analysis.model;
-        let at = pe.length && g.time_map?.length ? Qp(pe, g.time_map) : pe;
-        if (at.length && Ie && De && Te) {
+        let ut = pe.length && g.time_map?.length ? Qp(pe, g.time_map) : pe;
+        if (ut.length && Ie && De && Te) {
           const et = (Vi) => Vi.sections.flatMap((ps, Ir) => ps.implicit ? [] : [Ir]), vi = Te.sections.map((Vi) => Te.measures[Vi.first_bar - 1]?.onset ?? 0);
-          at = em(at, Lf(De, Te, g.time_map), et(De), et(Te), vi);
+          ut = em(ut, Lf(De, Te, g.time_map), et(De), et(Te), vi);
         }
-        if (Bo(at, pe) || (Kn(at), D.spans = [...pe], X.spans = at), Ie && De && Te) {
+        if (Bo(ut, pe) || (Kn(ut), D.spans = [...pe], X.spans = ut), Ie && De && Te) {
           const et = wC(Ie, De, Te, g.time_map, a(S));
           o.value = et, D.lyrics = Ie, X.lyrics = et;
         }
@@ -19961,23 +19961,23 @@ const iM = {
       () => Ee.value.filter((g) => g.severity === "error" && g.bar).map((g) => g.bar)
     ), Be = O(
       () => Af(ie.value, u.selection, u.primary?.bar ?? null).measure?.n ?? u.primary?.bar ?? null
-    ), Me = O(() => d.value !== "text"), j = O(() => d.value === "daw"), Qe = O(() => t.guide ?? []), ce = O(() => sm(t.guide, ie.value?.model)), Ae = O(() => j.value ? c.value.voices.guide ?? !0 : !1), te = O(() => Ae.value ? ce.value : []), K = O(() => Me.value && c.value.roll && !!(ie.value?.model || ie.value?.model_error)), Q = O(() => ie.value?.model ?? null), Fe = O(() => Q.value ? Ps(Q.value, m.value) : Be.value), nt = O(() => ie.value && Q.value ? Ia(ie.value, m.value) : null), Ge = O(() => Q.value ? $f(Q.value, m.value) : "");
+    ), Ae = O(() => d.value !== "text"), j = O(() => d.value === "daw"), Qe = O(() => t.guide ?? []), ce = O(() => sm(t.guide, ie.value?.model)), Ce = O(() => j.value ? c.value.voices.guide ?? !0 : !1), te = O(() => Ce.value ? ce.value : []), K = O(() => Ae.value && c.value.roll && !!(ie.value?.model || ie.value?.model_error)), Q = O(() => ie.value?.model ?? null), Fe = O(() => Q.value ? Ps(Q.value, m.value) : Be.value), nt = O(() => ie.value && Q.value ? Ia(ie.value, m.value) : null), Ge = O(() => Q.value ? $f(Q.value, m.value) : "");
     Re(
       () => Q.value?.total,
       (g) => {
         g !== void 0 && m.value > g && (m.value = g);
       }
     );
-    let xt = null, ee = null, U = !1;
+    let xt = null, ee = null, G = !1;
     Re(
       () => [t.lyricsTarget, t.lyrics, Q.value],
       ([g, S, D]) => {
         if (!g || !S?.trim()) {
-          o.value = null, r.value = null, xt = null, U = !1;
+          o.value = null, r.value = null, xt = null, G = !1;
           return;
         }
         const X = S === xt || S === ee;
-        if (xt = S, X && (U || !D)) {
+        if (xt = S, X && (G || !D)) {
           if (o.value && D && o.value.blocks.length !== D.sections.length)
             r.value = l.value, o.value = null;
           else if (!o.value && r.value && D) {
@@ -19986,8 +19986,8 @@ const iM = {
           }
           return;
         }
-        const ue = !U && t.lyricsPending || S;
-        o.value = D ? To(ue, D) : null, r.value = o.value ? null : ue, U = !!D;
+        const ue = !G && t.lyricsPending || S;
+        o.value = D ? To(ue, D) : null, r.value = o.value ? null : ue, G = !!D;
       },
       { immediate: !0 }
     ), Re(
@@ -20004,12 +20004,12 @@ const iM = {
       },
       { immediate: !0 }
     );
-    const he = O(
+    const de = O(
       () => !!t.lyricsTarget && !t.lyricsTarget.blocked && (!!t.lyricsTarget.own || !t.readonly)
     ), xe = O(
       () => !!l.value && !t.lyricsTarget?.own && jt(l.value) !== jt(t.lyrics ?? "")
-    ), Ce = O(() => l.value ? Ys(l.value).blocks.map((g) => g.tag).join(" · ") : ""), Fn = O(() => l.value ?? t.lyrics ?? null);
-    function ft() {
+    ), Me = O(() => l.value ? Ys(l.value).blocks.map((g) => g.tag).join(" · ") : ""), Fn = O(() => l.value ?? t.lyrics ?? null);
+    function pt() {
       return { lyrics: o.value, looseLyrics: r.value, spans: [...St()] };
     }
     const It = Gi(null);
@@ -20025,11 +20025,11 @@ const iM = {
         g && It.value && Bo(g, It.value) || (It.value = null, u.refreshLyrics());
       }
     );
-    const ct = z([]);
+    const ht = z([]);
     Re(
       () => u.selection,
       (g) => {
-        g.length && (ct.value = []);
+        g.length && (ht.value = []);
       }
     );
     function Ii(g) {
@@ -20056,12 +20056,12 @@ const iM = {
     }
     function Ut(g, S, D) {
       const X = Q.value, ue = ie.value?.lyrics;
-      if (!X || !ue || !he.value) return [];
-      const pe = ft(), Ie = [], De = /* @__PURE__ */ new Map();
-      for (const Te of [...new Set(g)].sort((at, et) => at - et)) {
-        const at = _n(Te);
-        if (at === null) continue;
-        const et = io(ue, Te, X.total), vi = Yp(S(Te, tu(ue, Te, at, et, Ln())), et), Vi = vi.map((ps) => ps.text);
+      if (!X || !ue || !de.value) return [];
+      const pe = pt(), Ie = [], De = /* @__PURE__ */ new Map();
+      for (const Te of [...new Set(g)].sort((ut, et) => ut - et)) {
+        const ut = _n(Te);
+        if (ut === null) continue;
+        const et = io(ue, Te, X.total), vi = Yp(S(Te, tu(ue, Te, ut, et, Ln())), et), Vi = vi.map((ps) => ps.text);
         if (o.value) o.value = MC(o.value, X, Wt(Te), Vi);
         else if (r.value !== null) r.value = CC(r.value, Te, Vi);
         else continue;
@@ -20069,7 +20069,7 @@ const iM = {
           ps.id.startsWith("*") && Ie.push(Ko(Te, Ir));
         }), De.set(Te, vi);
       }
-      return De.size ? (Kn(Xp(St(), ue, De)), u.recordSide(D, pe, ft()), Ie) : [];
+      return De.size ? (Kn(Xp(St(), ue, De)), u.recordSide(D, pe, pt()), Ie) : [];
     }
     function Ct(g) {
       const S = /* @__PURE__ */ new Map();
@@ -20081,7 +20081,7 @@ const iM = {
     }
     function fi(g) {
       const S = new Map(g.map((X) => [X.key, X])), D = g.length;
-      ct.value = Ut(
+      ht.value = Ut(
         [...Ct(g.map((X) => X.key)).keys()],
         (X, ue) => ue.map((pe, Ie) => {
           const De = S.get(Ko(X, Ie));
@@ -20096,13 +20096,13 @@ const iM = {
         [...S.keys()],
         (D, X) => X.filter((ue, pe) => !S.get(D)?.has(pe)),
         `lyrics: ${g.length === 1 ? "line" : `${g.length} lines`} deleted`
-      ), ct.value = []);
+      ), ht.value = []);
     }
     function en() {
       const g = Q.value, S = ie.value?.lyrics;
       if (!g || !S) return [];
       const D = [];
-      for (const [X, ue] of Ct(ct.value)) {
+      for (const [X, ue] of Ct(ht.value)) {
         const pe = _n(X);
         pe && tu(S, X, pe, io(S, X, g.total), Ln()).forEach((Ie, De) => {
           ue.has(De) && D.push(Ie);
@@ -20123,10 +20123,10 @@ const iM = {
         return;
       }
       const [, Ie] = io(ue, pe.block, X.total), De = g.filter((Te) => S + Te.offset < Ie);
-      De.length && (ct.value = Ut(
+      De.length && (ht.value = Ut(
         [pe.block],
-        (Te, at) => [
-          ...at,
+        (Te, ut) => [
+          ...ut,
           ...De.map((et, vi) => ({
             id: `*new${vi}`,
             text: et.text,
@@ -20140,11 +20140,11 @@ const iM = {
     function Bn(g) {
       const S = ei.value;
       if ((g === "paste" || g === "insert") && S?.lyricLines?.length)
-        return he.value ? Q.value && S.unit !== Q.value.unit ? (u.error = `The lines were copied with L:${S.unit} and do not fit this score's L:${Q.value.unit}.`, !0) : (pi(S.lyricLines, m.value, `lyrics: ${S.label} pasted`), !0) : !0;
-      if (!ct.value.length) return !1;
+        return de.value ? Q.value && S.unit !== Q.value.unit ? (u.error = `The lines were copied with L:${S.unit} and do not fit this score's L:${Q.value.unit}.`, !0) : (pi(S.lyricLines, m.value, `lyrics: ${S.label} pasted`), !0) : !0;
+      if (!ht.value.length) return !1;
       if (g === "copy") Un();
       else if (g === "cut")
-        Un() && fn(ct.value);
+        Un() && fn(ht.value);
       else if (g === "duplicate") {
         const D = en();
         if (D.length) {
@@ -20162,7 +20162,7 @@ const iM = {
           [g.block],
           (pe, Ie) => {
             if (g.line < Ie.length)
-              return g.text ? Ie.map((Te, at) => at === g.line ? { ...Te, text: g.text } : Te) : Ie.filter((Te, at) => at !== g.line);
+              return g.text ? Ie.map((Te, ut) => ut === g.line ? { ...Te, text: g.text } : Te) : Ie.filter((Te, ut) => ut !== g.line);
             const De = g.at ?? Ie[Ie.length - 1]?.end ?? io(D, g.block, S.total)[0];
             return g.text ? [...Ie, { id: "*typed", text: g.text, start: De, end: De + ue }] : Ie;
           },
@@ -20170,17 +20170,17 @@ const iM = {
         );
         return;
       }
-      const X = ft();
+      const X = pt();
       if (o.value && S) o.value = SC(o.value, S, Wt(g.block), g.line, g.text);
       else if (r.value !== null) r.value = xC(r.value, g.block, g.line, g.text);
       else return;
-      t.readonly || u.recordSide(`lyrics: ${g.text || "line removed"}`, X, ft());
+      t.readonly || u.recordSide(`lyrics: ${g.text || "line removed"}`, X, pt());
     }
     function ds() {
       const g = t.lyrics, S = Q.value;
       if (!g) return;
-      const D = ft();
-      o.value = S ? To(g, S) : null, r.value = o.value ? null : g, t.readonly || u.recordSide("lyrics reverted", D, ft());
+      const D = pt();
+      o.value = S ? To(g, S) : null, r.value = o.value ? null : g, t.readonly || u.recordSide("lyrics reverted", D, pt());
     }
     Re(Q, (g) => {
       if (!Br || !g || r.value === null) return;
@@ -20237,7 +20237,7 @@ const iM = {
     }), mn = O({
       get: () => t.sourceShift ?? 0,
       set: (g) => n("sourceShiftChange", Math.round(g * 1e3) / 1e3)
-    }), He = O(() => Ft.value?.map((g) => g?.[0] ?? null) ?? null), pt = O(() => ie.value?.header?.unit ?? "1/16"), gn = O({
+    }), He = O(() => Ft.value?.map((g) => g?.[0] ?? null) ?? null), mt = O(() => ie.value?.header?.unit ?? "1/16"), gn = O({
       get: () => c.value.voices,
       set: (g) => c.value = { ...c.value, voices: g }
     }), qn = O({
@@ -20273,7 +20273,7 @@ const iM = {
     function ge() {
       B() || u.undo();
     }
-    function mt() {
+    function at() {
       B() || u.redo();
     }
     function Dr(g) {
@@ -20373,7 +20373,7 @@ const iM = {
       const S = g.key === "ArrowDown" ? 0.03 : g.key === "ArrowUp" ? -0.03 : 0;
       S && (g.preventDefault(), c.value = { ...c.value, notationShare: Dp(c.value.notationShare + S) });
     }
-    function ht(g) {
+    function dt(g) {
       g.preventDefault();
       const S = c.value.sideWidth;
       Lo(g, ({ dx: D }) => c.value = { ...c.value, sideWidth: ja(S, D) });
@@ -20464,8 +20464,8 @@ const iM = {
         it.value = "This score belongs to the other sheet; open the project in that sheet.";
         return;
       }
-      const D = ["score"], X = [], ue = ft(), pe = {}, Ie = t.guide;
-      Ie !== void 0 ? (ue.guide = [...Ie], pe.guide = [...g.guide], g.guide.length && D.push(Fa(g.guide.length))) : g.guide.length && X.push("the Guide notes (only the DAW sheet keeps a Guide track)"), g.lyrics && he.value ? (o.value = null, r.value = g.lyrics, Br = !0, D.push("lyrics"), Kn(g.lyric_spans)) : g.lyrics && X.push("the lyrics (this sheet cannot change them here)"), Object.assign(pe, ft()), Object.keys(g.settings).length && (c.value = Gc(c.value, g.settings), D.push("settings"));
+      const D = ["score"], X = [], ue = pt(), pe = {}, Ie = t.guide;
+      Ie !== void 0 ? (ue.guide = [...Ie], pe.guide = [...g.guide], g.guide.length && D.push(Fa(g.guide.length))) : g.guide.length && X.push("the Guide notes (only the DAW sheet keeps a Guide track)"), g.lyrics && de.value ? (o.value = null, r.value = g.lyrics, Br = !0, D.push("lyrics"), Kn(g.lyric_spans)) : g.lyrics && X.push("the lyrics (this sheet cannot change them here)"), Object.assign(pe, pt()), Object.keys(g.settings).length && (c.value = Gc(c.value, g.settings), D.push("settings"));
       const De = `open project (${S})`;
       u.replaceText(g.score, De, null, { before: ue, after: pe }) || u.recordSide(De, ue, pe), pe.guide && Ie !== void 0 && !Ss(pe.guide, Ie) && n("guideChange", pe.guide), it.value = null, u.notes = [
         `opened ${S}: ${D.join(", ")}${g.title ? ` ("${g.title}")` : ""}`,
@@ -20536,7 +20536,7 @@ const iM = {
       const S = g.ctrlKey || g.metaKey;
       if (S && !t.readonly && (g.key === "z" || g.key === "Z" || g.key === "y")) {
         if (Or(g.target) && !g.target.closest(".cm-editor")) return;
-        g.preventDefault(), g.key === "y" || g.key.toLowerCase() === "z" && g.shiftKey ? mt() : ge();
+        g.preventDefault(), g.key === "y" || g.key.toLowerCase() === "z" && g.shiftKey ? at() : ge();
         return;
       }
       const D = S && !Or(g.target) ? M(g) : null;
@@ -20558,7 +20558,7 @@ const iM = {
         return;
       }
       if (g.key === "Escape") {
-        g.preventDefault(), u.selection.length && u.select([]), ct.value = [];
+        g.preventDefault(), u.selection.length && u.select([]), ht.value = [];
         return;
       }
       const X = ie.value, ue = u.primary, pe = g.key.toLowerCase();
@@ -20585,8 +20585,8 @@ const iM = {
               return et && Pt(et.id, !1, "keys"), !0;
             }
             if (t.readonly) return !1;
-            const De = u.selection.filter((et) => Mi(X, et)?.kind === "note"), Te = [...qs(u.selection)], at = (g.shiftKey ? 12 : 1) * (g.key === "ArrowUp" ? 1 : -1);
-            return Te.length ? Y({ op: "set_note_pitch", ids: [...us(X, u.selection), ...Te], semitones: at }) : De.length && Y({ op: "shift_pitch", ids: De, semitones: at }), !0;
+            const De = u.selection.filter((et) => Mi(X, et)?.kind === "note"), Te = [...qs(u.selection)], ut = (g.shiftKey ? 12 : 1) * (g.key === "ArrowUp" ? 1 : -1);
+            return Te.length ? Y({ op: "set_note_pitch", ids: [...us(X, u.selection), ...Te], semitones: ut }) : De.length && Y({ op: "shift_pitch", ids: De, semitones: ut }), !0;
           }
           case "[":
           case "]": {
@@ -20612,7 +20612,7 @@ const iM = {
       onKeydown: Xf,
       onKeyup: Yf
     }, [
-      i.readonly ? G("", !0) : (b(), In(PS, {
+      i.readonly ? U("", !0) : (b(), In(PS, {
         key: 0,
         view: ie.value,
         selection: L(u).selection,
@@ -20624,7 +20624,7 @@ const iM = {
         "redo-label": L(u).redoLabel,
         onOperate: Y,
         onUndo: ge,
-        onRedo: mt
+        onRedo: at
       }, null, 8, ["view", "selection", "primary", "busy", "can-undo", "can-redo", "undo-label", "redo-label"])),
       p("div", iM, [
         p("span", sM, [
@@ -20650,7 +20650,7 @@ const iM = {
             onClick: S[2] || (S[2] = (D) => h("text"))
           }, " Text ", 10, lM)
         ]),
-        Me.value ? (b(), C(de, { key: 0 }, [
+        Ae.value ? (b(), C(he, { key: 0 }, [
           p("label", aM, [
             Oe(p("input", {
               "onUpdate:modelValue": S[3] || (S[3] = (D) => c.value.roll = D),
@@ -20671,7 +20671,7 @@ const iM = {
             ]),
             S[36] || (S[36] = ae(" ABC text (advanced) ", -1))
           ])
-        ], 64)) : G("", !0),
+        ], 64)) : U("", !0),
         p("label", cM, [
           S[37] || (S[37] = ae(" zoom ", -1)),
           Oe(p("input", {
@@ -20683,7 +20683,7 @@ const iM = {
             "aria-label": "Notation zoom"
           }, null, 512), [
             [
-              dt,
+              ft,
               c.value.zoom,
               void 0,
               { number: !0 }
@@ -20761,20 +20761,20 @@ const iM = {
             onChange: Ff
           }, null, 40, yM)
         ]),
-        L(u).pending ? (b(), C("span", bM, "checking…")) : L(u).view?.ok ? (b(), C("span", kM, "✓ valid")) : le.value ? (b(), C("span", wM, "✖ " + I(Ee.value.length) + " error(s)", 1)) : G("", !0),
-        i.readonly ? (b(), C("span", xM, "read-only: owned by the other sheet")) : G("", !0)
+        L(u).pending ? (b(), C("span", bM, "checking…")) : L(u).view?.ok ? (b(), C("span", kM, "✓ valid")) : le.value ? (b(), C("span", wM, "✖ " + I(Ee.value.length) + " error(s)", 1)) : U("", !0),
+        i.readonly ? (b(), C("span", xM, "read-only: owned by the other sheet")) : U("", !0)
       ]),
       le.value && !i.readonly ? (b(), C("p", SM, [
         S[38] || (S[38] = ae(" The ABC text has errors: the notation shows the last valid score, and Apply and Approve are off until the text is valid again. ", -1)),
         L(u).canRevert ? (b(), C("button", {
           key: 0,
           onClick: S[9] || (S[9] = (D) => L(u).revertToLastValid())
-        }, "Revert to last valid")) : G("", !0),
-        Me.value && !c.value.advanced ? (b(), C("button", {
+        }, "Revert to last valid")) : U("", !0),
+        Ae.value && !c.value.advanced ? (b(), C("button", {
           key: 1,
           onClick: S[10] || (S[10] = (D) => c.value.advanced = !0)
-        }, "Show the ABC text")) : G("", !0)
-      ])) : L(u).view?.ok && L(u).view.model_error && !i.readonly ? (b(), C("p", CM, " This score is valid for YuE2 but outside the editor's supported subset (" + I(L(u).view.model_error.message) + "); edit it as ABC text. ", 1)) : G("", !0),
+        }, "Show the ABC text")) : U("", !0)
+      ])) : L(u).view?.ok && L(u).view.model_error && !i.readonly ? (b(), C("p", CM, " This score is valid for YuE2 but outside the editor's supported subset (" + I(L(u).view.model_error.message) + "); edit it as ABC text. ", 1)) : U("", !0),
       K.value ? (b(), In(Ax, {
         key: 3,
         ref_key: "pianoRoll",
@@ -20806,7 +20806,7 @@ const iM = {
         playhead: y.value,
         clip: L(ei)?.label ?? null,
         lyrics: ie.value?.lyrics ?? null,
-        "lyrics-editable": he.value,
+        "lyrics-editable": de.value,
         source: Rt.value ? { envelope: Rt.value.envelope, bars: Ft.value } : null,
         audition: c.value.audition,
         "onUpdate:audition": S[17] || (S[17] = (D) => c.value.audition = D),
@@ -20814,12 +20814,12 @@ const iM = {
         onSelect: Dr,
         onLocate: S[18] || (S[18] = (D) => m.value = D),
         onClipboard: A,
-        "lyric-selection": ct.value,
-        "onUpdate:lyricSelection": S[19] || (S[19] = (D) => ct.value = D),
+        "lyric-selection": ht.value,
+        "onUpdate:lyricSelection": S[19] || (S[19] = (D) => ht.value = D),
         onLyricEdit: vt,
         onLyricPlace: fi,
         onLyricDelete: fn
-      }, null, 8, ["zoom", "row-height", "follow", "track", "recorded", "sung-visible", "wave-visible", "sound", "sung", "height", "view", "selection", "playing", "readonly", "stale", "busy", "locator", "playhead", "clip", "lyrics", "lyrics-editable", "source", "audition", "lyric-selection"])) : G("", !0),
+      }, null, 8, ["zoom", "row-height", "follow", "track", "recorded", "sung-visible", "wave-visible", "sound", "sung", "height", "view", "selection", "playing", "readonly", "stale", "busy", "locator", "playhead", "clip", "lyrics", "lyrics-editable", "source", "audition", "lyric-selection"])) : U("", !0),
       K.value && ie.value?.model ? (b(), C("div", {
         key: 4,
         class: "splitter horizontal",
@@ -20832,7 +20832,7 @@ const iM = {
         title: "Drag to resize the piano roll (arrow keys work too)",
         onPointerdown: Ne,
         onKeydown: be
-      }, null, 40, MM)) : G("", !0),
+      }, null, 40, MM)) : U("", !0),
       En(oC, {
         ref_key: "transport",
         ref: k,
@@ -20892,9 +20892,9 @@ const iM = {
         _: 1
       }, 8, ["voices", "speed", "sounds", "metronome", "view", "bar", "from", "position", "reference", "hear", "source-level", "source-shift", "source-beat", "timeline-bars", "guide", "source", "source-problem", "loop-range", "onStopped"]),
       p("div", {
-        class: ze(["score-main", { "with-roll": K.value && !!ie.value?.model, "with-inspector": Me.value }]),
+        class: ze(["score-main", { "with-roll": K.value && !!ie.value?.model, "with-inspector": Ae.value }]),
         "data-layout": d.value,
-        "data-text": Me.value ? c.value.advanced ? "shown" : "hidden" : "main",
+        "data-text": Ae.value ? c.value.advanced ? "shown" : "hidden" : "main",
         style: ji(ke.value)
       }, [
         p("div", TM, [
@@ -20910,7 +20910,7 @@ const iM = {
             readonly: i.readonly,
             onClearGuide: F,
             onShiftTrack: S[31] || (S[31] = (D, X) => Y({ op: "shift_track", track: D, semitones: X }))
-          }, null, 8, ["voices", "view", "guide-count", "sounds", "keeps-guide", "readonly"])) : G("", !0),
+          }, null, 8, ["voices", "view", "guide-count", "sounds", "keeps-guide", "readonly"])) : U("", !0),
           En(rS, {
             view: ie.value,
             bar: Be.value,
@@ -20924,26 +20924,26 @@ const iM = {
           }, null, 8, ["view", "bar", "error-bars", "source-starts", "readonly", "section-lyrics"]),
           i.lyricsTarget && l.value !== null ? (b(), C("div", $M, [
             S[39] || (S[39] = p("strong", null, "Lyrics", -1)),
-            i.lyricsTarget.blocked ? (b(), C("p", DM, I(i.lyricsTarget.blocked), 1)) : (b(), C(de, { key: 1 }, [
+            i.lyricsTarget.blocked ? (b(), C("p", DM, I(i.lyricsTarget.blocked), 1)) : (b(), C(he, { key: 1 }, [
               xe.value ? (b(), C("p", LM, [
-                ae(" Apply writes the changed lyrics into " + I(i.lyricsTarget.title) + ": " + I(Ce.value) + ". That sheet then asks for approval again. ", 1),
-                i.lyricsTarget.replans ? (b(), C(de, { key: 0 }, [
+                ae(" Apply writes the changed lyrics into " + I(i.lyricsTarget.title) + ": " + I(Me.value) + ". That sheet then asks for approval again. ", 1),
+                i.lyricsTarget.replans ? (b(), C(he, { key: 0 }, [
                   ae(" The planner reads those lyrics and plans again on the next run; this score is kept as yours (manual) and used. ")
-                ], 64)) : G("", !0)
+                ], 64)) : U("", !0)
               ])) : (b(), C("p", BM, [
                 ae(I(i.lyricsTarget.own ? "This sheet's lyrics" : `The lyrics of ${i.lyricsTarget.title}`) + ": double-click the lyrics lane over the notes to edit a line where it is sung. ", 1),
-                o.value && !i.readonly ? (b(), C(de, { key: 0 }, [
+                o.value && !i.readonly ? (b(), C(he, { key: 0 }, [
                   ae("Duplicating, moving or deleting sections arranges them too.")
-                ], 64)) : G("", !0)
+                ], 64)) : U("", !0)
               ])),
               xe.value ? (b(), C("button", {
                 key: 2,
                 title: "Back to the lyrics as their sheet has them (one undo step)",
                 onClick: ds
-              }, " Revert the lyrics ")) : G("", !0)
+              }, " Revert the lyrics ")) : U("", !0)
             ], 64))
-          ])) : G("", !0),
-          Me.value && Fn.value ? (b(), C("details", OM, [
+          ])) : U("", !0),
+          Ae.value && Fn.value ? (b(), C("details", OM, [
             S[40] || (S[40] = p("summary", null, "Lyrics fit", -1)),
             En(Qc, {
               lyrics: Fn.value,
@@ -20952,7 +20952,7 @@ const iM = {
               engine: i.payload?.engine ?? null,
               instrumental: i.payload?.instrumental ?? !1
             }, null, 8, ["lyrics", "abc", "fetcher", "engine", "instrumental"])
-          ])) : G("", !0)
+          ])) : U("", !0)
         ]),
         p("div", {
           class: "splitter vertical",
@@ -20963,13 +20963,13 @@ const iM = {
           "aria-valuemin": L(Mp),
           "aria-valuemax": L(Cp),
           title: "Drag to resize the navigator column (arrow keys work too)",
-          onPointerdown: ht,
+          onPointerdown: dt,
           onKeydown: yt
         }, null, 40, EM),
         p("div", {
-          class: ze(["score-views", { split: Me.value && c.value.advanced }])
+          class: ze(["score-views", { split: Ae.value && c.value.advanced }])
         }, [
-          Me.value ? G("", !0) : (b(), In(Mc, {
+          Ae.value ? U("", !0) : (b(), In(Mc, {
             key: 0,
             text: i.doc.text,
             diagnostics: Ee.value,
@@ -20987,7 +20987,7 @@ const iM = {
             tabindex: "0",
             onSelect: S[33] || (S[33] = (D, X) => Pt(D, X))
           }, null, 8, ["view", "stale", "selection", "playing", "zoom"]),
-          Me.value && c.value.advanced ? (b(), C("div", {
+          Ae.value && c.value.advanced ? (b(), C("div", {
             key: 1,
             class: "splitter horizontal",
             role: "separator",
@@ -20999,8 +20999,8 @@ const iM = {
             title: "Drag to give the notation or the ABC text more room (arrow keys work too)",
             onPointerdown: Le,
             onKeydown: je
-          }, null, 40, IM)) : G("", !0),
-          Me.value && c.value.advanced ? (b(), In(Mc, {
+          }, null, 40, IM)) : U("", !0),
+          Ae.value && c.value.advanced ? (b(), In(Mc, {
             key: 2,
             text: i.doc.text,
             diagnostics: Ee.value,
@@ -21008,9 +21008,9 @@ const iM = {
             readonly: i.readonly,
             onChange: L(u).typed,
             onCursor: Pi
-          }, null, 8, ["text", "diagnostics", "reveal", "readonly", "onChange"])) : G("", !0)
+          }, null, 8, ["text", "diagnostics", "reveal", "readonly", "onChange"])) : U("", !0)
         ], 2),
-        Me.value ? (b(), In(yk, {
+        Ae.value ? (b(), In(yk, {
           key: 0,
           view: ie.value,
           selection: L(u).selection,
@@ -21020,18 +21020,18 @@ const iM = {
           stale: le.value,
           busy: L(u).busy,
           "resize-mode": "rests"
-        }, null, 8, ["view", "selection", "fallback-bar", "readonly", "stale", "busy"])) : G("", !0)
+        }, null, 8, ["view", "selection", "fallback-bar", "readonly", "stale", "busy"])) : U("", !0)
       ], 14, AM),
       p("p", RM, [
-        p("span", null, I(L(u).selection.length > 1 ? `${L(u).selection.length} selected · ` : "") + I(L(xm)(L(u).primary, pt.value)), 1),
-        (b(!0), C(de, null, we(L(u).notes, (D, X) => (b(), C("span", {
+        p("span", null, I(L(u).selection.length > 1 ? `${L(u).selection.length} selected · ` : "") + I(L(xm)(L(u).primary, mt.value)), 1),
+        (b(!0), C(he, null, we(L(u).notes, (D, X) => (b(), C("span", {
           key: X,
           class: "change"
         }, I(D), 1))), 128))
       ]),
-      L(u).error ? (b(), C("p", PM, I(L(u).error), 1)) : G("", !0),
-      it.value ? (b(), C("p", NM, I(it.value), 1)) : G("", !0),
-      H.value ? (b(), C("p", VM, I(H.value), 1)) : G("", !0),
+      L(u).error ? (b(), C("p", PM, I(L(u).error), 1)) : U("", !0),
+      it.value ? (b(), C("p", NM, I(it.value), 1)) : U("", !0),
+      H.value ? (b(), C("p", VM, I(H.value), 1)) : U("", !0),
       On.value ? (b(), In(Zk, {
         key: 8,
         fetcher: i.fetcher,
@@ -21042,9 +21042,9 @@ const iM = {
         "current-guide": Qe.value.length,
         onClose: S[34] || (S[34] = (D) => On.value = null),
         onInsert: jf
-      }, null, 8, ["fetcher", "data", "filename", "view", "keeps-guide", "current-guide"])) : G("", !0),
+      }, null, 8, ["fetcher", "data", "filename", "view", "keeps-guide", "current-guide"])) : U("", !0),
       Ee.value.length ? (b(), C("ul", HM, [
-        (b(!0), C(de, null, we(Ee.value, (D, X) => (b(), C("li", {
+        (b(!0), C(he, null, we(Ee.value, (D, X) => (b(), C("li", {
           key: X,
           "data-severity": D.severity
         }, [
@@ -21054,10 +21054,10 @@ const iM = {
             class: "link",
             title: `Go to bar ${D.bar}`,
             onClick: (ue) => tn(D.bar)
-          }, "bar " + I(D.bar), 9, WM)) : D.line ? (b(), C("span", FM, "line " + I(D.line), 1)) : G("", !0),
+          }, "bar " + I(D.bar), 9, WM)) : D.line ? (b(), C("span", FM, "line " + I(D.line), 1)) : U("", !0),
           ae(" " + I(D.message), 1)
         ], 8, zM))), 128))
-      ])) : G("", !0)
+      ])) : U("", !0)
     ], 544));
   }
 }), KM = ["aria-label"], _M = ["title"], UM = {
@@ -21087,55 +21087,55 @@ const iM = {
 }, hA = {
   key: 4,
   class: "asr"
-}, dA = { key: 0 }, fA = { key: 1 }, pA = { key: 5 }, mA = {
+}, dA = { key: 0 }, fA = { key: 1 }, pA = { key: 2 }, mA = { key: 5 }, gA = {
   key: 0,
   class: "diff"
-}, gA = { key: 0 }, vA = { key: 1 }, yA = { key: 2 }, bA = { key: 3 }, kA = {
+}, vA = { key: 0 }, yA = { key: 1 }, bA = { key: 2 }, kA = { key: 3 }, wA = {
   key: 0,
   class: "doc context wide"
-}, wA = { class: "doc-head" }, xA = ["title"], SA = {
+}, xA = { class: "doc-head" }, SA = ["title"], CA = {
   key: 1,
   class: "badge"
-}, CA = {
+}, MA = {
   key: 0,
   class: "hint score-owner"
-}, MA = {
-  key: 1,
-  class: "hint"
 }, AA = {
   key: 1,
-  class: "doc sections"
+  class: "hint"
 }, TA = {
+  key: 1,
+  class: "doc sections"
+}, $A = {
   key: 0,
   class: "doc context"
-}, $A = { class: "doc-head" }, DA = {
+}, DA = { class: "doc-head" }, LA = {
   class: "findings",
   "aria-label": "Validation"
-}, LA = ["data-status"], BA = { key: 0 }, OA = ["title"], EA = { key: 1 }, IA = ["title"], RA = { class: "idea" }, PA = {
+}, BA = ["data-status"], OA = { key: 0 }, EA = ["title"], IA = { key: 1 }, RA = ["title"], PA = { class: "idea" }, NA = {
   key: 0,
   class: "idea"
-}, NA = {
+}, VA = {
   key: 1,
   class: "idea"
-}, VA = { class: "where" }, HA = {
+}, HA = { class: "where" }, zA = {
   key: 0,
   class: "kept"
-}, zA = {
+}, WA = {
   key: 1,
   class: "error"
-}, WA = {
+}, FA = {
   key: 2,
   class: "error"
-}, FA = {
+}, KA = {
   key: 3,
   class: "error"
-}, KA = {
+}, _A = {
   key: 4,
   class: "error"
-}, _A = ["data-severity"], UA = { class: "where" }, GA = {
+}, UA = ["data-severity"], GA = { class: "where" }, jA = {
   key: 0,
   class: "facts"
-}, jA = ["disabled"], qA = ["disabled", "title"], YA = ["disabled", "title"], XA = ["aria-valuenow", "title"], JA = /* @__PURE__ */ Dt({
+}, qA = ["disabled"], YA = ["disabled", "title"], XA = ["disabled", "title"], JA = ["aria-valuenow", "title"], ZA = /* @__PURE__ */ Dt({
   __name: "SheetDialog",
   props: {
     title: {},
@@ -21189,11 +21189,11 @@ const iM = {
       for (const Y of Object.keys(t.payload?.context ?? {}))
         Y in s && B.add(s[Y]);
       return ["score", "lyrics", "style", "details"].filter((Y) => B.has(Y));
-    }), me = h[0] ? s[h[0].kind] : "lyrics", ve = z(me), ie = (B) => t.payload?.docs[B] ?? null, le = (B) => ie(B)?.upstream ?? null, Ee = (B) => ie(B)?.status === "conflict", Se = (B) => h.filter((Y) => s[Y.kind] === B), Be = O(() => h.find((B) => B.kind === "score") ?? null), Me = O(() => Be.value?.text ?? V.value ?? null), j = O(
+    }), me = h[0] ? s[h[0].kind] : "lyrics", ve = z(me), ie = (B) => t.payload?.docs[B] ?? null, le = (B) => ie(B)?.upstream ?? null, Ee = (B) => ie(B)?.status === "conflict", Se = (B) => h.filter((Y) => s[Y.kind] === B), Be = O(() => h.find((B) => B.kind === "score") ?? null), Ae = O(() => Be.value?.text ?? V.value ?? null), j = O(
       () => h.find((B) => B.kind === "lyrics")?.text ?? t.payload?.context?.lyrics ?? null
     ), Qe = O(
       () => h.find((B) => B.kind === "title")?.text ?? t.payload?.context?.title ?? null
-    ), ce = O(() => Np(t.payload?.timeline)), Ae = O(() => {
+    ), ce = O(() => Np(t.payload?.timeline)), Ce = O(() => {
       const B = t.asrNote ?? $.value;
       return B && B.draft_sha256 === ie("lyrics")?.upstream_sha256 ? B : null;
     }), te = (B) => am(le(B.kind) ?? "", B.text);
@@ -21220,40 +21220,40 @@ const iM = {
     function ee(B, Y) {
       Y instanceof HTMLTextAreaElement ? Ge.set(B, Y) : Ge.delete(B);
     }
-    function U(B, Y) {
-      const Z = Ge.get(B.kind), ge = Z && xt.has(B.kind) ? Z.selectionStart : B.text.length, mt = lm(B.text, Y, ge);
-      B.text = mt.text, Ce(B), Cn(() => {
-        Z?.isConnected && (Z.focus(), Z.setSelectionRange(mt.caret, mt.caret));
+    function G(B, Y) {
+      const Z = Ge.get(B.kind), ge = Z && xt.has(B.kind) ? Z.selectionStart : B.text.length, at = lm(B.text, Y, ge);
+      B.text = at.text, Me(B), Cn(() => {
+        Z?.isConnected && (Z.focus(), Z.setSelectionRange(at.caret, at.caret));
       });
     }
-    function he(B) {
+    function de(B) {
       B.intent = "manual";
     }
     function xe(B) {
       B.intent = "rebase";
     }
-    function Ce(B) {
+    function Me(B) {
       B.intent === "auto" && (B.intent = "keep");
     }
     function Fn() {
-      qa(t.state, t.payload, t.owned).forEach((Y, Z) => Object.assign(h[Z], Y)), St.value = [...t.guide ?? []], ct.value = [...t.lyricSpans ?? []], Wt.value = t.sourceShift ?? 0, E.text = V.value ?? "", P.value++;
+      qa(t.state, t.payload, t.owned).forEach((Y, Z) => Object.assign(h[Z], Y)), St.value = [...t.guide ?? []], ht.value = [...t.lyricSpans ?? []], Wt.value = t.sourceShift ?? 0, E.text = V.value ?? "", P.value++;
     }
-    const ft = O(
+    const pt = O(
       () => h.filter((B) => Ee(B.kind) && B.intent === "keep").map((B) => B.kind)
     ), It = O(() => Wp(t.state, t.payload, h)), St = z([...t.guide ?? []]);
     function Kn(B) {
       St.value = B;
     }
-    const ct = z([...t.lyricSpans ?? []]);
+    const ht = z([...t.lyricSpans ?? []]);
     function Ii(B) {
-      ct.value = B;
+      ht.value = B;
     }
     const Wt = z(t.sourceShift ?? 0);
     function _n(B) {
       Wt.value = B;
     }
     function Ln() {
-      return { lyricSpans: ct.value, sourceShift: Wt.value };
+      return { lyricSpans: ht.value, sourceShift: Wt.value };
     }
     const Ut = z(null), Ct = O(() => h.find((B) => B.kind === "lyrics") ?? null), fi = { title: "the Lyrics tab", blocked: null, replans: !1, own: !0 }, fn = O(() => Ct.value ? fi : t.lyricsTarget ?? null), en = O(() => {
       const B = t.payload?.context?.lyrics, Y = Ut.value;
@@ -21261,7 +21261,7 @@ const iM = {
     });
     function Un(B) {
       const Y = Ct.value;
-      Y ? B !== null && jt(B) !== jt(Y.text) && (Y.text = B, Ce(Y)) : Ut.value = B;
+      Y ? B !== null && jt(B) !== jt(Y.text) && (Y.text = B, Me(Y)) : Ut.value = B;
     }
     function pi() {
       if (!en.value || !fn.value?.replans) return;
@@ -21269,15 +21269,15 @@ const iM = {
       B && B.intent === "keep" && (B.intent = "manual");
     }
     const Bn = O(
-      () => Ja(It.value) !== Ja(t.state) || !Ss(St.value, t.guide ?? []) || !Bo(ct.value, t.lyricSpans ?? []) || Wt.value !== (t.sourceShift ?? 0) || en.value !== null || W.value !== null
+      () => Ja(It.value) !== Ja(t.state) || !Ss(St.value, t.guide ?? []) || !Bo(ht.value, t.lyricSpans ?? []) || Wt.value !== (t.sourceShift ?? 0) || en.value !== null || W.value !== null
     ), vt = O(() => {
       const B = t.payload?.arrangement;
       return B && B.status !== "skipped" ? B : null;
     }), ds = O(() => Vp(vt.value?.notes ?? [])), Mt = O(() => (f.value?.findings ?? []).filter((B) => B.severity !== "info")), Gn = O(() => (f.value?.findings ?? []).filter((B) => B.severity === "info")), Rt = O(() => Mt.value.some((B) => B.severity === "error")), jn = O(
-      () => !y.value && !Rt.value && !ft.value.length && !w.value && !ne.value && !!f.value?.fingerprint
+      () => !y.value && !Rt.value && !pt.value.length && !w.value && !ne.value && !!f.value?.fingerprint
     ), pn = O(
-      () => ft.value.length ? "Resolve the conflicts first." : w.value ?? ne.value
-    ), Gt = O(() => ft.value.length ? "⇄ conflict" : Rt.value ? "✖ errors" : Mt.value.length ? "⚠ warnings" : f.value?.waiting && !Bn.value ? "⏸ waiting for approval" : f.value ? "✓ valid" : "not run yet");
+      () => pt.value.length ? "Resolve the conflicts first." : w.value ?? ne.value
+    ), Gt = O(() => pt.value.length ? "⇄ conflict" : Rt.value ? "✖ errors" : Mt.value.length ? "⚠ warnings" : f.value?.waiting && !Bn.value ? "⏸ waiting for approval" : f.value ? "✓ valid" : "not run yet");
     async function mi() {
       if (t.payload) {
         y.value = !0, m.value = null;
@@ -21336,17 +21336,17 @@ const iM = {
     function mn() {
       Bn.value ? v.value = !0 : n("close");
     }
-    const He = ws(Rp()), pt = ws({ width: window.innerWidth, height: window.innerHeight }), gn = O(() => {
-      const B = He.maximized ? pt.height - 2 * Qa : He.height;
+    const He = ws(Rp()), mt = ws({ width: window.innerWidth, height: window.innerHeight }), gn = O(() => {
+      const B = He.maximized ? mt.height - 2 * Qa : He.height;
       return He.maximized ? {
-        width: `${pt.width - 2 * Qa}px`,
+        width: `${mt.width - 2 * Qa}px`,
         height: `${B}px`,
         "--plenio-dialog-h": `${B}px`
       } : { width: `${He.width}px`, height: `${He.height}px`, "--plenio-dialog-h": `${B}px` };
     });
     function qn() {
-      pt.width = window.innerWidth, pt.height = window.innerHeight;
-      const B = eu({ width: He.width, height: He.height }, pt);
+      mt.width = window.innerWidth, mt.height = window.innerHeight;
+      const B = eu({ width: He.width, height: He.height }, mt);
       (B.width !== He.width || B.height !== He.height) && (He.width = B.width, He.height = B.height, Pr(He));
     }
     function Pt() {
@@ -21358,11 +21358,11 @@ const iM = {
       Lo(
         B,
         ({ dx: Z, dy: ge }) => {
-          const mt = eu(
+          const at = eu(
             { width: Y.width + Z, height: Y.height + ge },
             { width: window.innerWidth, height: window.innerHeight }
           );
-          He.width = mt.width, He.height = mt.height;
+          He.width = at.width, He.height = at.height;
         },
         () => Pr(He)
       );
@@ -21393,11 +21393,11 @@ const iM = {
         }, [
           p("h2", null, I(i.title), 1),
           p("span", {
-            class: ze(["status", { bad: Rt.value || ft.value.length }]),
+            class: ze(["status", { bad: Rt.value || pt.value.length }]),
             title: f.value?.status ?? ""
           }, I(Gt.value), 11, _M),
           p("div", UM, [
-            (b(!0), C(de, null, we(H.value, (Z) => (b(), C("button", {
+            (b(!0), C(he, null, we(H.value, (Z) => (b(), C("button", {
               key: Z,
               role: "tab",
               "aria-selected": ve.value === Z,
@@ -21419,7 +21419,7 @@ const iM = {
             onClick: mn
           }, "×")
         ], 32),
-        i.payload ? G("", !0) : (b(), C("p", qM, [...Y[4] || (Y[4] = [
+        i.payload ? U("", !0) : (b(), C("p", qM, [...Y[4] || (Y[4] = [
           ae(" This sheet has not run yet, so there are no drafts to show. Run the workflow once, or enter text and use ", -1),
           p("em", null, "Make manual", -1),
           ae("; ", -1),
@@ -21440,9 +21440,9 @@ const iM = {
           p("button", {
             onClick: Y[1] || (Y[1] = (Z) => v.value = !1)
           }, "Keep editing")
-        ])) : G("", !0),
+        ])) : U("", !0),
         p("div", JM, [
-          (b(!0), C(de, null, we(Se(ve.value), (Z) => (b(), C("section", {
+          (b(!0), C(he, null, we(Se(ve.value), (Z) => (b(), C("section", {
             key: Z.kind + P.value,
             class: ze(["doc", { wide: Z.kind === "score" }])
           }, [
@@ -21472,7 +21472,7 @@ const iM = {
             Ee(Z.kind) && Z.intent === "keep" ? (b(), C("div", iA, [
               ae(" The draft changed after you edited this document (" + I(ie(Z.kind)?.reason) + "). ", 1),
               p("button", {
-                onClick: (ge) => he(Z)
+                onClick: (ge) => de(Z)
               }, "Keep my edit (manual)", 8, sA),
               p("button", {
                 onClick: (ge) => Q(Z)
@@ -21480,7 +21480,7 @@ const iM = {
               p("button", {
                 onClick: (ge) => xe(Z)
               }, "Merge by hand", 8, rA)
-            ])) : G("", !0),
+            ])) : U("", !0),
             Z.kind === "score" ? (b(), In(Xc, {
               key: 1,
               doc: Z,
@@ -21491,16 +21491,16 @@ const iM = {
               lyrics: j.value,
               title: Qe.value,
               guide: St.value,
-              "lyric-spans": ct.value,
+              "lyric-spans": ht.value,
               "source-shift": Wt.value,
               "lyrics-target": fn.value,
               "lyrics-pending": Ct.value ? null : Ut.value,
-              onEdited: (ge) => Ce(Z),
+              onEdited: (ge) => Me(Z),
               onGuideChange: Kn,
               onLyricSpansChange: Ii,
               onSourceShiftChange: _n,
               onLyricsChange: Un,
-              onGate: Y[2] || (Y[2] = (ge, mt) => k.value = { text: ge, reason: mt })
+              onGate: Y[2] || (Y[2] = (ge, at) => k.value = { text: ge, reason: at })
             }, null, 8, ["doc", "fetcher", "payload", "layout-default", "lyrics", "title", "guide", "lyric-spans", "source-shift", "lyrics-target", "lyrics-pending", "onEdited"])) : Oe((b(), C("textarea", {
               key: 2,
               ref_for: !0,
@@ -21510,66 +21510,76 @@ const iM = {
               spellcheck: "false",
               "aria-label": u.value[Z.kind],
               onFocus: (ge) => L(xt).add(Z.kind),
-              onInput: (ge) => Ce(Z)
+              onInput: (ge) => Me(Z)
             }, null, 40, lA)), [
-              [dt, Z.text]
+              [ft, Z.text]
             ]),
             Z.kind === "lyrics" ? (b(), C("p", aA, [
               Y[7] || (Y[7] = p("span", null, "Section tags (the model sings section by section):", -1)),
-              (b(!0), C(de, null, we(L(rm), (ge) => (b(), C("button", {
+              (b(!0), C(he, null, we(L(rm), (ge) => (b(), C("button", {
                 key: ge,
                 title: ge === "Instrumental" ? "Insert [Instrumental] at the cursor: a section without words (an interlude)" : `Insert [${ge}] at the cursor`,
-                onClick: (mt) => U(Z, ge)
+                onClick: (at) => G(Z, ge)
               }, " [" + I(ge) + "] ", 9, uA))), 128)),
-              Z.intent === "manual" ? (b(), C("span", cA, "the writer is not consulted - these are your lyrics")) : G("", !0)
-            ])) : G("", !0),
-            Z.kind === "lyrics" && Ae.value ? (b(), C("p", hA, [
-              p("span", null, "Transcribed (" + I(Ae.value.language) + ").", 1),
-              Ae.value.low_confidence.length ? (b(), C("span", dA, [
-                Y[8] || (Y[8] = ae(" Check these unsure words: ", -1)),
-                (b(!0), C(de, null, we(Ae.value.low_confidence, (ge, mt) => (b(), C("mark", {
-                  key: "low-" + mt
+              Z.intent === "manual" ? (b(), C("span", cA, "the writer is not consulted - these are your lyrics")) : U("", !0)
+            ])) : U("", !0),
+            Z.kind === "lyrics" && Ce.value ? (b(), C("p", hA, [
+              p("span", null, "Transcribed (" + I(Ce.value.language) + ").", 1),
+              Ce.value.corrected?.length ? (b(), C("span", dA, [
+                Y[8] || (Y[8] = ae(" Corrected as misheard: ", -1)),
+                (b(!0), C(he, null, we(Ce.value.corrected, (ge, at) => (b(), C("span", {
+                  key: "fix-" + at,
+                  class: "fix"
+                }, [
+                  p("s", null, I(ge.heard), 1),
+                  ae(" → " + I(ge.word), 1)
+                ]))), 128))
+              ])) : U("", !0),
+              Ce.value.low_confidence.length ? (b(), C("span", fA, [
+                Y[9] || (Y[9] = ae(" Check these unsure words: ", -1)),
+                (b(!0), C(he, null, we(Ce.value.low_confidence, (ge, at) => (b(), C("mark", {
+                  key: "low-" + at
                 }, I(ge), 1))), 128))
-              ])) : G("", !0),
-              Ae.value.left_out.length ? (b(), C("span", fA, [
-                Y[9] || (Y[9] = ae("Left out as not sung: ", -1)),
-                p("s", null, I(Ae.value.left_out.join(" ")), 1)
-              ])) : G("", !0)
-            ])) : G("", !0),
-            le(Z.kind) !== null && L(jt)(le(Z.kind) ?? "") !== L(jt)(Z.text) ? (b(), C("details", pA, [
+              ])) : U("", !0),
+              Ce.value.left_out.length ? (b(), C("span", pA, [
+                Y[10] || (Y[10] = ae("Left out as not sung: ", -1)),
+                p("s", null, I(Ce.value.left_out.join(" ")), 1)
+              ])) : U("", !0)
+            ])) : U("", !0),
+            le(Z.kind) !== null && L(jt)(le(Z.kind) ?? "") !== L(jt)(Z.text) ? (b(), C("details", mA, [
               p("summary", null, "Changes against the draft (" + I(L(um)(te(Z))) + " words)", 1),
-              Z.kind !== "score" ? (b(), C("p", mA, [
-                (b(!0), C(de, null, we(te(Z), (ge, mt) => (b(), C(de, { key: mt }, [
-                  ge.text === L(Ns) ? (b(), C("br", gA)) : ge.op === "added" ? (b(), C("ins", vA, I(ge.text + " "), 1)) : ge.op === "removed" ? (b(), C("del", yA, I(ge.text + " "), 1)) : (b(), C("span", bA, I(ge.text + " "), 1))
+              Z.kind !== "score" ? (b(), C("p", gA, [
+                (b(!0), C(he, null, we(te(Z), (ge, at) => (b(), C(he, { key: at }, [
+                  ge.text === L(Ns) ? (b(), C("br", vA)) : ge.op === "added" ? (b(), C("ins", yA, I(ge.text + " "), 1)) : ge.op === "removed" ? (b(), C("del", bA, I(ge.text + " "), 1)) : (b(), C("span", kA, I(ge.text + " "), 1))
                 ], 64))), 128))
-              ])) : G("", !0),
+              ])) : U("", !0),
               p("pre", null, I(le(Z.kind)), 1)
-            ])) : G("", !0),
+            ])) : U("", !0),
             Z.kind === "lyrics" ? (b(), In(Qc, {
               key: 6,
               lyrics: Z.text,
-              abc: Me.value,
+              abc: Ae.value,
               fetcher: i.fetcher,
               engine: i.payload?.engine ?? null,
               instrumental: i.payload?.instrumental ?? !1
-            }, null, 8, ["lyrics", "abc", "fetcher", "engine", "instrumental"])) : G("", !0)
+            }, null, 8, ["lyrics", "abc", "fetcher", "engine", "instrumental"])) : U("", !0)
           ], 2))), 128)),
-          ve.value === "score" && !Be.value && V.value ? (b(), C("section", kA, [
-            p("div", wA, [
-              Y[10] || (Y[10] = p("h3", null, "Score (ABC)", -1)),
+          ve.value === "score" && !Be.value && V.value ? (b(), C("section", wA, [
+            p("div", xA, [
+              Y[11] || (Y[11] = p("h3", null, "Score (ABC)", -1)),
               _.value ? (b(), C("span", {
                 key: 0,
                 class: "badge",
                 title: `The score belongs to ${i.scoreTarget?.title}`
-              }, " from " + I(i.scoreTarget?.title) + I(W.value ? " · changed" : ""), 9, xA)) : (b(), C("span", SA, "from the other sheet (read-only)"))
+              }, " from " + I(i.scoreTarget?.title) + I(W.value ? " · changed" : ""), 9, SA)) : (b(), C("span", CA, "from the other sheet (read-only)"))
             ]),
-            _.value ? (b(), C("p", CA, [
-              Y[11] || (Y[11] = ae(" Changes to the score go into ", -1)),
+            _.value ? (b(), C("p", MA, [
+              Y[12] || (Y[12] = ae(" Changes to the score go into ", -1)),
               p("strong", null, I(i.scoreTarget?.title), 1),
-              Y[12] || (Y[12] = ae(" on Apply, and the lyrics are kept as you see them here (manual), so the two stay a pair. ", -1)),
-              Y[13] || (Y[13] = p("strong", null, "Approve", -1)),
-              Y[14] || (Y[14] = ae(" approves the changed score in that sheet too; with Apply it asks for approval again on the next run. ", -1))
-            ])) : i.scoreTarget?.blocked ? (b(), C("p", MA, I(i.scoreTarget.blocked), 1)) : G("", !0),
+              Y[13] || (Y[13] = ae(" on Apply, and the lyrics are kept as you see them here (manual), so the two stay a pair. ", -1)),
+              Y[14] || (Y[14] = p("strong", null, "Approve", -1)),
+              Y[15] || (Y[15] = ae(" approves the changed score in that sheet too; with Apply it asks for approval again on the next run. ", -1))
+            ])) : i.scoreTarget?.blocked ? (b(), C("p", AA, I(i.scoreTarget.blocked), 1)) : U("", !0),
             En(Xc, {
               doc: E,
               fetcher: i.fetcher,
@@ -21578,21 +21588,21 @@ const iM = {
               "layout-default": i.layout ?? null,
               lyrics: j.value,
               "lyrics-target": Ct.value ? fn.value : null,
-              "lyric-spans": ct.value,
+              "lyric-spans": ht.value,
               "source-shift": Wt.value,
               onLyricSpansChange: Ii,
               onSourceShiftChange: _n,
               onLyricsChange: Un,
               onGate: Y[3] || (Y[3] = (Z, ge) => N.value = { text: Z, reason: ge })
             }, null, 8, ["doc", "fetcher", "payload", "readonly", "layout-default", "lyrics", "lyrics-target", "lyric-spans", "source-shift"])
-          ])) : G("", !0),
-          ve.value === "lyrics" && ce.value.length ? (b(), C("section", AA, [
-            Y[16] || (Y[16] = p("div", { class: "doc-head" }, [
+          ])) : U("", !0),
+          ve.value === "lyrics" && ce.value.length ? (b(), C("section", TA, [
+            Y[17] || (Y[17] = p("div", { class: "doc-head" }, [
               p("h3", null, "Sections of the source"),
               p("span", { class: "badge" }, "from Transcribe Score")
             ], -1)),
             p("table", null, [
-              Y[15] || (Y[15] = p("thead", null, [
+              Y[16] || (Y[16] = p("thead", null, [
                 p("tr", null, [
                   p("th", null, "Section"),
                   p("th", null, "Bars"),
@@ -21601,7 +21611,7 @@ const iM = {
                 ])
               ], -1)),
               p("tbody", null, [
-                (b(!0), C(de, null, we(ce.value, (Z, ge) => (b(), C("tr", { key: ge }, [
+                (b(!0), C(he, null, we(ce.value, (Z, ge) => (b(), C("tr", { key: ge }, [
                   p("td", null, I(Z.label), 1),
                   p("td", null, I(Z.bars), 1),
                   p("td", null, I(Z.start), 1),
@@ -21609,103 +21619,103 @@ const iM = {
                 ]))), 128))
               ])
             ])
-          ])) : G("", !0),
-          (b(!0), C(de, null, we(i.payload?.context ?? {}, (Z, ge) => (b(), C(de, {
+          ])) : U("", !0),
+          (b(!0), C(he, null, we(i.payload?.context ?? {}, (Z, ge) => (b(), C(he, {
             key: "context-" + ge
           }, [
-            ge !== "score" && s[ge] === ve.value ? (b(), C("section", TA, [
-              p("div", $A, [
+            ge !== "score" && s[ge] === ve.value ? (b(), C("section", $A, [
+              p("div", DA, [
                 p("h3", null, I(u.value[ge] ?? ge), 1),
-                Y[17] || (Y[17] = p("span", { class: "badge" }, "from the other sheet (read-only)", -1))
+                Y[18] || (Y[18] = p("span", { class: "badge" }, "from the other sheet (read-only)", -1))
               ]),
               p("pre", null, I(Z), 1)
-            ])) : G("", !0)
+            ])) : U("", !0)
           ], 64))), 128))
         ]),
-        p("section", DA, [
+        p("section", LA, [
           vt.value ? (b(), C("div", {
             key: 0,
             class: "arrangement",
             "data-status": vt.value.status
           }, [
-            vt.value.status === "fallback" ? (b(), C("p", BA, [
-              Y[18] || (Y[18] = p("strong", null, "Arrangement not applied", -1)),
+            vt.value.status === "fallback" ? (b(), C("p", OA, [
+              Y[19] || (Y[19] = p("strong", null, "Arrangement not applied", -1)),
               p("span", {
                 class: "experimental",
                 title: L(Rr)
-              }, "experimental", 8, OA),
+              }, "experimental", 8, EA),
               ae(" - " + I(L(Ya)(vt.value)) + ": " + I(vt.value.summary.replace(/^not applied: /, "")), 1)
-            ])) : (b(), C("details", EA, [
+            ])) : (b(), C("details", IA, [
               p("summary", null, [
-                Y[19] || (Y[19] = p("strong", null, "Arrangement", -1)),
+                Y[20] || (Y[20] = p("strong", null, "Arrangement", -1)),
                 p("span", {
                   class: "experimental",
                   title: L(Rr)
-                }, "experimental", 8, IA),
+                }, "experimental", 8, RA),
                 ae(" " + I(L(Ya)(vt.value)) + ": " + I(vt.value.summary), 1)
               ]),
-              p("p", RA, I(L(Rr)), 1),
-              L(Xa)(vt.value) ? (b(), C("p", PA, I(L(Xa)(vt.value)), 1)) : G("", !0),
-              vt.value.idea ? (b(), C("p", NA, I(vt.value.idea), 1)) : G("", !0),
+              p("p", PA, I(L(Rr)), 1),
+              L(Xa)(vt.value) ? (b(), C("p", NA, I(L(Xa)(vt.value)), 1)) : U("", !0),
+              vt.value.idea ? (b(), C("p", VA, I(vt.value.idea), 1)) : U("", !0),
               p("ul", null, [
-                (b(!0), C(de, null, we(vt.value.sections ?? [], (Z) => (b(), C("li", {
+                (b(!0), C(he, null, we(vt.value.sections ?? [], (Z) => (b(), C("li", {
                   key: Z.index
                 }, [
                   p("strong", null, I(Z.index) + " " + I(Z.label), 1),
-                  p("span", VA, "bars " + I(Z.bars), 1),
+                  p("span", HA, "bars " + I(Z.bars), 1),
                   ae(" " + I(Z.applied.length ? Z.applied.join("; ") : "unchanged") + " ", 1),
-                  Z.kept.length ? (b(), C("span", HA, " - kept: " + I(Z.kept.join("; ")), 1)) : G("", !0)
+                  Z.kept.length ? (b(), C("span", zA, " - kept: " + I(Z.kept.join("; ")), 1)) : U("", !0)
                 ]))), 128)),
-                (b(!0), C(de, null, we(ds.value, (Z, ge) => (b(), C("li", {
+                (b(!0), C(he, null, we(ds.value, (Z, ge) => (b(), C("li", {
                   key: "note" + ge,
                   "data-severity": "info"
                 }, I(Z), 1))), 128))
               ])
             ]))
-          ], 8, LA)) : G("", !0),
-          m.value ? (b(), C("p", zA, I(m.value), 1)) : G("", !0),
-          ft.value.length ? (b(), C("p", WA, " Resolve the conflict in: " + I(ft.value.join(", ")) + ". ", 1)) : G("", !0),
-          w.value ? (b(), C("p", FA, "Score: " + I(w.value), 1)) : ne.value ? (b(), C("p", KA, "Score: " + I(ne.value), 1)) : G("", !0),
+          ], 8, BA)) : U("", !0),
+          m.value ? (b(), C("p", WA, I(m.value), 1)) : U("", !0),
+          pt.value.length ? (b(), C("p", FA, " Resolve the conflict in: " + I(pt.value.join(", ")) + ". ", 1)) : U("", !0),
+          w.value ? (b(), C("p", KA, "Score: " + I(w.value), 1)) : ne.value ? (b(), C("p", _A, "Score: " + I(ne.value), 1)) : U("", !0),
           p("ul", null, [
-            (b(!0), C(de, null, we(Mt.value, (Z, ge) => (b(), C("li", {
+            (b(!0), C(he, null, we(Mt.value, (Z, ge) => (b(), C("li", {
               key: ge,
               "data-severity": Z.severity
             }, [
               p("strong", null, I(Z.severity), 1),
-              Y[20] || (Y[20] = ae()),
-              p("span", UA, I(Z.where), 1),
+              Y[21] || (Y[21] = ae()),
+              p("span", GA, I(Z.where), 1),
               ae(" " + I(Z.message), 1)
-            ], 8, _A))), 128)),
-            (b(!0), C(de, null, we(Gn.value, (Z, ge) => (b(), C("li", {
+            ], 8, UA))), 128)),
+            (b(!0), C(he, null, we(Gn.value, (Z, ge) => (b(), C("li", {
               key: "i" + ge,
               "data-severity": "info"
             }, I(Z.message), 1))), 128))
           ])
         ]),
         p("footer", null, [
-          i.owned.includes("score") && f.value ? (b(), C("span", GA, " render: " + I(f.value.planning_mode) + ", ceiling " + I(Math.round(f.value.score_seconds)) + " s ", 1)) : G("", !0),
-          Y[21] || (Y[21] = p("span", { class: "spacer" }, null, -1)),
+          i.owned.includes("score") && f.value ? (b(), C("span", jA, " render: " + I(f.value.planning_mode) + ", ceiling " + I(Math.round(f.value.score_seconds)) + " s ", 1)) : U("", !0),
+          Y[22] || (Y[22] = p("span", { class: "spacer" }, null, -1)),
           p("button", {
             disabled: !Bn.value,
             title: "Discard every change made in this editor",
             onClick: Fn
-          }, "Revert", 8, jA),
+          }, "Revert", 8, qA),
           p("button", { onClick: mn }, "Close"),
           p("button", {
             class: "primary",
             disabled: !!pn.value,
             title: pn.value ?? "Save your documents into the node",
             onClick: Ri
-          }, " Apply ", 8, qA),
+          }, " Apply ", 8, YA),
           i.review === "stop for review" ? (b(), C("button", {
             key: 1,
             class: "primary",
             disabled: !jn.value,
             title: w.value ?? "Release exactly these documents for the next run",
             onClick: fs
-          }, " Approve ", 8, YA)) : G("", !0)
+          }, " Approve ", 8, XA)) : U("", !0)
         ]),
-        He.maximized ? G("", !0) : (b(), C("div", {
+        He.maximized ? U("", !0) : (b(), C("div", {
           key: 2,
           class: "resize-handle",
           role: "separator",
@@ -21713,23 +21723,23 @@ const iM = {
           "aria-valuenow": He.width,
           title: `Resize (${He.width} × ${He.height})`,
           onPointerdown: Pi
-        }, null, 40, XA))
+        }, null, 40, JA))
       ], 14, KM)
     ], 32));
   }
 });
-function ZA() {
+function QA() {
   if (document.getElementById("plenio-dialog-styles")) return;
   const i = document.createElement("style");
   i.id = "plenio-dialog-styles", i.textContent = ep, document.head.append(i);
 }
-function rT(i) {
-  ZA();
+function lT(i) {
+  QA();
   const e = document.createElement("div");
   document.body.append(e);
   const t = () => {
     n.unmount(), e.remove();
-  }, n = Qf(JA, {
+  }, n = Qf(ZA, {
     title: i.title,
     state: i.state,
     payload: i.payload,
@@ -21751,5 +21761,5 @@ function rT(i) {
   return n.mount(e), t;
 }
 export {
-  rT as openSheetDialog
+  lT as openSheetDialog
 };

@@ -5,7 +5,8 @@ Request (``request.json``)::
 
     {"engine": "qwen3-asr-1.7b" | "faster-whisper-large-v3", "model_dir": "...", "aligner_dir": "..." (Qwen3),
      "audio": "<file>.npy" (16 kHz mono float32), "language": "" | "en" | ..., "beam_size": 5, "seed": 0,
-     "regions": [[start, end], ...], "device": "auto" | "cuda" | "cpu"}
+     "regions": [[start, end], ...], "device": "auto" | "cuda" | "cpu",
+     "align_audio": "<file>.npy" (optional, Qwen3: the vocal stem of the same audio - the aligner times on it)}
 
 Result: a ``plenio.asr/1`` object (see ``plenio.core.asr``).
 
@@ -375,6 +376,11 @@ def _qwen3_on(
     audio = np.load(str(request["audio"])).astype("float32")
     regions = [(float(a), float(b)) for a, b in request.get("regions", [])]
     parts = heard_pieces(audio, regions)
+    # the words are timed on the vocal stem when there is one (the same length): the text is heard in the mix,
+    # where the ASR hears best, the times found where only the voice is (measured 2026-10-24: fewer words timed
+    # in silence, more on the sung onsets)
+    stem = np.load(str(request["align_audio"])).astype("float32") if request.get("align_audio") else None
+    timing_audio = stem if stem is not None and len(stem) == len(audio) else audio
     language_code = str(request.get("language") or "")
     language_name = NAMES.get(language_code)
     asr_class, aligner_class = classes
@@ -441,7 +447,7 @@ def _qwen3_on(
             aligned.append([])
             if not h["text"]:
                 continue
-            piece = audio[int(h["start"] * RATE) : int(h["end"] * RATE)]
+            piece = timing_audio[int(h["start"] * RATE) : int(h["end"] * RATE)]
             inputs, word_lists = aligner_processor.prepare_forced_aligner_inputs(
                 audio=piece, transcript=h["text"], language=detected
             )
@@ -523,6 +529,7 @@ def _qwen3_on(
             "overlap": OVERLAP_S,
             "regions": [[round(a, 2), round(b, 2)] for a, b in regions],
             "timed": timed,
+            "timed_on": "vocal stem" if timing_audio is stem else "the audio",
             "device_note": device_note,
         },
         "segments": rows,

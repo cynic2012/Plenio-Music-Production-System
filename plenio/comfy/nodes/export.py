@@ -6,6 +6,7 @@ variables (``core.variables``); the lyrics go next to the song as subtitles, tim
 from __future__ import annotations
 
 import json
+import logging
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -26,6 +27,7 @@ from ...core.continuation import workflow_for_record
 from ...core.engines import ENGINES
 from ...core.errors import PlenioCancelledError, PlenioError, PlenioUserError
 from ...core.files import atomic_write_bytes, atomic_write_text
+from ...core.models import AUDIO_MODEL_FOLDERS
 from ...core.release import (
     FORMATS,
     PROJECT_EMBEDDED,
@@ -51,13 +53,27 @@ from ...core.release import (
 )
 from ...core.reports import Report, Status
 from ...core.score import canonical, lyric_layout
-from .. import host
+from .. import audio_models, host
 from ..lyrics_asr import language_code, run_asr
 from ..sheet_music import DEFAULT_SIZE, JOBS, OFF, PAPERS, SHEET_MUSIC_OPTIONS, SIZES, hand_placed
 from ..types import Brief, ReportType
 from .stems import write_saved_stems
 
+LOG = logging.getLogger(__name__)
 COLLISIONS = ("number", "overwrite", "error")
+TIMING_STEM = "vocal stem"
+TIMING_SONG = "the song"
+LYRICS_TIMING = (TIMING_STEM, TIMING_SONG)
+SEPARATION = "model_bs_roformer_ep_17_sdr_9.6568.ckpt"
+"""The separation model the lyrics are heard on (the one of Stems and Sung Pitch, in models/audio_separation)."""
+TIMING_OVERLAP = 8
+"""The take is separated with an eighth of a chunk overlapping: 30 s instead of 55 s for four minutes (GPU), the
+vocals 23 dB from the full separation's - plenty for the times."""
+TIMING_TOOLTIP = (
+    "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the take's vocal stem "
+    "(about half a minute more; fewer words timed in silence) or the song (quicker). Without the separation model "
+    "the song."
+)
 ORIGINAL_SUFFIX = " (original).flac"
 TAG_MODES = ("title only", "tags", "copy from loaded file")
 EXTRA_TAGS = tuple(field for field in TAG_FIELDS if field != "title")
@@ -377,6 +393,15 @@ class PlenioExportRelease(io.ComfyNode):
                     default=True,
                     tooltip=SRT_TOOLTIP,
                 ),
+                io.Combo.Input(
+                    "lyrics_timing",
+                    display_name="lyrics heard on",
+                    options=list(LYRICS_TIMING),
+                    default=TIMING_STEM,
+                    optional=True,
+                    advanced=True,
+                    tooltip=TIMING_TOOLTIP,
+                ),
             ],
             outputs=[
                 io.String.Output(display_name="files", tooltip="Written files, one per line."),
@@ -414,6 +439,7 @@ class PlenioExportRelease(io.ComfyNode):
         project_in_flac: bool = True,
         brief: Any = None,
         lyrics_srt: bool = True,
+        lyrics_timing: str = TIMING_STEM,
     ) -> io.NodeOutput:
         if sheet_music not in SHEET_MUSIC_OPTIONS:
             raise PlenioUserError(
@@ -518,7 +544,9 @@ class PlenioExportRelease(io.ComfyNode):
         untimed: list[str] = []
         if lyrics_srt:
             for take, samples in zip(takes, items, strict=True):
-                timed, sung, why = _subtitles(samples, rate, sheet, spans, brief, notes)
+                timed, sung, why, heard_from = _subtitles(
+                    samples, rate, sheet, spans, brief, notes, on_stem=lyrics_timing == TIMING_STEM
+                )
                 if timed is None:
                     untimed.append(why)
                     continue
@@ -540,10 +568,16 @@ class PlenioExportRelease(io.ComfyNode):
                 )
                 subtitle_lines.append(
                     f"- subtitles{where}: (lines).srt and (notes).srt, {len(timed.lines)} lines timed by "
-                    f"listening ({heard})"
+                    f"listening to {heard_from} ({heard})"
                 )
                 notes.extend(_subtitle_notes(timed, take))
-                timings.append({**timed.to_timing(take), **({"sung": sung.to_record()} if sung else {})})
+                timings.append(
+                    {
+                        **timed.to_timing(take),
+                        "heard_from": heard_from,
+                        **({"sung": sung.to_record()} if sung else {}),
+                    }
+                )
                 if sung is not None:
                     subtitle_lines.append(
                         f"- sung lyrics{where}: (sung).srt, {len(sung.subtitles.lines)} lines as heard - "
@@ -797,15 +831,52 @@ def asr_language(brief: Any, lyrics: str) -> str:
     return ""
 
 
+def vocal_stem(samples: Any, rate: int) -> tuple[Any | None, str]:
+    """The take's vocals for the lyrics ASR - or ``None`` and why (no separation model, the separation failed)."""
+    path = host.locate_model(AUDIO_MODEL_FOLDERS["separation"], SEPARATION)
+    if path is None:
+        return None, f"the separation model is not installed ({SEPARATION} in models/audio_separation)"
+    host.raise_if_interrupted()
+    try:
+        engine = audio_models.load("separation", SEPARATION, path).engine
+        if hasattr(engine, "chunk_frames") and hasattr(engine, "overlap_frames"):
+            engine = replace(engine, overlap_frames=int(engine.chunk_frames) // TIMING_OVERLAP)
+        stems = engine.separate(samples, rate)
+    except PlenioCancelledError:
+        raise
+    except (
+        Exception
+    ) as error:  # the times then come from the song: a failed separation never stops the export
+        LOG.warning("Export Release: the vocal stem for the lyrics failed: %s", error)
+        return None, f"the separation failed ({error})"
+    vocals = stems.get("vocals")
+    return (vocals, "") if vocals is not None else (None, "the separation gave no vocal stem")
+
+
 def _subtitles(
-    samples: Any, rate: int, sheet: dict[str, Any], spans: list[list[int]], brief: Any, notes: list[str]
-) -> tuple[subtitle_rules.Subtitles | None, subtitle_rules.SungLyrics | None, str]:
-    """The lyrics subtitles of one take, timed by listening, and what it sings as heard (with lyrics) - or
-    ``None`` and why (nothing to subtitle, or no ASR - noted)."""
+    samples: Any,
+    rate: int,
+    sheet: dict[str, Any],
+    spans: list[list[int]],
+    brief: Any,
+    notes: list[str],
+    *,
+    on_stem: bool = False,
+) -> tuple[subtitle_rules.Subtitles | None, subtitle_rules.SungLyrics | None, str, str]:
+    """The lyrics subtitles of one take, timed by listening, what it sings as heard (with lyrics), and what was
+    heard - the take's vocal stem (``on_stem``, when it can be separated) or the song - or ``None`` and why
+    (nothing to subtitle, or no ASR - noted)."""
     lyrics = str(sheet.get("lyrics") or "")
     if getattr(brief, "instrumental", False) or (lyrics.strip() and not subtitle_rules.sung_lines(lyrics)):
-        return None, None, "an instrumental: no words"
+        return None, None, "an instrumental: no words", ""
     audio = host.make_audio([samples], rate)
+    heard_from = TIMING_SONG
+    if on_stem:
+        vocals, why = vocal_stem(samples, rate)
+        if vocals is None:
+            notes.append(f"subtitles: heard on the song - {why}")
+        else:
+            audio, heard_from = host.make_audio([vocals], rate), TIMING_STEM
     settings = AsrSettings(language=asr_language(brief, lyrics))
     progress = host.Progress()
     try:
@@ -815,7 +886,7 @@ def _subtitles(
         raise
     except PlenioError as error:
         notes.append(f"subtitles: not written - the lyrics ASR could not run ({error.message})")
-        return None, None, f"the lyrics ASR could not run: {error.message}"
+        return None, None, f"the lyrics ASR could not run: {error.message}", ""
     finally:
         progress.update(1.0)
     weak = weak_segments(result)
@@ -828,8 +899,8 @@ def _subtitles(
         timed = subtitle_rules.time_heard(words, duration=seconds, timing=timing)
         if not timed.lines:
             notes.append("subtitles: not written - no lyrics given and no singing heard")
-            return None, None, "no lyrics given and no singing heard"
-        return timed, None, ""
+            return None, None, "no lyrics given and no singing heard", ""
+        return timed, None, "", heard_from
     score = layout = None
     if str(sheet.get("score") or "").strip():
         try:
@@ -843,6 +914,7 @@ def _subtitles(
         ),
         subtitle_rules.time_sung(lyrics, words, duration=seconds, timing=timing),
         "",
+        heard_from,
     )
 
 

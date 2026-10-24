@@ -10,6 +10,7 @@ from .engine import PlenioEngine
 from .eq import PlenioEQ
 from .export import PlenioExportRelease
 from .fit_lyrics import PlenioFitLyrics
+from .heard_check import PlenioApplyHeardCheck, PlenioComposeHeardCheck
 from .hq import PlenioHQDeReverb, PlenioHQMastering, PlenioHQRegenerateHighs, PlenioHQStereoCleanup
 from .local_llm import PlenioLocalLLM
 from .loudness import PlenioLoudness
@@ -44,6 +45,8 @@ NODES = (
     PlenioMatchSongForm,
     PlenioTranscribeScore,
     PlenioTranscribeLyrics,
+    PlenioComposeHeardCheck,
+    PlenioApplyHeardCheck,
     PlenioSungPitch,
     PlenioVocalCheck,
     PlenioHQStereoCleanup,
@@ -53,8 +56,6 @@ NODES = (
     PlenioEQ,
     PlenioLoudness,
     PlenioExportRelease,
-    PlenioComposeSungCheck,
-    PlenioApplySungCheck,
     PlenioSystemCheck,
     PlenioSeed,
     PlenioCreativity,
@@ -63,6 +64,9 @@ NODES = (
     PlenioRefine,
     PlenioSeparateStems,
     PlenioStemMixer,
+    # retired, kept so that workflows saved with Check Sung Words still run (they do nothing)
+    PlenioComposeSungCheck,
+    PlenioApplySungCheck,
 )
 
 __all__ = ["NODES"]
