@@ -13,7 +13,7 @@ The levels:
 - **high - best of 2 takes** - the second take is rendered, both are heard, and the one that sings more of the lyrics as written is kept.
 - **highest - best of 3 takes** - as high, and a third take when neither of the two sang **95 %** of the words.
 
-Each take is heard by the lyrics ASR (Qwen3-ASR, the hearing Export Release uses; it is kept in its cache) and scored like the release record's *as sung*: the share of the lyrics' words heard as written. In the owner's songs of October 2026 a single take sang 89 % in the median and one in six less than 75 %; two takes make that rare.
+Each take is heard by the lyrics ASR (Qwen3-ASR, the hearing Export Release uses; it is kept in its cache) and scored like the release record's *as sung*: the share of the lyrics' words heard as written. In 37 sung YuE2 takes measured in October 2026 a single take sang 89 % in the median and one in six less than 75 %; two takes make that rare.
 
 **Higher fidelity makes the generation take longer**: every further take costs a render and a hearing - up to about twice (high) or three times (highest) the time.
 
