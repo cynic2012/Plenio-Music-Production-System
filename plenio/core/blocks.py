@@ -11,7 +11,7 @@ its instances get the new inputs, and the YuE2 blocks' *creativity* is linked fr
 exactly as the current templates have it. At 50 the Creativity nodes give the numbers the blocks had.
 
 A block is kept as it is, and named, when the current one does not fit in its place: other inputs or
-outputs, or a node behind the sampling that differs from the current block's (a value set by hand inside
+outputs (inputs and outputs it adds after the old ones are fine), or a node behind the sampling that differs from the current block's (a value set by hand inside
 the block, which would be lost - or a block of a ComfyUI whose nodes have other fields).
 """
 
@@ -147,12 +147,16 @@ def misfit(old: Mapping[str, Any], current: Mapping[str, Any]) -> str | None:
     old_inputs, new_inputs = _names(old.get("inputs")), _names(current.get("inputs"))
     if new_inputs[: len(old_inputs)] != old_inputs:
         return "its inputs differ from the current block's"
-    if _names(old.get("outputs")) != _names(current.get("outputs")):
+    old_outputs, new_outputs = _names(old.get("outputs")), _names(current.get("outputs"))
+    if new_outputs[: len(old_outputs)] != old_outputs:
         return "its outputs differ from the current block's"
     inner = {node.get("id"): node for node in _nodes(old)}
     fresh = {node.get("id"): node for node in _nodes(current)}
+    last = max((i for i in inner if isinstance(i, int)), default=0)
     for node_id in sorted(sampled_nodes(current)):
         before, now = inner.get(node_id), fresh[node_id]
+        if before is None and node_id > last:
+            continue  # a node the current block adds after the old ones (the render blocks' retakes)
         if before is None or before.get("type") != now.get("type"):
             return "its sampling nodes differ from the current block's"
         if not _same(before.get("widgets_values"), now.get("widgets_values")):
@@ -272,6 +276,12 @@ def upgrade(
             values, defaults = node.get("widgets_values"), block.instance.get("widgets_values")
             if isinstance(values, list) and isinstance(defaults, list) and len(values) < len(defaults):
                 values.extend(copy.deepcopy(defaults[len(values) :]))
+        # outputs the current block adds after the old ones (the render blocks' retakes, 2026-10-24)
+        outputs = node.get("outputs")
+        current_outputs = [slot for slot in block.instance.get("outputs") or [] if isinstance(slot, Mapping)]
+        if isinstance(outputs, list) and _names(current_outputs)[: len(outputs)] == _names(outputs):
+            for added in current_outputs[len(outputs) :]:
+                outputs.append({**copy.deepcopy(dict(added)), "links": None})
         if CREATIVITY not in after[len(before) :]:
             continue
         label = str(node.get("title") or block.name)

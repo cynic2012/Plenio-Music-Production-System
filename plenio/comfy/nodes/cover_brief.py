@@ -22,6 +22,7 @@ from ...core.brief import (
 )
 from ...core.creativity import CREATIVITY_DEFAULT
 from ...core.errors import PlenioError
+from ...core.fidelity import FIDELITY_DEFAULT, FIDELITY_OPTIONS, FIDELITY_TOOLTIP
 from ...core.release import read_tags
 from .. import host
 from ..shared import mode_library, mode_names, template_library
@@ -33,6 +34,7 @@ from .brief import (
     arrangement_line,
     check_arrangement,
     creativity_line,
+    fidelity_line,
     field_outputs,
     field_values,
     mode_line,
@@ -115,6 +117,8 @@ def _summary(brief: Any, title_from: str = "") -> str:
         arrangement_line(brief),
         "",
         creativity_line(brief),
+        "",
+        fidelity_line(brief),
         "",
         brief.to_text(),
     ]
@@ -290,6 +294,15 @@ class PlenioCoverBrief(io.ComfyNode):
                 ),
                 # linked (not a widget): a changed source file runs the brief again
                 io.Audio.Input("source", optional=True, tooltip=SOURCE_TOOLTIP),
+                # appended last: a workflow saved without it, and an older API prompt, take one take as before
+                io.Combo.Input(
+                    "lyrics_fidelity",
+                    display_name="lyrics fidelity",
+                    options=list(FIDELITY_OPTIONS),
+                    default=FIDELITY_DEFAULT,
+                    optional=True,
+                    tooltip=FIDELITY_TOOLTIP,
+                ),
             ],
             outputs=[
                 Brief.Output(display_name="brief", tooltip="The cover brief."),
@@ -346,6 +359,7 @@ class PlenioCoverBrief(io.ComfyNode):
         lines_under_singing: bool = False,
         creativity: int = CREATIVITY_DEFAULT,
         source: Any = None,
+        lyrics_fidelity: str = FIDELITY_DEFAULT,
     ) -> io.NodeOutput:
         chosen = None if template == "none" else template_library().get(template)
         # an unknown mode stops here, with the list to choose from; the pre-release name "simple" is read as "off"
@@ -369,6 +383,7 @@ class PlenioCoverBrief(io.ComfyNode):
             "lyrics_closeness": lyrics_closeness,
             "lines_under_singing": bool(lines_under_singing),
             "creativity": creativity,
+            "fidelity": lyrics_fidelity,
         }
         # a typed title wins; else the source recording names the cover (the series key keeps the typed one)
         title_from = ""

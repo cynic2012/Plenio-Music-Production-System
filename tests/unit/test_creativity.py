@@ -125,11 +125,12 @@ def test_new_cover_lyrics_keep_their_syllable_counts() -> None:
 
 
 def test_the_brief_keeps_its_fingerprint_at_50() -> None:
-    """A brief at the reference has the fingerprint it had before the slider: drafts and records stay comparable."""
+    """A brief at the reference has the fingerprint it had before the slider: drafts and records stay comparable
+    (and at the standard lyrics fidelity, before that option)."""
     brief = song()
     data = brief.to_dict()
-    assert data["creativity"] == 50
-    for key in ("from_template", "notes", "creativity"):
+    assert data["creativity"] == 50 and data["fidelity"] == "standard"
+    for key in ("from_template", "notes", "creativity", "fidelity"):
         data.pop(key)
     assert brief.fingerprint == sha256_json(data)
     assert song(creativity=51).fingerprint != brief.fingerprint

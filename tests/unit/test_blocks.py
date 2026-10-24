@@ -108,7 +108,8 @@ def test_at_50_the_creativity_nodes_give_the_numbers_the_old_blocks_had():
     for name in (PLAN, RENDER):
         old = {node["id"]: node for node in definition(SAVED_SONG, name)["nodes"]}
         for node in definition(found.workflow, name)["nodes"]:
-            if node["type"] in stages:
+            # the retakes of the lyrics fidelity (1.2.1) are new: the old block had none
+            if node["type"] in stages and node["id"] in old:
                 values = sampling(50, stages[node["type"]])
                 written = old[node["id"]]["widgets_values"]
                 triple = [values.temperature, values.top_p, values.top_k]

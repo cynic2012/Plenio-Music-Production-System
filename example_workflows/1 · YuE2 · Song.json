@@ -1,8 +1,8 @@
 {
  "id": "9636130e-6f72-5b33-a1b9-97c929135bfd",
  "revision": 0,
- "last_node_id": 23,
- "last_link_id": 65,
+ "last_node_id": 24,
+ "last_link_id": 71,
  "nodes": [
   {
    "id": 1,
@@ -25,7 +25,7 @@
     "Node name for S&R": "MarkdownNote"
    },
    "widgets_values": [
-    "# 1 · YuE2 · Song\n\n**Brief -> Write Song -> Song Sheet · Text -> YuE2 Plan -> Arrange -> Song Sheet · Score -> YuE2 Render -> Master -> Export**\n\n1. Choose the **mode** in **Song Brief**:\n   - *new song every run* - every run writes and renders a **different song** from the brief, without stops (set the **Draft seed** to 🎲 *new seed* for even more variety). For a series, set the batch count next to **Run** (App mode: *Number of runs*) - one click, many songs.\n   - *one song, stop to review* - the run **stops at the Song Sheets (Text, then Score)**: open it, check or edit the documents, *Approve*, run again. Once approved, every further run is a **new take** of the same song (the documents stay cached).\n2. Describe the song (or pick a template). *vocals* switches between a sung song and an instrumental; *length* runs from 1:00 to 6:00.\n3. Press **Run**. The writer model drafts title, style and lyrics; YuE2 plans a score and renders the song.\n\n**Inspect and edit:** open a **Song Sheet** to see exactly what YuE2 receives. Edit a document there; your edit wins until its draft changes, then the run stops and asks you. The sheets' *review* follows the brief's mode (*as the brief says*); set it to *continue* or *stop for review* to decide per sheet.\n\n**Creative modes (experimental):** *arrangement* in the brief. They can give unexpected results and are meant for experimenting - try a mode, listen, keep what you like. *off* (default, the dependable choice): no arrangement - YuE2 plans melody, chords and instruments by itself, as before. A creative mode - from *standard*, *sterile* and *unplugged* over *call and response*, *signature motif*, *hypnotic* and *breakdown* to *jazz colours* and *fantasy* (the line under the brief says what the chosen one does), *key change* for one lift of the final chorus, or your own file in `user/plenio/arrangement` - adds its hints to the writing and lets the writer model plan every section of the score in **Arrange**: chords, what the instrument line plays, energy. *genre closeness* sets how free it may be: 100 strictly typical, 70 typical with personal touches, 40 free within the genre, 0 any style. The writer answers with a small plan, never notes: Plenio writes every note itself and checks the result, so the score stays valid - a plan it cannot use leaves the score as it was, and Song Sheet · Score says so. A **harmony guard** keeps every chord in the key and the genre and on the melody, and the instrument line plays where the voice rests (*lines under the singing* in the brief lets it sound under the voice, calmly). **Arrangement seed:** another arrangement of the same song. Changing the mode or a slider writes the text again (the brief changed); a Local LLM answers from its cache when the request is the same.\n\n**Writer model:** one list in the *Writer model* node - at the start, under the two cards - for every writing step (Write Song and Arrange): ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed is answered from Plenio's cache, without asking the model again.\n\n**Where the run stands:** a badge above each Plenio node shows its result - ✓ done, ⚠ warning, ✖ error; every Song Sheet that will stop carries ⏸ *review stop* before the run, ⏸ *waiting for your approval* (and an amber frame) when the run stopped there, ✓ *approved* once you approved it. A new run clears the badges, so they show how far this run got.\n\n**Creativity** (the brief's slider): 0 steady, 50 the reference - exactly as before -, 100 experimental. It shapes the writer's rules and the temperature of its draft (and of a creative mode's plan) and, with YuE2, how freely the plan and the takes are sampled. More surprises also bring more misses: try a few seeds. A workflow saved before the slider keeps 50.\n\n**Seeds:** each seed node has one switch - **🔒 same seed**: the next run keeps that part (the same draft, the same take), so you can change other things; **🎲 new seed**: every run draws a new number - something new each time. The number shown is always the one the last run used: liked a take? Switch its seed to 🔒. Blue nodes keep, amber nodes renew. The seeds follow the brief's **mode**: *new song (cover) every run* starts with every seed on 🎲, *one song (cover), stop to review* with the song's seeds on 🔒 and the take seed on 🎲 - switching the mode switches them (a toast says so).\n\n**Finish:** *Plenio · Master* mixes the stems when you switch *stems* on, refines the take (*Audio HQ*, below) and brings it to -14 LUFS / -1 dBTP with a gentle tone match (open the block to change a stage, the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the **sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export), and the lyrics as **subtitles** - `<name> (lines).srt` and `<name> (notes).srt`, timed by listening. The **tags** take the brief's fields as variables (`{genre}`, `{mood}` ...); the *Tags & variables* note beside Export lists them all.\n\n**Cover art (on):** *Cover Art* (the COVER ART group above the render) paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about 16 GB of model files, Apache-2.0); Export embeds it in the FLAC and MP3 files and saves it as `.jpg`. The **Cover Art** card in *HQ Mastering & Cover Art* at the top switches it off - its three nodes are then bypassed and no image model loads.\n\n**Stems (in the Master block, off):** switch *stems* on the *Plenio · Master* node on: *Separate Stems* splits the take into vocals, drums, bass and other, and the *Stem Mixer* - inside the block, open it with the icon at the top right of the node - balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Off, the separation does not run. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it.\n\n**HQ Mastering & Cover Art** (the two cards at the top - click one to switch it): **HQ Mastering** (**off** by default) runs the mastering at its highest quality - it can clearly reduce AI shimmer and artifacts, but the song takes **about twice as long** (UniverSR, 229 MB in `models/audio_sr`, needed only then); **Cover Art** (**on**) paints the song's cover.\n\n**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the render's highs (always); *HQ 2 · Regenerate Highs*, with HQ mastering on, lets the UniverSR model generate new highs above 8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s per second of music on an RTX 5060 Ti (its *model steps* 3: about 1.1 s); *HQ 3 · De-Reverb* (bypassed) dries the short metallic room but also dulls the highs. Their presets are on **auto**: the brief's genre picks *standard*, *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient). Open the block (the icon at the top right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). The user guide *Audio HQ* covers it.\n\n**App mode:** switch *Graph / App* at the top left for a simple form: the mode, the brief with its creative mode, closeness and creativity, the writer model, the seeds, the Song Sheet buttons (review and edit, also in the app - their status line says where the run stands: *stops here for review*, *waiting for your approval*, *approved*) and the results. *Number of runs* next to Run renders a series.\n\n**Models** (ComfyUI offers the downloads when you open the template): YuE2 3B int8 (4.0 GB), the Gemma 4 E4B writer. YuE2 weights are **CC BY-NC 4.0 (non-commercial)**. The model block below is collapsed; expand it to choose other files.\n"
+    "# 1 · YuE2 · Song\n\n**Brief -> Write Song -> Song Sheet · Text -> YuE2 Plan -> Arrange -> Song Sheet · Score -> YuE2 Render -> Master -> Export**\n\n1. Choose the **mode** in **Song Brief**:\n   - *new song every run* - every run writes and renders a **different song** from the brief, without stops (set the **Draft seed** to 🎲 *new seed* for even more variety). For a series, set the batch count next to **Run** (App mode: *Number of runs*) - one click, many songs.\n   - *one song, stop to review* - the run **stops at the Song Sheets (Text, then Score)**: open it, check or edit the documents, *Approve*, run again. Once approved, every further run is a **new take** of the same song (the documents stay cached).\n2. Describe the song (or pick a template). *vocals* switches between a sung song and an instrumental; *length* runs from 1:00 to 6:00.\n3. Press **Run**. The writer model drafts title, style and lyrics; YuE2 plans a score and renders the song.\n\n**Inspect and edit:** open a **Song Sheet** to see exactly what YuE2 receives. Edit a document there; your edit wins until its draft changes, then the run stops and asks you. The sheets' *review* follows the brief's mode (*as the brief says*); set it to *continue* or *stop for review* to decide per sheet.\n\n**Creative modes (experimental):** *arrangement* in the brief. They can give unexpected results and are meant for experimenting - try a mode, listen, keep what you like. *off* (default, the dependable choice): no arrangement - YuE2 plans melody, chords and instruments by itself, as before. A creative mode - from *standard*, *sterile* and *unplugged* over *call and response*, *signature motif*, *hypnotic* and *breakdown* to *jazz colours* and *fantasy* (the line under the brief says what the chosen one does), *key change* for one lift of the final chorus, or your own file in `user/plenio/arrangement` - adds its hints to the writing and lets the writer model plan every section of the score in **Arrange**: chords, what the instrument line plays, energy. *genre closeness* sets how free it may be: 100 strictly typical, 70 typical with personal touches, 40 free within the genre, 0 any style. The writer answers with a small plan, never notes: Plenio writes every note itself and checks the result, so the score stays valid - a plan it cannot use leaves the score as it was, and Song Sheet · Score says so. A **harmony guard** keeps every chord in the key and the genre and on the melody, and the instrument line plays where the voice rests (*lines under the singing* in the brief lets it sound under the voice, calmly). **Arrangement seed:** another arrangement of the same song. Changing the mode or a slider writes the text again (the brief changed); a Local LLM answers from its cache when the request is the same.\n\n**Writer model:** one list in the *Writer model* node - at the start, under the two cards - for every writing step (Write Song and Arrange): ComfyUI's text models (Gemma 4 E4B by default) and every local LLM - GGUF files in `models/LLM`, LM Studio, Ollama ... Only the chosen one is loaded. Local LLM answers are kept: the same request with the same seed is answered from Plenio's cache, without asking the model again.\n\n**Where the run stands:** a badge above each Plenio node shows its result - ✓ done, ⚠ warning, ✖ error; every Song Sheet that will stop carries ⏸ *review stop* before the run, ⏸ *waiting for your approval* (and an amber frame) when the run stopped there, ✓ *approved* once you approved it. A new run clears the badges, so they show how far this run got.\n\n**Creativity** (the brief's slider): 0 steady, 50 the reference - exactly as before -, 100 experimental. It shapes the writer's rules and the temperature of its draft (and of a creative mode's plan) and, with YuE2, how freely the plan and the takes are sampled. More surprises also bring more misses: try a few seeds. A workflow saved before the slider keeps 50.\n\n**Lyrics fidelity** (the brief's last field): a music model does not always sing its lyrics - it leaves a line out, repeats one, sings other words. *standard* renders one take. *high - best of 2 takes* renders a second take (the next seed) and **Best Take** keeps the one that sings more of the lyrics as written, as the lyrics ASR hears it; *highest - best of 3 takes* adds a third take when neither sang 95 % of the words. Higher fidelity makes the generation take **longer** - up to about twice (high) or three times (highest). Best Take's summary and the release record say what each take sang and which one was kept.\n\n**Seeds:** each seed node has one switch - **🔒 same seed**: the next run keeps that part (the same draft, the same take), so you can change other things; **🎲 new seed**: every run draws a new number - something new each time. The number shown is always the one the last run used: liked a take? Switch its seed to 🔒. Blue nodes keep, amber nodes renew. The seeds follow the brief's **mode**: *new song (cover) every run* starts with every seed on 🎲, *one song (cover), stop to review* with the song's seeds on 🔒 and the take seed on 🎲 - switching the mode switches them (a toast says so).\n\n**Finish:** *Plenio · Master* mixes the stems when you switch *stems* on, refines the take (*Audio HQ*, below) and brings it to -14 LUFS / -1 dBTP with a gentle tone match (open the block to change a stage, the EQ or the loudness target). Export writes the mastered FLAC 24-bit, the unmastered take as `(original).flac` and a release record to `output/plenio` - in the YuE2 templates also the **sheet music** with the lyrics as `<name>.pdf` (*sheet music* in Export: A4, Letter or off; *sheet music size*: standard about 3 bars a line, smaller, compact or large; this page draws it right after the export), and the lyrics as **subtitles** - `<name> (lines).srt` and `<name> (notes).srt`, timed by listening. The **tags** take the brief's fields as variables (`{genre}`, `{mood}` ...); the *Tags & variables* note beside Export lists them all.\n\n**Cover art (on):** *Cover Art* (the COVER ART group above the render) paints a cover from the sheet's artwork prompt with FLUX.2 Klein 4B (about 16 GB of model files, Apache-2.0); Export embeds it in the FLAC and MP3 files and saves it as `.jpg`. The **Cover Art** card in *HQ Mastering & Cover Art* at the top switches it off - its three nodes are then bypassed and no image model loads.\n\n**Stems (in the Master block, off):** switch *stems* on the *Plenio · Master* node on: *Separate Stems* splits the take into vocals, drums, bass and other, and the *Stem Mixer* - inside the block, open it with the icon at the top right of the node - balances them (gain, mute/solo, compression, reverb/delay sends, muted time ranges) and mixes the residual *rest* along, so a neutral mix returns the render unchanged. Off, the separation does not run. It needs the BS-RoFormer checkpoint (527 MB). The user guide *Stems* covers it.\n\n**HQ Mastering & Cover Art** (the two cards at the top - click one to switch it): **HQ Mastering** (**off** by default) runs the mastering at its highest quality - it can clearly reduce AI shimmer and artifacts, but the song takes **about twice as long** (UniverSR, 229 MB in `models/audio_sr`, needed only then); **Cover Art** (**on**) paints the song's cover.\n\n**Audio HQ (in the Master block, before the EQ):** *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the render's highs (always); *HQ 2 · Regenerate Highs*, with HQ mastering on, lets the UniverSR model generate new highs above 8.2 kHz - in every preset - and blends them in at the original's level, about 1.5 s per second of music on an RTX 5060 Ti (its *model steps* 3: about 1.1 s); *HQ 3 · De-Reverb* (bypassed) dries the short metallic room but also dulls the highs. Their presets are on **auto**: the brief's genre picks *standard*, *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient). Open the block (the icon at the top right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). The user guide *Audio HQ* covers it.\n\n**App mode:** switch *Graph / App* at the top left for a simple form: the mode, the brief with its creative mode, closeness and creativity, the writer model, the seeds, the Song Sheet buttons (review and edit, also in the app - their status line says where the run stands: *stops here for review*, *waiting for your approval*, *approved*) and the results. *Number of runs* next to Run renders a series.\n\n**Models** (ComfyUI offers the downloads when you open the template): YuE2 3B int8 (4.0 GB), the Gemma 4 E4B writer. YuE2 weights are **CC BY-NC 4.0 (non-commercial)**. The model block below is collapsed; expand it to choose other files.\n"
    ]
   },
   {
@@ -195,6 +195,15 @@
       "name": "creativity"
      },
      "link": null
+    },
+    {
+     "localized_name": "lyrics_fidelity",
+     "name": "lyrics_fidelity",
+     "type": "COMBO",
+     "widget": {
+      "name": "lyrics_fidelity"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -208,8 +217,9 @@
       19,
       23,
       33,
-      45,
-      46
+      49,
+      50,
+      51
      ]
     },
     {
@@ -354,7 +364,8 @@
     "off",
     70,
     false,
-    50
+    50,
+    "standard"
    ]
   },
   {
@@ -838,7 +849,7 @@
      "name": "title",
      "type": "STRING",
      "links": [
-      52
+      57
      ]
     },
     {
@@ -859,7 +870,8 @@
      "links": [
       27,
       32,
-      39
+      39,
+      48
      ]
     },
     {
@@ -873,7 +885,7 @@
      "name": "artwork_prompt",
      "type": "STRING",
      "links": [
-      53
+      58
      ]
     },
     {
@@ -893,7 +905,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      56
+      61
      ]
     },
     {
@@ -1511,7 +1523,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      57
+      62
      ]
     },
     {
@@ -1702,8 +1714,7 @@
      "name": "AUDIO",
      "type": "AUDIO",
      "links": [
-      48,
-      51
+      45
      ]
     },
     {
@@ -1711,6 +1722,22 @@
      "name": "seconds",
      "type": "FLOAT",
      "links": null
+    },
+    {
+     "localized_name": "second",
+     "name": "second",
+     "type": "AUDIO",
+     "links": [
+      46
+     ]
+    },
+    {
+     "localized_name": "third",
+     "name": "third",
+     "type": "AUDIO",
+     "links": [
+      47
+     ]
     }
    ],
    "title": "Plenio · YuE2 Render",
@@ -1727,6 +1754,80 @@
   },
   {
    "id": 16,
+   "type": "PlenioBestTake",
+   "pos": [
+    2580,
+    632.0
+   ],
+   "size": [
+    320,
+    250
+   ],
+   "flags": {},
+   "order": 15,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "take",
+     "name": "take",
+     "type": "AUDIO",
+     "link": 45
+    },
+    {
+     "localized_name": "lyrics",
+     "name": "lyrics",
+     "type": "STRING",
+     "link": 48
+    },
+    {
+     "localized_name": "brief",
+     "name": "brief",
+     "shape": 7,
+     "type": "PLENIO_BRIEF",
+     "link": 49
+    },
+    {
+     "localized_name": "second",
+     "name": "second",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": 46
+    },
+    {
+     "localized_name": "third",
+     "name": "third",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": 47
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "type": "AUDIO",
+     "links": [
+      53,
+      56
+     ]
+    },
+    {
+     "localized_name": "report",
+     "name": "report",
+     "type": "PLENIO_REPORT",
+     "links": [
+      63
+     ]
+    }
+   ],
+   "title": "Best Take · lyrics fidelity",
+   "properties": {
+    "Node name for S&R": "PlenioBestTake"
+   },
+   "widgets_values": []
+  },
+  {
+   "id": 17,
    "type": "259b88ba-7c57-57fb-b73e-58f691fe4b56",
    "pos": [
     3020,
@@ -1737,14 +1838,14 @@
     260
    ],
    "flags": {},
-   "order": 15,
+   "order": 16,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 48
+     "link": 53
     },
     {
      "localized_name": "reference",
@@ -1756,7 +1857,7 @@
      "localized_name": "brief",
      "name": "brief",
      "type": "PLENIO_BRIEF",
-     "link": 46
+     "link": 51
     },
     {
      "localized_name": "hq_mastering",
@@ -1766,7 +1867,7 @@
      "widget": {
       "name": "hq_mastering"
      },
-     "link": 65
+     "link": 71
     },
     {
      "localized_name": "stems",
@@ -1795,8 +1896,8 @@
      "name": "audio",
      "type": "AUDIO",
      "links": [
-      49,
-      50
+      54,
+      55
      ]
     },
     {
@@ -1804,7 +1905,7 @@
      "name": "eq_report",
      "type": "PLENIO_REPORT",
      "links": [
-      63
+      69
      ]
     },
     {
@@ -1812,7 +1913,7 @@
      "name": "loudness_report",
      "type": "PLENIO_REPORT",
      "links": [
-      64
+      70
      ]
     },
     {
@@ -1820,7 +1921,7 @@
      "name": "hq1_report",
      "type": "PLENIO_REPORT",
      "links": [
-      60
+      66
      ]
     },
     {
@@ -1828,7 +1929,7 @@
      "name": "hq2_report",
      "type": "PLENIO_REPORT",
      "links": [
-      61
+      67
      ]
     },
     {
@@ -1836,7 +1937,7 @@
      "name": "hq3_report",
      "type": "PLENIO_REPORT",
      "links": [
-      62
+      68
      ]
     },
     {
@@ -1844,7 +1945,7 @@
      "name": "stems_report",
      "type": "PLENIO_REPORT",
      "links": [
-      58
+      64
      ]
     },
     {
@@ -1852,7 +1953,7 @@
      "name": "separation_report",
      "type": "PLENIO_REPORT",
      "links": [
-      59
+      65
      ]
     }
    ],
@@ -1865,7 +1966,7 @@
    ]
   },
   {
-   "id": 17,
+   "id": 18,
    "type": "PreviewAudio",
    "pos": [
     3020,
@@ -1876,14 +1977,14 @@
     120
    ],
    "flags": {},
-   "order": 16,
+   "order": 17,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 49
+     "link": 54
     }
    ],
    "outputs": [
@@ -1901,7 +2002,7 @@
    "widgets_values": []
   },
   {
-   "id": 18,
+   "id": 19,
    "type": "PlenioExportRelease",
    "pos": [
     3420,
@@ -1909,45 +2010,45 @@
    ],
    "size": [
     440,
-    914
+    934
    ],
    "flags": {},
-   "order": 17,
+   "order": 18,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "audio",
      "name": "audio",
      "type": "AUDIO",
-     "link": 50
+     "link": 55
     },
     {
      "localized_name": "title",
      "name": "title",
      "shape": 7,
      "type": "STRING",
-     "link": 52
+     "link": 57
     },
     {
      "localized_name": "original",
      "name": "original",
      "shape": 7,
      "type": "AUDIO",
-     "link": 51
+     "link": 56
     },
     {
      "localized_name": "cover",
      "name": "cover",
      "shape": 7,
      "type": "IMAGE",
-     "link": 54
+     "link": 59
     },
     {
      "localized_name": "brief",
      "name": "brief",
      "shape": 7,
      "type": "PLENIO_BRIEF",
-     "link": 45
+     "link": 50
     },
     {
      "localized_name": "reports.report_0",
@@ -1955,7 +2056,7 @@
      "label": "report_0",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 56
+     "link": 61
     },
     {
      "localized_name": "reports.report_1",
@@ -1963,7 +2064,7 @@
      "label": "report_1",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 57
+     "link": 62
     },
     {
      "localized_name": "reports.report_2",
@@ -1971,7 +2072,7 @@
      "label": "report_2",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 58
+     "link": 63
     },
     {
      "localized_name": "reports.report_3",
@@ -1979,7 +2080,7 @@
      "label": "report_3",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 59
+     "link": 64
     },
     {
      "localized_name": "reports.report_4",
@@ -1987,7 +2088,7 @@
      "label": "report_4",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 60
+     "link": 65
     },
     {
      "localized_name": "reports.report_5",
@@ -1995,7 +2096,7 @@
      "label": "report_5",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 61
+     "link": 66
     },
     {
      "localized_name": "reports.report_6",
@@ -2003,7 +2104,7 @@
      "label": "report_6",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 62
+     "link": 67
     },
     {
      "localized_name": "reports.report_7",
@@ -2011,7 +2112,7 @@
      "label": "report_7",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 63
+     "link": 68
     },
     {
      "localized_name": "reports.report_8",
@@ -2019,12 +2120,20 @@
      "label": "report_8",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 64
+     "link": 69
     },
     {
      "localized_name": "reports.report_9",
      "name": "reports.report_9",
      "label": "report_9",
+     "shape": 7,
+     "type": "PLENIO_REPORT",
+     "link": 70
+    },
+    {
+     "localized_name": "reports.report_10",
+     "name": "reports.report_10",
+     "label": "report_10",
      "shape": 7,
      "type": "PLENIO_REPORT",
      "link": null
@@ -2261,7 +2370,7 @@
    ]
   },
   {
-   "id": 19,
+   "id": 20,
    "type": "MarkdownNote",
    "pos": [
     3930,
@@ -2272,7 +2381,7 @@
     760
    ],
    "flags": {},
-   "order": 18,
+   "order": 19,
    "mode": 0,
    "inputs": [],
    "outputs": [],
@@ -2285,7 +2394,7 @@
    ]
   },
   {
-   "id": 20,
+   "id": 21,
    "type": "9dbb5617-ccf9-5537-b674-405adb29958c",
    "pos": [
     2580,
@@ -2296,7 +2405,7 @@
     170
    ],
    "flags": {},
-   "order": 19,
+   "order": 20,
    "mode": 0,
    "inputs": [
     {
@@ -2307,7 +2416,7 @@
      "widget": {
       "name": "text"
      },
-     "link": 53
+     "link": 58
     },
     {
      "localized_name": "noise_seed",
@@ -2317,7 +2426,7 @@
      "widget": {
       "name": "noise_seed"
      },
-     "link": 47
+     "link": 52
     },
     {
      "localized_name": "size",
@@ -2336,8 +2445,8 @@
      "name": "IMAGE",
      "type": "IMAGE",
      "links": [
-      54,
-      55
+      59,
+      60
      ]
     }
    ],
@@ -2352,7 +2461,7 @@
    ]
   },
   {
-   "id": 21,
+   "id": 22,
    "type": "PreviewImage",
    "pos": [
     2580,
@@ -2363,14 +2472,14 @@
     300
    ],
    "flags": {},
-   "order": 20,
+   "order": 21,
    "mode": 0,
    "inputs": [
     {
      "localized_name": "images",
      "name": "images",
      "type": "IMAGE",
-     "link": 55
+     "link": 60
     }
    ],
    "outputs": [
@@ -2389,7 +2498,7 @@
    "widgets_values": []
   },
   {
-   "id": 22,
+   "id": 23,
    "type": "PlenioSeed",
    "pos": [
     2580,
@@ -2400,7 +2509,7 @@
     190
    ],
    "flags": {},
-   "order": 21,
+   "order": 22,
    "mode": 0,
    "inputs": [
     {
@@ -2429,7 +2538,7 @@
      "name": "seed",
      "type": "INT",
      "links": [
-      47
+      52
      ]
     }
    ],
@@ -2447,7 +2556,7 @@
    ]
   },
   {
-   "id": 23,
+   "id": 24,
    "type": "PlenioHQMastering",
    "pos": [
     0,
@@ -2458,7 +2567,7 @@
     160
    ],
    "flags": {},
-   "order": 22,
+   "order": 23,
    "mode": 0,
    "inputs": [
     {
@@ -2477,7 +2586,7 @@
      "name": "hq_mastering",
      "type": "BOOLEAN",
      "links": [
-      65
+      71
      ]
     }
    ],
@@ -2845,30 +2954,6 @@
   ],
   [
    45,
-   2,
-   0,
-   18,
-   4,
-   "PLENIO_BRIEF"
-  ],
-  [
-   46,
-   2,
-   0,
-   16,
-   2,
-   "PLENIO_BRIEF"
-  ],
-  [
-   47,
-   22,
-   0,
-   20,
-   1,
-   "INT"
-  ],
-  [
-   48,
    15,
    0,
    16,
@@ -2876,7 +2961,63 @@
    "AUDIO"
   ],
   [
+   46,
+   15,
+   2,
+   16,
+   3,
+   "AUDIO"
+  ],
+  [
+   47,
+   15,
+   3,
+   16,
+   4,
+   "AUDIO"
+  ],
+  [
+   48,
+   7,
+   2,
+   16,
+   1,
+   "STRING"
+  ],
+  [
    49,
+   2,
+   0,
+   16,
+   2,
+   "PLENIO_BRIEF"
+  ],
+  [
+   50,
+   2,
+   0,
+   19,
+   4,
+   "PLENIO_BRIEF"
+  ],
+  [
+   51,
+   2,
+   0,
+   17,
+   2,
+   "PLENIO_BRIEF"
+  ],
+  [
+   52,
+   23,
+   0,
+   21,
+   1,
+   "INT"
+  ],
+  [
+   53,
    16,
    0,
    17,
@@ -2884,130 +3025,146 @@
    "AUDIO"
   ],
   [
-   50,
-   16,
+   54,
+   17,
    0,
    18,
    0,
    "AUDIO"
   ],
   [
-   51,
-   15,
+   55,
+   17,
    0,
-   18,
+   19,
+   0,
+   "AUDIO"
+  ],
+  [
+   56,
+   16,
+   0,
+   19,
    2,
    "AUDIO"
   ],
   [
-   52,
+   57,
    7,
    0,
-   18,
+   19,
    1,
    "STRING"
   ],
   [
-   53,
+   58,
    7,
    4,
-   20,
+   21,
    0,
    "STRING"
   ],
   [
-   54,
-   20,
-   0,
-   18,
-   3,
-   "IMAGE"
-  ],
-  [
-   55,
-   20,
-   0,
+   59,
    21,
    0,
+   19,
+   3,
    "IMAGE"
-  ],
-  [
-   56,
-   7,
-   7,
-   18,
-   5,
-   "PLENIO_REPORT"
-  ],
-  [
-   57,
-   13,
-   7,
-   18,
-   6,
-   "PLENIO_REPORT"
-  ],
-  [
-   58,
-   16,
-   6,
-   18,
-   7,
-   "PLENIO_REPORT"
-  ],
-  [
-   59,
-   16,
-   7,
-   18,
-   8,
-   "PLENIO_REPORT"
   ],
   [
    60,
-   16,
-   3,
-   18,
-   9,
-   "PLENIO_REPORT"
+   21,
+   0,
+   22,
+   0,
+   "IMAGE"
   ],
   [
    61,
-   16,
-   4,
-   18,
-   10,
+   7,
+   7,
+   19,
+   5,
    "PLENIO_REPORT"
   ],
   [
    62,
-   16,
-   5,
-   18,
-   11,
+   13,
+   7,
+   19,
+   6,
    "PLENIO_REPORT"
   ],
   [
    63,
    16,
    1,
-   18,
-   12,
+   19,
+   7,
    "PLENIO_REPORT"
   ],
   [
    64,
-   16,
-   2,
-   18,
-   13,
+   17,
+   6,
+   19,
+   8,
    "PLENIO_REPORT"
   ],
   [
    65,
-   23,
+   17,
+   7,
+   19,
+   9,
+   "PLENIO_REPORT"
+  ],
+  [
+   66,
+   17,
+   3,
+   19,
+   10,
+   "PLENIO_REPORT"
+  ],
+  [
+   67,
+   17,
+   4,
+   19,
+   11,
+   "PLENIO_REPORT"
+  ],
+  [
+   68,
+   17,
+   5,
+   19,
+   12,
+   "PLENIO_REPORT"
+  ],
+  [
+   69,
+   17,
+   1,
+   19,
+   13,
+   "PLENIO_REPORT"
+  ],
+  [
+   70,
+   17,
+   2,
+   19,
+   14,
+   "PLENIO_REPORT"
+  ],
+  [
+   71,
+   24,
    0,
-   16,
+   17,
    3,
    "BOOLEAN"
   ]
@@ -9507,8 +9664,8 @@
     "version": 1,
     "state": {
      "lastGroupId": 0,
-     "lastNodeId": 806,
-     "lastLinkId": 22,
+     "lastNodeId": 818,
+     "lastLinkId": 64,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -9526,10 +9683,10 @@
     "outputNode": {
      "id": -20,
      "bounding": [
-      1380,
+      1780,
       0,
       160,
-      80
+      120
      ]
     },
     "inputs": [
@@ -9538,7 +9695,9 @@
       "name": "model",
       "type": "MODEL",
       "linkIds": [
-       10
+       32,
+       33,
+       34
       ],
       "pos": [
        0,
@@ -9550,7 +9709,9 @@
       "name": "clip",
       "type": "CLIP",
       "linkIds": [
-       11
+       35,
+       36,
+       37
       ],
       "pos": [
        0,
@@ -9562,7 +9723,9 @@
       "name": "vae",
       "type": "VAE",
       "linkIds": [
-       12
+       38,
+       39,
+       40
       ],
       "pos": [
        0,
@@ -9574,7 +9737,9 @@
       "name": "style",
       "type": "STRING",
       "linkIds": [
-       13
+       41,
+       42,
+       43
       ],
       "pos": [
        0,
@@ -9586,7 +9751,9 @@
       "name": "lyrics",
       "type": "STRING",
       "linkIds": [
-       14
+       44,
+       45,
+       46
       ],
       "pos": [
        0,
@@ -9598,7 +9765,9 @@
       "name": "abc",
       "type": "STRING",
       "linkIds": [
-       15
+       47,
+       48,
+       49
       ],
       "pos": [
        0,
@@ -9611,7 +9780,9 @@
       "name": "mode",
       "type": "COMBO",
       "linkIds": [
-       16
+       50,
+       51,
+       52
       ],
       "pos": [
        0,
@@ -9624,8 +9795,10 @@
       "name": "seed",
       "type": "INT",
       "linkIds": [
-       17,
-       18
+       53,
+       54,
+       55,
+       56
       ],
       "pos": [
        0,
@@ -9638,7 +9811,9 @@
       "name": "max_duration",
       "type": "FLOAT",
       "linkIds": [
-       19
+       57,
+       58,
+       59
       ],
       "pos": [
        0,
@@ -9651,7 +9826,7 @@
       "name": "creativity",
       "type": "INT",
       "linkIds": [
-       20
+       60
       ],
       "pos": [
        0,
@@ -9665,7 +9840,7 @@
       "name": "AUDIO",
       "type": "AUDIO",
       "linkIds": [
-       21
+       61
       ],
       "pos": [
        0,
@@ -9677,11 +9852,35 @@
       "name": "seconds",
       "type": "FLOAT",
       "linkIds": [
-       22
+       62
       ],
       "pos": [
        0,
        20
+      ]
+     },
+     {
+      "id": "489bf65d-2495-5ad8-85db-a7a93068a8c6",
+      "name": "second",
+      "type": "AUDIO",
+      "linkIds": [
+       63
+      ],
+      "pos": [
+       0,
+       40
+      ]
+     },
+     {
+      "id": "2b6490ed-6853-53f3-a515-d5dc08cdeecf",
+      "name": "third",
+      "type": "AUDIO",
+      "linkIds": [
+       64
+      ],
+      "pos": [
+       0,
+       60
       ]
      }
     ],
@@ -9706,7 +9905,7 @@
         "localized_name": "clip",
         "name": "clip",
         "type": "CLIP",
-        "link": 11
+        "link": 35
        },
        {
         "localized_name": "style",
@@ -9715,7 +9914,7 @@
         "widget": {
          "name": "style"
         },
-        "link": 13
+        "link": 41
        },
        {
         "localized_name": "lyrics",
@@ -9724,7 +9923,7 @@
         "widget": {
          "name": "lyrics"
         },
-        "link": 14
+        "link": 44
        },
        {
         "localized_name": "abc",
@@ -9733,7 +9932,7 @@
         "widget": {
          "name": "abc"
         },
-        "link": 15
+        "link": 47
        },
        {
         "localized_name": "seed",
@@ -9742,7 +9941,7 @@
         "widget": {
          "name": "seed"
         },
-        "link": 17
+        "link": 53
        },
        {
         "localized_name": "mode",
@@ -9751,7 +9950,7 @@
         "widget": {
          "name": "mode"
         },
-        "link": 16
+        "link": 50
        },
        {
         "localized_name": "max_duration",
@@ -9760,7 +9959,7 @@
         "widget": {
          "name": "max_duration"
         },
-        "link": 19
+        "link": 57
        },
        {
         "localized_name": "temperature",
@@ -9769,7 +9968,7 @@
         "widget": {
          "name": "temperature"
         },
-        "link": 1
+        "link": 7
        },
        {
         "localized_name": "top_p",
@@ -9778,7 +9977,7 @@
         "widget": {
          "name": "top_p"
         },
-        "link": 2
+        "link": 8
        },
        {
         "localized_name": "top_k",
@@ -9787,7 +9986,7 @@
         "widget": {
          "name": "top_k"
         },
-        "link": 3
+        "link": 9
        },
        {
         "localized_name": "repetition_penalty",
@@ -9814,8 +10013,8 @@
         "name": "CONDITIONING",
         "type": "CONDITIONING",
         "links": [
-         5,
-         6
+         2,
+         3
         ]
        },
        {
@@ -9823,8 +10022,8 @@
         "name": "seconds",
         "type": "FLOAT",
         "links": [
-         4,
-         22
+         1,
+         62
         ]
        }
       ],
@@ -9868,7 +10067,7 @@
         "widget": {
          "name": "seconds"
         },
-        "link": 4
+        "link": 1
        },
        {
         "localized_name": "batch_size",
@@ -9886,7 +10085,7 @@
         "name": "LATENT",
         "type": "LATENT",
         "links": [
-         8
+         5
         ]
        }
       ],
@@ -9917,7 +10116,7 @@
         "localized_name": "conditioning",
         "name": "conditioning",
         "type": "CONDITIONING",
-        "link": 5
+        "link": 2
        }
       ],
       "outputs": [
@@ -9926,7 +10125,7 @@
         "name": "CONDITIONING",
         "type": "CONDITIONING",
         "links": [
-         7
+         4
         ]
        }
       ],
@@ -9954,25 +10153,25 @@
         "localized_name": "model",
         "name": "model",
         "type": "MODEL",
-        "link": 10
+        "link": 32
        },
        {
         "localized_name": "positive",
         "name": "positive",
         "type": "CONDITIONING",
-        "link": 6
+        "link": 3
        },
        {
         "localized_name": "negative",
         "name": "negative",
         "type": "CONDITIONING",
-        "link": 7
+        "link": 4
        },
        {
         "localized_name": "latent_image",
         "name": "latent_image",
         "type": "LATENT",
-        "link": 8
+        "link": 5
        },
        {
         "localized_name": "seed",
@@ -9981,7 +10180,7 @@
         "widget": {
          "name": "seed"
         },
-        "link": 18
+        "link": 54
        },
        {
         "localized_name": "steps",
@@ -10035,7 +10234,7 @@
         "name": "LATENT",
         "type": "LATENT",
         "links": [
-         9
+         6
         ]
        }
       ],
@@ -10071,13 +10270,13 @@
         "localized_name": "samples",
         "name": "samples",
         "type": "LATENT",
-        "link": 9
+        "link": 6
        },
        {
         "localized_name": "vae",
         "name": "vae",
         "type": "VAE",
-        "link": 12
+        "link": 38
        }
       ],
       "outputs": [
@@ -10086,7 +10285,7 @@
         "name": "AUDIO",
         "type": "AUDIO",
         "links": [
-         21
+         61
         ]
        }
       ],
@@ -10133,7 +10332,7 @@
         "widget": {
          "name": "creativity"
         },
-        "link": 20
+        "link": 60
        }
       ],
       "outputs": [
@@ -10142,7 +10341,9 @@
         "name": "temperature",
         "type": "FLOAT",
         "links": [
-         1
+         7,
+         10,
+         19
         ]
        },
        {
@@ -10150,7 +10351,9 @@
         "name": "top_p",
         "type": "FLOAT",
         "links": [
-         2
+         8,
+         11,
+         20
         ]
        },
        {
@@ -10158,7 +10361,9 @@
         "name": "top_k",
         "type": "INT",
         "links": [
-         3
+         9,
+         12,
+         21
         ]
        }
       ],
@@ -10170,36 +10375,972 @@
        "take",
        50
       ]
+     },
+     {
+      "id": 807,
+      "type": "YuE2GenerateMusic",
+      "pos": [
+       400,
+       660
+      ],
+      "size": [
+       340,
+       380
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "clip",
+        "name": "clip",
+        "type": "CLIP",
+        "link": 36
+       },
+       {
+        "localized_name": "style",
+        "name": "style",
+        "type": "STRING",
+        "widget": {
+         "name": "style"
+        },
+        "link": 42
+       },
+       {
+        "localized_name": "lyrics",
+        "name": "lyrics",
+        "type": "STRING",
+        "widget": {
+         "name": "lyrics"
+        },
+        "link": 45
+       },
+       {
+        "localized_name": "abc",
+        "name": "abc",
+        "type": "STRING",
+        "widget": {
+         "name": "abc"
+        },
+        "link": 48
+       },
+       {
+        "localized_name": "seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 28
+       },
+       {
+        "localized_name": "mode",
+        "name": "mode",
+        "type": "COMBO",
+        "widget": {
+         "name": "mode"
+        },
+        "link": 51
+       },
+       {
+        "localized_name": "max_duration",
+        "name": "max_duration",
+        "type": "FLOAT",
+        "widget": {
+         "name": "max_duration"
+        },
+        "link": 58
+       },
+       {
+        "localized_name": "temperature",
+        "name": "temperature",
+        "type": "FLOAT",
+        "widget": {
+         "name": "temperature"
+        },
+        "link": 10
+       },
+       {
+        "localized_name": "top_p",
+        "name": "top_p",
+        "type": "FLOAT",
+        "widget": {
+         "name": "top_p"
+        },
+        "link": 11
+       },
+       {
+        "localized_name": "top_k",
+        "name": "top_k",
+        "type": "INT",
+        "widget": {
+         "name": "top_k"
+        },
+        "link": 12
+       },
+       {
+        "localized_name": "repetition_penalty",
+        "name": "repetition_penalty",
+        "type": "FLOAT",
+        "widget": {
+         "name": "repetition_penalty"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "cfg_scale",
+        "name": "cfg_scale",
+        "type": "FLOAT",
+        "widget": {
+         "name": "cfg_scale"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "CONDITIONING",
+        "name": "CONDITIONING",
+        "type": "CONDITIONING",
+        "links": [
+         14,
+         15
+        ]
+       },
+       {
+        "localized_name": "seconds",
+        "name": "seconds",
+        "type": "FLOAT",
+        "links": [
+         13
+        ]
+       }
+      ],
+      "title": "Second take (lyrics fidelity)",
+      "properties": {
+       "Node name for S&R": "YuE2GenerateMusic"
+      },
+      "widgets_values": [
+       null,
+       null,
+       "",
+       0,
+       "fixed",
+       "full",
+       360.0,
+       1.0,
+       0.95,
+       100,
+       1.2,
+       1.0
+      ]
+     },
+     {
+      "id": 808,
+      "type": "EmptyYuE2LatentAudio",
+      "pos": [
+       800,
+       660
+      ],
+      "size": [
+       260,
+       80
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "seconds",
+        "name": "seconds",
+        "type": "FLOAT",
+        "widget": {
+         "name": "seconds"
+        },
+        "link": 13
+       },
+       {
+        "localized_name": "batch_size",
+        "name": "batch_size",
+        "type": "INT",
+        "widget": {
+         "name": "batch_size"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "LATENT",
+        "name": "LATENT",
+        "type": "LATENT",
+        "links": [
+         17
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "EmptyYuE2LatentAudio"
+      },
+      "widgets_values": [
+       120.0,
+       1
+      ]
+     },
+     {
+      "id": 809,
+      "type": "ConditioningZeroOut",
+      "pos": [
+       800.0,
+       810
+      ],
+      "size": [
+       240,
+       50
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "conditioning",
+        "name": "conditioning",
+        "type": "CONDITIONING",
+        "link": 14
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "CONDITIONING",
+        "name": "CONDITIONING",
+        "type": "CONDITIONING",
+        "links": [
+         16
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "ConditioningZeroOut"
+      },
+      "widgets_values": []
+     },
+     {
+      "id": 810,
+      "type": "KSampler",
+      "pos": [
+       1100,
+       660
+      ],
+      "size": [
+       300,
+       260
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "model",
+        "name": "model",
+        "type": "MODEL",
+        "link": 33
+       },
+       {
+        "localized_name": "positive",
+        "name": "positive",
+        "type": "CONDITIONING",
+        "link": 15
+       },
+       {
+        "localized_name": "negative",
+        "name": "negative",
+        "type": "CONDITIONING",
+        "link": 16
+       },
+       {
+        "localized_name": "latent_image",
+        "name": "latent_image",
+        "type": "LATENT",
+        "link": 17
+       },
+       {
+        "localized_name": "seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 29
+       },
+       {
+        "localized_name": "steps",
+        "name": "steps",
+        "type": "INT",
+        "widget": {
+         "name": "steps"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "cfg",
+        "name": "cfg",
+        "type": "FLOAT",
+        "widget": {
+         "name": "cfg"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "sampler_name",
+        "name": "sampler_name",
+        "type": "COMBO",
+        "widget": {
+         "name": "sampler_name"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "scheduler",
+        "name": "scheduler",
+        "type": "COMBO",
+        "widget": {
+         "name": "scheduler"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "denoise",
+        "name": "denoise",
+        "type": "FLOAT",
+        "widget": {
+         "name": "denoise"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "LATENT",
+        "name": "LATENT",
+        "type": "LATENT",
+        "links": [
+         18
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+       0,
+       "fixed",
+       32,
+       1.0,
+       "dpm_2",
+       "sgm_uniform",
+       1.0
+      ]
+     },
+     {
+      "id": 811,
+      "type": "VAEDecodeAudio",
+      "pos": [
+       1460,
+       660
+      ],
+      "size": [
+       220,
+       60
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "samples",
+        "name": "samples",
+        "type": "LATENT",
+        "link": 18
+       },
+       {
+        "localized_name": "vae",
+        "name": "vae",
+        "type": "VAE",
+        "link": 39
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "AUDIO",
+        "name": "AUDIO",
+        "type": "AUDIO",
+        "links": [
+         63
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "VAEDecodeAudio"
+      },
+      "widgets_values": []
+     },
+     {
+      "id": 812,
+      "type": "YuE2GenerateMusic",
+      "pos": [
+       400,
+       1320
+      ],
+      "size": [
+       340,
+       380
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "clip",
+        "name": "clip",
+        "type": "CLIP",
+        "link": 37
+       },
+       {
+        "localized_name": "style",
+        "name": "style",
+        "type": "STRING",
+        "widget": {
+         "name": "style"
+        },
+        "link": 43
+       },
+       {
+        "localized_name": "lyrics",
+        "name": "lyrics",
+        "type": "STRING",
+        "widget": {
+         "name": "lyrics"
+        },
+        "link": 46
+       },
+       {
+        "localized_name": "abc",
+        "name": "abc",
+        "type": "STRING",
+        "widget": {
+         "name": "abc"
+        },
+        "link": 49
+       },
+       {
+        "localized_name": "seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 30
+       },
+       {
+        "localized_name": "mode",
+        "name": "mode",
+        "type": "COMBO",
+        "widget": {
+         "name": "mode"
+        },
+        "link": 52
+       },
+       {
+        "localized_name": "max_duration",
+        "name": "max_duration",
+        "type": "FLOAT",
+        "widget": {
+         "name": "max_duration"
+        },
+        "link": 59
+       },
+       {
+        "localized_name": "temperature",
+        "name": "temperature",
+        "type": "FLOAT",
+        "widget": {
+         "name": "temperature"
+        },
+        "link": 19
+       },
+       {
+        "localized_name": "top_p",
+        "name": "top_p",
+        "type": "FLOAT",
+        "widget": {
+         "name": "top_p"
+        },
+        "link": 20
+       },
+       {
+        "localized_name": "top_k",
+        "name": "top_k",
+        "type": "INT",
+        "widget": {
+         "name": "top_k"
+        },
+        "link": 21
+       },
+       {
+        "localized_name": "repetition_penalty",
+        "name": "repetition_penalty",
+        "type": "FLOAT",
+        "widget": {
+         "name": "repetition_penalty"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "cfg_scale",
+        "name": "cfg_scale",
+        "type": "FLOAT",
+        "widget": {
+         "name": "cfg_scale"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "CONDITIONING",
+        "name": "CONDITIONING",
+        "type": "CONDITIONING",
+        "links": [
+         23,
+         24
+        ]
+       },
+       {
+        "localized_name": "seconds",
+        "name": "seconds",
+        "type": "FLOAT",
+        "links": [
+         22
+        ]
+       }
+      ],
+      "title": "Third take (lyrics fidelity highest)",
+      "properties": {
+       "Node name for S&R": "YuE2GenerateMusic"
+      },
+      "widgets_values": [
+       null,
+       null,
+       "",
+       0,
+       "fixed",
+       "full",
+       360.0,
+       1.0,
+       0.95,
+       100,
+       1.2,
+       1.0
+      ]
+     },
+     {
+      "id": 813,
+      "type": "EmptyYuE2LatentAudio",
+      "pos": [
+       800,
+       1320
+      ],
+      "size": [
+       260,
+       80
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "seconds",
+        "name": "seconds",
+        "type": "FLOAT",
+        "widget": {
+         "name": "seconds"
+        },
+        "link": 22
+       },
+       {
+        "localized_name": "batch_size",
+        "name": "batch_size",
+        "type": "INT",
+        "widget": {
+         "name": "batch_size"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "LATENT",
+        "name": "LATENT",
+        "type": "LATENT",
+        "links": [
+         26
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "EmptyYuE2LatentAudio"
+      },
+      "widgets_values": [
+       120.0,
+       1
+      ]
+     },
+     {
+      "id": 814,
+      "type": "ConditioningZeroOut",
+      "pos": [
+       800.0,
+       1470
+      ],
+      "size": [
+       240,
+       50
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "conditioning",
+        "name": "conditioning",
+        "type": "CONDITIONING",
+        "link": 23
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "CONDITIONING",
+        "name": "CONDITIONING",
+        "type": "CONDITIONING",
+        "links": [
+         25
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "ConditioningZeroOut"
+      },
+      "widgets_values": []
+     },
+     {
+      "id": 815,
+      "type": "KSampler",
+      "pos": [
+       1100,
+       1320
+      ],
+      "size": [
+       300,
+       260
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "model",
+        "name": "model",
+        "type": "MODEL",
+        "link": 34
+       },
+       {
+        "localized_name": "positive",
+        "name": "positive",
+        "type": "CONDITIONING",
+        "link": 24
+       },
+       {
+        "localized_name": "negative",
+        "name": "negative",
+        "type": "CONDITIONING",
+        "link": 25
+       },
+       {
+        "localized_name": "latent_image",
+        "name": "latent_image",
+        "type": "LATENT",
+        "link": 26
+       },
+       {
+        "localized_name": "seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 31
+       },
+       {
+        "localized_name": "steps",
+        "name": "steps",
+        "type": "INT",
+        "widget": {
+         "name": "steps"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "cfg",
+        "name": "cfg",
+        "type": "FLOAT",
+        "widget": {
+         "name": "cfg"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "sampler_name",
+        "name": "sampler_name",
+        "type": "COMBO",
+        "widget": {
+         "name": "sampler_name"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "scheduler",
+        "name": "scheduler",
+        "type": "COMBO",
+        "widget": {
+         "name": "scheduler"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "denoise",
+        "name": "denoise",
+        "type": "FLOAT",
+        "widget": {
+         "name": "denoise"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "LATENT",
+        "name": "LATENT",
+        "type": "LATENT",
+        "links": [
+         27
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+       0,
+       "fixed",
+       32,
+       1.0,
+       "dpm_2",
+       "sgm_uniform",
+       1.0
+      ]
+     },
+     {
+      "id": 816,
+      "type": "VAEDecodeAudio",
+      "pos": [
+       1460,
+       1320
+      ],
+      "size": [
+       220,
+       60
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "samples",
+        "name": "samples",
+        "type": "LATENT",
+        "link": 27
+       },
+       {
+        "localized_name": "vae",
+        "name": "vae",
+        "type": "VAE",
+        "link": 40
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "AUDIO",
+        "name": "AUDIO",
+        "type": "AUDIO",
+        "links": [
+         64
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "VAEDecodeAudio"
+      },
+      "widgets_values": []
+     },
+     {
+      "id": 817,
+      "type": "ComfyMathExpression",
+      "pos": [
+       0.0,
+       774
+      ],
+      "size": [
+       300,
+       150
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "values.a",
+        "name": "values.a",
+        "label": "a",
+        "shape": 7,
+        "type": "FLOAT,INT,BOOLEAN",
+        "link": 55
+       },
+       {
+        "localized_name": "values.b",
+        "name": "values.b",
+        "label": "b",
+        "shape": 7,
+        "type": "FLOAT,INT,BOOLEAN",
+        "link": null
+       },
+       {
+        "localized_name": "expression",
+        "name": "expression",
+        "type": "STRING",
+        "widget": {
+         "name": "expression"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "FLOAT",
+        "name": "FLOAT",
+        "type": "FLOAT",
+        "links": null
+       },
+       {
+        "localized_name": "INT",
+        "name": "INT",
+        "type": "INT",
+        "links": [
+         28,
+         29
+        ]
+       },
+       {
+        "localized_name": "BOOL",
+        "name": "BOOL",
+        "type": "BOOLEAN",
+        "links": null
+       }
+      ],
+      "title": "take seed + 1",
+      "properties": {
+       "Node name for S&R": "ComfyMathExpression"
+      },
+      "widgets_values": [
+       "a + 1"
+      ]
+     },
+     {
+      "id": 818,
+      "type": "ComfyMathExpression",
+      "pos": [
+       0,
+       1320
+      ],
+      "size": [
+       300,
+       150
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "values.a",
+        "name": "values.a",
+        "label": "a",
+        "shape": 7,
+        "type": "FLOAT,INT,BOOLEAN",
+        "link": 56
+       },
+       {
+        "localized_name": "values.b",
+        "name": "values.b",
+        "label": "b",
+        "shape": 7,
+        "type": "FLOAT,INT,BOOLEAN",
+        "link": null
+       },
+       {
+        "localized_name": "expression",
+        "name": "expression",
+        "type": "STRING",
+        "widget": {
+         "name": "expression"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "FLOAT",
+        "name": "FLOAT",
+        "type": "FLOAT",
+        "links": null
+       },
+       {
+        "localized_name": "INT",
+        "name": "INT",
+        "type": "INT",
+        "links": [
+         30,
+         31
+        ]
+       },
+       {
+        "localized_name": "BOOL",
+        "name": "BOOL",
+        "type": "BOOLEAN",
+        "links": null
+       }
+      ],
+      "title": "take seed + 2",
+      "properties": {
+       "Node name for S&R": "ComfyMathExpression"
+      },
+      "widgets_values": [
+       "a + 2"
+      ]
      }
     ],
     "groups": [],
     "links": [
      {
       "id": 1,
-      "origin_id": 806,
-      "origin_slot": 0,
-      "target_id": 801,
-      "target_slot": 7,
-      "type": "FLOAT"
-     },
-     {
-      "id": 2,
-      "origin_id": 806,
-      "origin_slot": 1,
-      "target_id": 801,
-      "target_slot": 8,
-      "type": "FLOAT"
-     },
-     {
-      "id": 3,
-      "origin_id": 806,
-      "origin_slot": 2,
-      "target_id": 801,
-      "target_slot": 9,
-      "type": "INT"
-     },
-     {
-      "id": 4,
       "origin_id": 801,
       "origin_slot": 1,
       "target_id": 802,
@@ -10207,7 +11348,7 @@
       "type": "FLOAT"
      },
      {
-      "id": 5,
+      "id": 2,
       "origin_id": 801,
       "origin_slot": 0,
       "target_id": 803,
@@ -10215,7 +11356,7 @@
       "type": "CONDITIONING"
      },
      {
-      "id": 6,
+      "id": 3,
       "origin_id": 801,
       "origin_slot": 0,
       "target_id": 804,
@@ -10223,7 +11364,7 @@
       "type": "CONDITIONING"
      },
      {
-      "id": 7,
+      "id": 4,
       "origin_id": 803,
       "origin_slot": 0,
       "target_id": 804,
@@ -10231,7 +11372,7 @@
       "type": "CONDITIONING"
      },
      {
-      "id": 8,
+      "id": 5,
       "origin_id": 802,
       "origin_slot": 0,
       "target_id": 804,
@@ -10239,7 +11380,7 @@
       "type": "LATENT"
      },
      {
-      "id": 9,
+      "id": 6,
       "origin_id": 804,
       "origin_slot": 0,
       "target_id": 805,
@@ -10247,7 +11388,207 @@
       "type": "LATENT"
      },
      {
+      "id": 7,
+      "origin_id": 806,
+      "origin_slot": 0,
+      "target_id": 801,
+      "target_slot": 7,
+      "type": "FLOAT"
+     },
+     {
+      "id": 8,
+      "origin_id": 806,
+      "origin_slot": 1,
+      "target_id": 801,
+      "target_slot": 8,
+      "type": "FLOAT"
+     },
+     {
+      "id": 9,
+      "origin_id": 806,
+      "origin_slot": 2,
+      "target_id": 801,
+      "target_slot": 9,
+      "type": "INT"
+     },
+     {
       "id": 10,
+      "origin_id": 806,
+      "origin_slot": 0,
+      "target_id": 807,
+      "target_slot": 7,
+      "type": "FLOAT"
+     },
+     {
+      "id": 11,
+      "origin_id": 806,
+      "origin_slot": 1,
+      "target_id": 807,
+      "target_slot": 8,
+      "type": "FLOAT"
+     },
+     {
+      "id": 12,
+      "origin_id": 806,
+      "origin_slot": 2,
+      "target_id": 807,
+      "target_slot": 9,
+      "type": "INT"
+     },
+     {
+      "id": 13,
+      "origin_id": 807,
+      "origin_slot": 1,
+      "target_id": 808,
+      "target_slot": 0,
+      "type": "FLOAT"
+     },
+     {
+      "id": 14,
+      "origin_id": 807,
+      "origin_slot": 0,
+      "target_id": 809,
+      "target_slot": 0,
+      "type": "CONDITIONING"
+     },
+     {
+      "id": 15,
+      "origin_id": 807,
+      "origin_slot": 0,
+      "target_id": 810,
+      "target_slot": 1,
+      "type": "CONDITIONING"
+     },
+     {
+      "id": 16,
+      "origin_id": 809,
+      "origin_slot": 0,
+      "target_id": 810,
+      "target_slot": 2,
+      "type": "CONDITIONING"
+     },
+     {
+      "id": 17,
+      "origin_id": 808,
+      "origin_slot": 0,
+      "target_id": 810,
+      "target_slot": 3,
+      "type": "LATENT"
+     },
+     {
+      "id": 18,
+      "origin_id": 810,
+      "origin_slot": 0,
+      "target_id": 811,
+      "target_slot": 0,
+      "type": "LATENT"
+     },
+     {
+      "id": 19,
+      "origin_id": 806,
+      "origin_slot": 0,
+      "target_id": 812,
+      "target_slot": 7,
+      "type": "FLOAT"
+     },
+     {
+      "id": 20,
+      "origin_id": 806,
+      "origin_slot": 1,
+      "target_id": 812,
+      "target_slot": 8,
+      "type": "FLOAT"
+     },
+     {
+      "id": 21,
+      "origin_id": 806,
+      "origin_slot": 2,
+      "target_id": 812,
+      "target_slot": 9,
+      "type": "INT"
+     },
+     {
+      "id": 22,
+      "origin_id": 812,
+      "origin_slot": 1,
+      "target_id": 813,
+      "target_slot": 0,
+      "type": "FLOAT"
+     },
+     {
+      "id": 23,
+      "origin_id": 812,
+      "origin_slot": 0,
+      "target_id": 814,
+      "target_slot": 0,
+      "type": "CONDITIONING"
+     },
+     {
+      "id": 24,
+      "origin_id": 812,
+      "origin_slot": 0,
+      "target_id": 815,
+      "target_slot": 1,
+      "type": "CONDITIONING"
+     },
+     {
+      "id": 25,
+      "origin_id": 814,
+      "origin_slot": 0,
+      "target_id": 815,
+      "target_slot": 2,
+      "type": "CONDITIONING"
+     },
+     {
+      "id": 26,
+      "origin_id": 813,
+      "origin_slot": 0,
+      "target_id": 815,
+      "target_slot": 3,
+      "type": "LATENT"
+     },
+     {
+      "id": 27,
+      "origin_id": 815,
+      "origin_slot": 0,
+      "target_id": 816,
+      "target_slot": 0,
+      "type": "LATENT"
+     },
+     {
+      "id": 28,
+      "origin_id": 817,
+      "origin_slot": 1,
+      "target_id": 807,
+      "target_slot": 4,
+      "type": "INT"
+     },
+     {
+      "id": 29,
+      "origin_id": 817,
+      "origin_slot": 1,
+      "target_id": 810,
+      "target_slot": 4,
+      "type": "INT"
+     },
+     {
+      "id": 30,
+      "origin_id": 818,
+      "origin_slot": 1,
+      "target_id": 812,
+      "target_slot": 4,
+      "type": "INT"
+     },
+     {
+      "id": 31,
+      "origin_id": 818,
+      "origin_slot": 1,
+      "target_id": 815,
+      "target_slot": 4,
+      "type": "INT"
+     },
+     {
+      "id": 32,
       "origin_id": -10,
       "origin_slot": 0,
       "target_id": 804,
@@ -10255,7 +11596,23 @@
       "type": "MODEL"
      },
      {
-      "id": 11,
+      "id": 33,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 810,
+      "target_slot": 0,
+      "type": "MODEL"
+     },
+     {
+      "id": 34,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 815,
+      "target_slot": 0,
+      "type": "MODEL"
+     },
+     {
+      "id": 35,
       "origin_id": -10,
       "origin_slot": 1,
       "target_id": 801,
@@ -10263,7 +11620,23 @@
       "type": "CLIP"
      },
      {
-      "id": 12,
+      "id": 36,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 807,
+      "target_slot": 0,
+      "type": "CLIP"
+     },
+     {
+      "id": 37,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 812,
+      "target_slot": 0,
+      "type": "CLIP"
+     },
+     {
+      "id": 38,
       "origin_id": -10,
       "origin_slot": 2,
       "target_id": 805,
@@ -10271,7 +11644,23 @@
       "type": "VAE"
      },
      {
-      "id": 13,
+      "id": 39,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 811,
+      "target_slot": 1,
+      "type": "VAE"
+     },
+     {
+      "id": 40,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 816,
+      "target_slot": 1,
+      "type": "VAE"
+     },
+     {
+      "id": 41,
       "origin_id": -10,
       "origin_slot": 3,
       "target_id": 801,
@@ -10279,7 +11668,23 @@
       "type": "STRING"
      },
      {
-      "id": 14,
+      "id": 42,
+      "origin_id": -10,
+      "origin_slot": 3,
+      "target_id": 807,
+      "target_slot": 1,
+      "type": "STRING"
+     },
+     {
+      "id": 43,
+      "origin_id": -10,
+      "origin_slot": 3,
+      "target_id": 812,
+      "target_slot": 1,
+      "type": "STRING"
+     },
+     {
+      "id": 44,
       "origin_id": -10,
       "origin_slot": 4,
       "target_id": 801,
@@ -10287,7 +11692,23 @@
       "type": "STRING"
      },
      {
-      "id": 15,
+      "id": 45,
+      "origin_id": -10,
+      "origin_slot": 4,
+      "target_id": 807,
+      "target_slot": 2,
+      "type": "STRING"
+     },
+     {
+      "id": 46,
+      "origin_id": -10,
+      "origin_slot": 4,
+      "target_id": 812,
+      "target_slot": 2,
+      "type": "STRING"
+     },
+     {
+      "id": 47,
       "origin_id": -10,
       "origin_slot": 5,
       "target_id": 801,
@@ -10295,7 +11716,23 @@
       "type": "STRING"
      },
      {
-      "id": 16,
+      "id": 48,
+      "origin_id": -10,
+      "origin_slot": 5,
+      "target_id": 807,
+      "target_slot": 3,
+      "type": "STRING"
+     },
+     {
+      "id": 49,
+      "origin_id": -10,
+      "origin_slot": 5,
+      "target_id": 812,
+      "target_slot": 3,
+      "type": "STRING"
+     },
+     {
+      "id": 50,
       "origin_id": -10,
       "origin_slot": 6,
       "target_id": 801,
@@ -10303,7 +11740,23 @@
       "type": "COMBO"
      },
      {
-      "id": 17,
+      "id": 51,
+      "origin_id": -10,
+      "origin_slot": 6,
+      "target_id": 807,
+      "target_slot": 5,
+      "type": "COMBO"
+     },
+     {
+      "id": 52,
+      "origin_id": -10,
+      "origin_slot": 6,
+      "target_id": 812,
+      "target_slot": 5,
+      "type": "COMBO"
+     },
+     {
+      "id": 53,
       "origin_id": -10,
       "origin_slot": 7,
       "target_id": 801,
@@ -10311,7 +11764,7 @@
       "type": "INT"
      },
      {
-      "id": 18,
+      "id": 54,
       "origin_id": -10,
       "origin_slot": 7,
       "target_id": 804,
@@ -10319,7 +11772,23 @@
       "type": "INT"
      },
      {
-      "id": 19,
+      "id": 55,
+      "origin_id": -10,
+      "origin_slot": 7,
+      "target_id": 817,
+      "target_slot": 0,
+      "type": "INT"
+     },
+     {
+      "id": 56,
+      "origin_id": -10,
+      "origin_slot": 7,
+      "target_id": 818,
+      "target_slot": 0,
+      "type": "INT"
+     },
+     {
+      "id": 57,
       "origin_id": -10,
       "origin_slot": 8,
       "target_id": 801,
@@ -10327,7 +11796,23 @@
       "type": "FLOAT"
      },
      {
-      "id": 20,
+      "id": 58,
+      "origin_id": -10,
+      "origin_slot": 8,
+      "target_id": 807,
+      "target_slot": 6,
+      "type": "FLOAT"
+     },
+     {
+      "id": 59,
+      "origin_id": -10,
+      "origin_slot": 8,
+      "target_id": 812,
+      "target_slot": 6,
+      "type": "FLOAT"
+     },
+     {
+      "id": 60,
       "origin_id": -10,
       "origin_slot": 9,
       "target_id": 806,
@@ -10335,7 +11820,7 @@
       "type": "INT"
      },
      {
-      "id": 21,
+      "id": 61,
       "origin_id": 805,
       "origin_slot": 0,
       "target_id": -20,
@@ -10343,17 +11828,33 @@
       "type": "AUDIO"
      },
      {
-      "id": 22,
+      "id": 62,
       "origin_id": 801,
       "origin_slot": 1,
       "target_id": -20,
       "target_slot": 1,
       "type": "FLOAT"
+     },
+     {
+      "id": 63,
+      "origin_id": 811,
+      "origin_slot": 0,
+      "target_id": -20,
+      "target_slot": 2,
+      "type": "AUDIO"
+     },
+     {
+      "id": 64,
+      "origin_id": 816,
+      "origin_slot": 0,
+      "target_id": -20,
+      "target_slot": 3,
+      "type": "AUDIO"
      }
     ],
     "extra": {},
     "category": "Plenio/YuE2",
-    "description": "Renders the final style, lyrics and score with YuE2 exactly as given (native nodes, 32 steps). The take seed drives both the token and the audio sampling."
+    "description": "Renders the final style, lyrics and score with YuE2 exactly as given (native nodes, 32 steps). The take seed drives both the token and the audio sampling. A second and a third take (seed + 1, + 2) render only when Best Take asks for them (the brief's lyrics fidelity)."
    },
    {
     "id": "259b88ba-7c57-57fb-b73e-58f691fe4b56",
@@ -12548,7 +14049,7 @@
      "template"
     ],
     [
-     23,
+     24,
      "hq_mastering"
     ],
     [
@@ -12612,6 +14113,10 @@
      "creativity"
     ],
     [
+     2,
+     "lyrics_fidelity"
+    ],
+    [
      14,
      "seed"
     ],
@@ -12653,8 +14158,8 @@
     ]
    ],
    "outputs": [
-    17,
-    18
+    18,
+    19
    ]
   }
  },

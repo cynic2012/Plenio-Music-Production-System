@@ -238,12 +238,35 @@ def minimax_model() -> Blueprint:
     )
 
 
-def minimax_render() -> Blueprint:
-    g = Graph(first_id=301)
+RETAKE_TITLES = ("Second take (lyrics fidelity)", "Third take (lyrics fidelity highest)")
+"""The lazy retakes of a render block: rendered only when Best Take asks for them (``core.fidelity``)."""
+SECOND_TAKE = (
+    "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest)."
+)
+THIRD_TAKE = (
+    "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither "
+    "take sang 95 % of the lyrics)."
+)
+
+
+def retake_seed(g: Graph, pos: tuple[float, float], plus: int, *, takes: bool = False) -> Node:
+    """The seed of a retake: the take seed + 1 or + 2 (after the takes of a loop: + takes + 0 or 1)."""
+    return g.add(
+        "ComfyMathExpression",
+        pos,
+        size=(300, 150),
+        title=f"take seed + {'takes' + (' + 1' if plus > 1 else '') if takes else plus}",
+        widgets={"expression": f"a + b{' + 1' if plus > 1 else ''}" if takes else f"a + {plus}"},
+    )
+
+
+def minimax_chain(g: Graph, y: float, title: str | None = None) -> dict[str, Node]:
+    """One MiniMax Music 3 render: encode, latent, sampler, decode (plain or tiled, by the switch)."""
     encode = g.add(
         "MiniMaxMusic3TextEncode",
-        (0, 0),
+        (0, y),
         size=(340, 330),
+        title=title,
         widgets={
             "caption": "",
             "lyrics": "",
@@ -254,11 +277,11 @@ def minimax_render() -> Blueprint:
             "top_k": 50,
         },
     )
-    latent = g.add("EmptyMiniMaxMusic3LatentAudio", (400, 0), size=(280, 80))
-    zero = g.add("ConditioningZeroOut", (400, 130), size=(240, 50))
+    latent = g.add("EmptyMiniMaxMusic3LatentAudio", (400, y), size=(280, 80))
+    zero = g.add("ConditioningZeroOut", (400, y + 130), size=(240, 50))
     sampler = g.add(
         "KSampler",
-        (720, 0),
+        (720, y),
         size=(300, 260),
         widgets={
             "seed": 0,
@@ -270,12 +293,12 @@ def minimax_render() -> Blueprint:
             "denoise": 1.0,
         },
     )
-    decode = g.add("VAEDecodeAudio", (1080, 0), size=(220, 60))
+    decode = g.add("VAEDecodeAudio", (1080, y), size=(220, 60))
     tiled = g.add(
-        "VAEDecodeAudioTiled", (1080, 110), size=(260, 90), widgets={"tile_size": 1536, "overlap": 64}
+        "VAEDecodeAudioTiled", (1080, y + 110), size=(260, 90), widgets={"tile_size": 1536, "overlap": 64}
     )
     switch = g.add(
-        "ComfySwitchNode", (1380, 0), size=(260, 90), title="Tiled decode", widgets={"switch": False}
+        "ComfySwitchNode", (1380, y), size=(260, 90), title="Tiled decode", widgets={"switch": False}
     )
     g.link(encode, "seconds", latent, "seconds")
     g.link(encode, "CONDITIONING", zero, "conditioning")
@@ -286,36 +309,67 @@ def minimax_render() -> Blueprint:
     g.link(sampler, "LATENT", tiled, "samples")
     g.link(decode, "AUDIO", switch, "on_false")
     g.link(tiled, "AUDIO", switch, "on_true")
+    return {"encode": encode, "sampler": sampler, "decode": decode, "tiled": tiled, "switch": switch}
+
+
+def minimax_render() -> Blueprint:
+    g = Graph(first_id=301)
+    first = minimax_chain(g, 0)
+    # the lyrics fidelity's retakes (2026-10-24): rendered only when Best Take asks for them
+    second, third = (minimax_chain(g, 420 * k, title) for k, title in enumerate(RETAKE_TITLES, start=1))
+    plus_one, plus_two = retake_seed(g, (1700, 420), 1), retake_seed(g, (1700, 840), 2)
+    g.link(plus_one, "INT", second["encode"], "seed")
+    g.link(plus_one, "INT", second["sampler"], "seed")
+    g.link(plus_two, "INT", third["encode"], "seed")
+    g.link(plus_two, "INT", third["sampler"], "seed")
+    chains = (first, second, third)
     return Blueprint(
         "Plenio · MiniMax Render",
         "Plenio/MiniMax",
         "Renders the final caption and lyrics with MiniMax Music 3 exactly as given (native nodes, 30 steps). The "
         "take seed drives both the token and the audio sampling; max seconds is the ceiling, the model may end "
-        "earlier. Turn on tiled decode if decoding runs out of memory.",
+        "earlier. Turn on tiled decode if decoding runs out of memory. A second and a third take (seed + 1, + 2) "
+        "render only when Best Take asks for them (the brief's lyrics fidelity).",
         g,
         [
-            BlueprintInput("model", "MODEL", [(sampler, "model")], tooltip=FROM_MODEL_BLOCK),
-            BlueprintInput("clip", "CLIP", [(encode, "clip")], tooltip=FROM_MODEL_BLOCK),
-            BlueprintInput("vae", "VAE", [(decode, "vae"), (tiled, "vae")], tooltip=FROM_MODEL_BLOCK),
+            BlueprintInput(
+                "model", "MODEL", [(c["sampler"], "model") for c in chains], tooltip=FROM_MODEL_BLOCK
+            ),
+            BlueprintInput("clip", "CLIP", [(c["encode"], "clip") for c in chains], tooltip=FROM_MODEL_BLOCK),
+            BlueprintInput(
+                "vae",
+                "VAE",
+                [(c[kind], "vae") for c in chains for kind in ("decode", "tiled")],
+                tooltip=FROM_MODEL_BLOCK,
+            ),
             BlueprintInput(
                 "caption",
                 "STRING",
-                [(encode, "caption")],
+                [(c["encode"], "caption") for c in chains],
                 tooltip="The final caption (Song Sheet): rendered exactly as given.",
             ),
             BlueprintInput(
                 "lyrics",
                 "STRING",
-                [(encode, "lyrics")],
+                [(c["encode"], "lyrics") for c in chains],
                 tooltip="The final lyrics (Song Sheet): rendered exactly as given.",
             ),
             BlueprintInput(
-                "seed", "INT", [(encode, "seed"), (sampler, "seed")], label="take seed", tooltip=TAKE_SEED
+                "seed",
+                "INT",
+                [
+                    (first["encode"], "seed"),
+                    (first["sampler"], "seed"),
+                    (plus_one, "values.a"),
+                    (plus_two, "values.a"),
+                ],
+                label="take seed",
+                tooltip=TAKE_SEED,
             ),
             BlueprintInput(
                 "max_duration",
                 "FLOAT",
-                [(encode, "max_duration")],
+                [(c["encode"], "max_duration") for c in chains],
                 label="max seconds",
                 tooltip="The longest the song may run (from the brief's length, at most 6:00); the model may end "
                 "earlier.",
@@ -323,7 +377,7 @@ def minimax_render() -> Blueprint:
             BlueprintInput(
                 "switch",
                 "BOOLEAN",
-                [(switch, "switch")],
+                [(c["switch"], "switch") for c in chains],
                 widget=True,
                 default=False,
                 label="tiled decode",
@@ -332,10 +386,12 @@ def minimax_render() -> Blueprint:
             ),
         ],
         [
-            BlueprintOutput("AUDIO", "AUDIO", (switch, "output"), tooltip="The rendered song."),
+            BlueprintOutput("AUDIO", "AUDIO", (first["switch"], "output"), tooltip="The rendered song."),
             BlueprintOutput(
-                "seconds", "FLOAT", (encode, "seconds"), tooltip="The render's length in seconds."
+                "seconds", "FLOAT", (first["encode"], "seconds"), tooltip="The render's length in seconds."
             ),
+            BlueprintOutput("second", "AUDIO", (second["switch"], "output"), tooltip=SECOND_TAKE),
+            BlueprintOutput("third", "AUDIO", (third["switch"], "output"), tooltip=THIRD_TAKE),
         ],
     )
 
@@ -1568,14 +1624,23 @@ def yue2_plan() -> Blueprint:
     )
 
 
-def yue2_render() -> Blueprint:
-    g = Graph(first_id=801)
-    music = g.add("YuE2GenerateMusic", (0, 0), size=(340, 380), widgets={"seed": 0, "seed.control": "fixed"})
-    latent = g.add("EmptyYuE2LatentAudio", (400, 0), size=(260, 80))
-    zero = g.add("ConditioningZeroOut", (400, 130), size=(240, 50))
+def yue2_chain(
+    g: Graph, x: float, y: float, creativity: Node | None, title: str | None = None
+) -> dict[str, Node]:
+    """One YuE2 render: Generate Music (its sampling from ``creativity``, else linked later), latent, sampler,
+    decode."""
+    music = g.add(
+        "YuE2GenerateMusic",
+        (x, y),
+        size=(340, 380),
+        title=title,
+        widgets={"seed": 0, "seed.control": "fixed"},
+    )
+    latent = g.add("EmptyYuE2LatentAudio", (x + 400, y), size=(260, 80))
+    zero = g.add("ConditioningZeroOut", (x + 400, y + 130), size=(240, 50))
     sampler = g.add(
         "KSampler",
-        (700, 0),
+        (x + 700, y),
         size=(300, 260),
         widgets={
             "seed": 0,
@@ -1587,31 +1652,66 @@ def yue2_render() -> Blueprint:
             "denoise": 1.0,
         },
     )
-    decode = g.add("VAEDecodeAudio", (1060, 0), size=(220, 60))
-    creativity = creativity_node(g, (0, 440), "take", "Take creativity")
-    link_sampling(g, creativity, music)
+    decode = g.add("VAEDecodeAudio", (x + 1060, y), size=(220, 60))
+    if creativity is not None:
+        link_sampling(g, creativity, music)
     g.link(music, "seconds", latent, "seconds")
     g.link(music, "CONDITIONING", zero, "conditioning")
     g.link(music, "CONDITIONING", sampler, "positive")
     g.link(zero, "CONDITIONING", sampler, "negative")
     g.link(latent, "LATENT", sampler, "latent_image")
     g.link(sampler, "LATENT", decode, "samples")
+    return {"music": music, "sampler": sampler, "decode": decode}
+
+
+def yue2_render() -> Blueprint:
+    g = Graph(first_id=801)
+    # the first take's nodes keep the ids of before the creativity and the retakes: a saved block is brought up
+    # to date by them (core.blocks)
+    first = yue2_chain(g, 0, 0, None)
+    creativity = creativity_node(g, (0, 440), "take", "Take creativity")
+    link_sampling(g, creativity, first["music"])
+    # the lyrics fidelity's retakes (2026-10-24): rendered only when Best Take asks for them
+    second, third = (
+        yue2_chain(g, 400, 660 * k, creativity, title) for k, title in enumerate(RETAKE_TITLES, start=1)
+    )
+    plus_one, plus_two = retake_seed(g, (0, 660), 1), retake_seed(g, (0, 1320), 2)
+    for plus, chain in ((plus_one, second), (plus_two, third)):
+        g.link(plus, "INT", chain["music"], "seed")
+        g.link(plus, "INT", chain["sampler"], "seed")
+    chains = (first, second, third)
     return Blueprint(
         "Plenio · YuE2 Render",
         "Plenio/YuE2",
         "Renders the final style, lyrics and score with YuE2 exactly as given (native nodes, 32 steps). The take "
-        "seed drives both the token and the audio sampling.",
+        "seed drives both the token and the audio sampling. A second and a third take (seed + 1, + 2) render only "
+        "when Best Take asks for them (the brief's lyrics fidelity).",
         g,
         [
-            BlueprintInput("model", "MODEL", [(sampler, "model")], tooltip=FROM_MODEL_BLOCK),
-            BlueprintInput("clip", "CLIP", [(music, "clip")], tooltip=FROM_MODEL_BLOCK),
-            BlueprintInput("vae", "VAE", [(decode, "vae")], tooltip=FROM_MODEL_BLOCK),
-            *_render_documents(music),
             BlueprintInput(
-                "seed", "INT", [(music, "seed"), (sampler, "seed")], label="take seed", tooltip=TAKE_SEED
+                "model", "MODEL", [(c["sampler"], "model") for c in chains], tooltip=FROM_MODEL_BLOCK
+            ),
+            BlueprintInput("clip", "CLIP", [(c["music"], "clip") for c in chains], tooltip=FROM_MODEL_BLOCK),
+            BlueprintInput("vae", "VAE", [(c["decode"], "vae") for c in chains], tooltip=FROM_MODEL_BLOCK),
+            *_render_documents([c["music"] for c in chains]),
+            BlueprintInput(
+                "seed",
+                "INT",
+                [
+                    (first["music"], "seed"),
+                    (first["sampler"], "seed"),
+                    (plus_one, "values.a"),
+                    (plus_two, "values.a"),
+                ],
+                label="take seed",
+                tooltip=TAKE_SEED,
             ),
             BlueprintInput(
-                "max_duration", "FLOAT", [(music, "max_duration")], label="max seconds", tooltip=MAX_SECONDS
+                "max_duration",
+                "FLOAT",
+                [(c["music"], "max_duration") for c in chains],
+                label="max seconds",
+                tooltip=MAX_SECONDS,
             ),
             BlueprintInput(
                 "creativity",
@@ -1625,38 +1725,45 @@ def yue2_render() -> Blueprint:
             ),
         ],
         [
-            BlueprintOutput("AUDIO", "AUDIO", (decode, "AUDIO"), tooltip="The rendered take."),
-            BlueprintOutput("seconds", "FLOAT", (music, "seconds"), tooltip="The take's length in seconds."),
+            BlueprintOutput("AUDIO", "AUDIO", (first["decode"], "AUDIO"), tooltip="The rendered take."),
+            BlueprintOutput(
+                "seconds", "FLOAT", (first["music"], "seconds"), tooltip="The take's length in seconds."
+            ),
+            BlueprintOutput("second", "AUDIO", (second["decode"], "AUDIO"), tooltip=SECOND_TAKE),
+            BlueprintOutput("third", "AUDIO", (third["decode"], "AUDIO"), tooltip=THIRD_TAKE),
         ],
     )
 
 
-def _render_documents(music: Node, loop: Node | None = None) -> list[BlueprintInput]:
-    """The Song Sheet's final documents for YuE2 Generate Music (the takes' loop starts with the lyrics)."""
+def _render_documents(musics: list[Node], loop: Node | None = None) -> list[BlueprintInput]:
+    """The Song Sheet's final documents for every YuE2 Generate Music (the takes' loop starts with the lyrics)."""
     return [
         BlueprintInput(
             "style",
             "STRING",
-            [(music, "style")],
+            [(music, "style") for music in musics],
             tooltip="The final style (Song Sheet): rendered exactly as given.",
         ),
         BlueprintInput(
             "lyrics",
             "STRING",
-            [(music, "lyrics"), *([(loop, "initial_iteration_value")] if loop is not None else [])],
+            [
+                *((music, "lyrics") for music in musics),
+                *([(loop, "initial_iteration_value")] if loop is not None else []),
+            ],
             tooltip="The final lyrics (Song Sheet): rendered exactly as given.",
         ),
         BlueprintInput(
             "abc",
             "STRING",
-            [(music, "abc")],
+            [(music, "abc") for music in musics],
             label="score",
             tooltip="The final score (Song Sheet); empty: YuE2 renders without a score.",
         ),
         BlueprintInput(
             "mode",
             "COMBO",
-            [(music, "mode")],
+            [(music, "mode") for music in musics],
             label="planning mode",
             tooltip="From the Song Sheet: full when the score has chords, melody otherwise.",
         ),
@@ -1712,34 +1819,64 @@ def yue2_takes() -> Blueprint:
     g.link(latent, "LATENT", sampler, "latent_image")
     g.link(sampler, "LATENT", decode, "samples")
     g.link(decode, "AUDIO", end, "output_value")
+    # the lyrics fidelity's retakes (2026-10-24), after the loop's seeds: rendered only when Best Take asks
+    second, third = (
+        yue2_chain(g, 360, 660 * k, creativity, title) for k, title in enumerate(RETAKE_TITLES, start=1)
+    )
+    plus_one = retake_seed(g, (0, 660), 1, takes=True)
+    plus_two = retake_seed(g, (0, 1320), 2, takes=True)
+    for plus, chain in ((plus_one, second), (plus_two, third)):
+        g.link(plus, "INT", chain["music"], "seed")
+        g.link(plus, "INT", chain["sampler"], "seed")
+    retakes = (second, third)
     return Blueprint(
         "Plenio · YuE2 Takes",
         "Plenio/YuE2",
         "Renders the final style, lyrics and score N times with the seeds take seed, take seed + 1, ... "
-        "(native loop). Connect the takes to Check Vocals, which keeps the best one. N takes cost N renders.",
+        "(native loop). Connect the takes to Check Vocals, which keeps the best one. N takes cost N renders. Two "
+        "more takes (the seeds after them) render only when Best Take asks for them (the brief's lyrics fidelity).",
         g,
         [
-            BlueprintInput("model", "MODEL", [(sampler, "model")], tooltip=FROM_MODEL_BLOCK),
-            BlueprintInput("clip", "CLIP", [(music, "clip")], tooltip=FROM_MODEL_BLOCK),
-            BlueprintInput("vae", "VAE", [(decode, "vae")], tooltip=FROM_MODEL_BLOCK),
+            BlueprintInput(
+                "model",
+                "MODEL",
+                [(sampler, "model"), *((c["sampler"], "model") for c in retakes)],
+                tooltip=FROM_MODEL_BLOCK,
+            ),
+            BlueprintInput(
+                "clip",
+                "CLIP",
+                [(music, "clip"), *((c["music"], "clip") for c in retakes)],
+                tooltip=FROM_MODEL_BLOCK,
+            ),
+            BlueprintInput(
+                "vae",
+                "VAE",
+                [(decode, "vae"), *((c["decode"], "vae") for c in retakes)],
+                tooltip=FROM_MODEL_BLOCK,
+            ),
             # The loop starts only with the final lyrics: a native loop whose body is blocked (a Song
             # Sheet waiting for review) never finishes in ComfyUI 0.37.0 (Phase 4B, measured).
-            *_render_documents(music, loop=start),
+            *_render_documents([music, *(c["music"] for c in retakes)], loop=start),
             BlueprintInput(
                 "seed",
                 "INT",
-                [(seed, "values.b")],
+                [(seed, "values.b"), (plus_one, "values.a"), (plus_two, "values.a")],
                 label="take seed",
                 tooltip="The first take's seed; the next takes use the following seeds. Another seed, other takes "
                 "of the same documents.",
             ),
             BlueprintInput(
-                "max_duration", "FLOAT", [(music, "max_duration")], label="max seconds", tooltip=MAX_SECONDS
+                "max_duration",
+                "FLOAT",
+                [(music, "max_duration"), *((c["music"], "max_duration") for c in retakes)],
+                label="max seconds",
+                tooltip=MAX_SECONDS,
             ),
             BlueprintInput(
                 "takes",
                 "INT",
-                [(start, "mode.num_iterations")],
+                [(start, "mode.num_iterations"), (plus_one, "values.b"), (plus_two, "values.b")],
                 default=1,
                 tooltip="How many takes: take seed, take seed + 1, ...; Check Vocals keeps the best. N takes cost "
                 "N renders.",
@@ -1755,7 +1892,11 @@ def yue2_takes() -> Blueprint:
                 "score).",
             ),
         ],
-        [BlueprintOutput("takes", "AUDIO", (end, "outputs"), tooltip="All takes, for Check Vocals.")],
+        [
+            BlueprintOutput("takes", "AUDIO", (end, "outputs"), tooltip="All takes, for Check Vocals."),
+            BlueprintOutput("second", "AUDIO", (second["decode"], "AUDIO"), tooltip=SECOND_TAKE),
+            BlueprintOutput("third", "AUDIO", (third["decode"], "AUDIO"), tooltip=THIRD_TAKE),
+        ],
     )
 
 
@@ -1897,6 +2038,29 @@ def hq_switch(g: Graph, target: Node, name: str = "hq_mastering", *, on: bool = 
     )
     g.link(switch, "hq_mastering", target, name)
     return switch
+
+
+BEST_TAKE_SIZE = (320, 150 + SUMMARY_ROOM)
+
+
+def best_take(
+    g: Graph,
+    pos: tuple[float, float],
+    *,
+    take: tuple[Node, str],
+    render: Node,
+    lyrics: tuple[Node, str],
+    brief: Node,
+) -> Node:
+    """Best Take (the brief's lyrics fidelity): the first take, or the take of two or three that sings most of
+    its lyrics - the render block's second and third takes run only when it asks for them."""
+    node = g.add("PlenioBestTake", pos, size=BEST_TAKE_SIZE, title="Best Take · lyrics fidelity")
+    g.link(take[0], take[1], node, "take")
+    g.link(render, "second", node, "second")
+    g.link(render, "third", node, "third")
+    g.link(lyrics[0], lyrics[1], node, "lyrics")
+    g.link(brief, "brief", node, "brief")
+    return node
 
 
 def about_note(g: Graph, text: str, height: float = ABOUT_SIZE[1]) -> Node:
@@ -2094,7 +2258,9 @@ def finish(
         (master, "loudness_report"),
     ]
     # + the three HQ report slots of the Master block (2026-10-21)
-    export_size = (export_size[0] + EXPORT_WIDER, export_size[1] + EXPORT_TALLER + 3 * SLOT_HEIGHT)
+    # + Best Take's report slot (the lyrics fidelity, 2026-10-24)
+    best = sum(1 for node, _output in reports if node.type == "PlenioBestTake")
+    export_size = (export_size[0] + EXPORT_WIDER, export_size[1] + EXPORT_TALLER + (3 + best) * SLOT_HEIGHT)
     export = g.add(
         "PlenioExportRelease",
         (x + 400, 0),
@@ -2257,6 +2423,14 @@ HQ_TEXT = (
     "block (the icon at the top right of the node) to choose another preset or to bypass a stage (**Ctrl+B**). "
     "The user guide *Audio HQ* covers it."
 )
+FIDELITY_TEXT = (
+    "**Lyrics fidelity** (the brief's last field): a music model does not always sing its lyrics - it leaves a "
+    "line out, repeats one, sings other words. *standard* renders one take. *high - best of 2 takes* renders a "
+    "second take (the next seed) and **Best Take** keeps the one that sings more of the lyrics as written, as the "
+    "lyrics ASR hears it; *highest - best of 3 takes* adds a third take when neither sang 95 % of the words. "
+    "Higher fidelity makes the generation take **longer** - up to about twice (high) or three times (highest). "
+    "Best Take's summary and the release record say what each take sang and which one was kept."
+)
 CREATIVITY_TEXT = (
     "**Creativity** (the brief's slider): 0 steady, 50 the reference - exactly as before -, 100 experimental. It "
     "shapes the writer's rules and the temperature of its draft (and of a creative mode's plan) and, with YuE2, "
@@ -2338,6 +2512,8 @@ ABOUT_YUE2 = f"""# 1 · YuE2 · Song
 {STATUS_TEXT}
 
 {CREATIVITY_TEXT}
+
+{FIDELITY_TEXT}
 
 {SEEDS_TEXT}
 
@@ -2429,16 +2605,19 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(score_sheet, "score_seconds", render, "max_duration")
     g.link(seed, "seed", render, "seed")
     g.link(brief, "creativity", render, "creativity")
+    best = best_take(
+        g, (2320, 600), take=(render, "AUDIO"), render=render, lyrics=(text_sheet, "lyrics"), brief=brief
+    )
     # Only the sheets' reports (and the master's): they hold the final documents, and wiring draft reports
     # here would force the writer and the planner to run even when the user replaced their documents manually.
     master_block, preview, export = finish(
         g,
         bp,
         2720,
-        audio=(render, "AUDIO"),
+        audio=(best, "audio"),
         title=(text_sheet, "title"),
         artwork=(text_sheet, "artwork_prompt"),
-        reports=[(text_sheet, "report"), (score_sheet, "report")],
+        reports=[(text_sheet, "report"), (score_sheet, "report"), (best, "report")],
         group="6 · FINISH",
         sheet_music="PDF (A4)",
         brief=brief,
@@ -2448,7 +2627,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("2 · WRITE", [write, draft])
     g.group("3 · TEXT", [text_sheet])
     g.group("4 · SCORE", [plan, plan_seed_node, tools, arrange_node, arrangement, score_sheet])
-    g.group("5 · RENDER", [seed, render])
+    g.group("5 · RENDER", [seed, render, best])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
     g.align()
@@ -2502,6 +2681,7 @@ def song_app(
         "arrangement",
         "genre_closeness",
         "creativity",
+        "lyrics_fidelity",
     ]
     inputs = [(brief, name) for name in controls]
     # right after the template: the first choices of a run, as in group 1 of the graph (owner's request
@@ -2536,6 +2716,8 @@ ABOUT_COVER = f"""# 2 · YuE2 · Cover
 {STATUS_TEXT}
 
 {CREATIVITY_TEXT}
+
+{FIDELITY_TEXT}
 
 {SEEDS_TEXT}
 
@@ -2717,13 +2899,21 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(transcribe, "AUDIO_ENCODER", check_vocals, "audio_encoder")
     g.link(brief, "brief", check_vocals, "brief")
     g.link(check_vocals, "takes", takes_preview, "audio")
-    g.link(check_vocals, "audio", check_lyrics, "audio")
+    best = best_take(
+        g,
+        (2620 + dx, 620),
+        take=(check_vocals, "audio"),
+        render=render,
+        lyrics=(text_sheet, "lyrics"),
+        brief=brief,
+    )
+    g.link(best, "audio", check_lyrics, "audio")
     g.link(text_sheet, "lyrics", check_lyrics, "expected_lyrics")
     master_block, preview, export = finish(
         g,
         bp,
         3880 + dx,
-        audio=(check_vocals, "audio"),
+        audio=(best, "audio"),
         title=(text_sheet, "title"),
         artwork=(text_sheet, "artwork_prompt"),
         reports=[
@@ -2733,6 +2923,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
             (check_vocals, "report"),
             (check_lyrics, "report"),
             (heard, "report"),
+            (best, "report"),
         ],
         group="7 · FINISH",
         sheet_music="PDF (A4)",
@@ -2761,7 +2952,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("3 · SCORE", [transcribe, tools, score_sheet, sung_pitch, arrange_node, arrangement])
     g.group("4 · LYRICS", [asr, heard, write, draft, source_switch, tags_switch])
     g.group("5 · TEXT", [text_sheet])
-    g.group("6 · RENDER", [seed, render, check_vocals, takes_preview, check_lyrics])
+    g.group("6 · RENDER", [seed, render, best, check_vocals, takes_preview, check_lyrics])
     g.group("MUSIC MODEL", [model_node, adapter, adapter_switch], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + COVER_FIELD_ROWS * SLOT_HEIGHT)
     g.align()
@@ -2770,7 +2961,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     # the sheets' editor buttons.
     controls = ["mode", "template", "description", "genre", "mood", "vocals"]
     controls += ["vocals.language", "vocals.voice", "harmony", "arrangement", "song_flow_closeness"]
-    controls += ["lyrics_closeness", "creativity"]
+    controls += ["lyrics_closeness", "creativity", "lyrics_fidelity"]
     inputs = [
         (source, "audio"),
         (switch, "hq_mastering"),
@@ -2792,6 +2983,8 @@ ABOUT_MINIMAX = f"""# 3 · MiniMax · Song
 {STATUS_TEXT}
 
 {CREATIVITY_TEXT}
+
+{FIDELITY_TEXT}
 
 {SEEDS_TEXT}
 
@@ -2855,16 +3048,19 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(sheet, "lyrics", render, "lyrics")
     g.link(sheet, "score_seconds", render, "max_duration")
     g.link(seed, "seed", render, "seed")
+    best = best_take(
+        g, (1400, 540), take=(render, "AUDIO"), render=render, lyrics=(sheet, "lyrics"), brief=brief
+    )
     # the band-limited MiniMax highs are regenerated by HQ 2 inside the Master block (2026-10-21; until then
     # a REFINE block with UniverSR ran here)
     master_block, preview, export = finish(
         g,
         bp,
         1800,
-        audio=(render, "AUDIO"),
+        audio=(best, "audio"),
         title=(sheet, "title"),
         artwork=(sheet, "artwork_prompt"),
-        reports=[(sheet, "report")],
+        reports=[(sheet, "report"), (best, "report")],
         group="5 · FINISH",
         brief=brief,
     )
@@ -2872,7 +3068,7 @@ def minimax_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("1 · SONG", [switch, writer, brief])
     g.group("2 · WRITE", [write, draft])
     g.group("3 · SHEET", [sheet])
-    g.group("4 · RENDER", [seed, render])
+    g.group("4 · RENDER", [seed, render, best])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
     g.align()
@@ -2907,6 +3103,8 @@ How to work:
 {STATUS_TEXT}
 
 {CREATIVITY_TEXT}
+
+{FIDELITY_TEXT}
 
 {SEEDS_TEXT}
 
@@ -2992,11 +3190,14 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(score_sheet, "score_seconds", render, "max_duration")
     g.link(seed, "seed", render, "seed")
     g.link(brief, "creativity", render, "creativity")
+    best = best_take(
+        g, (2320, 600), take=(render, "AUDIO"), render=render, lyrics=(text_sheet, "lyrics"), brief=brief
+    )
     master_block, preview, export = finish(
         g,
         bp,
         2720,
-        audio=(render, "AUDIO"),
+        audio=(best, "audio"),
         title=(text_sheet, "title"),
         artwork=(text_sheet, "artwork_prompt"),
         reports=[(text_sheet, "report"), (score_sheet, "report")],
@@ -3011,7 +3212,7 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("2 · WRITE", [write, draft])
     g.group("3 · TEXT", [text_sheet])
     g.group("4 · DAW", [tools, score_sheet])
-    g.group("5 · RENDER", [seed, render])
+    g.group("5 · RENDER", [seed, render, best])
     g.group("MUSIC MODEL", [model_node], color=MODEL_GROUP)
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
     g.align()

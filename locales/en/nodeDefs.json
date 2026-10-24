@@ -209,6 +209,12 @@
    },
    "1": {
     "tooltip": "The take's length in seconds."
+   },
+   "2": {
+    "tooltip": "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest)."
+   },
+   "3": {
+    "tooltip": "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither take sang 95 % of the lyrics)."
    }
   }
  },
@@ -272,6 +278,12 @@
   "outputs": {
    "0": {
     "tooltip": "All takes, for Check Vocals."
+   },
+   "1": {
+    "tooltip": "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest)."
+   },
+   "2": {
+    "tooltip": "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither take sang 95 % of the lyrics)."
    }
   }
  },
@@ -335,6 +347,12 @@
    },
    "1": {
     "tooltip": "The render's length in seconds."
+   },
+   "2": {
+    "tooltip": "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest)."
+   },
+   "3": {
+    "tooltip": "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither take sang 95 % of the lyrics)."
    }
   }
  },

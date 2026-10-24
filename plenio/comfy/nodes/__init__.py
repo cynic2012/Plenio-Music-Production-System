@@ -2,6 +2,7 @@
 
 from .arrangement import PlenioApplyArrangement, PlenioComposeArrangement
 from .audio_model import PlenioAudioModelLoader
+from .best_take import PlenioBestTake
 from .brief import PlenioSongBrief
 from .compose import PlenioComposePrompt
 from .cover_brief import PlenioCoverBrief
@@ -49,6 +50,7 @@ NODES = (
     PlenioApplyHeardCheck,
     PlenioSungPitch,
     PlenioVocalCheck,
+    PlenioBestTake,
     PlenioHQStereoCleanup,
     PlenioHQRegenerateHighs,
     PlenioHQDeReverb,

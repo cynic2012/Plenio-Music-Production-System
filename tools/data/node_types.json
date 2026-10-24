@@ -1466,6 +1466,74 @@
    "category": "Plenio/Audio",
    "display_name": "Load Audio Model"
   },
+  "PlenioBestTake": {
+   "input": {
+    "required": {
+     "take": [
+      "AUDIO",
+      {
+       "tooltip": "The first take."
+      }
+     ],
+     "lyrics": [
+      "STRING",
+      {
+       "tooltip": "The lyrics the takes sing (the final lyrics of the Song Sheet).",
+       "forceInput": true,
+       "multiline": false
+      }
+     ]
+    },
+    "optional": {
+     "brief": [
+      "PLENIO_BRIEF",
+      {
+       "tooltip": "Song Brief or Cover Brief: its lyrics fidelity (without one: the first take)."
+      }
+     ],
+     "second": [
+      "AUDIO",
+      {
+       "tooltip": "A second take (the next seed): rendered only when asked for.",
+       "lazy": true
+      }
+     ],
+     "third": [
+      "AUDIO",
+      {
+       "tooltip": "A third take: rendered only with highest fidelity, when neither take sang 95 % of the lyrics.",
+       "lazy": true
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "take",
+     "lyrics"
+    ],
+    "optional": [
+     "brief",
+     "second",
+     "third"
+    ]
+   },
+   "output": [
+    "AUDIO",
+    "PLENIO_REPORT"
+   ],
+   "output_name": [
+    "audio",
+    "report"
+   ],
+   "output_is_list": [
+    false,
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Audio analysis",
+   "display_name": "Best Take · lyrics fidelity"
+  },
   "PlenioComposeArrangement": {
    "input": {
     "required": {
@@ -2212,6 +2280,20 @@
       {
        "tooltip": "The source recording (its Load Audio node): with an empty title the cover is named after it - the recording's title tag, else its file name, with '-cover' - so a cover is easy to match with its source."
       }
+     ],
+     "lyrics_fidelity": [
+      "COMBO",
+      {
+       "display_name": "lyrics fidelity",
+       "tooltip": "How closely the song sings its lyrics. standard: one take. high: a second take, and the one that sings more of the lyrics as written is kept. highest: a third take too, when neither sang 95 % of the words. Higher fidelity makes the generation take longer - up to about twice (high) or three times (highest).",
+       "default": "standard",
+       "multiselect": false,
+       "options": [
+        "standard",
+        "high - best of 2 takes",
+        "highest - best of 3 takes"
+       ]
+      }
      ]
     },
     "hidden": {
@@ -2240,7 +2322,8 @@
      "lyrics_closeness",
      "lines_under_singing",
      "creativity",
-     "source"
+     "source",
+     "lyrics_fidelity"
     ],
     "hidden": [
      "prompt",
@@ -4775,6 +4858,20 @@
        "step": 1,
        "display": "slider"
       }
+     ],
+     "lyrics_fidelity": [
+      "COMBO",
+      {
+       "display_name": "lyrics fidelity",
+       "tooltip": "How closely the song sings its lyrics. standard: one take. high: a second take, and the one that sings more of the lyrics as written is kept. highest: a third take too, when neither sang 95 % of the words. Higher fidelity makes the generation take longer - up to about twice (high) or three times (highest).",
+       "default": "standard",
+       "multiselect": false,
+       "options": [
+        "standard",
+        "high - best of 2 takes",
+        "highest - best of 3 takes"
+       ]
+      }
      ]
     }
    },
@@ -4795,7 +4892,8 @@
      "arrangement",
      "genre_closeness",
      "lines_under_singing",
-     "creativity"
+     "creativity",
+     "lyrics_fidelity"
     ]
    },
    "output": [

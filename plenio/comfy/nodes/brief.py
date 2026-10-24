@@ -33,6 +33,7 @@ from ...core.creativity import (
     describe,
 )
 from ...core.errors import PlenioError
+from ...core.fidelity import FIDELITY_DEFAULT, FIDELITY_OPTIONS, FIDELITY_TOOLTIP, HIGH, STANDARD
 from ...core.series import series_key
 from ..shared import SERIES, mode_description, mode_library, mode_names, template_library
 from ..types import Brief
@@ -156,6 +157,19 @@ def creativity_line(brief: Any) -> str:
     return f"Creativity: **{describe(value)}** - {CREATIVITY_EFFECTS[creativity_level(value)]}"
 
 
+def fidelity_line(brief: Any) -> str:
+    """The summary line of the lyrics fidelity (Song Brief and Cover Brief)."""
+    level = getattr(brief, "fidelity", STANDARD)
+    if brief.instrumental or level == STANDARD:
+        return "Lyrics fidelity: standard (one take)"
+    extra = (
+        "a second take"
+        if level == HIGH
+        else "a second take, and a third when neither sings 95 % of the lyrics"
+    )
+    return f"Lyrics fidelity: **{level}** - {extra}; the take that sings more of the lyrics is kept (takes longer)"
+
+
 def check_arrangement(name: Any) -> str | None:
     """Why ``name`` is not a creative mode (``None``: it is one)."""
     if name is None or canonical_name(str(name)) in mode_names():
@@ -192,7 +206,8 @@ def _summary(brief: Any) -> str:
     source = f" (from template: {', '.join(brief.from_template)})" if brief.from_template else ""
     return (
         f"**{'Instrumental' if brief.instrumental else 'Sung'} song**, {brief.length}{source}\n\n"
-        f"{mode_line(brief)}\n\n{arrangement_line(brief)}\n\n{creativity_line(brief)}\n\n" + brief.to_text()
+        f"{mode_line(brief)}\n\n{arrangement_line(brief)}\n\n{creativity_line(brief)}\n\n{fidelity_line(brief)}\n\n"
+        + brief.to_text()
     )
 
 
@@ -306,6 +321,15 @@ class PlenioSongBrief(io.ComfyNode):
                     display_mode=io.NumberDisplay.slider,
                     tooltip=CREATIVITY_TOOLTIP,
                 ),
+                # appended last: a workflow saved without it, and an older API prompt, take one take as before
+                io.Combo.Input(
+                    "lyrics_fidelity",
+                    display_name="lyrics fidelity",
+                    options=list(FIDELITY_OPTIONS),
+                    default=FIDELITY_DEFAULT,
+                    optional=True,
+                    tooltip=FIDELITY_TOOLTIP,
+                ),
             ],
             outputs=[
                 Brief.Output(
@@ -365,6 +389,7 @@ class PlenioSongBrief(io.ComfyNode):
         genre_closeness: int = CLOSENESS_DEFAULT,
         lines_under_singing: bool = False,
         creativity: int = CREATIVITY_DEFAULT,
+        lyrics_fidelity: str = FIDELITY_DEFAULT,
     ) -> io.NodeOutput:
         chosen = None if template == "none" else template_library().get(template)
         # an unknown mode stops here, with the list to choose from; the pre-release name "simple" is read as "off"
@@ -389,6 +414,7 @@ class PlenioSongBrief(io.ComfyNode):
             "closeness": genre_closeness,
             "lines_under_singing": bool(lines_under_singing),
             "creativity": creativity,
+            "fidelity": lyrics_fidelity,
         }
         inputs = dict(
             zip(

@@ -28,6 +28,7 @@ from typing import Any
 
 from .creativity import CREATIVITY_DEFAULT, creativity_value
 from .errors import PlenioUserError
+from .fidelity import STANDARD, fidelity_level
 from .files import atomic_write_text
 from .hashing import sha256_json
 
@@ -149,11 +150,13 @@ _ID = re.compile(r"[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*)?")
 
 def _fingerprint(data: dict[str, Any]) -> str:
     """A brief's content as a hash. The creativity counts only away from the reference, so a brief at 50 has
-    the fingerprint it had before the slider existed."""
+    the fingerprint it had before the slider existed - and the lyrics fidelity only away from standard."""
     data.pop("from_template")
     data.pop("notes")
     if data.get("creativity") == CREATIVITY_DEFAULT:
         data.pop("creativity")
+    if data.get("fidelity") == STANDARD:
+        data.pop("fidelity")
     return sha256_json(data)
 
 
@@ -181,6 +184,9 @@ class SongBrief:
     creativity: int = CREATIVITY_DEFAULT
     """0 steady ... 50 the reference ... 100 experimental: the writer's rules and YuE2's sampling
     (``core.creativity``)."""
+    fidelity: str = STANDARD
+    """The lyrics fidelity (``core.fidelity``): one take, or the best of two or three; standard for an
+    instrumental."""
     template: str = ""
     from_template: tuple[str, ...] = field(default=(), compare=False)
     notes: tuple[str, ...] = field(default=(), compare=False)
@@ -303,6 +309,8 @@ class CoverBrief:
     creativity: int = CREATIVITY_DEFAULT
     """0 steady ... 50 the reference ... 100 experimental: the writer's rules and YuE2's sampling
     (``core.creativity``)."""
+    fidelity: str = STANDARD
+    """The lyrics fidelity (``core.fidelity``); standard for an instrumental cover."""
     template: str = ""
     from_template: tuple[str, ...] = field(default=(), compare=False)
     notes: tuple[str, ...] = field(default=(), compare=False)
@@ -566,6 +574,7 @@ def build_cover_brief(
         closeness=closeness_value(values.get("closeness")),
         lines_under_singing=bool(values.get("lines_under_singing", False)),
         creativity=creativity_value(values.get("creativity")),
+        fidelity=fidelity_level(values.get("fidelity")) if vocals != "instrumental" else STANDARD,
         lyrics_closeness=(
             closeness_value(values.get("lyrics_closeness"), LYRICS_CLOSENESS_DEFAULT)
             if vocals == "new"
@@ -630,6 +639,7 @@ def build_song_brief(
         closeness=closeness_value(values.get("closeness")),
         lines_under_singing=bool(values.get("lines_under_singing", False)),
         creativity=creativity_value(values.get("creativity")),
+        fidelity=fidelity_level(values.get("fidelity")) if vocals != "instrumental" else STANDARD,
         template=template.id if template else "",
         from_template=tuple(from_template),
         notes=tuple(notes),
