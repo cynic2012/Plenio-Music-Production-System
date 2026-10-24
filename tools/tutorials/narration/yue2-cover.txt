@@ -289,7 +289,7 @@ Qwen three A S R hears the sung words, in the recording and in its vocal stem, a
 Then the writer looks for misheard words.
 
 @ Fix Misheard Words: the writer reads
-Fix Misheard Words: the writer reads what the speech recognition heard, and corrects the words it's sure were misheard. Only words that sound alike, with the same number of syllables, and only for original lyrics.
+Fix Misheard Words: the writer corrects the words it's sure were misheard - only words that sound alike, with as many syllables.
 
 @ Stop 2: Song Sheet · Text
 Second stop: the Text sheet.
@@ -310,7 +310,7 @@ Each line sits over its phrase; the copied chorus sings its words again. Double-
 The score can still change here; Apply writes it back to the Score sheet.
 
 @ Lyrics: the transcribed words
-The Lyrics tab lists the words, section by section. A word the writer corrected stands next to the word that was heard, and unsure words are highlighted, so you know where to look.
+The Lyrics tab lists the words by section. A corrected word stands next to the word heard, and unsure words are highlighted.
 
 @ Style: the new style
 Style: the new style, with the voice from the brief.
