@@ -3093,7 +3093,7 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         "PlenioExportRelease",
         (2490, 180),
         # 1.0.0: the brief socket and lyrics subtitles (SRT); 2026-10-21: two more report slots (Audio HQ);
-        # 1.2.0: what the lyrics are heard on
+        # 1.2.1: what the lyrics are heard on
         size=(380, 514 + SUMMARY_ROOM + 2 * SLOT_HEIGHT),
         autogrow={"reports": 7},
         widgets={

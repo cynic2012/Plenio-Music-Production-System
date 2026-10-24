@@ -18,7 +18,7 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 
 ## New in 1.2: the lyrics as sung, a login for the player, and a tidier studio
 
-- **The lyrics as written and as sung**: Export keeps what a take really sings - `(sung).srt` and the release record -, and the Plenio Player follows either; a song whose take departs far from its lyrics shows them as sung (**W** switches). The lyrics are heard on the take's vocal stem, so fewer words are timed where nobody sings. [Details](docs/user/concepts/player.md#written-and-sung-lyrics)
+- **The lyrics as written and as sung**: Export keeps what a take really sings - `(sung).srt` and the release record -, and the Plenio Player follows either; a song whose take departs far from its lyrics shows them as sung (**W** switches). **Check Sung Words** lets the writer model correct the words the lyrics ASR misheard - only those it is sure of. [Details](docs/user/concepts/player.md#written-and-sung-lyrics)
 - **A login for the Plenio Player**: users with a password keep their own playlists, likes and plays on every device; the admin sets them up on the player's computer, a guest keeps everything in the browser. *Settings > Sound* plays the MP3. [Details](docs/user/concepts/player.md#who-is-listening-the-login)
 - **42 new visuals**: twelve classics - Digital Rain, VU Meters, Vinyl, Harmonograph, Spiral Galaxy … - and thirty Plenio Drop presets after the MilkDrop classics, each with the music it suits. [Details](docs/user/concepts/player.md#visuals)
 - **Titles and covers from the song**: the writer proposes ten titles from the lyrics and Plenio picks one no song has yet; the cover prompt follows the lyrics' motif, then the title and the tags.

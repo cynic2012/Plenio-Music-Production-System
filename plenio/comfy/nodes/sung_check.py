@@ -1,5 +1,5 @@
 """Check Sung Words, retired (owner's rule 2026-10-24): it corrected misheard words in the lyrics *as sung*
-after Export Release, in every template. The lyrics as sung now stay as heard; misheard words are corrected
+after Export Release, in every template of Plenio 1.2.0. The lyrics as sung now stay as heard; misheard words are corrected
 only in a cover's transcribed original lyrics, before the render (*Fix Misheard Words*, ``heard_check``).
 
 The two nodes stay, deprecated and doing nothing, so a workflow saved with the block - a release record's own

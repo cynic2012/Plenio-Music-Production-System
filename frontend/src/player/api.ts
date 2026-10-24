@@ -113,8 +113,8 @@ export interface SungLyrics {
   /** Lyrics lines of which no word was heard. */
   not_sung: string[]
   sections: { tag: string; words: number; heard: number }[]
-  /** Words the writer model found misheard, corrected in the lines (Check Sung Words, retired in 1.2.0: songs
-   * exported before keep them). */
+  /** Words the writer model found misheard, corrected in the lines (1.2.0's Check Sung Words, retired since:
+   * songs exported with it keep them). */
   corrected?: { line: number; heard: string; word: string; sure?: number }[]
 }
 
