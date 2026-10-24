@@ -17,7 +17,7 @@ The Song Sheet refuses words in instrumental lyrics and vocal notes in an instru
 
 ## 2. Instrumental audio - measured, not guaranteed
 
-YuE2 can still produce humming, vowel sounds or a choir-like pad. **Check Vocals** measures each take: SheetSage2 re-transcribes it and counts the notes of its vocal track. With the default tolerance (any vocal note fails) it was calibrated against the owner's listening of 25 takes (Phase 4A): of the 8 takes with an audible voice it flagged 6 - the 2 it missed had a rare, faint voice - and it flagged no clean take.
+YuE2 can still produce humming, vowel sounds or a choir-like pad. **Check Vocals** measures each take: SheetSage2 re-transcribes it and counts the notes of its vocal track. With the default tolerance (any vocal note fails) it was calibrated against a listening of 25 takes (Phase 4A): of the 8 takes with an audible voice it flagged 6 - the 2 it missed had a rare, faint voice - and it flagged no clean take.
 
 **YuE2 Takes** renders several takes (seeds take seed, take seed + 1, ...), Check Vocals keeps the first clean one and the preview plays all of them. N takes cost N renders; nothing is retried automatically.
 
@@ -29,9 +29,9 @@ With only `[instrumental]` as lyrics, YuE2's planner mostly wrote an intro and o
 
 ## Length of instrumental songs
 
-YuE2 decides the length of an instrumental plan itself; tags and timed tags do not control it. Left alone, the owner's instrumental plans ran from 0.4 to 3.8 times the requested length - above all EDM and electronic styles, where the planner wrote an intro and one section that repeated for up to 14 minutes. *Prepare from brief* therefore fits every instrumental plan that is more than 1.2 times or less than 0.8 times the brief's length (Score Tools *fit length*):
+YuE2 decides the length of an instrumental plan itself; tags and timed tags do not control it. Left alone, instrumental plans ran from 0.4 to 3.8 times the requested length - above all EDM and electronic styles, where the planner wrote an intro and one section that repeated for up to 14 minutes. *Prepare from brief* therefore fits every instrumental plan that is more than 1.2 times or less than 0.8 times the brief's length (Score Tools *fit length*):
 
 - **too long**: whole sections are removed; when the sections are too long for that, the bars in between are removed inside a section at a phrase (every 4 bars). The plan's beginning and its own ending - the outro, or the last phrase - stay, so the song still ends as it was written, not with a hard cut.
 - **too short**: the middle of the song (the sections between the first and the last) is repeated, like a second verse and chorus.
 
-The score sheet says what was removed or repeated. On the owner's 274 instrumental scores this brings 92 % within 0.8-1.2 times the requested length (22 % before); the rest are single-section plans that cannot be lengthened.
+The score sheet says what was removed or repeated. On 274 instrumental scores this brings 92 % within 0.8-1.2 times the requested length (22 % before); the rest are single-section plans that cannot be lengthened.

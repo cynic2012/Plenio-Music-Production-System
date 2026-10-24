@@ -17,7 +17,7 @@ The mid is never filtered. A mono input gets the warmth only. Same rate and leng
 | *strong* | rock, metal, punk | 9.5 kHz | 80 % | 0.25 |
 | *wide* | electronic, dance, ambient | 14 kHz | 40 % | 0.12 |
 
-*custom* shows the three fields. *standard* is the proposal the owner listened to (2026-10-21); the other profiles are **provisional** until they have been listened to, and the summary says so.
+*custom* shows the three fields. *standard* is the proposal of the listening test (2026-10-21); the other profiles are **provisional** until they have been listened to, and the summary says so.
 
 **brief** (optional) - Song Brief or Cover Brief for *auto*: the genre's words first (*folk metal* is strong, *synth-pop* wide), then the template's family.
 

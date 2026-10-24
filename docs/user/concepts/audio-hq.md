@@ -32,12 +32,12 @@ Every stage has the same five choices, plus *custom* for its own fields:
 | Preset | For | In short |
 |---|---|---|
 | **auto - from the song's genre** | every template with a brief (the default) | picks one of the four below from the brief's genre |
-| standard - pop, hip-hop, soul, world | the default sound | the proposal's values, which the owner listened to |
+| standard - pop, hip-hop, soul, world | the default sound | the proposal's values, as in the listening test |
 | gentle - classical, jazz, folk | natural rooms and delicate highs | a little less side cleanup and warmth, 80 % new highs, a lighter de-reverb |
 | strong - rock, metal, punk | dense, distorted highs | more side cleanup and warmth, 95 % new highs, a stronger de-reverb |
 | wide - electronic, dance, ambient | intended stereo width | keeps more of the side, the new highs follow the original's level more closely |
 
-**HQ 2 always regenerates from 8.2 kHz with UniverSR**, the setting the owner listened to: the presets change only how much of the new highs is used and how closely they follow the original's level. (Until 2026-10-22 *gentle* and *wide* started at 12.2 kHz; on the templates' default singer-songwriter song that changed too little to hear.)
+**HQ 2 always regenerates from 8.2 kHz with UniverSR**, the setting of the listening test: the presets change only how much of the new highs is used and how closely they follow the original's level. (Until 2026-10-22 *gentle* and *wide* started at 12.2 kHz; on the templates' default singer-songwriter song that changed too little to hear.)
 
 **How auto chooses:** it reads the brief's *genre* for known words - rock, metal and punk words make it *strong*; electronic, techno, house, trance, drum & bass, synth, ambient and the like *wide*; classical, orchestral, piano, jazz, folk, blues, country and the like *gentle* - checking in that order, so *folk metal* is strong and *synth-pop* wide. Without such a word it takes the family of the brief's template (*metal/...* strong, *edm/...* wide, *classical/...* gentle, ...), and otherwise *standard* - so the templates' default song (*pop/singer-songwriter*) runs *standard*. Without a brief (Enhance & Master, or the node on its own) *auto* is *standard*. The summary always says which profile ran and why, for example `strong (auto: genre 'thrash metal' (metal))`.
 
@@ -49,9 +49,9 @@ HQ 1 and HQ 3 take a few seconds per minute of music on the CPU. **HQ 2 takes th
 
 ## Where it comes from, and what was measured
 
-The stages follow a proposal the owner brought in (*Plenio-AudioHQ v3.0*, 2026-10-21); Plenio's code reproduces its DSP (checked to -140 dB). Three things differ on purpose:
+The stages follow a proposal (*Plenio-AudioHQ v3.0*, 2026-10-21); Plenio's code reproduces its DSP (checked to -140 dB). Three things differ on purpose:
 
-- **HQ 2 uses UniverSR.** The proposal named a FlashSR model; in the owner's listening test UniverSR sounded better than FlashSR (2026-10-22), so Plenio uses UniverSR only (MIT code, CC BY 4.0 weights, part of Plenio since Refine) and offers no FlashSR.
+- **HQ 2 uses UniverSR.** The proposal named a FlashSR model; in the listening test UniverSR sounded better than FlashSR (2026-10-22), so Plenio uses UniverSR only (MIT code, CC BY 4.0 weights, part of Plenio since Refine) and offers no FlashSR.
 - **No soft clipper.** The proposal ran `tanh` over the whole song when a peak reached 0.999 - seven of nine YuE2 takes peak at 0 dBFS, so it would have saturated almost every song. Loudness & Dynamics handles the peaks after the EQ.
 - **No silent fallback.** Without its model the proposal quietly replaced HQ 2 by a DSP trick that cut the highs above 10 kHz by about 15 dB. In Plenio, HQ 2 with HQ mastering on needs the model; a missing file is an error with a download hint (off, the file is not needed).
 
@@ -65,7 +65,7 @@ Measured on 45-second excerpts of nine YuE2 takes (standard):
 | side above 10.5 kHz | -10 to -13 dB (narrower) | -4 to -13 dB (UniverSR makes both channels alike) | ±1 dB |
 | attacks | unchanged | 0 to -1.5 dB | -1.5 to -4 dB, like the tails |
 
-Together, HQ 1 and HQ 2 make the top octave clearly narrower (side -8 to -19 dB above 10.5 kHz). The owner's verdict: HQ 1 *very good, artefacts well removed without hurting the highs*; HQ 2 *very good*, with UniverSR better still; HQ 3 *rather dull*. The listening material and the numbers are in the [test report](../../test-reports/2026-10-21-audio-hq.md).
+Together, HQ 1 and HQ 2 make the top octave clearly narrower (side -8 to -19 dB above 10.5 kHz). The listening test's verdict: HQ 1 *very good, artefacts well removed without hurting the highs*; HQ 2 *very good*, with UniverSR better still; HQ 3 *rather dull*. The listening material and the numbers are in the [test report](../../test-reports/2026-10-21-audio-hq.md).
 
 ## Refine and Audio HQ
 

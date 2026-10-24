@@ -449,7 +449,7 @@ Plenio is the successor of the [Music Production Toolkit](https://github.com/jpl
 - The ASR can mishear words. A cover shows unsure words highlighted so you can correct them before rendering.
 - Mastering is whole-song loudness with a gentle tone match after Audio HQ. There are no fades and no multiband processing.
 - The player's videos need a browser that can encode video (current Chrome or Edge), and Plenio Drop needs WebGL2; the other visuals draw everywhere.
-- **Stems**, **Audio HQ 3** and **Refine** are experimental: their guarantees (a neutral mix returns the input, same rate and length, no normalisation) are tested, but how the models *sound* is decided by the owner's listening checks. Audio HQ 1 and 2 (UniverSR) passed the owner's listening test; their profiles other than *standard* are not listened to yet ([test report](docs/test-reports/2026-10-21-audio-hq.md)).
+- **Stems**, **Audio HQ 3** and **Refine** are experimental: their guarantees (a neutral mix returns the input, same rate and length, no normalisation) are tested, but how the models *sound* is decided by listening checks. Audio HQ 1 and 2 (UniverSR) passed the listening test; their profiles other than *standard* are not listened to yet ([test report](docs/test-reports/2026-10-21-audio-hq.md)).
 
 ## Licences
 

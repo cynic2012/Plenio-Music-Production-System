@@ -19,9 +19,9 @@ Same rate and length as the input (a 44.1 kHz song stays 44.1 kHz), no normalisa
 | *strong* | rock, metal, punk | 8.2 kHz | 95 % | 0.90 |
 | *wide* | electronic, dance, ambient | 8.2 kHz | 85 % | 0.95 |
 
-Every profile regenerates from 8.2 kHz with UniverSR's 16 kHz condition - the setting the owner listened to.
+Every profile regenerates from 8.2 kHz with UniverSR's 16 kHz condition - the setting of the listening test.
 
-*custom* shows the three fields. *standard* is the proposal's setting, accepted in the owner's listening test with UniverSR (2026-10-22: better than with the FlashSR model the proposal named, which Plenio does not offer); the other profiles are **provisional** until they have been listened to.
+*custom* shows the three fields. *standard* is the proposal's setting, accepted in the listening test with UniverSR (2026-10-22: better than with the FlashSR model the proposal named, which Plenio does not offer); the other profiles are **provisional** until they have been listened to.
 
 **model_steps** (advanced, default 4) - UniverSR's flow steps. **Time** on an RTX 5060 Ti: 4 steps about 1.5 s per second of music (a four-minute song: about six minutes), 3 steps about 1.1 s, 2 steps about 0.75 s; much longer on the CPU. Fewer steps give other, somewhat quieter highs (-15 dB and -6 dB from the four-step highs); only 4 steps were listened to. The model runs in bfloat16 on a GPU that has it (the same result as float32 within -25 dB, a quarter faster).
 

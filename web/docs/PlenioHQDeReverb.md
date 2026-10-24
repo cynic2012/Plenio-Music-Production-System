@@ -7,7 +7,7 @@
 
 Same rate and length, no normalisation.
 
-**What it does, measured (2026-10-21, YuE2 takes, standard):** -3 to -4 dB above 3.2 kHz, with attacks and tails lowered alike - so it acts more like a gentle high cut than like a room remover; on a test song without any reverb it takes off as much. In the owner's listening test it sounded dull, which is why it is bypassed.
+**What it does, measured (2026-10-21, YuE2 takes, standard):** -3 to -4 dB above 3.2 kHz, with attacks and tails lowered alike - so it acts more like a gentle high cut than like a room remover; on a test song without any reverb it takes off as much. In the listening test it sounded dull, which is why it is bypassed.
 
 **preset** - *auto* picks the profile from the connected brief's genre (*standard* without a brief), or choose one:
 

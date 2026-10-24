@@ -10,7 +10,7 @@ in the node library is the loader and the stage as one block - for a plain 48 kH
 your own experiments. The rest of this page describes the node.
 
 The model **always runs when it is connected** - also for an input that already reaches the top of the band
-(the owner's decision, 2026-09-28). PRE shapes only what the model sees, the crossover decides what the model may
+(decided 2026-09-28). PRE shapes only what the model sees, the crossover decides what the model may
 replace, and POST rolls its result off; nothing below the crossover changes. The report says so when the input was
 already full band.
 
@@ -53,7 +53,7 @@ ComfyUI's missing-model dialog offers the download when you open *3 · MiniMax �
 ## Presets and parameters
 
 The **preset** list box sets PRE, POST and the crossover in one go; the crossover always sits 500 Hz below PRE
-(owner's rule, 2026-09-28):
+(the rule since 2026-09-28):
 
 | Preset | PRE | Crossover | POST |
 |---|---|---|---|
@@ -83,7 +83,7 @@ defaults above.
 
 **Provisional defaults:** these values come from the design's re-evaluation of the legacy chain, not from measurements on your machine yet. The Refine block is marked *experimental* until the measurement study (**L1**) has decided them; the report marks the defaults as provisional.
 
-## The study (owner, local)
+## The study (local)
 
 `tools/studies/sr_study.py` measures the arms on your material, writes a JSON report and - with `--pack <dir>` - the **blind A/B material** (two level-matched files, `key.json`, `README.md` with the question). The commands and the decision rule are in [the plan §4.5](https://github.com/jplenio/Plenio-Music-Production-System/blob/main/docs/design/next-release-plan.md) and in `CURRENT_STATUS.md`'s local checklist (L1). Nothing becomes a default before that verdict.
 

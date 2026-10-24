@@ -1,6 +1,6 @@
 # Match Song Form
 
-Makes YuE2's planned score fit the **song form of the lyrics** - inside the *YuE2 Plan* block, nothing to wire. A song's lyrics are written first and YuE2 plans the melody from them, but the plan's sung sections often differ from the lyrics' (in the owner's songs: three of four - most often a bridge or a sung outro the plan does not have). The words would then land on melodies planned for other words.
+Makes YuE2's planned score fit the **song form of the lyrics** - inside the *YuE2 Plan* block, nothing to wire. A song's lyrics are written first and YuE2 plans the melody from them, but the plan's sung sections often differ from the lyrics' (in a study of sung songs: three of four - most often a bridge or a sung outro the plan does not have). The words would then land on melodies planned for other words.
 
 The plan's **sung** sections are compared with the lyrics' sections that have words, by kind (*Verse 2* is a verse). A section whose only notes lead into the next one - an intro ending with the verse's first word - is not sung. In this order:
 
