@@ -143,3 +143,35 @@ def test_a_section_of_the_plan_may_sing_the_blocks_after_its_own() -> None:
     assert "in its own (verse - chorus)" in form.text
     # a chorus section with notes for the chorus only does not sing the outro as well
     assert song_form.match(text, plan("verse", "chorus")).category == song_form.DIFFERS
+
+
+def thin_verse_plan() -> str:
+    """Verse 1 on a single note, a chorus, verse 2 with a note per sixteenth."""
+    bars = [("verse", "E16"), ("chorus", "c2B2A2G2" * 2), ("verse", "EFGA" * 4), ("outro", "G16")]
+    return HEAD + "".join(f'% {label}\nV: Vocal\n"C"{notes}|\nV: Ins\nC16|\n' for label, notes in bars)
+
+
+THIN_LYRICS = (
+    "[Verse 1]\n" + "la " * 12 + "\n" + "la " * 12 + "\n\n[Chorus]\nla la la la la la la la\n\n"
+    "[Verse 2]\n" + "la " * 16 + "\n\n[Outro]\nla la la la"
+)
+
+
+def test_a_sung_section_without_notes_for_its_words_is_sparse() -> None:
+    """Owner's report 2026-10-24: a plan gave a verse one note for 67 syllables, and the take left the verse
+    out. Such a plan asks for a second one; at last the thin verse takes the other verse's melody. A short
+    sung outro on one note is no reason (heard 84-90 %)."""
+    abc = thin_verse_plan()
+    form = song_form.match(THIN_LYRICS, abc)
+    assert form.category == song_form.SPARSE and form.quality < song_form.REPLAN_BELOW
+    assert form.notes == ("[Verse 1] has 1 notes for 24 syllables",) and form.score == abc
+    filled = song_form.match(THIN_LYRICS, abc, substitute=True)
+    assert filled.category == song_form.FILL
+    assert melodies(filled.score)[0] == melodies(abc)[2]
+    assert filled.changes[0].startswith(
+        "[Verse 1] has 1 notes for 24 syllables: it takes the melody of the plan's verse"
+    )
+    assert song_form.better(form, filled) is filled
+    # a second plan with notes for every verse wins over a filled one
+    second = song_form.match(THIN_LYRICS, abc.replace('"C"E16|', '"C"' + "EFGA" * 4 + "|", 1))
+    assert second.category == song_form.MATCH and song_form.better(filled, second) is second

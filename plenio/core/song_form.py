@@ -18,6 +18,8 @@ order (``QUALITY``):
   seed, and the better plan wins;
 - **substitute**: a kind of the lyrics is still missing - it takes the melody of a related section of the
   plan (a bridge a verse's, a sung outro the chorus's), named after the lyrics;
+- **fill** (2026-10-24): a sung section the plan gave too few Vocal notes for its words (``SPARSE_NOTES``)
+  takes the melody of a section of its kind that has them - after YuE2 planned once more (**sparse**);
 - **differs**: none of it works - the plan stays, and the sheet says the words may land elsewhere.
 
 Sections are compared by kind: the name without a number (``Verse 2`` -> ``verse``). A section is sung when
@@ -26,6 +28,7 @@ it has lyric lines (lyrics) or Vocal notes besides a pickup into the next sectio
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -38,15 +41,17 @@ from .score import canonical as c
 from .score import lyric_layout, ops
 from .score.edit import _label as section_label
 
-MATCH, ASSEMBLE, RENAME, SUBSTITUTE, DIFFERS, SKIP = (
+MATCH, ASSEMBLE, RENAME, SUBSTITUTE, FILL, SPARSE, DIFFERS, SKIP = (
     "match",
     "assemble",
     "rename",
     "substitute",
+    "fill",
+    "sparse",
     "differs",
     "skip",
 )
-QUALITY = {MATCH: 5, ASSEMBLE: 4, RENAME: 3, SUBSTITUTE: 2, DIFFERS: 1, SKIP: 0}
+QUALITY = {MATCH: 6, ASSEMBLE: 5, RENAME: 4, SUBSTITUTE: 3, FILL: 3, SPARSE: 2, DIFFERS: 1, SKIP: 0}
 """How good a plan's form is for the lyrics (the better of two plans wins)."""
 REPLAN_BELOW = QUALITY[RENAME]
 """A plan whose form is below this asks YuE2 for one more plan (study G1: two of five sung songs)."""
@@ -116,16 +121,19 @@ def sung_flags(score: str, sections: Sequence[Any]) -> list[bool]:
 
 MERGED_NOTES = 0.8
 """A section of the plan sings several lyrics blocks when it has at least this many Vocal notes per syllable."""
+SPARSE_NOTES = 0.3
+"""A sung section with fewer Vocal notes than this per syllable of its words is not sung as written: in the
+owner's 19 YuE2 songs of 2026-10-24 the words of such sections were heard at 34 %, of all others at 88-90 % -
+one plan gave a verse a single note for 67 syllables, and the take left the verse out."""
+SPARSE_MIN_SYLLABLES = 20
+"""Only a section with this many syllables (about two lines) counts as sparse: a short sung outro on a note or
+two was heard at 84-90 % in the owner's songs - not worth another plan or a whole chorus's melody."""
 
 
-def _merged(model: c.Score, plan: list[PlanSection], text: str) -> list[str] | None:
-    """How the plan sings the lyrics in fewer sections, or ``None``: in order, every sung section of the plan
-    starts with the next lyrics block of its kind and also sings the blocks after it up to one of the next
-    section's kind, when it has notes for their syllables (``MERGED_NOTES``). The planner wrote one melody for
-    them, and YuE2 sings the lines in their order (owner's report 2026-10-09: the chorus and the outro in one
-    section - renamed, every section of the plan had the next one's name)."""
+def _blocks(text: str) -> list[tuple[str, str, int]]:
+    """``(kind, tag, syllables)`` of the lyrics' sung blocks."""
     language = syllables.guess_language(text)
-    blocks = [
+    return [
         (
             kind(block.tag),
             block.tag,
@@ -134,6 +142,90 @@ def _merged(model: c.Score, plan: list[PlanSection], text: str) -> list[str] | N
         for block in lyrics_rules.parse_lyrics(text).sections
         if block.lines
     ]
+
+
+def _owned(model: c.Score, plan: list[PlanSection]) -> list[int]:
+    """The Vocal notes of every section of the plan, a pickup with the section it leads into."""
+    lead = lyric_layout.pickups(model)
+    starts = [model.starts[p.measure] for p in plan]
+    owned = [0] * len(plan)
+    for note in model.vocal:
+        index = max(k for k, start in enumerate(starts) if start <= note.onset)
+        if note.onset in lead and index + 1 < len(plan):
+            index += 1
+        owned[index] += 1
+    return owned
+
+
+@dataclass(frozen=True)
+class Sparse:
+    index: int
+    """The plan's section (0-based)."""
+    tag: str
+    notes: int
+    syllables: int
+
+    @property
+    def text(self) -> str:
+        return f"[{self.tag}] has {self.notes} notes for {self.syllables} syllables"
+
+
+def sparse_sections(model: c.Score, text: str) -> list[Sparse]:
+    """The sung sections with too few Vocal notes for their words (``SPARSE_NOTES``), when the plan's sung
+    sections are the lyrics' blocks one to one (else nothing to say)."""
+    plan = plan_sections(model)
+    sung = [p for p in plan if p.sung]
+    blocks = _blocks(text)
+    if not sung or len(sung) != len(blocks):
+        return []
+    owned = _owned(model, plan)
+    return [
+        Sparse(section.index, tag, owned[section.index], count)
+        for section, (_kind, tag, count) in zip(sung, blocks, strict=True)
+        if count >= SPARSE_MIN_SYLLABLES and owned[section.index] < SPARSE_NOTES * count
+    ]
+
+
+def _fill(model: c.Score, sparse: list[Sparse]) -> tuple[c.Score, list[str]] | None:
+    """The sparse sections on the melody of a sung section of their kind (else a related one) with notes for
+    their words - the one whose notes come nearest their syllables; ``None`` when a section has no donor."""
+    plan = plan_sections(model)
+    owned = _owned(model, plan)
+    thin = {item.index for item in sparse}
+    order = list(range(len(plan)))
+    changes: list[str] = []
+    for item in sparse:
+        wanted = kind(plan[item.index].label)
+        donor = None
+        for option in dict.fromkeys((wanted, *SUBSTITUTES.get(wanted, ()), "verse", "chorus")):
+            found = [
+                p.index
+                for p in plan
+                if p.sung
+                and p.index not in thin
+                and kind(p.label) == option
+                and owned[p.index] >= SPARSE_NOTES * item.syllables
+            ]
+            if found:
+                donor = min(found, key=lambda index: abs(math.log(owned[index] / item.syllables)))
+                break
+        if donor is None:
+            return None
+        order[item.index] = donor
+        changes.append(
+            f"{item.text}: it takes the melody of the plan's {plan[donor].label} ({owned[donor]} notes)"
+        )
+    result = ops.arrange_sections(model, [index + 1 for index in order])
+    return result.score, [*changes, *result.changes]
+
+
+def _merged(model: c.Score, plan: list[PlanSection], text: str) -> list[str] | None:
+    """How the plan sings the lyrics in fewer sections, or ``None``: in order, every sung section of the plan
+    starts with the next lyrics block of its kind and also sings the blocks after it up to one of the next
+    section's kind, when it has notes for their syllables (``MERGED_NOTES``). The planner wrote one melody for
+    them, and YuE2 sings the lines in their order (owner's report 2026-10-09: the chorus and the outro in one
+    section - renamed, every section of the plan had the next one's name)."""
+    blocks = _blocks(text)
     sung = [p for p in plan if p.sung]
     if not sung or len(sung) >= len(blocks):
         return None
@@ -151,15 +243,7 @@ def _merged(model: c.Score, plan: list[PlanSection], text: str) -> list[str] | N
         groups.append(group)
     if i != len(blocks):
         return None
-    # the notes of every section, a pickup with the section it leads into
-    lead = lyric_layout.pickups(model)
-    starts = [model.starts[p.measure] for p in plan]
-    owned = [0] * len(plan)
-    for note in model.vocal:
-        index = max(k for k, start in enumerate(starts) if start <= note.onset)
-        if note.onset in lead and index + 1 < len(plan):
-            index += 1
-        owned[index] += 1
+    owned = _owned(model, plan)
     notes: list[str] = []
     for section, group in zip(sung, groups, strict=True):
         if len(group) < 2:
@@ -214,6 +298,15 @@ class Form:
             return f"the score put together from the plan's sections in the lyrics' order: {lyrics} (the plan: {plan})"
         if self.category == RENAME:
             return f"the plan's sung sections named after the lyrics: {plan} -> {lyrics}"
+        if self.category == FILL:
+            return (
+                f"a sung section the plan gave too few notes for its words takes another's melody ({lyrics})"
+            )
+        if self.category == SPARSE:
+            return (
+                f"the plan's sung sections are the lyrics' ({lyrics}), but {'; '.join(self.notes)} - "
+                "its words may be left out"
+            )
         if self.category == SUBSTITUTE:
             return (
                 f"the score put together for the lyrics' form {lyrics}; sections the plan does not have take a "
@@ -308,7 +401,35 @@ def _assemble(
 
 def match(lyrics: str, score: str, *, substitute: bool = False) -> Form:
     """The plan's form against the lyrics' and the change that makes it fit (``substitute``: the last
-    resort, after a second plan)."""
+    resort, after a second plan); a form that fits but leaves a sung section too few notes for its words is
+    ``SPARSE`` - with ``substitute`` that section takes another's melody (``FILL``)."""
+    form = _form(lyrics, score, substitute=substitute)
+    if form.category not in (MATCH, ASSEMBLE, RENAME, SUBSTITUTE) or (form.category == MATCH and form.notes):
+        return form  # a merged MATCH (one section sings several blocks) has checked its notes already
+    try:
+        model = c.from_abc(form.score)
+    except PlenioError:
+        return form
+    sparse = sparse_sections(model, lyrics or "")
+    if not sparse:
+        return form
+    if substitute:
+        filled = _fill(model, sparse)
+        if filled is not None:
+            new, changes = filled
+            return Form(FILL, c.to_abc(new), (*form.changes, *changes), form.lyrics_form, form.plan_form)
+    return Form(
+        SPARSE,
+        form.score,
+        form.changes,
+        form.lyrics_form,
+        form.plan_form,
+        tuple(item.text for item in sparse),
+    )
+
+
+def _form(lyrics: str, score: str, *, substitute: bool) -> Form:
+    """The plan's form against the lyrics' (``match`` without the notes check)."""
     if not (score or "").strip():
         return Form(SKIP, score, notes=("no score (planning is off)",))
     sections = lyric_sections(lyrics or "")

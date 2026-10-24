@@ -31,6 +31,7 @@ from typing import Any
 
 from . import lyrics as lyrics_rules
 from .alignment import LINE_GAP_S, AsrWord, drop_known_inventions, join_tokens
+from .romanize import fold
 
 LEAD_S = 0.3
 """Whisper's word starts come early (0.26 s in the median word, its words being contiguous): added to every
@@ -367,6 +368,14 @@ def match_words(lyric: Sequence[str], heard: Sequence[str]) -> dict[int, int]:
     return pairs
 
 
+def pair_words(lyric: Sequence[str], heard: Sequence[str], *, romanized: bool = False) -> dict[int, int]:
+    """``match_words``; words heard in another script and romanized (``romanize.in_lyrics_script``) are
+    compared in ``romanize.fold``'s looser spelling - a romanization is one of several spellings."""
+    if romanized:
+        return match_words([fold(w) for w in lyric], [fold(w) for w in heard])
+    return match_words(lyric, heard)
+
+
 def fit_warp(times: Sequence[float], onsets: Sequence[float]) -> tuple[float, float]:
     """``(a, b)`` with ``t_audio = a * t_score + b``: the warp that puts the heard word starts nearest to the
     score's Vocal onsets (scale 0.92-1.08, shift +-15 s; a grid, then a finer one)."""
@@ -509,17 +518,19 @@ def time_lyrics(
     score: Any = None,
     layout: Any = None,
     timing: HeardTiming = WHISPER,
+    romanized: bool = False,
 ) -> Subtitles:
     """The lyrics' lines with their times, measured from the heard words (and the score's notes when given:
     a ``canonical.Score`` with the ``LyricLayout`` of these lyrics); ``timing`` corrects the heard starts
-    (``timing_for`` the engine that heard them)."""
+    (``timing_for`` the engine that heard them); ``romanized``: the heard words were written in the lyrics'
+    Latin letters (``romanize.in_lyrics_script``)."""
     lines = sung_lines(lyrics)
     if not lines:
         return Subtitles((), "measured")
     flat = [(n, k) for n, line in enumerate(lines) for k in range(len(line.tokens))]
     lyric_words = [lines[n].words[k] for n, k in flat]
     usable = [w for w in split_cjk(heard) if normalize(w.word)]
-    pairs = match_words(lyric_words, [normalize(w.word) for w in usable])
+    pairs = pair_words(lyric_words, [normalize(w.word) for w in usable], romanized=romanized)
     pairs = {i: j for i, j in pairs.items() if lyric_words[i]}
     heard_at = _heard_starts(lines, usable, pairs, timing)
     times: dict[int, float] = {}
@@ -787,12 +798,18 @@ not sung as written."""
 
 
 def time_sung(
-    lyrics: str, heard: Sequence[AsrWord], *, duration: float, timing: HeardTiming = WHISPER
+    lyrics: str,
+    heard: Sequence[AsrWord],
+    *,
+    duration: float,
+    timing: HeardTiming = WHISPER,
+    romanized: bool = False,
 ) -> SungLyrics | None:
     """What was sung, as heard, laid out like the lyrics where the take sings them: a heard word that pairs
     with a lyrics word (``match_words``, as ``time_lyrics`` pairs them) keeps that word's line - and its
     spelling when it is the same word; heard words the lyrics do not have start a line after a pause. ``None``: no singing heard
-    (fewer than ``MIN_HEARD_WORDS`` words)."""
+    (fewer than ``MIN_HEARD_WORDS`` words). ``romanized``: the heard words were written in the lyrics' Latin
+    letters - a word that pairs is shown as the lyrics spell it."""
     kept, _dropped = drop_known_inventions([w for w in split_cjk(heard) if normalize(w.word)])
     if len(kept) < MIN_HEARD_WORDS:
         return None
@@ -800,14 +817,16 @@ def time_sung(
     flat = [(n, k) for n, line in enumerate(lines) for k in range(len(line.tokens))]
     lyric_words = [lines[n].words[k] for n, k in flat]
     pairs = {
-        i: j for i, j in match_words(lyric_words, [normalize(w.word) for w in kept]).items() if lyric_words[i]
+        i: j
+        for i, j in pair_words(lyric_words, [normalize(w.word) for w in kept], romanized=romanized).items()
+        if lyric_words[i]
     }
     of_heard = {j: i for i, j in pairs.items()}
 
     def text_of(j: int) -> str:
         """The lyrics' spelling of the same word (case, apostrophes, punctuation); else the word as heard."""
         i = of_heard.get(j)
-        if i is None or lyric_words[i] != normalize(kept[j].word):
+        if i is None or (lyric_words[i] != normalize(kept[j].word) and not romanized):
             return kept[j].word.strip()
         n, k = flat[i]
         start, end = lines[n].tokens[k]

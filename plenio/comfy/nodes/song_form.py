@@ -1,7 +1,7 @@
 """Match Song Form: YuE2's plan made to fit the lyrics' song form, with at most one second plan.
 
 Inside the *YuE2 Plan* block (owner's request 2026-10-08): the plan's sung sections against the lyrics'
-(``core.song_form``). A plan whose sections are the lyrics' in kind - or can be put in their order, or
+(``core.song_form``), and since 2026-10-24 their Vocal notes against the words' syllables. A plan whose sections are the lyrics' in kind - or can be put in their order, or
 named after them - is used at once; otherwise the ``alternative`` input, a second plan with the next seed,
 is requested (lazy: it is planned only then) and the better plan wins; a kind still missing then takes a
 related section's melody. Instrumentals, a score without singing and planning off pass through.
@@ -114,6 +114,9 @@ class PlenioMatchSongForm(io.ComfyNode):
                 second = song_form.match(lyrics, alternative, substitute=True)
             chosen = song_form.better(first, second)
             second_used = chosen is second
+        elif first.category == song_form.SPARSE:
+            # no second plan to ask: the thin section takes another's melody at once
+            chosen = song_form.match(lyrics, score, substitute=True)
         if second_used:
             summary = f"Song form: a second plan fits better - {chosen.text}"
         elif tried:
@@ -124,7 +127,7 @@ class PlenioMatchSongForm(io.ComfyNode):
             Status.SKIPPED
             if chosen.category == song_form.SKIP
             else Status.WARNING
-            if chosen.category == song_form.DIFFERS
+            if chosen.category in (song_form.DIFFERS, song_form.SPARSE)
             else Status.OK
         )
         data = {**chosen.to_dict(), "second_plan": tried, "second_plan_used": second_used}

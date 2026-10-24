@@ -15,9 +15,9 @@ from typing import Any
 from comfy_api.latest import io
 
 from ... import __version__
+from ...core import romanize, syllables, variables
 from ...core import score as score_rules
 from ...core import subtitles as subtitle_rules
-from ...core import syllables, variables
 from ...core.asr import AsrSettings, weak_segments
 from ...core.audio import measure
 from ...core.audio.stems import SavedStems
@@ -901,6 +901,12 @@ def _subtitles(
             notes.append("subtitles: not written - no lyrics given and no singing heard")
             return None, None, "no lyrics given and no singing heard", ""
         return timed, None, "", heard_from
+    # lyrics in Latin letters for a language with a script of its own (Hinglish): heard in that script
+    words, romanized = romanize.in_lyrics_script(lyrics, words)
+    if romanized:
+        notes.append(
+            f"subtitles: heard in {romanize.script(' '.join(w.word for w in result.words))}, compared in Latin letters"
+        )
     score = layout = None
     if str(sheet.get("score") or "").strip():
         try:
@@ -910,9 +916,9 @@ def _subtitles(
             score = layout = None
     return (
         subtitle_rules.time_lyrics(
-            lyrics, words, duration=seconds, score=score, layout=layout, timing=timing
+            lyrics, words, duration=seconds, score=score, layout=layout, timing=timing, romanized=romanized
         ),
-        subtitle_rules.time_sung(lyrics, words, duration=seconds, timing=timing),
+        subtitle_rules.time_sung(lyrics, words, duration=seconds, timing=timing, romanized=romanized),
         "",
         heard_from,
     )
