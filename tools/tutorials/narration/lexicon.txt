@@ -19,3 +19,7 @@ LLM => L L M
 GGUF => G G U F
 FLAC => flack
 LM Studio => L M Studio
+UniverSR => Univer S R
+HQ => H Q
+Qwen3 => Qwen three
+ASR => A S R

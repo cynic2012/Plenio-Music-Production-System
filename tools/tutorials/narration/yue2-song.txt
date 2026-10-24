@@ -7,35 +7,44 @@ Let's make a song! In this video, we write one, review it, and let YuE2 sing it.
 @ Plenio adds six ready-made templates
 Plenio comes with six ready-made templates. You'll find them in the template browser.
 
-@ Plenio’s templates are listed
+@ Plenio’s templates
 They live under Extensions, in the Plenio Music Production System folder.
 
 @ 1 · YuE2 · Song writes
 We start with template one: YuE2 Song. [pause:0.3s] It writes a brand-new song, and renders it with the YuE2 music model.
 
 @ The template reads from left to right
-It reads from left to right, in numbered groups.
+It reads from left to right, in numbered sections, side by side, one through six.
 
-@ SONG - the Song Brief
-First, the Song Brief: what the song should be about.
+@ SONG - at the top two switch cards
+Section one: two switch cards and the writer model at the top, then the Song Brief, what the song should be about.
 
-@ WRITE - the writer model
-Then the writer model of your choice writes the title, the style and the lyrics.
+@ WRITE - the writer drafts
+Then the writer drafts the style and the lyrics, [pause:0.2s] and ten titles. Plenio picks one that none of your songs has yet.
 
-@ TEXT - Song Sheet · Text
-The Text sheet shows exactly what YuE2 is going to sing.
+@ TEXT - Song Sheet · Text, in teal
+The Text sheet, in teal, shows exactly what YuE2 is going to sing. This is where you edit the words.
 
 @ SCORE - YuE2 plans
-Next, YuE2 plans the melody as a score, and Arrange can re-arrange it.
+Next, YuE2 plans the melody as a score, and Arrange can re-arrange it. The Score sheet, in violet, is where you edit the score.
 
 @ RENDER - YuE2 renders
 Here, YuE2 renders the actual song.
 
-@ FINISH - Master
-And finally, Master sets the loudness, and Export writes the files.
+@ FINISH - Master brings
+And finally, Master sets the loudness, Export writes the files, and Check Sung Words looks at the words that were sung.
 
-@ Optional blocks
-Optional blocks, like stems, and cover art with a seed of its own, stay off until you need them.
+@ Above the render, COVER ART
+Above the render sits Cover Art: it paints the song's cover, with a seed of its own.
+
+@ At the very top, two cards
+Right at the top, two cards. One click switches each, in the graph and in App mode.
+
+@ HQ Mastering, off by default
+HQ Mastering is off by default. Switch it on, and UniverSR regenerates the highs: clearly less AI shimmer, but the song takes about twice as long.
+
+@ Cover Art is on
+Cover Art is on: Flux two Klein paints the cover from the artwork prompt. Off, and no image model loads.
 
 @ card A new song every run
 Part one: a new song, every single run. No stops, no questions asked.
@@ -47,7 +56,7 @@ Everything starts in the Song Brief.
 The mode is new song every run: each run writes and renders a different song, straight through.
 
 @ template: a starting point
-The template fills in whatever you leave empty.
+The template is a starting point: genre, mood, tempo and voice. [pause:0.2s] Whatever you leave empty is taken from it.
 
 @ Describe the song in your own words
 Describe the song in your own words. [pause:0.4s] Ours is a hopeful song about leaving a small town at sunrise.
@@ -59,28 +68,31 @@ The length goes from about one minute up to six. We'll keep this one short.
 Vocals: a sung song, or an instrumental.
 
 @ arrangement: “off”
-Arrangement stays off: YuE2 plans it all. Creative modes are tutorial six.
+Arrangement stays off: YuE2 plans it all. The creative modes in this list are tutorial six.
 
-@ The Writer model writes the text
-The writer model writes the text: Gemma 4 by default, or a local LLM.
+@ creativity: 50
+Creativity: fifty is the dependable middle. Higher brings more surprises, and more misses.
 
-@ The Draft seed is blue
-The Draft seed is blue: it keeps its number, so the lyrics stay the same.
+@ Under the cards, the Writer model
+Under the cards sits the writer model: one model for every writing step. Gemma 4 by default, or a local LLM from your machine.
 
-@ The Take seed is amber
-The Take seed is amber: before every run, it draws a new number, so every run is a new take.
+@ It writes for every block that writes
+It writes for every block that needs words: the lyrics and the style, the arrangement, and the check of the sung words.
+
+@ In this mode every seed is amber
+In this mode every seed is amber: each run draws new numbers, so every run writes new lyrics and renders a new take.
 
 @ The number shown is always
-The number you see is always the one that made what you hear. Like a take? One click on the switch, and it stays.
+The number you see is always the one that made what you hear. Like it? One click on the switch, and it stays: blue, same seed.
 
 @ The Plan seed under YuE2
-The Plan seed does the same for YuE2's melody and form. Switch it to new seed for another melody.
+The Plan seed does the same for YuE2's melody and form.
 
 @ Press Run.
 That's all it needs. Press Run.
 
 @ The writer model drafts
-The writer drafts the title, the style and the lyrics.
+The writer drafts the style and the lyrics, and ten titles to choose from.
 
 @ YuE2 plans the melody
 YuE2 plans the melody and the chords,
@@ -89,10 +101,16 @@ YuE2 plans the melody and the chords,
 and renders the song from the lyrics and that score.
 
 @ Master and Export finish
-Master and Export add the finishing touches.
+Master and Export add the finishing touches,
+
+@ Check Sung Words reads | optional
+and Check Sung Words listens to what was sung.
 
 @ Done: the finished song | +5
 Done! The finished song is right here, in the mastered preview. [pause:0.5s] Have a listen.
+
+@ Above the render, Cover Art painted
+And above the render: the cover, painted from the song's artwork prompt. Export put it into the FLAC and the MP3.
 
 @ Export wrote the mastered FLAC
 Export saved the mastered FLAC, with the whole project inside, the original take, and the sheet music as a PDF.
@@ -106,6 +124,30 @@ And the tags come from the brief: genre, mood, even the lyrics, written as varia
 @ The note beside Export lists every variable
 The note right next to Export lists every variable you can use.
 
+@ Check Sung Words, after Export
+Check Sung Words comes after Export: the writer reads what the take sings, and corrects words the speech recognition misheard, only those it's sure of. The player shows them As sung.
+
+@ Plenio · Master finishes every take
+The Master block finishes every take: stems, Audio HQ, a gentle tone match, and the loudness.
+
+@ stems is off
+Stems is off. On, the song is split into vocals, drums, bass and other, and mixed your way.
+
+@ The mixer is inside the block
+The mixer lives inside the block. Open it with the icon at the top right.
+
+@ First the stems
+First the stems: a strip per stem, with fader, mute and solo, compression, reverb and delay. A neutral mix changes nothing.
+
+@ Then Audio HQ
+Then Audio HQ: stage one calms the stereo shimmer, stage two regenerates the highs when HQ Mastering is on.
+
+@ And the master: a gentle tone match
+And the master itself: a gentle tone match, then minus fourteen LUFS, with a true-peak limiter.
+
+@ Back to the workflow
+The breadcrumb at the top takes us back.
+
 @ Press Run again for another
 Press Run again for another song, or set a number next to Run for a whole series.
 
@@ -114,6 +156,9 @@ Part two: one song, with stops to review. You check everything before a single n
 
 @ mode: “one song, stop to review”
 Switch the mode to one song, stop to review. Now the run pauses at both Song Sheets.
+
+@ The seeds follow the mode
+And the seeds follow the mode: a note says the song's seeds switched to same seed, so the draft and the plan stay while you review. [pause:0.2s] The take seed still draws a new number.
 
 @ Press Run.
 Press Run once more.
@@ -124,8 +169,8 @@ The writer drafts a fresh text,
 @ The run stopped at Song Sheet · Text
 and it stops at the Text sheet. Nothing is rendered yet.
 
-@ Open it with
-Open it with Edit lyrics and text.
+@ Its card says what you edit here
+Its card says what you edit here. Open it with Edit lyrics and text.
 
 @ Lyrics: the words YuE2 will sing
 The Lyrics tab holds the words YuE2 will sing, section by section. Change whatever you like: your edit always wins.
@@ -134,7 +179,7 @@ The Lyrics tab holds the words YuE2 will sing, section by section. Change whatev
 Style describes the genre, the instruments and the voice.
 
 @ Title & artwork
-And here's the title, with a prompt for the optional cover art.
+And here's the title, picked from the writer's ten, [pause:0.2s] and the cover prompt, drawn from the lyrics: their central image, the light, the colours.
 
 @ Approve: exactly these documents
 Happy with it? Approve. Exactly these words go on to the music model.
@@ -148,7 +193,7 @@ YuE2 is planning the melody and the chords.
 @ Stop 2: Song Sheet · Score
 Stop number two: the Score sheet is waiting for us.
 
-@ Open the score.
+@ Open the score with
 Let's open the score,
 
 @ ⛶ gives the editor
@@ -372,6 +417,9 @@ YuE2 renders the song,
 
 @ Master and Export finish
 and Master and Export finish it.
+
+@ Check Sung Words reads | optional
+Check Sung Words takes a last look at the words.
 
 @ The approved song is finished | +5
 And here it is: the approved song, finished and exported. [pause:0.5s] Take a listen.

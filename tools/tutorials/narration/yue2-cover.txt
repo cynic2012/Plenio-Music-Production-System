@@ -13,28 +13,40 @@ and Plenio's folder under Extensions.
 We pick template two: YuE2 Cover. [pause:0.3s] It makes a new version of a recording, one you own or are allowed to use.
 
 @ The template reads from left to right
-Like the others, it reads from left to right.
+Like the others, it reads from left to right, in numbered sections, side by side.
 
-@ SOURCE - the recording
-Source: the recording we want to cover.
+@ SOURCE - the two switch cards
+Section one: two switch cards and the writer model at the top, then the recording we want to cover.
 
-@ COVER - the Cover Brief
-The Cover Brief sets the new style, and decides what happens to the vocals.
+@ COVER - beside it, the Cover Brief
+Right beside it, the Cover Brief sets the new style, and decides what happens to the vocals.
 
 @ SCORE - SheetSage2
-SheetSage2 transcribes the music into a score, and Arrange can re-arrange it.
+SheetSage2 transcribes the music into a score, and Arrange can re-arrange it. The Score sheet is violet.
 
 @ LYRICS - the original words
 Lyrics: the original words, brand-new lyrics, or just section tags.
 
-@ TEXT - Song Sheet · Text
-The Text sheet shows the words and the style YuE2 receives.
+@ TEXT - Song Sheet · Text, in teal
+The Text sheet, in teal, shows the words and the style YuE2 receives.
 
 @ RENDER - YuE2 renders the cover
 YuE2 renders the cover, and Check Vocals picks the best take.
 
-@ FINISH - Master
-And Master and Export finish the job.
+@ FINISH - Master brings
+And Master and Export finish the job. Check Sung Words looks at the words that were sung.
+
+@ Above the render, COVER ART
+Above the render, Cover Art paints the cover. And below the source, the music model block holds YuE2 and its instrumental adapter.
+
+@ At the very top, two cards
+Right at the top, two cards. One click switches each, in the graph and in App mode.
+
+@ HQ Mastering, off by default
+HQ Mastering is off by default. Switch it on, and UniverSR regenerates the highs: clearly less AI shimmer, but the song takes about twice as long.
+
+@ Cover Art is on
+Cover Art is on: Flux two Klein paints the cover from the artwork prompt. Off, and no image model loads.
 
 @ card A new cover every run
 Part one: a new cover, every run. Straight through, no stops.
@@ -52,10 +64,10 @@ For longer songs, switch on Excerpt, and cover one part at a time.
 The Cover Brief describes the new version.
 
 @ mode: “new cover every run”
-With new cover every run, each run makes a different version, without any stops.
+With new cover every run, each run makes a different version, without any stops. A whole queue of covers runs through.
 
-@ genre and mood:
-Genre and mood set the new style.
+@ template: the new style
+The template sets the new style: genre, mood and voice come from it, unless you type your own.
 
 @ vocals: “instrumental”
 For now, instrumental: an instrument plays the melody.
@@ -64,7 +76,13 @@ For now, instrumental: an instrument plays the melody.
 Harmony: the original chords, or new ones.
 
 @ arrangement: “off” keeps the transcription
-Arrangement stays off: the transcription stays as it is. Creative modes are tutorial seven.
+Arrangement stays off: the transcription stays as it is. The creative modes in this list are tutorial seven.
+
+@ Under the cards, the Writer model
+Up at the start sits the writer model: Gemma 4 by default, or a local LLM from your machine.
+
+@ It writes for every block that writes
+It writes for every block that needs words: new lyrics and the style, the arrangement, and the check of the sung words.
 
 @ Press Run.
 Now, press Run.
@@ -84,8 +102,20 @@ Check Vocals listens to the take,
 @ Master and Export finish the cover
 and Master and Export finish it.
 
+@ Check Sung Words reads | optional
+Check Sung Words has nothing to do for an instrumental.
+
 @ Done: the instrumental cover | +5 | seed 8
 Done! Here's our instrumental cover. [pause:0.5s] Let's listen.
+
+@ Above the render, Cover Art painted
+Above the render: the cover, painted from the artwork prompt. Export put it into the FLAC and the MP3.
+
+@ Plenio · Master finishes every take
+The Master block finishes every take: stems, Audio HQ, a gentle tone match, and the loudness.
+
+@ stems is off
+Stems is off. On, the cover is split into vocals, drums, bass and other, and mixed your way.
 
 @ Press Run again for another version
 Run again for another version. The transcription is reused, so only the new cover renders.
@@ -95,6 +125,9 @@ Part two: one cover, with stops to review. You check the score and the words fir
 
 @ mode: “one cover, stop to review”
 Switch the mode to one cover, stop to review. The run now pauses at both Song Sheets.
+
+@ The seeds follow the mode
+And the seeds follow the mode: the cover's seeds switch to same seed, so the draft and the arrangement stay while you review. The take seed still draws a new number.
 
 @ vocals: “original lyrics”
 And set the vocals to original lyrics: YuE2 sings the words of the recording.
@@ -108,8 +141,8 @@ Press Run. [pause:0.3s] The transcription from part one is simply reused.
 @ Stop 1: Song Sheet · Score
 First stop: the Score sheet waits for your approval.
 
-@ Open it with
-Open it with Edit the score,
+@ Its card says what you edit here
+Its card says what you edit here. Open it with Edit the score,
 
 @ ⛶ gives the editor
 and give the editor the whole window.
@@ -252,14 +285,14 @@ Approve. The words will be placed into this score, extra chorus and all.
 @ The node says ✓ approved at once
 The node turns green at once. [pause:0.4s] Run again: now the words are transcribed, and the run stops at the Text sheet.
 
-@ faster-whisper transcribes | optional
-Faster Whisper listens to the vocals, and places every word into the score's sections.
+@ Qwen3-ASR hears the sung words | optional
+Qwen three A S R hears the sung words, and they're placed into the score's sections.
 
 @ Stop 2: Song Sheet · Text
 Second stop: the Text sheet.
 
-@ Open the text. | seed 6
-Let's open it, and take a look.
+@ Open the text: | seed 6
+Let's open the text, with Edit lyrics and text.
 
 @ The Score tab shows the transcribed words
 The Score tab shows the transcribed words, right over the notes they're sung on.
@@ -280,7 +313,7 @@ The Lyrics tab lists the words, section by section. Unsure words are highlighted
 Style: the new style, with the voice from the brief.
 
 @ Title & artwork
-And the title, with a prompt for the optional cover art.
+Here's the title, picked from the writer's ten, and the cover prompt, drawn from the original lyrics.
 
 @ Approve: exactly these words
 Approve: exactly these words go to YuE2.
@@ -297,6 +330,9 @@ Check Vocals listens to the takes,
 @ Master and Export finish the cover
 and Master and Export finish it.
 
+@ Check Sung Words reads | optional
+and Check Sung Words listens to the words.
+
 @ The approved cover is finished | +5
 And there it is: the approved cover, finished and exported. [pause:0.5s] Enjoy!
 
@@ -311,6 +347,9 @@ And the tags come from the brief: genre, mood, even the lyrics, written as varia
 
 @ The note beside Export lists every variable
 The note right next to Export lists every variable you can use.
+
+@ Check Sung Words, after Export
+Check Sung Words comes after Export: the writer reads what the take sings, and corrects words the speech recognition misheard, only those it's sure of. The player shows them As sung.
 
 @ Every further Run
 Every further run renders a new take of the same cover.

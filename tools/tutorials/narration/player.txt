@@ -15,6 +15,18 @@ Export Release has a button too. It opens the song you just exported.
 @ If the player is not running yet
 If the player isn't running yet, ComfyUI starts it, and opens it in a tab of its own.
 
+@ Who is listening?
+Who is listening? The player asks once, on every device.
+
+@ A user keeps the same playlists | optional
+A user keeps the same playlists, likes and settings on every device. The admin sets them up.
+
+@ The admin logs in only
+The admin logs in only on the player's own computer, with the player's playlists and settings.
+
+@ A guest’s playlists and likes
+And a guest's playlists and likes stay in that browser.
+
 @ The player is a program of its own
 The player is a program of its own, so it keeps running when you close ComfyUI. And without ComfyUI, just double-click Plenio Player dot bat.
 
@@ -97,7 +109,7 @@ Match the music picks a visual for the song's genre, mood and tempo.
 Random picks from the visuals you tick. Cycle goes through them in turn, and Fixed keeps just one.
 
 @ Tick the ones you like
-Tick the ones you like.
+Tick the ones you like. There are twenty-five classics, and fifty-one Plenio Drop visuals.
 
 @ They change with every song
 They can change with every song, at every section, every few seconds, or when the music drops in.
@@ -106,7 +118,7 @@ They can change with every song, at every section, every few seconds, or when th
 A song can have a visual of its own, and so can a playlist. The song's choice wins, then the playlist's, then the mode.
 
 @ Plenio Drop: visuals like
-Plenio Drop: visuals like Winamp's MilkDrop, made anew and drawn on the graphics card. There are sixteen of them, and one that's made up fresh every time.
+Plenio Drop: visuals like Winamp's MilkDrop, made anew and drawn on the graphics card. And one is made up fresh, every time.
 
 @ Write your own
 Want your own? Edit a copy saves the one that plays as a short file of numbers and formulas. Save a change, and the visual changes right away.
@@ -116,6 +128,21 @@ And how the lyrics look is up to you: a font, a colour, and an effect, like neon
 
 @ N shows the next one
 Press N for the next one.
+
+@ A music model does not always sing | optional
+A music model doesn't always sing what it was given. It repeats a line, makes one up, or leaves one out.
+
+@ So the player has both | optional
+So the player has both: the lyrics as written, and as sung. That's what the take really sings, heard when the song was exported.
+
+@ Auto: a take that departs | optional
+On Auto, a take that strays far from its lyrics shows them as sung. And Check Sung Words corrected the words the speech recognition misheard.
+
+@ One click switches | optional
+One click switches, and the song keeps your choice.
+
+@ W does it too | optional
+W does it too, or the chip in the bar. The notation always follows the written lyrics.
 
 @ A new playlist: plus, a name
 A new playlist: click plus, and give it a name.
@@ -186,6 +213,12 @@ Every keyboard shortcut is listed under the question mark.
 @ Settings starts with the version
 Settings starts with the version of the player that's running.
 
+@ Accounts: who logged in | optional
+Accounts: who's logged in, and the users the admin has set up.
+
+@ A name and a password | optional
+A name and a password, that's all. A user logs in on any device that opens the player, also through the network.
+
 @ Everything you set is kept
 Everything you set is kept on this computer, by the player itself, not by the browser.
 
@@ -194,6 +227,12 @@ There's a backup to download, and to restore, here or on another computer.
 
 @ Choose the folders it reads | optional
 Choose the folders it reads. And the other music in them plays too, with its tags and lyrics.
+
+@ Sound: the MP3 | optional
+Under Sound: play the MP3 where a song has one. Less data, for a phone in the network.
+
+@ Lyrics: the rule for every song | optional
+And for the lyrics, the rule for every song: auto, as written, or as sung.
 
 @ Started from ComfyUI, the player has no window
 Started from ComfyUI, the player has no window. Stop the player ends it.

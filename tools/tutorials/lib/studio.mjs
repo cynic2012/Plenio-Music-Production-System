@@ -46,6 +46,40 @@ const OVERLAY = `(() => {
     .tut-spot { position: fixed; z-index: 2147483645; pointer-events: none; border: 3px solid #ffc440; border-radius: 9px;
       box-shadow: 0 0 0 4000px rgba(0,0,0,.28), 0 0 18px rgba(255,196,64,.8); animation: tut-spot 1.2s ease-in-out infinite alternate; }
     @keyframes tut-spot { from { box-shadow: 0 0 0 4000px rgba(0,0,0,.28), 0 0 8px rgba(255,196,64,.6) } to { box-shadow: 0 0 0 4000px rgba(0,0,0,.28), 0 0 24px rgba(255,196,64,1) } }
+    .tut-callout { position: fixed; z-index: 2147483646; pointer-events: none; font: 600 20px/1.25 "Segoe UI", system-ui, sans-serif; color: #fff;
+      background: rgba(16, 22, 34, .95); border: 2px solid #ffc440; border-radius: 12px; padding: 9px 16px; white-space: nowrap;
+      box-shadow: 0 6px 22px rgba(0,0,0,.45), 0 0 14px rgba(255,196,64,.35); animation: tut-callout-in .4s cubic-bezier(.2,1.25,.4,1) both; }
+    .tut-callout.out { animation: tut-callout-out .3s ease-in forwards }
+    .tut-callout::after { content: ""; position: absolute; width: 14px; height: 14px; background: rgba(16, 22, 34, .95); border: 2px solid #ffc440; transform: rotate(45deg); }
+    .tut-callout[data-side="right"]::after { left: -9px; top: calc(50% - 8px); border-top: 0; border-right: 0 }
+    .tut-callout[data-side="left"]::after { right: -9px; top: calc(50% - 8px); border-bottom: 0; border-left: 0 }
+    .tut-callout[data-side="top"]::after { bottom: -9px; left: calc(50% - 8px); border-top: 0; border-left: 0 }
+    .tut-callout[data-side="bottom"]::after { top: -9px; left: calc(50% - 8px); border-bottom: 0; border-right: 0 }
+    @keyframes tut-callout-in { from { opacity: 0; transform: scale(.6) } to { opacity: 1; transform: none } }
+    @keyframes tut-callout-out { to { opacity: 0; transform: scale(.92) } }
+    .tut-pulse { position: fixed; z-index: 2147483645; pointer-events: none; border: 3px solid rgba(255,196,64,.95); border-radius: 50%;
+      box-shadow: 0 0 14px rgba(255,196,64,.6); animation: tut-pulse 1.15s ease-out forwards }
+    @keyframes tut-pulse { from { transform: scale(.35); opacity: .95 } to { transform: scale(1.5); opacity: 0 } }
+    .tut-badge { position: fixed; z-index: 2147483646; pointer-events: none; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
+      display: grid; place-items: center; font: 800 30px/1 "Segoe UI", system-ui, sans-serif; color: #141a26;
+      background: linear-gradient(135deg, #ffd978, #f0a53a); border: 3px solid #fff3d6; box-shadow: 0 5px 18px rgba(0,0,0,.5);
+      animation: tut-badge-in .55s cubic-bezier(.2,1.5,.4,1) both }
+    .tut-badge.out { animation: tut-callout-out .3s ease-in forwards }
+    @keyframes tut-badge-in { from { transform: scale(0) rotate(-40deg); opacity: 0 } to { transform: none; opacity: 1 } }
+    .tut-arrow { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 2147483646; pointer-events: none; overflow: visible }
+    .tut-arrow path { fill: none; stroke: #ffc440; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(255,196,64,.75)) }
+    .tut-arrow.out { transition: opacity .35s; opacity: 0 }
+    .tut-select { position: fixed; z-index: 2147483646; overflow: hidden; background: #25272d; color: #e9e9ec; border: 1px solid #6c707a;
+      border-radius: 7px; padding: 4px 0; box-shadow: 0 12px 30px rgba(0,0,0,.55); font: 15px/1.25 "Segoe UI", system-ui, sans-serif;
+      transform-origin: top; animation: tut-select-in .16s ease-out both }
+    .tut-select.up { transform-origin: bottom }
+    .tut-select div { position: relative; padding: 6px 18px 6px 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+    .tut-select div.on::before { content: "✓"; position: absolute; left: 11px }
+    .tut-select div.off { color: #7d7f86 }
+    .tut-select div.group { padding-left: 12px; font-weight: 700; color: #a9abb2 }
+    .tut-select div.item:hover { background: #3b6fd8; color: #fff }
+    .tut-select.out { transition: opacity .18s; opacity: 0 }
+    @keyframes tut-select-in { from { opacity: 0; transform: scaleY(.8) } to { opacity: 1; transform: none } }
   \`
   const install = () => {
     const style = document.createElement('style')
@@ -58,17 +92,35 @@ const OVERLAY = `(() => {
     const keys = document.createElement('div')
     keys.id = 'tut-keys'
     document.documentElement.appendChild(keys)
+    // LiteGraph's menus (a combo's list) larger, so that the video shows what they hold - as large as fits
+    const enlarge = (menu) => {
+      const r = menu.getBoundingClientRect()
+      if (!r.height) return
+      const scale = Math.max(1, Math.min(1.4, (innerHeight - 16) / r.height, (innerWidth - 16) / r.width))
+      menu.style.transformOrigin = '0 0'
+      menu.style.transform = 'scale(' + scale + ')'
+      const b = menu.getBoundingClientRect()
+      let left = parseFloat(menu.style.left) || b.left, top = parseFloat(menu.style.top) || b.top
+      if (b.right > innerWidth - 8) left -= b.right - (innerWidth - 8)
+      if (b.bottom > innerHeight - 8) top -= b.bottom - (innerHeight - 8)
+      menu.style.left = Math.max(8, left) + 'px'
+      menu.style.top = Math.max(8, top) + 'px'
+    }
+    new MutationObserver((changes) => {
+      for (const c of changes) for (const n of c.addedNodes) if (n.classList?.contains('litecontextmenu')) requestAnimationFrame(() => enlarge(n))
+    }).observe(document.documentElement, { childList: true, subtree: true })
     const move = (e) => { cursor.style.transform = 'translate(' + (e.clientX - 3) + 'px,' + (e.clientY - 2) + 'px)' }
     addEventListener('pointermove', move, true)
     addEventListener('mousemove', move, true)
-    addEventListener('pointerdown', (e) => {
+    tut.ripple = (x, y) => {
       const ring = document.createElement('div')
       ring.className = 'tut-ripple'
-      ring.style.left = e.clientX + 'px'
-      ring.style.top = e.clientY + 'px'
+      ring.style.left = x + 'px'
+      ring.style.top = y + 'px'
       document.documentElement.appendChild(ring)
       setTimeout(() => ring.remove(), 700)
-    }, true)
+    }
+    addEventListener('pointerdown', (e) => tut.ripple(e.clientX, e.clientY), true)
     tut.keys = (labels, ms) => {
       keys.innerHTML = labels.map((l) => '<kbd>' + l + '</kbd>').join('')
       keys.classList.add('on')
@@ -81,6 +133,130 @@ const OVERLAY = `(() => {
       Object.assign(s.style, { left: (r.x - pad) + 'px', top: (r.y - pad) + 'px', width: (r.width + 2 * pad) + 'px', height: (r.height + 2 * pad) + 'px' })
       document.documentElement.appendChild(s)
       setTimeout(() => s.remove(), ms)
+    }
+    const fade = (el, ms) => setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400) }, ms)
+    // a label beside a box, pointing at it (side: right, left, top, bottom or auto)
+    tut.callout = (r, text, ms, side) => {
+      const c = document.createElement('div')
+      c.className = 'tut-callout'
+      c.textContent = text
+      document.documentElement.appendChild(c)
+      const w = c.offsetWidth, h = c.offsetHeight, gap = 18
+      if (!side || side === 'auto') side = r.x + r.width + gap + w < innerWidth - 20 ? 'right' : r.x - gap - w > 20 ? 'left' : r.y - gap - h > 20 ? 'top' : 'bottom'
+      c.dataset.side = side
+      const at = {
+        right: [r.x + r.width + gap, r.y + r.height / 2 - h / 2],
+        left: [r.x - gap - w, r.y + r.height / 2 - h / 2],
+        top: [r.x + r.width / 2 - w / 2, r.y - gap - h],
+        bottom: [r.x + r.width / 2 - w / 2, r.y + r.height + gap],
+      }[side]
+      c.style.left = Math.max(8, Math.min(innerWidth - w - 8, at[0])) + 'px'
+      c.style.top = Math.max(8, Math.min(innerHeight - h - 8, at[1])) + 'px'
+      fade(c, ms)
+    }
+    // rings that grow out of a box's centre, one after the other
+    tut.pulse = (r, times) => {
+      const size = Math.max(70, Math.min(260, Math.max(r.width, r.height) * 1.25))
+      for (let i = 0; i < times; i++) {
+        setTimeout(() => {
+          const p = document.createElement('div')
+          p.className = 'tut-pulse'
+          Object.assign(p.style, { left: (r.x + r.width / 2 - size / 2) + 'px', top: (r.y + r.height / 2 - size / 2) + 'px', width: size + 'px', height: size + 'px' })
+          document.documentElement.appendChild(p)
+          setTimeout(() => p.remove(), 1300)
+        }, i * 420)
+      }
+    }
+    // a numbered disc at a box's top left corner
+    tut.badge = (r, text, ms) => {
+      const b = document.createElement('div')
+      b.className = 'tut-badge'
+      b.textContent = text
+      Object.assign(b.style, { left: Math.max(36, r.x + 6) + 'px', top: Math.max(36, r.y + 6) + 'px' })
+      document.documentElement.appendChild(b)
+      fade(b, ms)
+    }
+    // an arrow drawn from one box to another (a soft curve, its head at the target)
+    tut.arrow = (a, b, ms, draw) => {
+      const NS = 'http://www.w3.org/2000/svg'
+      const svg = document.createElementNS(NS, 'svg')
+      svg.setAttribute('class', 'tut-arrow')
+      const ax = a.x + a.width / 2, ay = a.y + a.height / 2, bx = b.x + b.width / 2, by = b.y + b.height / 2
+      // from the edge of the first box towards the second, ending a little before the second's edge
+      const edge = (r, tx, ty, out) => {
+        const cx = r.x + r.width / 2, cy = r.y + r.height / 2, dx = tx - cx, dy = ty - cy
+        const k = Math.min(Math.abs((r.width / 2 + out) / (dx || 1e-6)), Math.abs((r.height / 2 + out) / (dy || 1e-6)))
+        return [cx + dx * k, cy + dy * k]
+      }
+      const [x0, y0] = edge(a, bx, by, 8), [x1, y1] = edge(b, ax, ay, 12)
+      const mx = (x0 + x1) / 2, my = (y0 + y1) / 2, len = Math.hypot(x1 - x0, y1 - y0)
+      const bend = Math.min(140, len * 0.22)
+      const nx = -(y1 - y0) / (len || 1), ny = (x1 - x0) / (len || 1)
+      const cx = mx + nx * bend, cy = my + ny * bend
+      const line = document.createElementNS(NS, 'path')
+      line.setAttribute('d', 'M' + x0 + ' ' + y0 + ' Q' + cx + ' ' + cy + ' ' + x1 + ' ' + y1)
+      const angle = Math.atan2(y1 - cy, x1 - cx), hl = 20
+      const head = document.createElementNS(NS, 'path')
+      head.setAttribute('d', 'M' + (x1 - hl * Math.cos(angle - 0.5)) + ' ' + (y1 - hl * Math.sin(angle - 0.5)) + ' L' + x1 + ' ' + y1 + ' L' + (x1 - hl * Math.cos(angle + 0.5)) + ' ' + (y1 - hl * Math.sin(angle + 0.5)))
+      svg.append(line, head)
+      document.documentElement.appendChild(svg)
+      const total = line.getTotalLength()
+      line.style.strokeDasharray = total
+      line.animate([{ strokeDashoffset: total }, { strokeDashoffset: 0 }], { duration: draw, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' })
+      head.animate([{ opacity: 0 }, { opacity: 0, offset: 0.85 }, { opacity: 1 }], { duration: draw, fill: 'both' })
+      setTimeout(() => { svg.classList.add('out'); setTimeout(() => svg.remove(), 450) }, ms)
+    }
+    // a native <select>'s list drawn in the page (a headless browser draws no popup): under the box, or above
+    // it when there is more room there, scrolled so that entry \`focus\` is in the middle
+    tut.selectList = (r, items, focus) => {
+      tut.selectClose(true)
+      const list = document.createElement('div')
+      list.className = 'tut-select'
+      for (const it of items) {
+        const row = document.createElement('div')
+        row.textContent = it.group ?? it.text
+        row.className = it.group != null ? 'group' : 'item' + (it.on ? ' on' : '') + (it.disabled ? ' off' : '')
+        list.appendChild(row)
+      }
+      list.style.minWidth = Math.max(r.width, 120) + 'px'
+      list.style.left = '-9999px'
+      list.style.top = '0px'
+      document.documentElement.appendChild(list)
+      const h = list.offsetHeight, w = list.offsetWidth
+      const below = innerHeight - (r.y + r.height) - 12, above = r.y - 12
+      const up = h > below && above > below
+      const room = Math.max(120, Math.min(420, up ? above : below))
+      if (h > room) list.style.maxHeight = room + 'px'
+      const hh = list.offsetHeight
+      list.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.x)) + 'px'
+      list.style.top = (up ? r.y - 2 - hh : r.y + r.height + 2) + 'px'
+      if (up) list.classList.add('up')
+      const row = list.children[focus]
+      if (row) list.scrollTop = Math.max(0, row.offsetTop - hh / 2 + row.offsetHeight / 2)
+      tut.selectEl = list
+    }
+    // the list's entries on the screen (shown: inside the list's box, not scrolled away)
+    tut.selectRows = () => {
+      const list = tut.selectEl
+      if (!list) return []
+      const box = list.getBoundingClientRect()
+      return [...list.children].map((row) => {
+        const b = row.getBoundingClientRect()
+        return { x: b.x, y: b.y, width: b.width, height: b.height, shown: b.top >= box.top - 1 && b.bottom <= box.bottom + 1 }
+      })
+    }
+    tut.selectPick = (i) => {
+      const list = tut.selectEl
+      if (!list) return
+      for (const row of list.children) row.classList.remove('on')
+      list.children[i]?.classList.add('on')
+    }
+    tut.selectClose = (now) => {
+      const list = tut.selectEl
+      tut.selectEl = null
+      if (!list) return
+      if (now) list.remove()
+      else { list.classList.add('out'); setTimeout(() => list.remove(), 200) }
     }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install)
@@ -105,6 +281,8 @@ const CAMERA = `(() => {
     return { scale, ox: cx / scale - (r.x + r.w / 2), oy: cy / scale - (r.y + r.h / 2) }
   }
   tut.fly = (r, ms, pad) => new Promise((resolve) => {
+    // marks drawn on the screen point at the old view: they go when the camera moves
+    document.querySelectorAll('.tut-arrow, .tut-callout, .tut-badge').forEach((el) => el.remove())
     const ds = window.app.canvas.ds
     const to = tut.target(r, pad)
     const from = { scale: ds.scale, ox: ds.offset[0], oy: ds.offset[1] }
@@ -130,15 +308,17 @@ const CAMERA = `(() => {
     }
     requestAnimationFrame(step)
   })
+  // the graph the canvas shows: the workflow, or the block (subgraph) that is open
+  tut.graph = () => window.app.canvas?.graph ?? window.app.graph
   tut.groupRect = (title) => {
-    const g = window.app.graph._groups.find((x) => x.title === title)
+    const g = (tut.graph()._groups ?? tut.graph().groups).find((x) => x.title === title)
     if (!g) throw new Error('no group ' + title)
     const [x, y, w, h] = g._bounding
     return { x, y, w, h }
   }
   // a node by its id (a template opened from the browser has string ids), its title or its type
   tut.node = (key) => {
-    const nodes = window.app.graph.nodes
+    const nodes = tut.graph().nodes
     const n = nodes.find((x) => String(x.id) === String(key)) ?? nodes.find((x) => x.title === key) ?? nodes.find((x) => x.type === key)
     if (!n) throw new Error('no node ' + key)
     return n
@@ -157,6 +337,13 @@ const CAMERA = `(() => {
     const ds = window.app.canvas.ds, c = window.app.canvas.canvas.getBoundingClientRect()
     return { x: (x + ds.offset[0]) * ds.scale + c.left, y: (y + ds.offset[1]) * ds.scale + c.top }
   }
+  // a graph rectangle on the screen (for the overlays)
+  tut.screenRect = (r) => {
+    const a = tut.toScreen(r.x, r.y), b = tut.toScreen(r.x + r.w, r.y + r.h)
+    return { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y }
+  }
+  tut.nodeBox = (key) => tut.screenRect(tut.nodeRect(key))
+  tut.groupBox = (title) => tut.screenRect(tut.groupRect(title))
   // the screen box of a widget: a DOM widget's element, else the canvas row of the widget
   tut.widgetBox = (nodeId, name) => {
     const n = tut.node(nodeId)
@@ -382,6 +569,30 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     sfx('spot', { ms })
     await page.evaluate(([r, m, p]) => window.__tut.spot(r, m, p), [b, ms, pad])
   }
+  // A short label beside a box, pointing at it (a few words: the narration says the rest).
+  async function callout(target, text, { ms = 2800, side = 'auto' } = {}) {
+    const b = await boxOf(target)
+    sfx('spot', { ms: Math.min(ms, 1200) })
+    await page.evaluate(([r, t, m, sd]) => window.__tut.callout(r, t, m, sd), [b, text, ms, side])
+  }
+  // Rings growing out of a box: look here.
+  async function pulse(target, { times = 2 } = {}) {
+    const b = await boxOf(target)
+    sfx('spot', { ms: 900 })
+    await page.evaluate(([r, n]) => window.__tut.pulse(r, n), [b, times])
+  }
+  // A numbered disc at a box's top left corner (the sections of a template, in order).
+  async function badge(target, text, { ms = 2600 } = {}) {
+    const b = await boxOf(target)
+    sfx('spot', { ms: 700 })
+    await page.evaluate(([r, t, m]) => window.__tut.badge(r, t, m), [b, String(text), ms])
+  }
+  // An arrow drawn from one box to another: what goes where.
+  async function arrow(from, to, { ms = 2800, draw = 900 } = {}) {
+    const a = await boxOf(from), b = await boxOf(to)
+    sfx('fly', { ms: draw })
+    await page.evaluate(([x, y, m, d]) => window.__tut.arrow(x, y, m, d), [a, b, ms, draw])
+  }
 
   // --- markers ---
   let currentCaption = null
@@ -433,15 +644,96 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
   const flyNodes = async (ids, ms, pad, margin = 30) => fly(await page.evaluate(([i, m]) => window.__tut.unite(i.map((x) => window.__tut.nodeRect(x)), m), [ids, margin]), ms, pad)
   const widgetBox = (nodeId, name) => page.evaluate(([n, w]) => window.__tut.widgetBox(n, w), [nodeId, name])
   const nodeButton = (nodeId, text) => page.evaluate(([n, t]) => window.__tut.nodeButton(n, t), [nodeId, text])
+  // a node's or a group's box on the screen, for the overlays (as functions: measured when they are drawn)
+  const nodeBox = (key) => () => page.evaluate((k) => window.__tut.nodeBox(k), key)
+  const groupBox = (title) => () => page.evaluate((t) => window.__tut.groupBox(t), title)
   const audioBox = (nodeId) => page.evaluate((n) => window.__tut.audioBox(n), nodeId)
 
-  // Pick a value of a canvas combo widget through its menu (LiteGraph context menu).
-  async function chooseCombo(nodeId, name, value, { read: pauseMs = 900 } = {}) {
+  // The entries of the open combo menu (LiteGraph context menu), the pointer passing over some of them so
+  // that the list is seen (owner's request 2026-10-24: open the drop-down lists, show what is in them).
+  async function browseMenu(count = 4) {
+    const menu = page.locator('.litecontextmenu').last()
+    await menu.waitFor({ state: 'visible', timeout: 5000 })
+    sfx('open')
+    const entries = menu.locator('.litemenu-entry')
+    const n = await entries.count()
+    const steps = Math.min(count, n)
+    for (let i = 0; i < steps; i++) {
+      const at = steps > 1 ? Math.round((i * Math.min(n - 1, 11)) / (steps - 1)) : 0
+      await hover(entries.nth(at), { fx: 0.3, ms: 420 }).catch(() => {})
+      await idle(380)
+    }
+    return { menu, entries }
+  }
+  const exactEntry = (menu, value) => {
+    const esc = String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return menu.locator('.litemenu-entry').filter({ hasText: new RegExp('^\\s*' + esc + '\\s*$') }).first()
+  }
+  // Pick a value of a canvas combo widget through its menu, its list shown first.
+  async function chooseCombo(nodeId, name, value, { read: pauseMs = 900, browse = 3 } = {}) {
     await click(() => widgetBox(nodeId, name), { fx: 0.72 })
-    const entry = page.locator('.litecontextmenu .litemenu-entry', { hasText: value }).first()
+    const { menu } = await browseMenu(browse)
+    let entry = exactEntry(menu, value)
+    if (!(await entry.count())) entry = menu.locator('.litemenu-entry', { hasText: value }).first()
     await entry.waitFor({ state: 'visible', timeout: 5000 })
     await idle(pauseMs)
     await click(entry)
+    await idle(300)
+  }
+  // Open a combo's list to show what it offers, then close it on the value it has.
+  async function showCombo(nodeId, name, { read: pauseMs = 2400, browse = 5 } = {}) {
+    const current = await page.evaluate(([n, w]) => window.__tut.node(n).widgets.find((x) => x.name === w)?.value, [nodeId, name])
+    await click(() => widgetBox(nodeId, name), { fx: 0.72 })
+    const { menu } = await browseMenu(browse)
+    await idle(pauseMs)
+    const entry = exactEntry(menu, current)
+    if (await entry.count()) await click(entry)
+    else await page.keyboard.press('Escape')
+    await idle(300)
+  }
+
+  // A native <select> opened: a headless browser draws no popup, so its list is drawn in the page (owner's
+  // request 2026-10-24: show what the lists hold). The pointer passes over a few entries and picks `choose` (an
+  // option's value or text), or settles on the current one; `read`: how long the list stays open.
+  async function openSelect(target, { choose, browse = 4, read: pauseMs = 1600 } = {}) {
+    const box = await boxOf(target)
+    const p = await hover(box, { fx: 0.6 })
+    await idle(250)
+    const items = await target.evaluate((el) => [...el.querySelectorAll('option, optgroup')].map((n) =>
+      n.tagName === 'OPTGROUP' ? { group: n.label } : { text: n.text.trim(), value: n.value, disabled: n.disabled, on: n.selected }))
+    const options = items.map((it, i) => ({ ...it, i })).filter((it) => it.group == null)
+    const wanted = choose == null ? null
+      : options.find((it) => it.value === String(choose)) ?? options.find((it) => it.text === String(choose))
+        ?? options.find((it) => it.text.toLowerCase().includes(String(choose).toLowerCase()))
+    if (choose != null && !wanted) throw new Error(`openSelect: no option ${choose}`)
+    const focus = wanted ? wanted.i : (options.find((it) => it.on) ?? options[0])?.i ?? 0
+    sfx('click')
+    await page.evaluate(([x, y]) => window.__tut.ripple(x, y), [p.x, p.y])
+    await page.evaluate(([r, it, f]) => window.__tut.selectList(r, it, f), [box, items, focus])
+    sfx('open')
+    await idle(260)
+    const rows = await page.evaluate(() => window.__tut.selectRows())
+    // a few entries on the way to the one it settles on: from the top of what is shown, or below it
+    const shown = rows.map((r, i) => ({ ...r, i })).filter((r) => r.shown && items[r.i].group == null && !items[r.i].disabled)
+    const end = shown.findIndex((r) => r.i === focus)
+    const before = shown.slice(0, Math.max(0, end)), after = shown.slice(end + 1)
+    const pool = before.length >= 2 ? before : after
+    const n = Math.min(browse, pool.length)
+    for (let k = 0; k < n; k++) {
+      await hover(pool[Math.round((k * (pool.length - 1)) / Math.max(1, n - 1))], { fx: 0.3, ms: 380 })
+      await idle(300)
+    }
+    const last = rows[focus]
+    if (last) await hover(last, { fx: 0.3, ms: 420 })
+    await idle(pauseMs)
+    if (wanted && last) {
+      sfx('click')
+      await page.evaluate(([x, y]) => window.__tut.ripple(x, y), [last.x + last.width * 0.3, last.y + last.height / 2])
+      await page.evaluate((i) => window.__tut.selectPick(i), wanted.i)
+      await idle(260)
+    }
+    await page.evaluate(() => window.__tut.selectClose())
+    if (wanted) await target.selectOption(wanted.value)
     await idle(300)
   }
 
@@ -457,6 +749,26 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
   }
   // A widget's value now.
   const widgetValue = (nodeId, name) => page.evaluate(([n, w]) => window.__tut.node(n).widgets.find((x) => x.name === w)?.value, [nodeId, name])
+
+  // Open a block (a subgraph node) with the icon at the right of its title bar; closeBlock() goes back to the
+  // workflow through the breadcrumb at the top of the canvas.
+  async function openBlock(key) {
+    const r = await page.evaluate((k) => window.__tut.nodeBox(k), key)
+    const th = 30 * (await page.evaluate(() => window.app.canvas.ds.scale))
+    await spotlight({ x: r.x + r.width - th, y: r.y, width: th, height: th }, { ms: 1200, pad: 2 })
+    await click({ x: r.x + r.width - th / 2, y: r.y + th / 2, width: 0, height: 0 }, { pause: 500 })
+    await idle(1200)
+    const inside = await page.evaluate(() => window.app.canvas.graph !== window.app.graph)
+    if (!inside) throw new Error('the block ' + key + ' did not open')
+    sfx('open')
+  }
+  async function closeBlock() {
+    const root = page.locator('.p-breadcrumb-item-link').first()
+    await spotlight(root, { ms: 1100, pad: 4 })
+    await click(root, { pause: 400 })
+    await idle(1200)
+    if (await page.evaluate(() => window.app.canvas.graph !== window.app.graph)) throw new Error('still inside a block')
+  }
 
   // Queue the workflow with a click on Run.
   async function run() {
@@ -476,13 +788,17 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     const groups = Object.fromEntries(Object.entries(groupKeys).map(([k, v]) => [ids[k], v]))
     await page.waitForFunction(() => window.__tut.running || window.__tut.events.some((e) => e.t === 'start'), null, { timeout: 60000 })
     let stage = null, end = null, lastGroup = null
+    // a block's inner nodes run interleaved with others (the writer model between Write Song's steps): each
+    // stage gets its piece and its caption once per run
+    const seen = new Set()
     const started = Date.now()
     while (true) {
       const state = await page.evaluate(() => ({ running: window.__tut.running, executing: window.__tut.executing, error: window.__tut.error ?? null }))
       const top = state.executing ? String(state.executing).split(':')[0] : null
       if (top && top !== stage) {
         stage = top
-        const text = stages[top]
+        const text = seen.has(top) ? undefined : stages[top]
+        seen.add(top)
         if (text !== undefined) {
           end?.()
           end = fast(text, seconds)
@@ -532,9 +848,9 @@ export async function openStudio({ url, out, width = 1920, height = 1000, scale 
     get page() { return page },
     browser, context, markers, now, W, H, switchTo,
     startCapture, stopCapture, saveMarkers,
-    moveTo, rest, hover, click, drag, type, keys, spotlight, boxOf, centre,
+    moveTo, rest, hover, click, drag, type, keys, spotlight, callout, pulse, badge, arrow, boxOf, centre,
     caption, say, read, chapter, card, fast, wait, sfx,
-    openComfy, openPage, fly, flyGroups, flyNodes, widgetBox, nodeButton, audioBox, listen, chooseCombo, slide, widgetValue, run, follow, resetRunState,
+    openComfy, openPage, fly, flyGroups, flyNodes, widgetBox, nodeButton, nodeBox, groupBox, audioBox, listen, chooseCombo, showCombo, openSelect, openBlock, closeBlock, slide, widgetValue, run, follow, resetRunState,
     get mouse() { return mouse },
   }
 }

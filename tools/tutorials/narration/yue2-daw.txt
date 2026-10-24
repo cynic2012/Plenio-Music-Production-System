@@ -13,25 +13,37 @@ and Plenio's folder under Extensions.
 Template five: YuE2 DAW. [pause:0.3s] Here, you compose the score yourself, or bring it in from your DAW.
 
 @ The template reads from left to right
-As always, it reads from left to right.
+It reads from left to right, in numbered sections, side by side.
 
-@ SONG - the Song Brief
-The Song Brief,
+@ SONG - the two switch cards
+Two switch cards and the writer model at the top, then the Song Brief,
 
 @ WRITE - the writer drafts
-the writer model you choose, for the title, the style and the lyrics,
+the writer, for the style and the lyrics, and ten titles to pick from,
 
-@ TEXT - Song Sheet · Text
-and the Text sheet, with the words YuE2 will sing.
+@ TEXT - Song Sheet · Text, in teal
+and the Text sheet, in teal, with the words YuE2 will sing.
 
 @ DAW - Score Tools builds
-Then Score Tools builds an empty score, and you write the music in the DAW sheet.
+Then Score Tools builds an empty score, and you write the music in the DAW sheet, in blue.
 
 @ RENDER - YuE2 renders
 YuE2 renders exactly that score,
 
 @ FINISH - Master and Export
-and Master and Export finish the song.
+and Master and Export finish the song. Check Sung Words looks at the words that were sung.
+
+@ Above the render, COVER ART
+Above the render, Cover Art paints the song's cover.
+
+@ At the very top, two cards
+Right at the top, two cards. One click switches each, in the graph and in App mode.
+
+@ HQ Mastering, off by default
+HQ Mastering is off by default. Switch it on, and UniverSR regenerates the highs: clearly less AI shimmer, but the song takes about twice as long.
+
+@ Cover Art is on
+Cover Art is on: Flux two Klein paints the cover from the artwork prompt. Off, and no image model loads.
 
 @ card The words
 Part one: the words.
@@ -45,8 +57,11 @@ Describe the song: [pause:0.2s] a bright, hopeful pop song about the first warm 
 @ length: short
 Keep it short. Tempo, key and meter can come from the brief, or later from your sketch.
 
-@ The Writer model writes the words
-The writer model writes the words: Gemma 4, or a local LLM.
+@ Under the cards, the Writer model
+Under the cards, the writer model writes the words: Gemma 4, or a local LLM.
+
+@ It writes the style and the lyrics
+It writes the style and the lyrics, and after the export, it checks the words that were sung.
 
 @ Press Run.
 Press Run.
@@ -58,7 +73,7 @@ The writer drafts the words,
 and the run stops at the Text sheet.
 
 @ First the words:
-Words first: open the Text sheet.
+Words first: the Text sheet's card says edit lyrics and text.
 
 @ The lyrics, section by section
 Here are the lyrics, section by section. Change anything you like.
@@ -75,8 +90,8 @@ Stop two: the DAW sheet. [pause:0.3s] Now the music is up to you.
 @ card The music
 Part two: the music. A sketch from your DAW comes in, and then it's yours to shape.
 
-@ Open Song Sheet · DAW.
-Open the DAW sheet,
+@ Song Sheet · DAW’s card
+The DAW sheet's card says compose the score: piano roll, chords, MIDI.
 
 @ ⛶ gives the editor
 and give it the whole window.
@@ -240,8 +255,14 @@ YuE2 renders exactly the approved score,
 @ Master and Export finish
 and Master and Export finish it.
 
+@ Check Sung Words reads | optional
+and Check Sung Words listens to the words.
+
 @ Done: your melody | +5
 Done! Your melody, your chords, sung by YuE2. [pause:0.4s] Let's listen.
+
+@ Above the render, Cover Art painted
+And above the render: the cover, painted from the song's artwork prompt. Export put it into the FLAC and the MP3.
 
 @ Export also saved your score as sheet music
 Export also saved your score as sheet music, a PDF next to the song.
@@ -254,6 +275,9 @@ And the tags come from the brief: genre, mood, even the lyrics, written as varia
 
 @ The note beside Export lists every variable
 The note right next to Export lists every variable you can use.
+
+@ Check Sung Words, after Export
+Check Sung Words comes after Export: the writer reads what the take sings, and corrects words the speech recognition misheard, only those it's sure of.
 
 @ Every further Run
 Every further run renders a new take of the same score.

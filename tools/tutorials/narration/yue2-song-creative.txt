@@ -37,8 +37,11 @@ The line under the brief tells you what the chosen mode does.
 @ genre closeness: how typical
 Genre closeness sets how typical the song stays. A hundred is strictly by the book, seventy adds personal touches, forty is free within the genre, and zero borrows from any style.
 
-@ Writer model: one choice for every writing step
-Second, the writer model: one choice for the lyrics and the arrangement. Gemma 4, or any local LLM.
+@ Writer model, at the start under the cards
+The writer model sits at the start, under the cards: one choice for every writing step. Gemma 4 by default, or any local LLM.
+
+@ The same writer drafts the lyrics
+The same writer drafts the lyrics, and plans the arrangement.
 
 @ In SCORE, the block Arrange
 Third, the Arrange block: after YuE2's plan, the writer plans each section's chords, instrument line and energy.
@@ -46,14 +49,17 @@ Third, the Arrange block: after YuE2's plan, the writer plans each section's cho
 @ The writer never writes notes
 The writer never writes notes: Plenio does, and checks them. A plan it can't use changes nothing.
 
-@ The Arrangement seed is blue
-The arrangement seed is blue: it keeps the arrangement until you change it.
+@ The Arrangement seed:
+The Arrangement seed keeps the arrangement while you review. Another number gives another arrangement of the same song.
 
 @ card A dramatic song
 Part one: a dramatic song, with stops to review the text and the arranged score.
 
 @ mode: “one song, stop to review” - we want
 Set the mode to one song, stop to review, to see what the mode does first.
+
+@ The seeds follow the mode
+The seeds follow the mode: a note says the song's seeds switched to same seed, so the draft, the plan and the arrangement stay while you review.
 
 @ Describe the song.
 Describe the song. Here: a night drive along the coast, from quiet doubt to a chorus that opens up like the sea.
@@ -70,8 +76,8 @@ The writer drafts the title, the style and the lyrics, guided by the dramatic mo
 @ Stop 1: Song Sheet · Text
 First stop: the Text sheet.
 
-@ Open it.
-Let's open it.
+@ Open it: “Edit lyrics & text”.
+Open it, with Edit lyrics and text.
 
 @ Style: the sound YuE2 is asked for
 The style is the sound YuE2 is asked for. The mode's hints went into the writer's prompt; the template keeps it acoustic.
@@ -94,8 +100,8 @@ Then Arrange: the writer answers with a plan for each section, and Plenio writes
 @ Stop 2: Song Sheet · Score - the arranged score
 Second stop: the Score sheet, with the arranged score.
 
-@ Open the score.
-Let's open the score,
+@ Open the score:
+Open the score, with Edit the score,
 
 @ ⛶ gives the editor
 and give the editor the whole window.
@@ -133,6 +139,9 @@ YuE2 sings the lyrics over the arranged score,
 @ Master and Export finish the song
 and Master and Export finish it.
 
+@ Check Sung Words reads | optional
+and Check Sung Words takes a look at the words.
+
 @ The dramatic song - listen | +5
 Here's our dramatic song. [pause:0.4s] Listen to how it builds.
 
@@ -168,6 +177,9 @@ YuE2 renders the new version,
 
 @ Master and Export finish the song
 and Master and Export finish it.
+
+@ Check Sung Words reads | optional
+and Check Sung Words takes a look at the words.
 
 @ The same song with its new arrangement | +5
 The same song, with its new arrangement. [pause:0.4s] Have a listen.

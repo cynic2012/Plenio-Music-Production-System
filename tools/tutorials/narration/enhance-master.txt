@@ -1,7 +1,7 @@
 # Narration of enhance-master.mjs (Tutorial 4 · Enhance & Master). Format: lib/voice.mjs.
 
 @ card 4 · Enhance
-Got a recording that needs a final polish? This template masters it, no graphics card needed.
+Got a recording that needs a final polish? This template finishes it, no music model needed.
 
 @ Open the template browser
 Open the template browser,
@@ -12,11 +12,14 @@ and Plenio's folder under Extensions.
 @ 4 · Enhance & Master finishes
 Template four: Enhance and Master. [pause:0.3s] It finishes a recording you already have.
 
-@ Three steps, from left to right
-It's just three steps, from left to right.
+@ Four numbered sections
+Four numbered sections. Every stage of the songs' Master block is here, as nodes you can reach.
 
-@ SOURCE - the recording
-Source: a take you rendered earlier, or any song file.
+@ SOURCE - the HQ Mastering card
+At the top, the HQ Mastering card. Then the recording, and Stems under it, off until you want to rebalance a mix.
+
+@ AUDIO HQ - before the EQ
+Audio HQ comes first: stage one calms the shimmer, two regenerates the highs, three dries a short room, and is optional.
 
 @ MASTER - an EQ for the tone
 Master: an EQ shapes the tone, then Loudness and Dynamics sets the level.
@@ -24,8 +27,11 @@ Master: an EQ shapes the tone, then Loudness and Dynamics sets the level.
 @ FINISH - the preview
 And Finish: a preview, and the export, with the tags, and the original kept safe.
 
-@ Optional: Stems rebalances
-Two optional blocks stay off: Stems, to rebalance a mix, and Refine, for dull files.
+@ At the very top, the HQ Mastering card
+At the very top, the HQ Mastering card. One click switches it, in the graph and in App mode.
+
+@ HQ Mastering is on here
+Here it's on: UniverSR regenerates the highs. Clearly less AI shimmer, and the cure for a dull old MP3. It takes about twice as long.
 
 @ card Master a take
 Part one: master a take, with the default settings.
@@ -35,6 +41,18 @@ First, load the recording into Source.
 
 @ Our example: a YuE2 take
 Our example is a YuE2 take, straight from the model, and not mastered yet.
+
+@ Under it, Stems:
+Under it sits Stems. Select it and press Control B to rebalance a finished mix: vocals, drums, bass and other. The mixer is inside the block.
+
+@ Audio HQ: there is no brief here
+There's no brief in this template, so the presets say what they are: standard, or gentle, strong or wide, for your kind of music.
+
+@ HQ 2 runs because HQ Mastering is on
+The second stage runs because HQ Mastering is on: the cure for a dull, band-limited file, like an old MP3.
+
+@ HQ 3 is bypassed
+The third stage is bypassed: it dries a short metallic room, but it also dulls the highs. Press Control B to try it.
 
 @ EQ: “match preset”, Warm
 The EQ measures the song, and proposes a few gentle, warm bands.
@@ -51,14 +69,23 @@ Compression adds gentle glue, or leaves it to the limiter.
 @ Press Run.
 Press Run.
 
+@ HQ 1 calms the stereo shimmer | optional
+The first stage calms the shimmer,
+
+@ HQ 2: UniverSR generates | optional
+UniverSR generates new highs,
+
 @ EQ measures the song | optional
-The EQ measures and matches,
+the EQ measures and matches,
 
 @ Loudness & Dynamics brings it
 Loudness and Dynamics brings up the level,
 
 @ Export writes the files
 and Export writes the files.
+
+@ HQ 2’s report:
+The second stage reports what it did: the profile, UniverSR from eight kilohertz, and how the highs changed.
 
 @ The match: gentle bands
 Here's the match: a few gentle bands, over the spectrum of the take. [pause:0.3s] Subtle, on purpose.

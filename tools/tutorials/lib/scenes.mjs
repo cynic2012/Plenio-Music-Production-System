@@ -4,7 +4,7 @@
 // files. Every scene leaves the song as the model made it, except the arranged section (a script keeps
 // it to show what follows).
 
-import { DIALOG, framePhrase, roll, scrollToVoice, selectedInRoll, undo, undoMark } from './sheet.mjs'
+import { DIALOG, frameSelect, roll, scrollToVoice, undo, undoMark } from './sheet.mjs'
 
 // the visible elements of the roll matching `selector` (left of the pitch column and past the right edge excluded)
 function visible(s, selector) {
@@ -288,13 +288,8 @@ export async function clipboardDemo(s, { voice = 'vocal' } = {}) {
   await scrollToVoice(s, voice)
   const geo = await roll(s, voice)
   if (geo.visible.length < 2) return
-  const [a, b] = framePhrase(geo)
   s.caption('Copy and paste work like a DAW’s key editor. Frame a phrase in Select mode …')
-  await s.click(d.locator('button', { hasText: 'Select' }).first(), { pause: 300 })
-  await s.drag(a, b, { ms: 1200, hold: 250 })
-  await s.wait(900)
-  const picked = await selectedInRoll(s)
-  if (picked.notes < 2 || picked.chords) throw new Error(`the frame selected ${picked.notes} notes and ${picked.chords} chords`)
+  await frameSelect(s, voice, { to: await undoMark(s), ms: 1200, wait: 900 })
   s.caption('… Ctrl+C copies it …')
   await s.keys('Control+c', { labels: ['Ctrl', 'C'] })
   await s.wait(1600)
@@ -436,16 +431,14 @@ export async function soundsDemo(s, { preset = 'Pop', daw = false } = {}) {
   await s.read(intro, 4200)
   const tracks = 'Vocal, Instrument, Chords and Guide: piano, strings, pad, organ, a sung “ah” and more - ▶ plays a few notes in the sound.'
   s.caption(tracks)
-  await s.hover(panel.locator('select[aria-label="Sound of the Vocal track"]').first())
-  await s.wait(800)
+  await s.openSelect(panel.locator('select[aria-label="Sound of the Vocal track"]').first(), { browse: 5, read: 1400 })
   await s.click(panel.locator('button[aria-label="Hear the Vocal sound"]').first(), { pause: 300 })
   await s.read(tracks, 6400)
   const presets = `Presets set them for a kind of song or a way of working - here “${preset}”.`
   s.caption(presets)
   const choose = panel.locator('select[aria-label="Preset"]').first()
-  await s.hover(choose)
-  await choose.selectOption(preset)
-  await s.wait(900)
+  await s.openSelect(choose, { choose: preset, browse: 3, read: 900 })
+  await s.wait(500)
   await s.click(panel.locator('button', { hasText: /^\s*use\s*$/ }).first(), { pause: 300 })
   await s.wait(900)
   await s.read(presets, 5200)
@@ -546,35 +539,219 @@ export async function sheetMusicSaved(s, node, text) {
   await s.read(text, 6000)
 }
 
-// Plenio · Seed (1.0.0): one switch per seed - the draft seed blue (🔒 the same draft), the take seed amber
-// (🎲 a new seed before every run). The take seed's switch is flipped to 🔒 and back, so the run that follows
-// still renders a new take.
-export async function seedsDemo(s, { draft = 'Draft seed', take = 'Take seed', what = 'lyrics', plan = '' } = {}) {
-  const keep = `The Draft seed is blue: 🔒 same seed - the same ${what} on every run.`
-  s.caption(keep)
-  await s.flyNodes([draft], 1000, 0.9)
-  await s.spotlight(await s.widgetBox(draft, 'keep_seed'), { ms: 2600, pad: 6 })
-  await s.read(keep, 4400)
-  const fresh = 'The Take seed is amber: 🎲 new seed - every run draws a new number before it starts, so every run is a new take.'
+// Plenio · Seed: one switch per seed - 🔒 the same seed every run (blue), 🎲 a new seed before every run (amber).
+// The seeds follow the brief's mode: "new song every run" starts with every seed on 🎲, "one song, stop to
+// review" with the song's seeds on 🔒 (seedsFollowMode shows the switch). The take seed is flipped and back.
+export async function seedsDemo(s, { draft = 'Draft seed', take = 'Take seed', what = 'lyrics', plan = '', arrangement = '' } = {}) {
+  const fresh = `In this mode every seed is amber: 🎲 new seed - each run draws new numbers, so every run writes new ${what} and renders a new take.`
   s.caption(fresh)
+  await s.flyNodes([draft], 1000, 0.9)
+  const draftToggle = await s.widgetBox(draft, 'keep_seed')
+  await s.spotlight(draftToggle, { ms: 2600, pad: 6 })
+  await s.callout(draftToggle, '🎲 new seed', { ms: 2600 })
+  await s.read(fresh, 6000)
+  const flip = 'The number shown is always the one that made what you hear: liked it? One click on the switch keeps it - 🔒 same seed, blue.'
+  s.caption(flip)
   await s.flyNodes([take], 1000, 0.9)
   const toggle = await s.widgetBox(take, 'keep_seed')
-  await s.spotlight(toggle, { ms: 2600, pad: 6 })
-  await s.read(fresh, 5600)
-  const flip = 'The number shown is always the one that made what you hear: liked a take? One click on the switch keeps it.'
-  s.caption(flip)
   await s.click(toggle, { fx: 0.92, pause: 900 })
   await s.wait(1600)
   await s.click(toggle, { fx: 0.92, pause: 600 })
-  await s.read(flip, 5200)
+  await s.read(flip, 5600)
   if (plan) {
-    // YuE2 Song's plan seed (1.0.1): the melody and the form, kept or planned anew
-    const planned = 'The Plan seed under YuE2’s plan does the same for the melody and the form: 🎲 plans another melody for the same lyrics.'
+    const planned = 'The Plan seed under YuE2’s plan does the same for the melody and the form.'
     s.caption(planned)
     await s.flyNodes([plan], 1000, 0.9)
-    await s.spotlight(await s.widgetBox(plan, 'keep_seed'), { ms: 2600, pad: 6 })
-    await s.read(planned, 5600)
+    await s.spotlight(await s.widgetBox(plan, 'keep_seed'), { ms: 2400, pad: 6 })
+    await s.read(planned, 4200)
   }
+  if (arrangement) {
+    const arranged = 'And the Arrangement seed for Arrange.'
+    s.caption(arranged)
+    await s.flyNodes([arrangement], 1000, 0.9)
+    await s.read(arranged, 2600)
+  }
+}
+
+// After the mode is switched to "one song, stop to review": a note says which seeds switched - the song's
+// seeds keep their numbers while you review, the take seed still draws a new one.
+export async function seedsFollowMode(s, { draft = 'Draft seed', take = 'Take seed' } = {}) {
+  const page = s.page
+  const toast = page.locator('.p-toast-message').first()
+  const text = 'The seeds follow the mode: a note says the song’s seeds switched to 🔒 - the draft and the plan stay while you review. The take seed still draws a new number.'
+  s.caption(text)
+  if (await toast.count()) await s.spotlight(toast, { ms: 3200, pad: 4 })
+  await s.wait(1600)
+  await s.flyNodes([draft, take], 1100, 0.9)
+  await s.callout(await s.widgetBox(draft, 'keep_seed'), '🔒 same seed', { ms: 3000 })
+  await s.callout(await s.widgetBox(take, 'keep_seed'), '🎲 new seed', { ms: 3000 })
+  await s.read(text, 7000)
+  const close = page.locator('.p-toast-message .p-toast-close-button').first()
+  if (await close.count()) await close.click().catch(() => {})
+}
+
+// Open a Plenio template from ComfyUI's template browser. `alt` matches the template cards' pictures.
+export async function openTemplate(s, { name, intro = 'Open the template browser: Templates.', what, alt = 'YuE2', type = 'PlenioSongBrief' }) {
+  const page = s.page
+  s.caption(intro)
+  await s.click(page.getByRole('button', { name: 'Templates' }), { pause: 500 })
+  await s.wait(2400)
+  s.caption('Plenio’s templates: Extensions → Plenio-Music-Production-System.')
+  await s.hover(page.getByText('Node Basics', { exact: true }).first())
+  await page.mouse.wheel(0, 600)
+  await s.wait(900)
+  await s.click(page.getByText('Plenio-Music-Production-System', { exact: true }).first(), { pause: 400 })
+  await page.waitForFunction((a) => [...document.querySelectorAll(`img[alt*="${a}"]`)].every((i) => i.complete && i.naturalWidth > 0), alt, { timeout: 20000 }).catch(() => {})
+  await s.wait(1600)
+  const card = page.getByText(name, { exact: true }).first()
+  s.caption(what)
+  await s.hover(card, { fy: -4 })
+  await s.pulse(card, { times: 2 })
+  await s.wait(2600)
+  await s.click(card, { fy: -4, pause: 300 })
+  await page.waitForFunction((t) => window.app.graph.nodes.some((n) => n.type === t), type, { timeout: 30000 })
+  await s.wait(2500)
+}
+
+// The template's numbered sections: all in one row of one height, each with its number, then one by one.
+export async function sectionTour(s, sections, { intro = 'The template reads from left to right, in numbered sections - one row, side by side.' } = {}) {
+  const titles = sections.map(([g]) => g)
+  await s.flyGroups(titles, 1400)
+  s.caption(intro)
+  for (let i = 0; i < titles.length; i++) {
+    await s.badge(s.groupBox(titles[i]), i + 1, { ms: 3400 - i * 180 })
+    await s.wait(180)
+  }
+  await s.read(intro, 3600)
+  for (const [group, text] of sections) {
+    s.caption(text)
+    await s.flyGroups([group], 1000, 0.9)
+    await s.read(text, 2600)
+  }
+}
+
+// The two cards at the top of a template: HQ Mastering and Cover Art. `hqOn`: Enhance & Master starts with
+// HQ Mastering on; `cover`: a template with cover art.
+export async function switchCards(s, { cover = true, hqOn = false, node = 'HQ Mastering & Cover Art', hqText: hqLine } = {}) {
+  const page = s.page
+  await s.flyNodes([node], 1100, 0.8)
+  const intro = cover
+    ? 'At the very top, two cards: one click switches each - in the graph and in App mode.'
+    : 'At the very top, the HQ Mastering card: one click switches it - in the graph and in App mode.'
+  s.caption(intro)
+  await s.spotlight(s.nodeBox(node), { ms: 2600, pad: 4 })
+  await s.read(intro, 4200)
+  const hq = page.locator('.plenio-switch[data-switch="hq"]').first()
+  const hqText =
+    hqLine ??
+    (hqOn
+      ? 'HQ Mastering is on here: UniverSR regenerates the highs - clearly less AI shimmer, and the cure for a dull old MP3. It takes about twice as long.'
+      : 'HQ Mastering, off by default: on, UniverSR regenerates the highs - clearly less AI shimmer, but the song takes about twice as long.')
+  s.caption(hqText)
+  await s.pulse(hq, { times: 2 })
+  await s.callout(hq, hqOn ? 'on: UniverSR' : 'off: faster', { ms: 3000 })
+  await s.wait(1200)
+  await s.click(hq, { fx: 0.85, pause: 500 })
+  await s.wait(1800)
+  await s.click(hq, { fx: 0.85, pause: 500 })
+  await s.read(hqText, 6800)
+  if (cover) {
+    const art = page.locator('.plenio-switch[data-switch="cover"]').first()
+    const coverText = 'Cover Art is on: FLUX.2 Klein paints the song’s cover from its artwork prompt. Off, its three nodes rest and no image model loads.'
+    s.caption(coverText)
+    await s.pulse(art, { times: 2 })
+    await s.callout(art, 'on: a cover', { ms: 3000 })
+    await s.read(coverText, 6400)
+  }
+}
+
+// The writer model: one list for every writing step, in the first section under the cards; arrows to the
+// blocks that use it.
+export async function writerDemo(s, { writer = 'Writer model', uses = ['Plenio · Write Song'], text, flows: flowText } = {}) {
+  const intro = text ?? 'Under the cards, the Writer model: one model for every writing step - Gemma 4 by default, or a local LLM from your machine.'
+  s.caption(intro)
+  await s.flyNodes([writer], 1000, 0.8)
+  await s.showCombo(writer, 'model', { read: 1800, browse: 5 })
+  await s.read(intro, 3400)
+  const flows = flowText ?? 'It writes for every block that writes - the lyrics and the style, the arrangement, the check of the sung words.'
+  s.caption(flows)
+  await s.flyNodes([writer, ...uses], 1200, 0.92, 40)
+  await s.wait(300)
+  for (const target of uses) {
+    await s.arrow(s.nodeBox(writer), s.nodeBox(target), { ms: 3600, draw: 800 })
+    await s.wait(500)
+  }
+  await s.read(flows, 4800)
+}
+
+// Plenio · Master: the stems switch on the node, then the block opened - the stems with their mixer, Audio HQ,
+// the EQ and the loudness - and closed again.
+export async function masterDemo(s, { master = 'Plenio · Master', stems = "STEMS (the block's stems switch, off)", open: inside = true } = {}) {
+  await s.flyNodes([master], 1100, 0.85)
+  const intro = 'Plenio · Master finishes every take: the stems, Audio HQ, a gentle tone match and the loudness for streaming.'
+  s.caption(intro)
+  await s.spotlight(s.nodeBox(master), { ms: 2600, pad: 4 })
+  await s.read(intro, 5400)
+  const toggle = await s.widgetBox(master, 'stems')
+  const switchText = 'stems is off: switch it on, and the song is split into vocals, drums, bass and other - and mixed back your way.'
+  s.caption(switchText)
+  await s.pulse(toggle, { times: 2 })
+  await s.callout(toggle, 'stems: off', { ms: 3200 })
+  await s.read(switchText, 5600)
+  if (!inside) return
+  const open = 'The mixer is inside the block: open it with the icon at the top right.'
+  s.caption(open)
+  await s.openBlock(master)
+  await s.read(open, 2400)
+  const mixer = 'First the stems: Separate Stems and the Stem Mixer - a strip per stem with fader, mute and solo, compression, reverb and delay. A neutral mix gives back the song unchanged.'
+  s.caption(mixer)
+  await s.flyGroups([stems], 1100, 0.9)
+  await s.read(mixer, 8000)
+  const hq = 'Then Audio HQ: HQ 1 calms the stereo shimmer, HQ 2 regenerates the highs with HQ Mastering on. Their presets follow the song’s genre.'
+  s.caption(hq)
+  await s.flyGroups(['AUDIO HQ (before the EQ)'], 1100, 0.9)
+  await s.read(hq, 7200)
+  const eq = 'And the master: a gentle tone match, then -14 LUFS with a true-peak limiter.'
+  s.caption(eq)
+  await s.flyGroups(['MASTER'], 1100, 0.9)
+  await s.read(eq, 4800)
+  const back = 'Back to the workflow: the breadcrumb at the top.'
+  s.caption(back)
+  await s.closeBlock()
+  await s.read(back, 2200)
+}
+
+// The cover the run painted (Cover Art above the render section).
+export async function coverArtShown(s, { group = 'COVER ART', preview = 'Cover preview' } = {}) {
+  const text = 'Above the render, Cover Art painted the cover from the sheet’s artwork prompt - Export put it into the FLAC and the MP3, and saved it as a picture.'
+  s.caption(text)
+  await s.flyGroups([group], 1200, 0.9)
+  await s.wait(400)
+  await s.spotlight(s.nodeBox(preview), { ms: 3400, pad: 4 })
+  await s.read(text, 7000)
+}
+
+// Check Sung Words after Export: the writer model corrects misheard words in the lyrics as sung.
+export async function checkSungWords(s, { node = 'Check Sung Words' } = {}) {
+  const text = 'Check Sung Words, after Export: the writer model reads what the take sings, as heard, and corrects words the speech recognition misheard - only those it is sure of. The Plenio Player shows them under “As sung”.'
+  s.caption(text)
+  await s.flyNodes([node], 1100, 0.8)
+  await s.spotlight(s.nodeBox(node), { ms: 3200, pad: 4 })
+  await s.read(text, 8600)
+}
+
+// After a run: the finished song in the preview, played under the voice.
+export async function afterRun(s, text, { group, preview = 'Preview (mastered)', seconds = 14 }) {
+  s.caption(text)
+  await s.flyGroups([group], 1200, 0.9)
+  await s.wait(800)
+  const player = await s.audioBox(preview)
+  if (player) {
+    await s.spotlight(player, { ms: 2000 })
+    await s.click({ x: player.x + 18, y: player.y + player.height / 2, width: 1, height: 1 }, { pause: 400 })
+    await s.listen(preview, { seconds })
+  }
+  await s.read(text, 4200)
 }
 
 // Export Release (1.0.0): the lyrics as subtitles next to the song, timed by listening, and the tags filled

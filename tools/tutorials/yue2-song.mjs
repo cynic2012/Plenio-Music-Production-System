@@ -1,25 +1,37 @@
-// Tutorial 1 · YuE2 · Song (0.4): open the template, one run straight through (new song every run), then
-// one song with its review stops - Song Sheet · Text (the tabs, Approve), Song Sheet · Score (the score
-// editor: a tour of every area, then the lyrics lane, notes, the cursor and playback, the sounds and
-// presets, copy and paste, arranging - a copied chorus is kept - recording with a (simulated) MIDI
-// keyboard and the files), the text sheet again with the lyrics that followed the chorus, and the song.
+// Tutorial 1 · YuE2 · Song: open the template and walk its sections - one row of numbered sections, the
+// HQ Mastering and Cover Art cards, the writer model at the start, Cover Art above the render -, one run
+// straight through (new song every run: the brief's lists opened, the seeds, the cover, Export, Check Sung
+// Words and the Master block with its stems), then one song with its review stops - Song Sheet · Text
+// (the tabs, Approve), Song Sheet · Score (the score editor: a tour of every area, then the lyrics lane,
+// notes, the cursor and playback, the sounds and presets, copy and paste, arranging - a copied chorus is
+// kept - recording with a (simulated) MIDI keyboard and the files), the text sheet again with the lyrics
+// that followed the chorus, the song - and continuing it later.
 
 import {
+  afterRun,
   arrangeDemo,
   barsDemo,
+  checkSungWords,
   clipboardDemo,
   continueDemo,
+  coverArtShown,
   cursorDemo,
   editorTour,
   exportExtras,
   filesDemo,
   lyricsDemo,
+  masterDemo,
+  openTemplate,
   recordDemo,
+  sectionTour,
   seedsDemo,
+  seedsFollowMode,
   sheetMusicSaved,
   showApproved,
   simulateKeyboard,
   soundsDemo,
+  switchCards,
+  writerDemo,
 } from './lib/scenes.mjs'
 import { alignSections, approve, fixSections, maximize, noteEditing, openSheet, tab } from './lib/sheet.mjs'
 import { FOOT } from './lib/studio.mjs'
@@ -33,15 +45,20 @@ export const meta = {
 const BRIEF = 'PlenioSongBrief', TEXT = 'Song Sheet · Text', SCORE = 'Song Sheet · Score'
 const WRITE = 'Plenio · Write Song', PLAN = 'Plenio · YuE2 Plan', RENDER = 'Plenio · YuE2 Render', MASTER = 'Plenio · Master'
 const PREVIEW = 'Preview (mastered)', EXPORT = 'PlenioExportRelease', WRITER = 'Writer model', ARRANGE = 'Arrange'
+const COVER = 'Cover Art', CHECK = 'Check Sung Words'
+const SECTIONS = ['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · SCORE', '5 · RENDER', '6 · FINISH']
 const GROUPS = {
   [WRITE]: '2 · WRITE', [TEXT]: '3 · TEXT', [PLAN]: '4 · SCORE', 'PlenioScoreTools': '4 · SCORE', [ARRANGE]: '4 · SCORE', [SCORE]: '4 · SCORE',
-  'Take seed': '5 · RENDER', [RENDER]: '5 · RENDER', [MASTER]: '6 · FINISH', [PREVIEW]: '6 · FINISH', [EXPORT]: '6 · FINISH',
+  'Take seed': '5 · RENDER', [RENDER]: '5 · RENDER', [COVER]: 'COVER ART', [MASTER]: '6 · FINISH', [PREVIEW]: '6 · FINISH',
+  [EXPORT]: '6 · FINISH', [CHECK]: '6 · FINISH',
 }
 const STAGES = {
-  [WRITE]: 'The writer model drafts the title, the style and the lyrics.',
+  [WRITE]: 'The writer model drafts the style and the lyrics, and ten titles to pick from.',
   [PLAN]: 'YuE2 plans the melody and the chords as a score.',
   [RENDER]: 'YuE2 renders the song from the lyrics and the score.',
+  [COVER]: '',
   [MASTER]: 'Master and Export finish the song.',
+  [CHECK]: 'Check Sung Words reads what the take sings.',
 }
 const DESCRIPTION = 'A hopeful song about leaving a small town at sunrise, with the whole road still ahead.'
 
@@ -58,87 +75,75 @@ export default async function song(s) {
   // --- open the template -------------------------------------------------------------------------
   s.chapter('Getting started')
   await s.wait(600)
-  s.caption('Plenio adds six ready-made templates to ComfyUI. Open the template browser: Templates.')
-  await s.click(page.getByRole('button', { name: 'Templates' }), { pause: 500 })
-  await s.wait(2600)
-  const plenio = page.getByText('Plenio-Music-Production-System', { exact: true }).first()
-  s.caption('Plenio’s templates are listed under Extensions → Plenio-Music-Production-System.')
-  await s.hover(page.getByText('Node Basics', { exact: true }).first())
-  await page.mouse.wheel(0, 600)
-  await s.wait(900)
-  await s.click(plenio, { pause: 400 })
-  await page.waitForFunction(() => [...document.querySelectorAll('img[alt*="YuE2"]')].every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 }).catch(() => {})
-  await s.wait(1600)
-  const card = page.getByText('1 · YuE2 · Song', { exact: true }).first()
-  s.caption('1 · YuE2 · Song writes a new song and renders it with YuE2.')
-  await s.hover(card, { fy: -4 })
-  await s.wait(2200)
-  await s.click(card, { fy: -4, pause: 300 })
-  await page.waitForFunction(() => window.app.graph.nodes.some((n) => n.type === 'PlenioSongBrief'), null, { timeout: 30000 })
-  await s.wait(2500)
+  await openTemplate(s, {
+    name: '1 · YuE2 · Song',
+    intro: 'Plenio adds six ready-made templates to ComfyUI. Open the template browser: Templates.',
+    what: '1 · YuE2 · Song writes a new song and renders it with YuE2.',
+  })
 
   // --- the tour -----------------------------------------------------------------------------------
-  await s.flyGroups(['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · SCORE', '5 · RENDER', '6 · FINISH'], 1400)
-  await s.say('The template reads from left to right, in numbered groups.', 3000)
-  const tour = [
-    ['1 · SONG', 'SONG - the Song Brief: what the song should be.'],
-    ['2 · WRITE', 'WRITE - the writer model you choose writes the title, the style and the lyrics.'],
-    ['3 · TEXT', 'TEXT - Song Sheet · Text shows exactly what YuE2 will sing.'],
-    ['4 · SCORE', 'SCORE - YuE2 plans the melody as a score, Arrange can re-arrange it, and Song Sheet · Score shows it.'],
+  await sectionTour(s, [
+    ['1 · SONG', 'SONG - at the top two switch cards and the Writer model, then the Song Brief: what the song should be.'],
+    ['2 · WRITE', 'WRITE - the writer drafts the style and the lyrics, and ten titles; Plenio picks one no song of yours has yet.'],
+    ['3 · TEXT', 'TEXT - Song Sheet · Text, in teal: exactly what YuE2 will sing. Here you edit the words.'],
+    ['4 · SCORE', 'SCORE - YuE2 plans the melody as a score, Arrange can re-arrange it, and Song Sheet · Score shows it - violet: here you edit the score.'],
     ['5 · RENDER', 'RENDER - YuE2 renders the song.'],
-    ['6 · FINISH', 'FINISH - Master brings it to -14 LUFS, Export writes the files.'],
-  ]
-  for (const [group, text] of tour) {
-    s.caption(text)
-    await s.flyGroups([group], 1000, 0.9)
-    await s.read(text, 2600)
-  }
-  s.caption('Optional blocks - Stems, Refine and Cover Art with a seed of its own - stay switched off until you need them.')
-  await s.flyGroups(['STEMS (optional)', 'REFINE (optional)', 'COVER ART (optional)'], 1000, 0.9)
-  await s.read('Optional blocks - Stems, Refine and Cover Art with a seed of its own - stay switched off until you need them.')
+    ['6 · FINISH', 'FINISH - Master brings it to -14 LUFS, Export writes the files, and Check Sung Words looks at the words sung.'],
+  ])
+  const art = 'Above the render, COVER ART paints the song’s cover - with a seed of its own.'
+  s.caption(art)
+  await s.flyGroups(['COVER ART', '5 · RENDER'], 1100, 0.9)
+  await s.spotlight(s.groupBox('COVER ART'), { ms: 2800, pad: 2 })
+  await s.read(art, 4200)
+  await switchCards(s)
 
   // --- part 1: a new song every run ------------------------------------------------------------------
   s.card('chapter', {
     kicker: 'Part', part: '1', title: 'A new song every run',
     subtitle: 'The run goes straight through - no stops',
-    steps: ['Brief', 'Write', 'Plan', 'Render', 'Master', 'Export'],
+    steps: ['Brief', 'Write', 'Plan', 'Render', 'Cover', 'Master', 'Export'],
   }, 4)
   s.chapter('Part 1 · A new song every run')
   await s.flyNodes([BRIEF], 1200, 0.94)
   await s.say('Everything starts in the Song Brief.', 2400)
   s.caption('mode: “new song every run” - every run writes and renders a different song, without stops.')
   await s.chooseCombo(BRIEF, 'mode', 'new song every run', { read: 2600 })
-  await s.wait(1200)
-  s.caption('template: a starting point. Fields you leave empty are taken from it.')
-  await s.spotlight(await s.widgetBox(BRIEF, 'template'), { ms: 2200 })
-  await s.hover(await s.widgetBox(BRIEF, 'template'), { fx: 0.7 })
-  await s.wait(3000)
+  await s.wait(900)
+  s.caption('template: a starting point for the genre, the mood, the tempo and the voice. Fields you leave empty are taken from it.')
+  await s.showCombo(BRIEF, 'template', { read: 3000, browse: 6 })
+  await s.wait(400)
   s.caption('Describe the song in your own words.')
   await s.click(await s.widgetBox(BRIEF, 'description'), { fx: 0.3, fy: 0.15 })
   await s.type(DESCRIPTION, { delay: 38 })
   await s.wait(1200)
   s.caption('length: from about 1:00 up to 6:00.')
-  await s.chooseCombo(BRIEF, 'length', 'short (about 1:30)', { read: 2400 })
-  await s.wait(900)
+  await s.chooseCombo(BRIEF, 'length', 'short (about 1:30)', { read: 2400, browse: 5 })
+  await s.wait(700)
   s.caption('vocals: a sung song - or an instrumental.')
-  await s.hover(await s.widgetBox(BRIEF, 'vocals'), { fx: 0.7 })
-  await s.wait(2600)
+  await s.showCombo(BRIEF, 'vocals', { read: 2000, browse: 2 })
+  await s.wait(500)
   s.caption('arrangement: “off” - YuE2 plans melody, chords and instruments itself. The experimental creative modes are tutorial 6.')
-  await s.spotlight(await s.widgetBox(BRIEF, 'arrangement'), { ms: 2600 })
-  await s.read('arrangement: “off” - YuE2 plans melody, chords and instruments itself. The experimental creative modes are tutorial 6.', 6000)
-  s.caption('The Writer model writes the text: Gemma 4 by default - or a local LLM from your machine.')
-  await s.flyNodes([WRITER], 1000, 0.9)
-  await s.spotlight(await s.widgetBox(WRITER, 'model'), { ms: 2400 })
-  await s.read('The Writer model writes the text: Gemma 4 by default - or a local LLM from your machine.', 4800)
+  await s.showCombo(BRIEF, 'arrangement', { read: 2600, browse: 6 })
+  await s.read('arrangement: “off” - YuE2 plans melody, chords and instruments itself. The experimental creative modes are tutorial 6.', 2600)
+  const creativity = 'creativity: 50 is the dependable middle. Higher writes and plans more freely - more surprises, and more misses.'
+  s.caption(creativity)
+  const slider = await s.widgetBox(BRIEF, 'creativity')
+  await s.spotlight(slider, { ms: 3000, pad: 6 })
+  await s.callout(slider, '50 · the reference', { ms: 3000 })
+  await s.read(creativity, 5600)
+  await writerDemo(s, { uses: [WRITE, ARRANGE, CHECK] })
   await seedsDemo(s, { plan: 'Plan seed' })
 
   s.caption('Press Run.')
   await s.resetRunState()
   await s.run()
   await s.follow({ stages: STAGES, groups: GROUPS })
-  await afterRun(s, 'Done: the finished song is in Preview (mastered).')
+  await afterRun(s, 'Done: the finished song is in Preview (mastered).', { group: '6 · FINISH', preview: PREVIEW })
+  await coverArtShown(s)
   await sheetMusicSaved(s, EXPORT, 'Export wrote the mastered FLAC - it carries the whole project - the unmastered take, a release record and the sheet music with the lyrics as a PDF.')
   await exportExtras(s, EXPORT)
+  await checkSungWords(s)
+  await masterDemo(s)
   s.caption('Press Run again for another, different song - or set a number next to Run for a whole series.')
   const batch = page.locator('.actionbar input, .queue-button-group input, [data-testid="batch-count-edit"] input').first()
   if (await batch.count()) await s.spotlight(batch, { ms: 2600, pad: 10 })
@@ -155,7 +160,8 @@ export default async function song(s) {
   await s.flyNodes([BRIEF], 1100, 0.94)
   s.caption('mode: “one song, stop to review” - the run stops at both Song Sheets.')
   await s.chooseCombo(BRIEF, 'mode', 'one song, stop to review', { read: 2400 })
-  await s.wait(1400)
+  await s.wait(900)
+  await seedsFollowMode(s)
 
   s.caption('Press Run.')
   await s.resetRunState()
@@ -166,10 +172,10 @@ export default async function song(s) {
   await s.read('The run stopped at Song Sheet · Text: ⏸ waiting for your approval. Nothing is rendered yet.', 4600)
 
   // stop 1: the text
-  await openSheet(s, TEXT, 'Open it with “Edit lyrics & text”.')
+  await openSheet(s, TEXT, 'Its card says what you edit here: open it with “Edit lyrics & text”.')
   await tab(s, 'Lyrics', 'Lyrics: the words YuE2 will sing, section by section ([Verse], [Chorus] …). Edit anything - your edit wins.', { min: 5200 })
   await tab(s, 'Style', 'Style: the genre, the instruments and the voice YuE2 is given.', { min: 4200 })
-  await tab(s, 'Title & artwork', 'Title & artwork: the song’s title and the prompt for the optional cover art.', { min: 4200 })
+  await tab(s, 'Title & artwork', 'Title & artwork: the title, picked from the writer’s ten - and the cover prompt, drawn from the lyrics: their central image, the light, the colours.', { min: 7000 })
   await approve(s, 'Approve: exactly these documents go on to the music model.')
   await showApproved(s, TEXT, 'The node says ✓ approved at once. Press Run again: YuE2 plans the score, and the run stops at the next sheet.')
   await s.wait(2600)
@@ -181,7 +187,7 @@ export default async function song(s) {
   await s.read('Stop 2: Song Sheet · Score waits for your approval.', 3200)
 
   // stop 2: the score - the score editor
-  await openSheet(s, SCORE, 'Open the score.')
+  await openSheet(s, SCORE, 'Open the score with “Edit the score”.')
   await maximize(s, '⛶ gives the editor the whole window.')
   s.card('chapter', {
     kicker: 'Part', part: '3', title: 'The score editor',
@@ -231,30 +237,19 @@ export default async function song(s) {
     stages: {
       [PLAN]: 'YuE2 plans again for the new lyrics - Song Sheet · Score keeps your arranged score.',
       [RENDER]: STAGES[RENDER],
+      [COVER]: '',
       [MASTER]: STAGES[MASTER],
+      [CHECK]: STAGES[CHECK],
     },
     groups: GROUPS,
   })
-  await afterRun(s, 'The approved song is finished and exported.')
+  await afterRun(s, 'The approved song is finished and exported.', { group: '6 · FINISH', preview: PREVIEW })
   s.caption('Every further Run renders a new take of the same approved song - the amber Take seed draws a new number each time.')
-  await s.flyGroups(['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · SCORE', '5 · RENDER', '6 · FINISH'], 1600)
+  await s.flyGroups(SECTIONS, 1600)
   await s.read('Every further Run renders a new take of the same approved song - the amber Take seed draws a new number each time.', 5200)
   await continueDemo(s)
   s.card('end', {
     title: 'Next: 2 · YuE2 · Cover',
     lines: ['Install: ComfyUI Manager → <b>Plenio Music Production System</b>', 'Guides and source: <b>github.com/jplenio/Plenio-Music-Production-System</b>'],
   }, 5)
-}
-
-async function afterRun(s, text) {
-  s.caption(text)
-  await s.flyGroups(['6 · FINISH'], 1200, 0.9)
-  await s.wait(800)
-  const player = await s.audioBox(PREVIEW)
-  if (player) {
-    await s.spotlight(player, { ms: 2000 })
-    await s.click({ x: player.x + 18, y: player.y + player.height / 2, width: 1, height: 1 }, { pause: 400 })
-    await s.listen(PREVIEW)
-  }
-  await s.read(text, 4200)
 }

@@ -39,6 +39,9 @@ For every template, you see whether its model files are installed. If something'
 @ Every model file the templates load
 Here's every model file the templates use, with its folder, its size, its licence and its status.
 
+@ The Plenio assets:
+Then the Plenio assets: the lyrics recognition, Qwen three A S R, its forced aligner and the Whisper fallback, with the folder they live in, and whether they're there.
+
 @ The hardware table:
 The hardware table matches the model files to your graphics memory. [pause:0.3s] The row for this machine is marked.
 

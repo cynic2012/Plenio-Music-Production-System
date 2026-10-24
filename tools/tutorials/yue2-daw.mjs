@@ -6,7 +6,25 @@
 // assets/Open Window Sketch.abc is its score), or $PLENIO_TUTORIAL_MIDI.
 
 import path from 'node:path'
-import { barsDemo, cursorDemo, editorTour, exportExtras, filesDemo, recordDemo, sheetMusicSaved, showApproved, simulateKeyboard, soundsDemo } from './lib/scenes.mjs'
+import {
+  afterRun,
+  barsDemo,
+  checkSungWords,
+  coverArtShown,
+  cursorDemo,
+  editorTour,
+  exportExtras,
+  filesDemo,
+  openTemplate,
+  recordDemo,
+  sectionTour,
+  sheetMusicSaved,
+  showApproved,
+  simulateKeyboard,
+  soundsDemo,
+  switchCards,
+  writerDemo,
+} from './lib/scenes.mjs'
 import { DIALOG, approve, fixSections, maximize, openSheet, scrollToVoice, tab, trimSections } from './lib/sheet.mjs'
 import { FOOT } from './lib/studio.mjs'
 
@@ -19,15 +37,19 @@ export const meta = {
 const BRIEF = 'PlenioSongBrief', WRITE = 'Plenio · Write Song', TEXT = 'Song Sheet · Text'
 const TOOLS = 'Score Tools · new score from brief', DAW = 'Song Sheet · DAW', RENDER = 'Plenio · YuE2 Render'
 const MASTER = 'Plenio · Master', PREVIEW = 'Preview (mastered)', EXPORT = 'PlenioExportRelease', WRITER = 'Writer model'
+const COVER = 'Cover Art', CHECK = 'Check Sung Words'
+const SECTIONS = ['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · DAW', '5 · RENDER', '6 · FINISH']
 const GROUPS = {
-  [WRITE]: '2 · WRITE', [TEXT]: '3 · TEXT', [TOOLS]: '4 · DAW', [DAW]: '4 · DAW',
-  'Take seed': '5 · RENDER', [RENDER]: '5 · RENDER', [MASTER]: '6 · FINISH', [PREVIEW]: '6 · FINISH', [EXPORT]: '6 · FINISH',
+  [WRITE]: '2 · WRITE', [TEXT]: '3 · TEXT', [TOOLS]: '4 · DAW', [DAW]: '4 · DAW', 'Take seed': '5 · RENDER', [RENDER]: '5 · RENDER',
+  [COVER]: 'COVER ART', [MASTER]: '6 · FINISH', [PREVIEW]: '6 · FINISH', [EXPORT]: '6 · FINISH', [CHECK]: '6 · FINISH',
 }
 const STAGES = {
-  [WRITE]: 'The writer model drafts the title, the style and the lyrics.',
+  [WRITE]: 'The writer model drafts the style and the lyrics, and ten titles to pick from.',
   [TOOLS]: 'Score Tools builds an empty score from the brief.',
   [RENDER]: 'YuE2 renders exactly the approved score.',
+  [COVER]: '',
   [MASTER]: 'Master and Export finish the song.',
+  [CHECK]: 'Check Sung Words reads what the take sings.',
 }
 const DESCRIPTION = 'A bright, hopeful pop song about opening the window on the first warm morning of spring.'
 
@@ -45,41 +67,23 @@ export default async function daw(s, { project }) {
   // --- open the template -------------------------------------------------------------------------
   s.chapter('Getting started')
   await s.wait(600)
-  s.caption('Open the template browser: Templates.')
-  await s.click(page.getByRole('button', { name: 'Templates' }), { pause: 500 })
-  await s.wait(2400)
-  s.caption('Plenio’s templates: Extensions → Plenio-Music-Production-System.')
-  await s.hover(page.getByText('Node Basics', { exact: true }).first())
-  await page.mouse.wheel(0, 600)
-  await s.wait(900)
-  await s.click(page.getByText('Plenio-Music-Production-System', { exact: true }).first(), { pause: 400 })
-  await page.waitForFunction(() => [...document.querySelectorAll('img[alt*="DAW"]')].every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 20000 }).catch(() => {})
-  await s.wait(1600)
-  const card = page.getByText('5 · YuE2 · DAW', { exact: true }).first()
-  s.caption('5 · YuE2 · DAW: you compose the score - or bring it from your DAW.')
-  await s.hover(card, { fy: -4 })
-  await s.wait(2600)
-  await s.click(card, { fy: -4, pause: 300 })
-  await page.waitForFunction(() => window.app.graph.nodes.some((n) => n.title === 'Song Sheet · DAW'), null, { timeout: 30000 })
-  await s.wait(2500)
+  await openTemplate(s, { name: '5 · YuE2 · DAW', alt: 'DAW', what: '5 · YuE2 · DAW: you compose the score - or bring it from your DAW.' })
 
   // --- the tour -----------------------------------------------------------------------------------
-  const all = ['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · DAW', '5 · RENDER', '6 · FINISH']
-  await s.flyGroups(all, 1400)
-  await s.say('The template reads from left to right, in numbered groups.', 3000)
-  const tour = [
-    ['1 · SONG', 'SONG - the Song Brief.'],
-    ['2 · WRITE', 'WRITE - the writer drafts the title, the style and the lyrics - with the writer model you choose.'],
-    ['3 · TEXT', 'TEXT - Song Sheet · Text: the words YuE2 will sing.'],
-    ['4 · DAW', 'DAW - Score Tools builds an empty score from the brief; you write the music in Song Sheet · DAW.'],
+  await sectionTour(s, [
+    ['1 · SONG', 'SONG - the two switch cards and the Writer model at the top, then the Song Brief.'],
+    ['2 · WRITE', 'WRITE - the writer drafts the style and the lyrics, and ten titles; Plenio picks one no song of yours has yet.'],
+    ['3 · TEXT', 'TEXT - Song Sheet · Text, in teal: the words YuE2 will sing.'],
+    ['4 · DAW', 'DAW - Score Tools builds an empty score from the brief; you write the music in Song Sheet · DAW, in blue.'],
     ['5 · RENDER', 'RENDER - YuE2 renders exactly that score.'],
-    ['6 · FINISH', 'FINISH - Master and Export.'],
-  ]
-  for (const [group, text] of tour) {
-    s.caption(text)
-    await s.flyGroups([group], 1000, 0.9)
-    await s.read(text, 2600)
-  }
+    ['6 · FINISH', 'FINISH - Master and Export, and Check Sung Words.'],
+  ])
+  const art = 'Above the render, COVER ART paints the song’s cover.'
+  s.caption(art)
+  await s.flyGroups(['COVER ART', '5 · RENDER'], 1100, 0.9)
+  await s.spotlight(s.groupBox('COVER ART'), { ms: 2400, pad: 2 })
+  await s.read(art, 3400)
+  await switchCards(s)
 
   // --- the brief and the first run ---------------------------------------------------------------
   s.card('chapter', {
@@ -90,19 +94,20 @@ export default async function daw(s, { project }) {
   s.chapter('Part 1 · The words')
   await s.flyNodes([BRIEF], 1200, 0.94)
   s.caption('The brief: the mode is “one song, stop to review” here - the run stops at each sheet.')
-  await s.spotlight(await s.widgetBox(BRIEF, 'mode'), { ms: 2400 })
-  await s.wait(3600)
+  await s.showCombo(BRIEF, 'mode', { read: 2600, browse: 2 })
+  await s.wait(600)
   s.caption('Describe the song.')
   await s.click(await s.widgetBox(BRIEF, 'description'), { fx: 0.3, fy: 0.15 })
   await s.type(DESCRIPTION, { delay: 36 })
   await s.wait(1200)
   s.caption('length: short. Tempo, key and meter come from the brief - or later from your sketch.')
-  await s.chooseCombo(BRIEF, 'length', 'short (about 1:30)', { read: 2400 })
-  await s.wait(1200)
-  s.caption('The Writer model writes the words: Gemma 4 by default - or a local LLM from your machine.')
-  await s.flyNodes([WRITER], 1000, 0.9)
-  await s.spotlight(await s.widgetBox(WRITER, 'model'), { ms: 2400 })
-  await s.read('The Writer model writes the words: Gemma 4 by default - or a local LLM from your machine.', 4800)
+  await s.chooseCombo(BRIEF, 'length', 'short (about 1:30)', { read: 2400, browse: 5 })
+  await s.wait(900)
+  await writerDemo(s, {
+    text: 'Under the cards, the Writer model writes the words: Gemma 4 by default - or a local LLM from your machine.',
+    uses: [WRITE, CHECK],
+    flows: 'It writes the style and the lyrics - and after the export it checks the words that were sung.',
+  })
   s.caption('Press Run.')
   await s.resetRunState()
   await s.run()
@@ -111,7 +116,7 @@ export default async function daw(s, { project }) {
   await s.flyNodes([TEXT], 1100, 0.9)
   await s.read('The run stopped at Song Sheet · Text: ⏸ waiting for your approval.', 3800)
 
-  await openSheet(s, TEXT, 'First the words: open Song Sheet · Text.')
+  await openSheet(s, TEXT, 'First the words: Song Sheet · Text’s card says “Edit lyrics & text”.')
   await tab(s, 'Lyrics', 'The lyrics, section by section. Edit anything you like.', { min: 5600 })
   await approve(s, 'Approve.')
   await showApproved(s, TEXT, '✓ approved. Run again: Score Tools builds an empty score from the brief, and the run stops at Song Sheet · DAW.')
@@ -129,7 +134,7 @@ export default async function daw(s, { project }) {
     steps: ['Tracks', 'Import MIDI', 'Tour', 'Play & sounds', 'Record', 'Files', 'Approve'],
   }, 4.5)
   s.chapter('Part 2 · The music')
-  await openSheet(s, DAW, 'Open Song Sheet · DAW.')
+  await openSheet(s, DAW, 'Song Sheet · DAW’s card: “Compose the score” - piano roll, chords, MIDI.')
   await maximize(s, '⛶ gives the editor the whole window.')
   const d = page.locator(DIALOG)
   const tracks = d.locator('.track-panel').first()
@@ -200,29 +205,17 @@ export default async function daw(s, { project }) {
   // --- part 3: the song ---------------------------------------------------------------------------
   await s.resetRunState()
   await s.run()
-  await s.follow({ stages: { [RENDER]: STAGES[RENDER], [MASTER]: STAGES[MASTER] }, groups: GROUPS })
-  await afterRun(s, 'Done: your melody, your chords - sung by YuE2.')
+  await s.follow({ stages: { [RENDER]: STAGES[RENDER], [COVER]: '', [MASTER]: STAGES[MASTER], [CHECK]: STAGES[CHECK] }, groups: GROUPS })
+  await afterRun(s, 'Done: your melody, your chords - sung by YuE2.', { group: '6 · FINISH', preview: PREVIEW })
+  await coverArtShown(s)
   await sheetMusicSaved(s, EXPORT, 'Export also saved your score as sheet music - both voices, the chords and the lyrics, as a PDF next to the song.')
   await exportExtras(s, EXPORT)
+  await checkSungWords(s)
   s.caption('Every further Run renders a new take of the same score.')
-  await s.flyGroups(all, 1600)
+  await s.flyGroups(SECTIONS, 1600)
   await s.read('Every further Run renders a new take of the same score.', 3800)
   s.card('end', {
     title: 'Next: 6 · YuE2 · Song · Creative modes',
     lines: ['Install: ComfyUI Manager → <b>Plenio Music Production System</b>', 'Guides and source: <b>github.com/jplenio/Plenio-Music-Production-System</b>'],
   }, 5)
 }
-
-async function afterRun(s, text) {
-  s.caption(text)
-  await s.flyGroups(['6 · FINISH'], 1200, 0.9)
-  await s.wait(800)
-  const player = await s.audioBox(PREVIEW)
-  if (player) {
-    await s.spotlight(player, { ms: 2000 })
-    await s.click({ x: player.x + 18, y: player.y + player.height / 2, width: 1, height: 1 }, { pause: 400 })
-    await s.listen(PREVIEW)
-  }
-  await s.read(text, 4200)
-}
-
