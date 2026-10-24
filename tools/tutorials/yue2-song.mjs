@@ -44,17 +44,18 @@ export const meta = {
 const BRIEF = 'PlenioSongBrief', TEXT = 'Song Sheet · Text', SCORE = 'Song Sheet · Score'
 const WRITE = 'Plenio · Write Song', PLAN = 'Plenio · YuE2 Plan', RENDER = 'Plenio · YuE2 Render', MASTER = 'Plenio · Master'
 const PREVIEW = 'Preview (mastered)', EXPORT = 'PlenioExportRelease', WRITER = 'Writer model', ARRANGE = 'Arrange'
-const COVER = 'Cover Art'
+const COVER = 'Cover Art', BEST = 'Best Take · lyrics fidelity'
 const SECTIONS = ['1 · SONG', '2 · WRITE', '3 · TEXT', '4 · SCORE', '5 · RENDER', '6 · FINISH']
 const GROUPS = {
   [WRITE]: '2 · WRITE', [TEXT]: '3 · TEXT', [PLAN]: '4 · SCORE', 'PlenioScoreTools': '4 · SCORE', [ARRANGE]: '4 · SCORE', [SCORE]: '4 · SCORE',
   'Take seed': '5 · RENDER', [RENDER]: '5 · RENDER', [COVER]: 'COVER ART', [MASTER]: '6 · FINISH', [PREVIEW]: '6 · FINISH',
-  [EXPORT]: '6 · FINISH',
+  [EXPORT]: '6 · FINISH', [BEST]: '5 · RENDER',
 }
 const STAGES = {
   [WRITE]: 'The writer model drafts the style and the lyrics, and ten titles to pick from.',
   [PLAN]: 'YuE2 plans the melody and the chords as a score.',
   [RENDER]: 'YuE2 renders the song from the lyrics and the score.',
+  [BEST]: 'Best Take hears both takes and keeps the one that sings more of its lyrics.',
   [COVER]: '',
   [MASTER]: 'Master and Export finish the song.',
 }
@@ -85,7 +86,7 @@ export default async function song(s) {
     ['2 · WRITE', 'WRITE - the writer drafts the style and the lyrics, and ten titles; Plenio picks one no song of yours has yet.'],
     ['3 · TEXT', 'TEXT - Song Sheet · Text, in teal: exactly what YuE2 will sing. Here you edit the words.'],
     ['4 · SCORE', 'SCORE - YuE2 plans the melody as a score, Arrange can re-arrange it, and Song Sheet · Score shows it - violet: here you edit the score.'],
-    ['5 · RENDER', 'RENDER - YuE2 renders the song.'],
+    ['5 · RENDER', 'RENDER - YuE2 renders the song; Best Take keeps the take that sings its lyrics best.'],
     ['6 · FINISH', 'FINISH - Master brings it to -14 LUFS, and Export writes the files.'],
   ])
   const art = 'Above the render, COVER ART paints the song’s cover - with a seed of its own.'
@@ -129,6 +130,10 @@ export default async function song(s) {
   await s.spotlight(slider, { ms: 3000, pad: 6 })
   await s.callout(slider, '50 · the reference', { ms: 3000 })
   await s.read(creativity, 5600)
+  const fidelity = 'lyrics fidelity: standard renders one take; high a second, and Best Take keeps the one that sings more of the lyrics as written; highest a third, when neither sang 95 %. It takes longer.'
+  s.caption(fidelity)
+  await s.chooseCombo(BRIEF, 'lyrics_fidelity', 'high - best of 2 takes', { read: 3200, browse: 3 })
+  await s.read(fidelity, 6400)
   await writerDemo(s, { uses: [WRITE, ARRANGE] })
   await seedsDemo(s, { plan: 'Plan seed' })
 
@@ -137,6 +142,11 @@ export default async function song(s) {
   await s.run()
   await s.follow({ stages: STAGES, groups: GROUPS })
   await afterRun(s, 'Done: the finished song is in Preview (mastered).', { group: '6 · FINISH', preview: PREVIEW })
+  const kept = 'Best Take: what each take sang of its lyrics, and the one it kept - into the release record too.'
+  s.caption(kept)
+  await s.flyNodes([BEST], 1100, 0.85)
+  await s.spotlight(s.nodeBox(BEST), { ms: 3600, pad: 4 })
+  await s.read(kept, 5600)
   await coverArtShown(s)
   await sheetMusicSaved(s, EXPORT, 'Export wrote the mastered FLAC - it carries the whole project - the unmastered take, a release record and the sheet music with the lyrics as a PDF.')
   await exportExtras(s, EXPORT)

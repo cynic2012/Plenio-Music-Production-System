@@ -78,7 +78,7 @@ export default async function cover(s, { project }) {
     ['3 · SCORE', 'SCORE - SheetSage2 transcribes the music into a score, Arrange can re-arrange it, Song Sheet · Score - violet - shows it.'],
     ['4 · LYRICS', 'LYRICS - the original words (speech recognition; the writer corrects misheard ones), new lyrics (the writer model) or section tags.'],
     ['5 · TEXT', 'TEXT - Song Sheet · Text, in teal: the lyrics and the style YuE2 gets.'],
-    ['6 · RENDER', 'RENDER - YuE2 renders the cover; Check Vocals picks the best take.'],
+    ['6 · RENDER', 'RENDER - YuE2 renders the cover; Check Vocals and Best Take pick the best take.'],
     ['7 · FINISH', 'FINISH - Master brings it to -14 LUFS, Export writes the files.'],
   ])
   const art = 'Above the render, COVER ART paints the cover; below the source, the MUSIC MODEL block holds YuE2 and its instrumental adapter.'

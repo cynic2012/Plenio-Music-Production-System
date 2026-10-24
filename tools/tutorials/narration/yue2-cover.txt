@@ -31,7 +31,7 @@ Lyrics: the original words, with the writer correcting the ones that were mishea
 The Text sheet, in teal, shows the words and the style YuE2 receives.
 
 @ RENDER - YuE2 renders the cover
-YuE2 renders the cover, and Check Vocals picks the best take.
+YuE2 renders the cover. Check Vocals and Best Take pick the best take.
 
 @ FINISH - Master brings
 And Master and Export finish the job.

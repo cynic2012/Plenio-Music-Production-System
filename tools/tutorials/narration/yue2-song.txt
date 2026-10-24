@@ -29,7 +29,7 @@ The Text sheet, in teal, shows exactly what YuE2 is going to sing. This is where
 Next, YuE2 plans the melody as a score, and Arrange can re-arrange it. The Score sheet, in violet, is where you edit the score.
 
 @ RENDER - YuE2 renders
-Here, YuE2 renders the actual song.
+Here, YuE2 renders the actual song, and Best Take keeps the take that sings its lyrics best.
 
 @ FINISH - Master brings
 And finally, Master sets the loudness, and Export writes the files.
@@ -73,6 +73,9 @@ Arrangement stays off: YuE2 plans it all. The creative modes in this list are tu
 @ creativity: 50
 Creativity: fifty is the dependable middle. Higher brings more surprises, and more misses.
 
+@ lyrics fidelity: standard
+Lyrics fidelity. Standard renders one take. High renders a second one, and keeps the take that sings more of the lyrics as written. Highest adds a third, when neither sang ninety-five percent. It takes longer. We take high.
+
 @ Under the cards, the Writer model
 Under the cards sits the writer model: one model for every writing step. Gemma 4 by default, or a local LLM from your machine.
 
@@ -100,11 +103,17 @@ YuE2 plans the melody and the chords,
 @ YuE2 renders the song
 and renders the song from the lyrics and that score.
 
+@ Best Take hears both takes | optional
+Best Take hears both takes, and keeps the one that sings more of its lyrics.
+
 @ Master and Export finish
 Master and Export add the finishing touches.
 
 @ Done: the finished song | +5
 Done! The finished song is right here, in the mastered preview. [pause:0.5s] Have a listen.
+
+@ Best Take: what each take sang
+Best Take says what each take sang of its lyrics, and which one it kept. The release record keeps it too.
 
 @ Above the render, Cover Art painted
 And above the render: the cover, painted from the song's artwork prompt. Export put it into the FLAC and the MP3.

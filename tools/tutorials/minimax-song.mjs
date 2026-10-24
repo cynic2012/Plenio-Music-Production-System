@@ -62,7 +62,7 @@ export default async function minimax(s) {
     ['1 · SONG', 'SONG - the two switch cards and the Writer model at the top, then the Song Brief: what the song should be.'],
     ['2 · WRITE', 'WRITE - the writer drafts a caption and the lyrics, and ten titles; Plenio picks one no song of yours has yet.'],
     ['3 · SHEET', 'SHEET - the Song Sheet: exactly what MiniMax gets. MiniMax takes no score, so there is one sheet - teal, for the words.'],
-    ['4 · RENDER', 'RENDER - MiniMax Music 3 renders the song.'],
+    ['4 · RENDER', 'RENDER - MiniMax Music 3 renders the song; Best Take keeps the take that sings its lyrics best.'],
     ['5 · FINISH', 'FINISH - Master brings it to -14 LUFS, and Export writes the files.'],
   ], { intro: 'Five numbered sections, from left to right - one row, side by side.' })
   const art = 'Above the render, COVER ART paints the song’s cover; below the brief, the MUSIC MODEL block holds the MiniMax files.'

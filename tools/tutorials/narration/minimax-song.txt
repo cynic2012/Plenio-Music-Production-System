@@ -25,7 +25,7 @@ The writer drafts a caption and the lyrics, and ten titles. Plenio picks one tha
 The Song Sheet shows exactly what MiniMax gets. No score, so just one sheet, in teal, for the words.
 
 @ RENDER - MiniMax Music 3
-Then MiniMax renders the song.
+Then MiniMax renders the song, and Best Take keeps the take that sings its lyrics best.
 
 @ FINISH - Master
 Master and Export finish it.

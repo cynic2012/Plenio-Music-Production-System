@@ -73,7 +73,7 @@ export default async function daw(s, { project }) {
     ['2 · WRITE', 'WRITE - the writer drafts the style and the lyrics, and ten titles; Plenio picks one no song of yours has yet.'],
     ['3 · TEXT', 'TEXT - Song Sheet · Text, in teal: the words YuE2 will sing.'],
     ['4 · DAW', 'DAW - Score Tools builds an empty score from the brief; you write the music in Song Sheet · DAW, in blue.'],
-    ['5 · RENDER', 'RENDER - YuE2 renders exactly that score.'],
+    ['5 · RENDER', 'RENDER - YuE2 renders exactly that score; Best Take keeps the take that sings its lyrics best.'],
     ['6 · FINISH', 'FINISH - Master and Export.'],
   ])
   const art = 'Above the render, COVER ART paints the song’s cover.'

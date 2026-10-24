@@ -28,7 +28,7 @@ and the Text sheet, in teal, with the words YuE2 will sing.
 Then Score Tools builds an empty score, and you write the music in the DAW sheet, in blue.
 
 @ RENDER - YuE2 renders
-YuE2 renders exactly that score,
+YuE2 renders exactly that score, Best Take keeps the take that sings best,
 
 @ FINISH - Master and Export
 and Master and Export finish the song.
