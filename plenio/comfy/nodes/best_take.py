@@ -2,8 +2,8 @@
 (owner's request 2026-10-24, ``core.fidelity``).
 
 The second and third takes are lazy inputs: their renders run only when this node asks for them - with
-*standard* never, with *high* always the second, with *highest* the third only when neither of the first two
-sang 95 % of the lyrics' words as written. Each take is heard by the lyrics ASR (the same hearing Export
+*standard* never, with *high* the second only when the first sang less than 96 % of the lyrics' words as
+written, with *highest* also the third when neither of the first two reached 96 %. Each take is heard by the lyrics ASR (the same hearing Export
 Release uses, kept in its cache) and scored like the release record's *as sung*: the share of the lyrics'
 words heard as written.
 """
@@ -74,9 +74,9 @@ class PlenioBestTake(io.ComfyNode):
             display_name="Best Take · lyrics fidelity",
             category="Plenio/Audio analysis",
             description=(
-                "The brief's lyrics fidelity. standard: the first take. high: a second take is rendered and the take "
-                "that sings more of the lyrics as written is kept. highest: a third take too, when neither sang 95 % "
-                "of the words. The takes are heard by the lyrics ASR; the later ones render only when asked for - "
+                "The brief's lyrics fidelity. standard: the first take. high: a second take when the first sang less "
+                "than 96 % of the words as written, and the take that sings more of the lyrics is kept. highest: a "
+                "third take too, when neither reached 96 %. The takes are heard by the lyrics ASR; the later ones render only when asked for - "
                 "higher fidelity makes the generation take longer."
             ),
             inputs=[
@@ -95,13 +95,13 @@ class PlenioBestTake(io.ComfyNode):
                     "second",
                     optional=True,
                     lazy=True,
-                    tooltip="A second take (the next seed): rendered only when asked for.",
+                    tooltip="A second take (the next seed): rendered only when the first sang under 96 % of the lyrics.",
                 ),
                 io.Audio.Input(
                     "third",
                     optional=True,
                     lazy=True,
-                    tooltip="A third take: rendered only with highest fidelity, when neither take sang 95 % of the lyrics.",
+                    tooltip="A third take: rendered only with highest fidelity, when neither take sang 96 % of the lyrics.",
                 ),
             ],
             outputs=[
@@ -122,21 +122,20 @@ class PlenioBestTake(io.ComfyNode):
         third: Any = None,
     ) -> list[str]:
         level = level_of(brief, lyrics or "")
-        if take is None or level == STANDARD:
+        if take is None or level == STANDARD or third is not None:
             return []
-        if second is None:
-            return ["second"]
-        if third is not None:
-            return []
+        takes = [take] if second is None else [take, second]
         try:
-            scores = [score(t, lyrics or "", brief) for t in (take, second)]
+            scores = [score(t, lyrics or "", brief) for t in takes]
         except PlenioCancelledError:
             host.raise_if_interrupted()
             raise
         except Exception:  # noqa: BLE001 - execute keeps the first take and says why
             LOG.exception("Plenio Best Take: the takes could not be heard")
             return []
-        return ["third"] if needs_another(level, scores) else []
+        if not needs_another(level, scores):
+            return []
+        return ["second"] if second is None else ["third"]
 
     @classmethod
     def execute(

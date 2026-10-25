@@ -382,6 +382,36 @@ def test_the_state_survives_a_restart(party: Any, tmp_path: Path) -> None:
     assert again.jobs[0]["status"] == "waiting" and again.settings["on"] is True
 
 
+def test_who_made_a_party_song_is_shown_as_the_admin_chooses(party: Any, tmp_path: Path) -> None:
+    songs, studio, _clock, library = party
+    assert songs.settings["credit"] == "off"  # not shown until the admin says so
+    with pytest.raises(MakerError):
+        songs.configure({"credit": "everywhere"})
+    songs.configure({"credit": "drift"})
+    assert songs.status(ANNA)["settings"]["credit"] == "drift"  # every listener's player shows it
+    assert PartySongs(library, tmp_path / "state", studio).settings["credit"] == "drift"  # type: ignore[arg-type]
+    assert maker_module.party_maker({"album": "Party-Song 2026-10-25", "artist": "Anna"}) == "Anna"
+    assert maker_module.party_maker({"album": "Party-Song 2026-10-25"}) == "Guest"
+    assert maker_module.party_maker({"album": "Summer", "artist": "Anna"}) is None
+
+
+def test_the_guests_see_who_made_the_party_song_that_plays(party: Any, tmp_path: Path) -> None:
+    songs, _studio, _clock, library = party
+    folder = tmp_path / "library" / "Party-Songs-2026-10-25"
+    folder.mkdir()
+    (folder / "Neon.plenio.json").write_text(json.dumps(record("Neon")), encoding="utf-8")
+    (folder / "Neon.flac").write_bytes(b"f" * 64)
+    library.scan(force=True)
+    song_id = library.songs()[0]["id"]
+    hub = GuestHub(library, tmp_path / "state", host="127.0.0.1")
+    hub.maker = songs
+    hub.publish({"live": True, "playing": True, "now": {"id": song_id}})
+    assert hub.snapshot["now"]["made_by"] == ""  # the admin has not chosen to show it
+    songs.configure({"credit": "spotlight"})
+    hub.publish({"live": True, "playing": True, "now": {"id": song_id}, "next": [{"id": song_id}]})
+    assert hub.snapshot["now"]["made_by"] == "Anna" and hub.snapshot["next"][0]["made_by"] == "Anna"
+
+
 # --- the Song API over HTTP -----------------------------------------------------------------------------
 
 

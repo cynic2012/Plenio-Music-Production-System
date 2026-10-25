@@ -165,6 +165,14 @@ keeps its workflow for that. Nothing in v1's request or answer has to change for
 - The admin sees everybody's songs with their names; Settings has the switches.
 - The party's guests: their page shows *Make your own song* when allowed; the form and their songs on a page of
   their own.
+- **Who made it, while it plays** (`settings.credit`: `off` by default, `spotlight`, `drift`; owner's request
+  2026-10-25): `MakerCredit.vue` over Now playing - the name large in the first 7 s (letter by letter), 4 s from
+  every section after the first, the last 8 s (`creditMoment`); between, a badge in the corner the guests' way in
+  leaves free (*spotlight*) or the name on a slow Lissajous path over the visual (*drift*, `driftAt`, only in the
+  Visual view); glowing with the engine's beat pulse. The maker is read from the song's tags (`partyMaker`,
+  `plenio.player.maker.party_maker`: album `Party-Song <date>`, the artist or *Guest*), so no list of party songs
+  has to be kept and songs made before show it too. The guests' live page gets `made_by` for the song that plays
+  and the next ones when the credit is on.
 
 ## 5. Checked
 

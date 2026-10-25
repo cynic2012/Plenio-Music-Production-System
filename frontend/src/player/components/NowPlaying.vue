@@ -12,6 +12,8 @@ import { lineIndex, lines, paletteStyle, playlistVisual, section, sections, writ
 import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, openCurrentPage, playing, previous, settings, time, toggleFavorite } from '../store'
 import { WAY_IN_SIDES } from '../liveSettings'
 import { formatTime, sectionName } from '../timing'
+import { partyMaker } from '../make/form'
+import { makeStatus } from '../make/state'
 import CoverArt from './CoverArt.vue'
 import GuestWayIn from './GuestWayIn.vue'
 import Icon from './Icon.vue'
@@ -19,6 +21,7 @@ import Karaoke from './Karaoke.vue'
 import LyricLine from './LyricLine.vue'
 import LyricsPanel from './LyricsPanel.vue'
 import LyricsVersionSwitch from './LyricsVersionSwitch.vue'
+import MakerCredit from './MakerCredit.vue'
 import Notation from './Notation.vue'
 import VisualCanvas from './VisualCanvas.vue'
 import VisualsPanel from './VisualsPanel.vue'
@@ -36,6 +39,13 @@ const activeVisual = ref('')
 const idle = ref(false)
 const card = ref(false)
 let idleTimer: number | undefined
+
+// a party song: who made it, when the admin shows it (Settings > Party songs)
+const credit = computed(() => {
+  const mode = makeStatus.value?.settings.credit ?? 'off'
+  const name = mode !== 'off' && current.value ? partyMaker(current.value.tags) : null
+  return name && mode !== 'off' ? { name, mode } : null
+})
 
 const subtitle = computed(() => {
   const i = lineIndex.value
@@ -153,6 +163,17 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
     <div v-if="view === 'visual' && settings.visuals.lyrics && subtitle" class="subtitle">
       <LyricLine :line="subtitle" :time="time" :effect="settings.lyrics.effect" />
     </div>
+
+    <MakerCredit
+      v-if="credit && !panel && !lyricsPanel"
+      :name="credit.name"
+      :mode="credit.mode"
+      :time="time"
+      :duration="duration"
+      :sections="sections"
+      :over-visual="view === 'visual'"
+      :avoid="settings.live.on && settings.live.overVisual ? settings.live.wayInCorner : ''"
+    />
 
     <Transition name="card">
       <div v-if="card && current" class="title-card">

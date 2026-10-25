@@ -46,8 +46,14 @@ DEFAULTS: dict[str, Any] = {
     "per_person": 3,
     "max_length": "about 4:00",
     "covers": True,
+    "credit": "off",
 }
 """Off until the admin switches it on; then users and guests may, three songs each waiting, up to about 4:00."""
+CREDITS = ("off", "spotlight", "drift")
+"""Who made a party song, while it plays (Now playing, the visual, the guests' page): not shown; *spotlight* -
+large as it begins, at every new section and as it ends, a small badge between; *drift* - the name floats
+across the picture all the way, glowing with the beat."""
+PARTY_ALBUM = re.compile(r"Party-Song \d{4}-\d{2}-\d{2}")
 TEMPLATES = {"song": "yue2-song", "cover": "yue2-cover"}
 SONG_FIELDS = (
     "template",
@@ -189,6 +195,14 @@ class Studio:
         return dict(self._call("GET", "/queue", timeout=5.0))
 
 
+def party_maker(tags: Mapping[str, Any]) -> str | None:
+    """Who made a party song, from its tags (the album *Party-Song <date>*, the artist the user's name or
+    *Guest*); ``None`` for every other song."""
+    if not PARTY_ALBUM.fullmatch(str(tags.get("album") or "").strip()):
+        return None
+    return str(tags.get("artist") or "").strip() or GUEST_NAME
+
+
 def guest_id(token: str) -> str:
     """A guest by the cookie their browser keeps (only its hash)."""
     return "g" + hashlib.sha256(token.encode("utf-8")).hexdigest()[:15]
@@ -283,6 +297,8 @@ class PartySongs:
             settings["per_person"] = DEFAULTS["per_person"]
         if settings["max_length"] not in brief_rules.LENGTHS:
             settings["max_length"] = DEFAULTS["max_length"]
+        if settings["credit"] not in CREDITS:
+            settings["credit"] = DEFAULTS["credit"]
         jobs = [j for j in data.get("jobs") or [] if isinstance(j, dict) and isinstance(j.get("id"), str)]
         rates = {
             k: float(v)
@@ -352,6 +368,10 @@ class PartySongs:
                 if changes["max_length"] not in brief_rules.LENGTHS:
                     raise MakerError(f"The longest length: one of {list(brief_rules.LENGTHS)}.")
                 self.settings["max_length"] = changes["max_length"]
+            if "credit" in changes:
+                if changes["credit"] not in CREDITS:
+                    raise MakerError(f"Who made it: one of {list(CREDITS)}.")
+                self.settings["credit"] = changes["credit"]
             self._save()
             return dict(self.settings)
 
@@ -784,7 +804,7 @@ class PartySongs:
             settings = (
                 dict(self.settings)
                 if admin
-                else {k: self.settings[k] for k in ("covers", "max_length", "per_person")}
+                else {k: self.settings[k] for k in ("covers", "max_length", "per_person", "credit")}
             )
             waiting = len(self._waiting())
             making = any(j["status"] in ACTIVE for j in self.jobs)

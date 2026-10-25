@@ -168,9 +168,9 @@ def fidelity_line(brief: Any) -> str:
     if brief.instrumental or level == STANDARD:
         return "Lyrics fidelity: standard (one take)"
     extra = (
-        "a second take"
+        "a second take when the first sings under 96 % of the lyrics"
         if level == HIGH
-        else "a second take, and a third when neither sings 95 % of the lyrics"
+        else "a second take when the first sings under 96 % of the lyrics, a third when neither reaches it"
     )
     return f"Lyrics fidelity: **{level}** - {extra}; the take that sings more of the lyrics is kept (takes longer)"
 

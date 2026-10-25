@@ -1494,14 +1494,14 @@
      "second": [
       "AUDIO",
       {
-       "tooltip": "A second take (the next seed): rendered only when asked for.",
+       "tooltip": "A second take (the next seed): rendered only when the first sang under 96 % of the lyrics.",
        "lazy": true
       }
      ],
      "third": [
       "AUDIO",
       {
-       "tooltip": "A third take: rendered only with highest fidelity, when neither take sang 95 % of the lyrics.",
+       "tooltip": "A third take: rendered only with highest fidelity, when neither take sang 96 % of the lyrics.",
        "lazy": true
       }
      ]
@@ -2285,7 +2285,7 @@
       "COMBO",
       {
        "display_name": "lyrics fidelity",
-       "tooltip": "standard: one take. high: a second take; the one that sings more of the lyrics as written is kept. highest: a third take when neither sang 95 % of the words. Higher fidelity takes longer (up to 2x or 3x).",
+       "tooltip": "standard: one take. high: a second take when the first sang under 96 % of the words as written; the better is kept. highest: a third when neither reached 96 %. Takes longer (up to 2x or 3x).",
        "default": "standard",
        "multiselect": false,
        "options": [
@@ -4894,7 +4894,7 @@
       "COMBO",
       {
        "display_name": "lyrics fidelity",
-       "tooltip": "standard: one take. high: a second take; the one that sings more of the lyrics as written is kept. highest: a third take when neither sang 95 % of the words. Higher fidelity takes longer (up to 2x or 3x).",
+       "tooltip": "standard: one take. high: a second take when the first sang under 96 % of the words as written; the better is kept. highest: a third when neither reached 96 %. Takes longer (up to 2x or 3x).",
        "default": "standard",
        "multiselect": false,
        "options": [

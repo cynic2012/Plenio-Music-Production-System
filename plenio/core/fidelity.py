@@ -7,11 +7,13 @@ by the lyrics ASR), and one in six less than 75 % - the same documents sang a ve
 and 64 of 65 in the next. YuE2's own evaluation keeps the better of two takes for the same reason. So:
 
 - **standard**: one take, as before;
-- **high**: a second take with the next seed, and the take that sings more of the lyrics is kept;
+- **high**: a second take with the next seed when the first sang less than ``TARGET`` of the words, and the
+  take that sings more of the lyrics is kept;
 - **highest**: as high, and a third take when neither of the two sang at least ``TARGET`` of the words.
 
-Each further take costs a render and a hearing: the generation takes up to about twice (high) or three times
-(highest) as long. Instrumentals and songs without sung lyrics always take one take. Pure; no audio.
+A take that sings ``TARGET`` (96 %) of its lyrics as written is close enough: no further take is rendered after
+it (2026-10-25). Each further take costs a render and a hearing: the generation takes up to about twice (high)
+or three times (highest) as long. Instrumentals and songs without sung lyrics always take one take. Pure; no audio.
 """
 
 from __future__ import annotations
@@ -30,11 +32,11 @@ FIDELITY_OPTIONS = {
 """The brief's choices (as shown) and the level each stands for."""
 FIDELITY_DEFAULT = "standard"
 MAX_TAKES = {STANDARD: 1, HIGH: 2, HIGHEST: 3}
-TARGET = 0.95
-"""highest: a third take only when no take sang at least this share of the lyrics' words as written."""
+TARGET = 0.96
+"""A further take only while no take so far sang at least this share of the lyrics' words as written."""
 FIDELITY_TOOLTIP = (
-    "standard: one take. high: a second take; the one that sings more of the lyrics as written is kept. "
-    "highest: a third take when neither sang 95 % of the words. Higher fidelity takes longer (up to 2x or 3x)."
+    "standard: one take. high: a second take when the first sang under 96 % of the words as written; the "
+    "better is kept. highest: a third when neither reached 96 %. Takes longer (up to 2x or 3x)."
 )
 
 
@@ -58,9 +60,8 @@ def needs_another(level: str, scores: Sequence[float]) -> bool:
     taken = len(scores)
     if taken >= MAX_TAKES[level]:
         return False
-    if taken < 2:
-        return level != STANDARD
-    return max(scores) < TARGET
+    heard = [s for s in scores if s == s]  # nan: not heard
+    return not heard or max(heard) < TARGET
 
 
 def best(scores: Sequence[float]) -> int:

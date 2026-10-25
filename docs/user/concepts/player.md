@@ -650,6 +650,18 @@ of its description), and where it is:
   *painting the cover*, *mastering and saving*), roughly when it is ready. **✕** stops it.
 - **Ready 21:14** - in the library and at the party; **▶** plays it.
 
+**Who made it, while it plays** (*Settings > Party songs > Who made it*, not shown until you choose): a party song
+shows the name of the one who made it - the user's name or *Guest* - all the way through, in Now playing and over the
+visual:
+
+- **Spotlight**: large as the song begins (*a party song by …*, letter by letter), with every new section (*Chorus by
+  …*) and as it ends (*made at this party by … - thank you*); between, a small badge in the corner the guests' way in
+  leaves free.
+- **Drift**: the same moments, and between them the name floats slowly across the picture.
+
+The name glows with the beat. The party's phones show *made by …* under the song that plays and in *Up next*. The
+name comes from the song's tags: the album *Party-Song <date>* and its artist - songs made before show it too.
+
 The times are estimates: from the song's length and how long the songs before took on this computer - the first
 estimate is rough, then they get better. Songs wait in the player's own line until the studio takes them, one at a
 time; your own runs in ComfyUI come first. When ComfyUI does not run, songs wait until it does.

@@ -211,10 +211,10 @@
     "tooltip": "The take's length in seconds."
    },
    "2": {
-    "tooltip": "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest)."
+    "tooltip": "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest, when the first take sang less than 96 % of the lyrics)."
    },
    "3": {
-    "tooltip": "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither take sang 95 % of the lyrics)."
+    "tooltip": "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither take sang 96 % of the lyrics)."
    }
   }
  },
@@ -280,10 +280,10 @@
     "tooltip": "All takes, for Check Vocals."
    },
    "1": {
-    "tooltip": "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest)."
+    "tooltip": "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest, when the first take sang less than 96 % of the lyrics)."
    },
    "2": {
-    "tooltip": "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither take sang 95 % of the lyrics)."
+    "tooltip": "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither take sang 96 % of the lyrics)."
    }
   }
  },
@@ -349,10 +349,10 @@
     "tooltip": "The render's length in seconds."
    },
    "2": {
-    "tooltip": "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest)."
+    "tooltip": "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest, when the first take sang less than 96 % of the lyrics)."
    },
    "3": {
-    "tooltip": "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither take sang 95 % of the lyrics)."
+    "tooltip": "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither take sang 96 % of the lyrics)."
    }
   }
  },

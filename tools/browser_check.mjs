@@ -735,7 +735,8 @@ const pdfOk = (outcome) => !outcome.timeout && outcome.head === '%PDF-' && outco
   })
   await page.keyboard.press('Escape')
   // the entry in the File menu
-  await page.locator('.comfy-menu-button-wrapper').first().click().catch(() => undefined)
+  // the menu button (frontend 1.57.1: the ComfyUI logo opens the menu)
+  await page.locator('.comfy-menu-button-wrapper, .comfyui-logo').first().click().catch(() => undefined)
   const file = page.locator('[role=menuitem]', { hasText: /^File/ }).first()
   await file.waitFor({ timeout: 5000 }).catch(() => undefined)
   if (await file.count()) await file.hover()

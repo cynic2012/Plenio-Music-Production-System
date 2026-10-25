@@ -6,6 +6,7 @@
  */
 import { computed, onMounted, ref } from 'vue'
 
+import { CREDITS } from '../make/form'
 import { loadMake, makeApi, makeStatus } from '../make/state'
 import { go, say } from '../store'
 import Icon from './Icon.vue'
@@ -53,6 +54,12 @@ async function change(key: string, value: unknown): Promise<void> {
         </select>
       </label>
     </div>
+    <label class="field credit">Who made it, while the song plays
+      <select :value="settings.credit ?? 'off'" :disabled="saving" @change="change('credit', ($event.target as HTMLSelectElement).value)">
+        <option v-for="c in CREDITS" :key="c.value" :value="c.value">{{ c.label }}</option>
+      </select>
+      <small>A party song shows the name of the one who made it - the user's name or <i>Guest</i> - in Now playing and over the visual, and on the party guests' phones.</small>
+    </label>
     <p class="status" :class="{ ok: status.studio.reachable }">
       {{ status.studio.reachable ? 'The studio answers: ComfyUI with Plenio’s Song API is running.' : `The studio does not answer - songs wait until ComfyUI runs.${status.studio.error ? ` (${status.studio.error})` : ''}` }}
     </p>
@@ -105,6 +112,17 @@ async function change(key: string, value: unknown): Promise<void> {
   gap: 10px;
   align-items: center;
   color: var(--muted);
+}
+.field.credit {
+  flex-wrap: wrap;
+  margin: 14px 0 0;
+}
+.field.credit select {
+  max-width: 100%;
+}
+.field.credit small {
+  flex-basis: 100%;
+  font-size: 12px;
 }
 select {
   background: rgba(255, 255, 255, 0.06);

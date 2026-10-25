@@ -28,13 +28,20 @@ def test_the_choices_and_their_levels() -> None:
         fidelity_level("best of 9")
 
 
-def test_standard_takes_one_high_two_highest_a_third_only_below_the_target() -> None:
+def test_a_further_take_only_while_the_best_so_far_is_below_96_percent() -> None:
+    assert TARGET == 0.96
     assert not needs_another(STANDARD, [0.4])
-    assert needs_another(HIGH, [0.99]) and not needs_another(HIGH, [0.5, 0.6])
-    assert needs_another(HIGHEST, [0.99])  # the second take always comes
-    assert needs_another(HIGHEST, [0.80, 0.94])
+    # high: the second take only when the first sang less than 96 %
+    assert (
+        needs_another(HIGH, [0.95]) and not needs_another(HIGH, [TARGET]) and not needs_another(HIGH, [0.99])
+    )
+    assert not needs_another(HIGH, [0.5, 0.6])  # two at most
+    # highest: the same after the first, a third only when neither of the two reached 96 %
+    assert needs_another(HIGHEST, [0.80]) and not needs_another(HIGHEST, [0.97])
+    assert needs_another(HIGHEST, [0.80, 0.95])
     assert not needs_another(HIGHEST, [0.80, TARGET])
     assert not needs_another(HIGHEST, [0.5, 0.6, 0.7])  # three at most
+    assert needs_another(HIGH, [float("nan")])  # a take not heard: another one
 
 
 def test_the_take_that_sings_most_is_kept_the_first_at_a_tie() -> None:

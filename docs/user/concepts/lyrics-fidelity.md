@@ -10,8 +10,8 @@ less than 75 %, and one verse was sung with 8 of its 65 words in one take and 64
 | Choice | What happens | Time |
 |---|---|---|
 | **standard** | one take, as before | the render |
-| **high - best of 2 takes** | a second take with the next seed; the take that sings more of the lyrics as written is kept | about twice the render |
-| **highest - best of 3 takes** | as high, and a third take when neither of the two sang **95 %** of the words | up to three times |
+| **high - best of 2 takes** | a second take with the next seed when the first sang less than **96 %** of the words; the take that sings more of the lyrics as written is kept | up to twice the render |
+| **highest - best of 3 takes** | as high, and a third take when neither of the two sang **96 %** of the words | up to three times |
 
 **Higher fidelity makes the generation take longer**: every further take is a whole render, and every take
 is heard once more.
@@ -21,8 +21,9 @@ is heard once more.
 The node **Best Take · lyrics fidelity** sits in the render section of every template with lyrics (YuE2
 Song, YuE2 Cover, MiniMax Song, YuE2 DAW), after the render block - in the cover template after *Check
 Vocals*. The render block holds two more takes - the take seed + 1 and + 2 - that are rendered **only when
-Best Take asks for them**: never with *standard*, the second with *high*, the third with *highest* when
-needed.
+Best Take asks for them**: never with *standard*; with *high* and *highest* a further take only while the
+best take so far sang less than 96 % of its lyrics as written - a take that sings 96 % is close enough, and
+the run goes on with it at once.
 
 Each take is heard by the lyrics ASR - the same hearing Export Release uses for the subtitles, kept in its
 cache - and scored like the release record's *as sung*: the share of the lyrics' words heard as written. The

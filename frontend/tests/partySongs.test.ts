@@ -5,11 +5,14 @@ import { describe, expect, it } from 'vitest'
 import {
   applies,
   clock,
+  creditMoment,
+  driftAt,
   fromTemplate,
   grouped,
   missing,
   nearestLength,
   optionsFor,
+  partyMaker,
   progressOf,
   requestOf,
   stateOf,
@@ -156,5 +159,35 @@ describe('songs in the making', () => {
     expect(progressOf(job({ status: 'running', started: now - 210 }), now)).toBeCloseTo(0.5)
     expect(progressOf(job({ status: 'running', started: now - 5000 }), now)).toBe(0.96)
     expect(progressOf(job({ status: 'done' }), now)).toBe(1)
+  })
+})
+
+describe('who made a party song', () => {
+  it('is the artist of a song on a Party-Song album, Guest without one; other songs have none', () => {
+    expect(partyMaker({ album: 'Party-Song 2026-10-25', artist: 'Anna' })).toBe('Anna')
+    expect(partyMaker({ album: 'Party-Song 2026-10-25' })).toBe('Guest')
+    expect(partyMaker({ album: 'Party songs', artist: 'Anna' })).toBeNull()
+    expect(partyMaker({ artist: 'Anna' })).toBeNull()
+    expect(partyMaker(undefined)).toBeNull()
+  })
+
+  it('is large as the song begins, at every new section and as it ends - a badge between', () => {
+    const sections = [{ at: 0, label: 'intro' }, { at: 30, label: 'verse' }, { at: 60, label: 'chorus' }]
+    expect(creditMoment(2, 120, sections)?.kind).toBe('intro')
+    expect(creditMoment(15, 120, sections)).toBeNull()
+    expect(creditMoment(31, 120, sections)).toEqual({ kind: 'section', label: 'verse' })
+    expect(creditMoment(65, 120, sections)).toBeNull()
+    expect(creditMoment(115, 120, sections)?.kind).toBe('outro')
+  })
+
+  it('drifts over the picture, the same at the same moment, never off it', () => {
+    expect(driftAt(42)).toEqual(driftAt(42))
+    for (let t = 0; t < 600; t += 7) {
+      const at = driftAt(t)
+      expect(at.x).toBeGreaterThan(15)
+      expect(at.x).toBeLessThan(85)
+      expect(at.y).toBeGreaterThan(15)
+      expect(at.y).toBeLessThan(77)
+    }
   })
 })

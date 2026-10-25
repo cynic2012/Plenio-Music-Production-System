@@ -232,16 +232,21 @@ class GuestHub:
                 return None
             summary = song.summary
             at = item.get("at")
+            by = summary.get("artist") or summary.get("genre") or ""
+            # a party song: who made it, when the host shows it
+            made = maker_rules.party_maker(summary.get("tags") or {}) if credit else None
             return {
                 "id": song.id,
                 "at": at if isinstance(at, int) and not isinstance(at, bool) else -1,
                 "title": summary.get("title") or "",
-                "by": summary.get("artist") or summary.get("genre") or "",
+                "by": by,
+                "made_by": made or "",
                 "seconds": round(float(summary.get("seconds") or 0.0), 1),
                 "cover": bool((summary.get("has") or {}).get("cover")),
                 "new": bool(item.get("new")),
             }
 
+        credit = self.maker is not None and self.maker.settings.get("credit", "off") != "off"
         now = entry(data.get("now"))
         if now is not None:
             position = data.get("position")

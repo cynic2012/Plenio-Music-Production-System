@@ -69,13 +69,50 @@ export interface MakeJob {
   source?: Source | null
 }
 
+/** Who made a party song, while it plays: not shown, large at its moments with a badge between, or floating
+ * across the picture all the way (``plenio.player.maker.CREDITS``). */
+export type Credit = 'off' | 'spotlight' | 'drift'
+export const CREDITS: { value: Credit; label: string }[] = [
+  { value: 'off', label: 'Not shown' },
+  { value: 'spotlight', label: 'Spotlight - large as it begins, at every new section and as it ends; a badge between' },
+  { value: 'drift', label: 'Drift - the name floats across the picture all the way, glowing with the beat' },
+]
+
+/** Who made a party song, from its tags: the album *Party-Song <date>* (made by the player's party songs), the
+ * artist the user's name or *Guest*; ``null`` for every other song. */
+export function partyMaker(tags: Record<string, string> | undefined): string | null {
+  if (!/^Party-Song \d{4}-\d{2}-\d{2}$/.test((tags?.album ?? '').trim())) return null
+  return (tags?.artist ?? '').trim() || 'Guest'
+}
+
+export type CreditMoment = { kind: 'intro' | 'section' | 'outro'; label: string } | null
+
+/** What the credit shows at ``time`` of a song of ``duration`` seconds: the opening (its first 7 s), a new
+ * section (4 s from each section after the first), the ending (its last 8 s) - else ``null``, the badge. */
+export function creditMoment(time: number, duration: number, sections: { at: number; label: string }[]): CreditMoment {
+  if (time < 7) return { kind: 'intro', label: '' }
+  if (duration > 20 && time > duration - 8) return { kind: 'outro', label: '' }
+  for (const s of sections) if (s.at > 1 && time >= s.at && time < s.at + 4) return { kind: 'section', label: s.label }
+  return null
+}
+
+/** Where the drifting name is at ``time``: a slow figure over the picture (per cent of its width and height),
+ * the same at the same moment of the song. */
+export function driftAt(time: number): { x: number; y: number; tilt: number } {
+  return {
+    x: 50 + 33 * Math.sin(time * 0.071),
+    y: 46 + 27 * Math.sin(time * 0.053 + 1.1),
+    tilt: 4 * Math.sin(time * 0.11),
+  }
+}
+
 export interface MakeStatus {
   on: boolean
   may: boolean
   why: string
   me: { kind: 'admin' | 'user' | 'guest'; name: string }
   admin: boolean
-  settings: { on?: boolean; users?: boolean; guests?: boolean; per_person: number; max_length: string; covers: boolean }
+  settings: { on?: boolean; users?: boolean; guests?: boolean; per_person: number; max_length: string; covers: boolean; credit?: Credit }
   studio: { reachable: boolean; error: string }
   line: { waiting: number; making: boolean; free: number }
   jobs: MakeJob[]

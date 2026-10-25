@@ -241,11 +241,12 @@ def minimax_model() -> Blueprint:
 RETAKE_TITLES = ("Second take (lyrics fidelity)", "Third take (lyrics fidelity highest)")
 """The lazy retakes of a render block: rendered only when Best Take asks for them (``core.fidelity``)."""
 SECOND_TAKE = (
-    "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest)."
+    "The second take (seed + 1): rendered only when Best Take asks for it (lyrics fidelity high or highest, when "
+    "the first take sang less than 96 % of the lyrics)."
 )
 THIRD_TAKE = (
     "The third take (seed + 2): rendered only when Best Take asks for it (lyrics fidelity highest, when neither "
-    "take sang 95 % of the lyrics)."
+    "take sang 96 % of the lyrics)."
 )
 
 
@@ -2426,8 +2427,9 @@ HQ_TEXT = (
 FIDELITY_TEXT = (
     "**Lyrics fidelity** (the brief's last field): a music model does not always sing its lyrics - it leaves a "
     "line out, repeats one, sings other words. *standard* renders one take. *high - best of 2 takes* renders a "
-    "second take (the next seed) and **Best Take** keeps the one that sings more of the lyrics as written, as the "
-    "lyrics ASR hears it; *highest - best of 3 takes* adds a third take when neither sang 95 % of the words. "
+    "second take (the next seed) when the first sang less than 96 % of the words as written, and **Best Take** "
+    "keeps the one that sings more of the lyrics, as the lyrics ASR hears it; *highest - best of 3 takes* adds a "
+    "third take when neither reached 96 %. A take of 96 % is close enough: the run goes on with it at once. "
     "Higher fidelity makes the generation take **longer** - up to about twice (high) or three times (highest). "
     "Best Take's summary and the release record say what each take sang and which one was kept."
 )
