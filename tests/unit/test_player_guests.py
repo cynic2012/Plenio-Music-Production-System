@@ -91,7 +91,9 @@ def test_the_access_is_off_until_switched_on_and_answers_only_below_its_token(
         and page[1]["Referrer-Policy"] == "no-referrer"
     )
     assert call(port, "GET", f"/{token}")[1]["Location"] == f"/{token}/"
-    for wrong in ("/", "/api/live", f"/{token[:-1]}x/api/live", "/api/library", f"/{token}/../api/library"):
+    # one character off (never the token itself, whatever its last character is)
+    near = token[:-1] + ("y" if token.endswith("x") else "x")
+    for wrong in ("/", "/api/live", f"/{near}/api/live", "/api/library", f"/{token}/../api/library"):
         assert call(port, "GET", wrong)[0] == 404
     # a new address: the old one leads nowhere
     call(player, "PUT", "/api/guests", {"regenerate": True})
