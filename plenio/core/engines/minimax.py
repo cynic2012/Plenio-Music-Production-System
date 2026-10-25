@@ -304,8 +304,10 @@ def validate_documents(
     max_seconds: float | None = None,
     check: tuple[str, ...] = ("style", "lyrics"),
     target_seconds: float | None = None,
+    sparse: bool = False,
 ) -> Validation:
-    """Validate the documents a Song Sheet owns; ``score_seconds`` is the render ceiling (max duration)."""
+    """Validate the documents a Song Sheet owns; ``score_seconds`` is the render ceiling (max duration).
+    ``sparse``: a song with sparse vocals (a few sung lines)."""
     caption, lyrics, score = docs.get("style", ""), docs.get("lyrics", ""), docs.get("score", "")
     findings: list[Finding] = []
     if "style" in check:
@@ -353,7 +355,9 @@ def validate_documents(
             findings.append(
                 info(f"{result.prompt_tokens} of {MAX_PROMPT_TOKENS} prompt tokens used.", "budget")
             )
-    if target_seconds and lyrics.strip() and not instrumental:
+    if target_seconds and lyrics.strip() and sparse and "lyrics" in check:
+        findings += lyrics_rules.check_sparse(lyrics, lyrics_rules.sparse_line_limit(target_seconds))
+    elif target_seconds and lyrics.strip() and not instrumental:
         lines = sum(len(s.lines) for s in lyrics_rules.parse_lyrics(lyrics).sections)
         expected = lyric_lines(target_seconds)
         if lines and not 0.5 * expected <= lines <= 2.0 * expected:
@@ -421,11 +425,30 @@ def instrumental_sections(target_seconds: float) -> list[str]:
     return ["Intro", *tags, "Outro"]
 
 
-def writing_rules(*, instrumental: bool, target_seconds: float) -> dict[str, Any]:
-    plan = instrumental_sections(target_seconds) if instrumental else section_plan(target_seconds)
+def sparse_sections(target_seconds: float) -> list[str]:
+    """The section map of a song with sparse vocals: as long as an instrumental's (MiniMax ends short maps
+    early), its words in a few hooks."""
+    return lyrics_rules.sparse_form(
+        len(instrumental_sections(target_seconds)), lyrics_rules.sparse_hooks(target_seconds)
+    )
+
+
+def writing_rules(*, instrumental: bool, target_seconds: float, sparse: bool = False) -> dict[str, Any]:
+    """The writer's rules; ``sparse``: a sung song with sparse vocals (a few short lines in a mostly instrumental
+    song)."""
+    plan = (
+        instrumental_sections(target_seconds)
+        if instrumental
+        else sparse_sections(target_seconds)
+        if sparse
+        else section_plan(target_seconds)
+    )
     vocal = (
         "Vocal Details: write exactly n/a on the line after the heading."
         if instrumental
+        else "Vocal Details: the lead voice (gender, register, timbre, delivery), that it sings only a few short "
+        "phrases now and then, and the language."
+        if sparse
         else "Vocal Details: the lead voice (gender, register, timbre, delivery), backing vocals and the language."
     )
     style = (
@@ -443,6 +466,12 @@ def writing_rules(*, instrumental: bool, target_seconds: float) -> dict[str, Any
             f"Lyrics: only section tags, each on its own line, in this order: {tags}. No words. Repeated "
             "[Instrumental] sections are intended; the caption's Arrangement gives each one a different function."
         )
+    elif sparse:
+        lyrics = (
+            lyrics_rules.sparse_rule(plan, lyrics_rules.sparse_line_limit(target_seconds))
+            + " Repeated [Instrumental] sections are intended; the caption's Arrangement gives each one a "
+            "different function."
+        )
     else:
         lyrics = (
             "Lyrics: each section starts with a tag on its own line (for example [Verse]), followed by the sung "
@@ -458,6 +487,13 @@ def writing_rules(*, instrumental: bool, target_seconds: float) -> dict[str, Any
         "brushed drums enter in the second section and turn to full kit at the climax; the solo is a sustained "
         "lead guitar; the outro returns to solo piano."
         if instrumental
+        else "Global Metadata\nbpm is 100. key is F, and scale is minor. Downtempo / trip-hop.\nA hypnotic, mostly "
+        "instrumental groove that opens up around a few sung hooks; warm, wide, dusty production.\n\nVocal Details\n"
+        "English lyrics; airy female voice that sings only a short hook now and then, soft and close, with a light "
+        "echo.\n\nArrangement\nDusty drums and a deep bass line carry the instrumental sections; a Rhodes motif "
+        "answers the voice in the hooks; the break thins to drums alone before the last hook; the outro fades on the "
+        "Rhodes."
+        if sparse
         else "Global Metadata\nbpm is 88. key is A, and scale is major. Piano pop / soft rock.\nIntimate verses "
         "open into a warm, anthemic chorus; clean, close production with a gentle stereo width.\n\nVocal Details\n"
         "English lyrics; warm female alto lead, soft and breathy in the verses, full and bright in the chorus; "

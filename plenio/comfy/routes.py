@@ -327,6 +327,7 @@ async def sheet_resolve(request: web.Request) -> web.StreamResponse:
         instrumental=bool(data.get("instrumental", False)),
         max_seconds=_number(data, "max_seconds", 1, 3600) or None,
         target_seconds=_number(data, "target_seconds", 1, 3600) or None,
+        sparse=bool(data.get("sparse", False)),
         context=context,
     )
     return web.json_response(evaluation.payload())

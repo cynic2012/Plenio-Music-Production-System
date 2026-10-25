@@ -17,7 +17,7 @@ import type { SongSummary } from '../api'
 import { isPortable } from '../portable'
 import { current, library, playSongs, saveFilter, say, settings, shareFor, state, toggleCurrent } from '../store'
 import { countOf, formatTime } from '../timing'
-import { chipParts, facetOf, filterRows, fold, lyricsSnippet, parseQuery, score, sortSongs, suggest, toggleFilterChip, valueLabel, type SortKey } from '../search'
+import { chipFilter, chipParts, facetOf, filterRows, fold, lyricsSnippet, parseQuery, scoreWith, sortSongs, suggest, toggleFilterChip, valueLabel, type SortKey } from '../search'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 import SongCard from './SongCard.vue'
@@ -51,12 +51,15 @@ const base = computed<SongSummary[]>(() => {
   return all
 })
 
+// the search's words must all match; the chips of one filter row are alternatives (``chipFilter``)
 const terms = computed(() => parseQuery([query.value, ...chips.value].join(' ')))
+const searched = computed(() => parseQuery(query.value))
+const chipRows = computed(() => chipFilter(chips.value))
 const context = computed(() => ({ favorites: new Set(state.favorites), tags: state.tags, plays: state.plays }))
 const scored = computed(() => {
   const map = new Map<string, number>()
   const found = base.value.filter((song) => {
-    const value = score(song, terms.value, context.value)
+    const value = scoreWith(song, searched.value, chipRows.value, context.value)
     if (value > 0) map.set(song.id, value)
     return value > 0
   })
@@ -116,7 +119,8 @@ function chipLabel(chip: string): string {
   const label = parts.key === 'plenio' ? 'Plenio version' : (facet?.label ?? parts.key)
   return `${parts.exclude ? 'not ' : ''}${label}: ${valueLabel(facet, parts.value)}`
 }
-/** A click keeps only the songs with that value (again: off); ``exclude`` (a right click) leaves them out. */
+/** A click keeps the songs with that value - or with another chip of the row that is on - (again: off);
+ * ``exclude`` (a right click) leaves them out. */
 function toggleChip(key: string, value: string, exclude = false): void {
   // the kept array itself changes, so the settings save it
   chips.value.splice(0, chips.value.length, ...toggleFilterChip(chips.value, key, value, exclude))

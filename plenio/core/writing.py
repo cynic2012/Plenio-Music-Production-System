@@ -114,6 +114,8 @@ class Request:
     Plenio); ``none``: no lyrics from the LLM (original-lyrics covers take them from the source)."""
     enforce_sections: bool = False
     """The lyrics must have exactly ``sections`` (a cover's score defines them)."""
+    sparse_lines: int = 0
+    """Sparse vocals: the most sung lines the lyrics should have (``core.lyrics.sparse_line_limit``); 0 no limit."""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -127,6 +129,7 @@ class Request:
             "kind": self.kind,
             "lyrics_mode": self.lyrics_mode,
             "enforce_sections": self.enforce_sections,
+            "sparse_lines": self.sparse_lines,
         }
 
 
@@ -165,7 +168,8 @@ def compose(
     """The writing prompt for ``brief`` under the rules of ``engine``.
 
     Songs: the LLM writes title, style and lyrics; instrumental songs get the single tag
-    ``[instrumental]`` from Plenio. Covers: the score defines the sections (see ``_compose_cover``).
+    ``[instrumental]`` from Plenio; a song with sparse vocals gets the engine's mostly empty section map, its few
+    words in the hooks. Covers: the score defines the sections (see ``_compose_cover``).
     ``mode``: the brief's creative mode, whose writer hints (and, for a song, the genre closeness) are
     added to the rules; ``off`` adds nothing. The brief's creativity adds its rules away from the reference
     (``core.creativity``; 40-60 adds nothing).
@@ -184,7 +188,7 @@ def compose(
             creative=mode,
         )
     rules = rules_for(engine.engine_id).writing_rules(
-        instrumental=brief.instrumental, target_seconds=brief.target_seconds
+        instrumental=brief.instrumental, target_seconds=brief.target_seconds, sparse=brief.sparse
     )
     if brief.instrumental:
         # YuE2: the single tag [instrumental]; engines that need a section map (MiniMax) provide one.
@@ -199,6 +203,14 @@ def compose(
         sections,
         fixed_title.strip(),
         lyrics_mode="tags" if brief.instrumental else "write",
+        sparse_lines=lyrics_rules.sparse_line_limit(brief.target_seconds) if brief.sparse else 0,
+    )
+    words = (
+        "the brief's description and theme"
+        if brief.instrumental
+        else "the few words you write and the brief's description and theme"
+        if brief.sparse
+        else "the lyrics you write"
     )
     parts = [
         f"You are a professional songwriter preparing a song for the AI music model {rules['engine']}.",
@@ -208,13 +220,14 @@ def compose(
         brief.to_text(),
         "",
         "RULES",
-        title_rule("the brief's description and theme" if brief.instrumental else "the lyrics you write")
-        if not request.fixed_title
-        else f'- Title: use exactly "{request.fixed_title}".',
+        title_rule(words) if not request.fixed_title else f'- Title: use exactly "{request.fixed_title}".',
         f"- {rules['style']}",
-        f"- {rules['lyrics']}",
+        # sparse vocals on a score (the DAW template): its sections, words in a few of them
+        f"- {lyrics_rules.sparse_rule(sections, request.sparse_lines, fixed=True)}"
+        if brief.sparse and score_sections
+        else f"- {rules['lyrics']}",
     ]
-    if not brief.instrumental:
+    if not brief.instrumental and not brief.sparse:
         section_line = " ".join(f"[{s}]" for s in sections)
         parts.append(
             f"- Sections, in this order: {section_line}"
@@ -224,7 +237,15 @@ def compose(
                 else " (adapt only if the brief asks for it)."
             )
         )
-    parts.append(artwork_rule("the brief's description and theme" if brief.instrumental else "your lyrics"))
+    parts.append(
+        artwork_rule(
+            "the brief's description and theme"
+            if brief.instrumental
+            else "your few words and the brief's description and theme"
+            if brief.sparse
+            else "your lyrics"
+        )
+    )
     parts += series_lines(brief)
     if DETAIL.get(detail):
         parts.append(f"- {DETAIL[detail]}")
@@ -234,10 +255,16 @@ def compose(
         brief.creativity,
         engine_id=engine.engine_id,
         instrumental=brief.instrumental,
-        lyrics="none" if brief.instrumental else "write",
+        lyrics="none" if brief.instrumental else "sparse" if brief.sparse else "write",
         fixed_sections=bool(score_sections),
     )
-    example = lyrics_rules.tags_only(sections) if brief.instrumental else f"[{sections[0]}]\n<lines>\n..."
+    example = (
+        lyrics_rules.tags_only(sections)
+        if brief.instrumental
+        else sparse_example(sections)
+        if brief.sparse
+        else f"[{sections[0]}]\n<lines>\n..."
+    )
     multiline = bool(rules.get("style_multiline"))
     parts += [
         *_example_style(rules),
@@ -263,6 +290,20 @@ WORN_TITLE_WORDS = (
     "velvet",
 )
 """The words the owner's 1 577 song titles had most often (2026-10-23), after *the*, *in* and *of*."""
+
+
+def sparse_example(sections: Sequence[str]) -> str:
+    """The lyrics in the answer's layout for sparse vocals: the map up to its first hook, the hook with a line (a
+    score's sections without a hook: the first one, with a line or none)."""
+    if lyrics_rules.SPARSE_TAG not in sections:
+        return f"[{sections[0]}]\n<one or two short lines, or nothing>\n\n..."
+    shown: list[str] = []
+    for tag in sections:
+        shown.append(f"[{tag}]")
+        if tag == lyrics_rules.SPARSE_TAG:
+            shown[-1] += "\n<one or two short lines>"
+            break
+    return "\n\n".join(shown) + "\n\n..."
 
 
 def title_rule(source: str) -> str:
@@ -831,6 +872,8 @@ def draft_findings(draft: Draft, request: Request) -> list[Mapping[str, Any]]:
     findings = rules.check_style(draft.style, instrumental=request.instrumental)
     if request.lyrics_mode != "none":
         findings += rules.check_lyrics(draft.lyrics, instrumental=request.instrumental)
+    if request.sparse_lines:
+        findings += lyrics_rules.check_sparse(draft.lyrics, request.sparse_lines)
     result = [f.to_dict() for f in findings]
     if request.enforce_sections:
         mismatch = section_mismatch(draft.lyrics, request.sections)

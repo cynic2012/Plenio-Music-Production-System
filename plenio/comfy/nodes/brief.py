@@ -17,6 +17,7 @@ from ...core.brief import (
     LENGTHS,
     MELODY_OPTIONS,
     SONG_MODES,
+    SPARSE,
     build_song_brief,
     options,
     resolve_length,
@@ -80,6 +81,10 @@ CREATIVITY_EFFECTS = {
     VARIED: "writing with more contrast and character; YuE2 plans and performs a little more freely",
     EXPERIMENTAL: "bold writing; YuE2 plans and performs more freely - expect more misses, try a few seeds",
 }
+VOCALS_TOOLTIP = (
+    "sung: a song with lyrics. sparse vocals: mostly instrumental, the voice sings only a few short phrases (a hook, "
+    "a call, wordless sounds like 'ooh'). instrumental: no singing; hides all vocal settings."
+)
 UNDER_SINGING_TOOLTIP = (
     "Creative modes only (experimental): off - the instrument line plays where the voice rests, as in YuE2's "
     "own scores; on - it also sounds under the singing, calm and below the voice."
@@ -100,7 +105,7 @@ SONG_FIELD_OUTPUTS: tuple[tuple[str, str, str], ...] = (
     ("mood", "STRING", "The mood."),
     ("tempo", "STRING", "The tempo as written."),
     ("length", "STRING", "The target length, e.g. 'standard (about 3:00)'."),
-    ("vocals", "STRING", "sung or instrumental."),
+    ("vocals", "STRING", "sung, sparse vocals or instrumental."),
     ("language", "STRING", "The language of the lyrics ('' for an instrumental)."),
     ("voice", "STRING", "The vocal character."),
     ("theme", "STRING", "What the lyrics are about."),
@@ -204,11 +209,27 @@ def series_song(kind: str, mode: str, inputs: Mapping[str, Any], *, fresh: bool)
 
 def _summary(brief: Any) -> str:
     source = f" (from template: {', '.join(brief.from_template)})" if brief.from_template else ""
+    kind = (
+        "Instrumental song"
+        if brief.instrumental
+        else "Song with sparse vocals"
+        if brief.sparse
+        else "Sung song"
+    )
     return (
-        f"**{'Instrumental' if brief.instrumental else 'Sung'} song**, {brief.length}{source}\n\n"
+        f"**{kind}**, {brief.length}{source}\n\n"
         f"{mode_line(brief)}\n\n{arrangement_line(brief)}\n\n{creativity_line(brief)}\n\n{fidelity_line(brief)}\n\n"
         + brief.to_text()
     )
+
+
+def _sung_inputs() -> list[Any]:
+    """The vocal settings of a sung song and of one with sparse vocals."""
+    return [
+        io.String.Input("language", default="", tooltip="Language of the lyrics, e.g. 'English'."),
+        io.String.Input("voice", default="", tooltip="Vocal character, e.g. 'warm female voice'."),
+        io.String.Input("theme", default="", tooltip="What the lyrics are about."),
+    ]
 
 
 class PlenioSongBrief(io.ComfyNode):
@@ -223,7 +244,8 @@ class PlenioSongBrief(io.ComfyNode):
             description=(
                 "The intent of a new song: the work mode (a new song every run, or one song with review stops), "
                 "description, genre, mood, tempo, length and vocals. A template fills only the fields you leave "
-                "empty. The only place where the work mode, sung/instrumental and the length are set."
+                "empty. The only place where the work mode, the vocals (sung, sparse or instrumental) and the length "
+                "are set."
             ),
             inputs=[
                 io.Combo.Input(
@@ -248,18 +270,9 @@ class PlenioSongBrief(io.ComfyNode):
                 io.DynamicCombo.Input(
                     "vocals",
                     options=[
-                        io.DynamicCombo.Option(
-                            "sung",
-                            [
-                                io.String.Input(
-                                    "language", default="", tooltip="Language of the lyrics, e.g. 'English'."
-                                ),
-                                io.String.Input(
-                                    "voice", default="", tooltip="Vocal character, e.g. 'warm female voice'."
-                                ),
-                                io.String.Input("theme", default="", tooltip="What the lyrics are about."),
-                            ],
-                        ),
+                        io.DynamicCombo.Option("sung", _sung_inputs()),
+                        # in the middle, as it lies between them; a saved workflow keeps its choice (stored by name)
+                        io.DynamicCombo.Option(SPARSE, _sung_inputs()),
                         io.DynamicCombo.Option(
                             "instrumental",
                             [
@@ -277,7 +290,7 @@ class PlenioSongBrief(io.ComfyNode):
                             ],
                         ),
                     ],
-                    tooltip="Sung song or instrumental. Instrumental hides all vocal settings.",
+                    tooltip=VOCALS_TOOLTIP,
                 ),
                 # not 'advanced': App mode shows an advanced widget's label without its field, and the DAW
                 # template's empty score follows the key and the meter

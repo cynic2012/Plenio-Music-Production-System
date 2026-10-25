@@ -4,7 +4,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import type { SongSummary } from '../src/player/api'
-import { FACETS, chipParts, facetOf, facetValues, filterRows, parseQuery, score, suggest, toggleFilterChip, valueLabel } from '../src/player/search'
+import { FACETS, chipParts, facetOf, facetValues, filterRows, matching, parseQuery, score, suggest, toggleFilterChip, valueLabel } from '../src/player/search'
 import { addTag, allTags, cleanTag, deleteTag, removeTag, renameTag, settings, songTags, state, tagsOf } from '../src/player/store'
 
 function song(over: Partial<SongSummary> & { id: string }): SongSummary {
@@ -54,11 +54,27 @@ describe('the filters', () => {
     expect(find(chips.join(' '))).toEqual(['b', 'c'])
     expect(chipParts(chips[0])).toEqual({ key: 'genre', value: 'jazz', exclude: true })
     expect(toggleFilterChip(chips, 'genre', 'jazz', true)).toEqual([])
-    // a tempo is one range at a time
-    expect(toggleFilterChip(['bpm:"<90"'], 'bpm', '>=140')).toEqual(['bpm:">=140"'])
+    // a tempo takes several ranges; only the Plenio version is one choice at a time
+    expect(toggleFilterChip(['bpm:"<90"'], 'bpm', '>=140')).toEqual(['bpm:"<90"', 'bpm:">=140"'])
+    expect(toggleFilterChip(['plenio:"from 0.8.0"'], 'plenio', 'from 1.0.0')).toEqual(['plenio:"from 1.0.0"'])
     // the two rows that set is: are told apart by their values
     expect(facetOf('is', 'other')?.id).toBe('made')
     expect(facetOf('is', 'unplayed')?.id).toBe('played')
+  })
+
+  it('take several values of a row as alternatives, and every row and every chip that leaves songs out', () => {
+    const ids = (chips: string[], query = ''): string[] => matching(SONGS, query, chips, context).map((s) => s.id)
+    expect(ids(['genre:"jazz"', 'genre:"synthwave"'])).toEqual(['a', 'b'])
+    expect(ids(['bpm:"90-119"', 'bpm:">=140"'])).toEqual(['a', 'c'])
+    expect(ids(['tag:"Party"', 'tag:"road trip"'])).toEqual(['a', 'b'])
+    // rows must all match, a chip that leaves songs out always does, and so does every word of the search
+    expect(ids(['genre:"jazz"', 'genre:"synthwave"', 'len:"<3"'])).toEqual(['a'])
+    expect(ids(['genre:"jazz"', 'genre:"synthwave"', '-tag:"road trip"'])).toEqual(['b'])
+    expect(ids(['genre:"jazz"', 'genre:"synthwave"'], 'neon')).toEqual(['b'])
+    // a row counts without its own chips: its other values say how many songs they add
+    const genre = filterRows(SONGS, '', ['genre:"jazz"'], context).find((r) => r.id === 'genre')
+    expect(genre?.all).toEqual(expect.arrayContaining([['jazz', 1], ['synthwave', 1], ['qawwali', 1]]))
+    expect(genre?.total).toBe(3)
   })
 
   it('count the songs the filters leave: after "from 1.0.0" instrumental says how many of those are instrumental', () => {

@@ -12,7 +12,7 @@ Song Brief -> Write Song -> Song Sheet · Text -> YuE2 Plan -> Score Tools -> Ar
 ## Quick start
 
 1. Open **1 · YuE2 · Song** from the template browser.
-2. In **Song Brief**, choose the **mode** (below), then pick a template or describe the song. *length* (1:00 to 6:00) and *vocals* (sung or instrumental) are set only here.
+2. In **Song Brief**, choose the **mode** (below), then pick a template or describe the song. *length* (1:00 to 6:00) and *vocals* (sung, sparse vocals or instrumental - [below](#sparse-vocals)) are set only here.
 3. Press **Run**. The first run downloads missing models (YuE2 3B int8, Gemma 4 E4B writer), then takes a few minutes.
 4. The mastered song appears in the preview and in `output/plenio/` as `<date> <title>.flac`, with the unmastered take `<date> <title> (original).flac` and the record `<date> <title>.plenio.json`.
 
@@ -65,6 +65,12 @@ The brief's **arrangement** is *off* by default: YuE2 plans melody, chords and i
 **Plan seed** (in *4 · SCORE*, under the plan, and in App mode): 🎲 lets YuE2 plan another melody and form for the same lyrics, 🔒 (default) keeps the plan.
 
 **Arrangement seed** (in *4 · SCORE* and in App mode): another arrangement of the same song - only Arrange and what follows run again. The plan is written by the template's **Writer model** (the same as for the text); details, the modes and what each slider allows: [Creative modes](../concepts/creative-modes.md).
+
+## Sparse vocals
+
+Set *vocals* to *sparse vocals* for a song that is mostly instrumental and where the voice sings only now and then - a hook phrase, a call, a short chant or wordless sounds (*ooh*, *hey*) that fit the song and carry its melody. Language, voice and theme are set as for a sung song. The writer gets a section form of its own: as many sections as a sung song of the length, most of them empty (*[Instrumental]*, a *[Break]* before the last hook) and two to four *[Hook]* sections - about one a minute - with one or two short lines each, at most two lines per hook in the whole song (6 for 3:00, where a sung song has about 22). YuE2 plays the empty sections as instrumental parts. With a score of your own (the DAW template) the score's sections stay, and the writer puts the words into one to three of them.
+
+The draft and the Song Sheet warn when the lyrics have more than twice as many lines (*Sparse vocals: the lyrics have …*); delete lines or leave more sections empty. How YuE2 plans and sings such sparse lyrics has not been measured yet: plan again with another seed when a plan comes out much shorter than the brief's length.
 
 ## Instrumental songs
 

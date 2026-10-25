@@ -3,7 +3,8 @@
  * filters - ``genre:pop``, ``mood:warm``, ``bpm:>100``, ``bpm:90-120``, ``key:Am``, ``model:yue2``,
  * ``year:2026``, ``lang:german``, ``vocals:instrumental``, ``mode:jazz`` (the creative mode), ``len:<3``
  * (minutes), ``creativity:>60`` (or ``creativity:varied``), ``tag:party`` (or ``#party``), ``is:fav``, ``is:unplayed``, ``has:pdf`` - and ``"quoted phrases"``;
- * ``-`` in front keeps out what matches. Every word must match; the best matches come first.
+ * ``-`` in front keeps out what matches. Every word must match; the best matches come first. The filter chips
+ * (``chipFilter``): several in one row are alternatives, the rows must all match.
  */
 import type { SongSummary } from './api'
 import { CREATIVITY_LEVELS, CREATIVITY_RANGES, creativityLevel } from './creativity'
@@ -80,8 +81,8 @@ export function score(song: SongSummary, terms: Term[], context: Context): numbe
 }
 
 /** The filter chips facets offer one of: *from 0.8.0* already holds every newer version, so two make no
- * sense (owner's report 2026-10-16); a tempo or a length is one range at a time. */
-export const SINGLE_CHOICE_FACETS = new Set(['plenio', 'bpm', 'len', 'creativity'])
+ * sense. Every other row takes several (``chipFilter``). */
+export const SINGLE_CHOICE_FACETS = new Set(['plenio'])
 
 /** The filter chips after a click on ``key:"value"``: a chip that is on goes off; a new one is added - and in
  * a facet of one choice it takes the place of the one chosen before. ``exclude``: the chip keeps those songs
@@ -183,7 +184,7 @@ function matches(song: SongSummary, term: Term, context: Context): number {
     case 'model': return has(song.model) || (v === 'master' && !song.model && !song.other) ? 2 : 0
     case 'year': return song.year === term.value ? 2 : 0
     case 'language': return has(song.language) ? 2 : 0
-    case 'vocals': return has(song.vocals) || (v === 'sung' && !song.instrumental && !!song.vocals) ? 2 : 0
+    case 'vocals': return has(song.vocals) || (v === 'sung' && !song.instrumental && !!song.vocals && song.vocals !== 'sparse vocals') ? 2 : 0
     case 'mode': return has(song.arrangement) ? 2 : 0
     case 'len': return numberTest(term.value, song.seconds / 60) ? 2 : 0
     case 'creativity': return creativityTest(term.value, song.brief.creativity) ? 2 : 0
@@ -292,7 +293,7 @@ export const FACETS: FacetDef[] = [
   { id: 'mood', key: 'mood', label: 'Mood', top: 8, values: (s) => words(s.mood) },
   { id: 'made', key: 'is', label: 'Made with', top: 2, fixed: MADE, values: (s) => [s.other ? 'other' : 'plenio'] },
   { id: 'model', key: 'model', label: 'Model', top: 4, values: (s) => [s.other ? '' : s.model ? s.model.toLowerCase().split(' ')[0] : 'master'] },
-  { id: 'vocals', key: 'vocals', label: 'Vocals', top: 3, values: (s) => [s.instrumental ? 'instrumental' : s.vocals ? 'sung' : ''] },
+  { id: 'vocals', key: 'vocals', label: 'Vocals', top: 3, values: (s) => [s.instrumental ? 'instrumental' : s.vocals === 'sparse vocals' ? 'sparse' : s.vocals ? 'sung' : ''] },
   { id: 'lang', key: 'lang', label: 'Language', top: 6, values: (s) => [s.language.toLowerCase()] },
   { id: 'bpm', key: 'bpm', label: 'Tempo (BPM)', top: 4, fixed: TEMPOS, values: (s) => TEMPOS.filter(([r]) => numberTest(r, s.bpm)).map(([r]) => r) },
   { id: 'len', key: 'len', label: 'Length', top: 3, fixed: LENGTHS, values: (s) => LENGTHS.filter(([r]) => numberTest(r, s.seconds / 60)).map(([r]) => r) },
@@ -354,30 +355,74 @@ export interface FilterRow {
 
 const PLENIO_ROW = { id: 'plenio', key: 'plenio', label: 'Plenio version', top: 8, values: null }
 
+/** The filter chips as one filter: the chips of one row (``rowOf``) that keep songs are alternatives - two
+ * genres keep the songs of either -, the rows must all match, and every chip that leaves songs out does. */
+export interface ChipFilter {
+  /** Per row, its chips' terms: a song matches one of them. */
+  rows: Term[][]
+  /** The chips that leave songs out (and a chip that is no ``key:"value"``): every one must hold. */
+  every: Term[]
+}
+
+/** The row a chip belongs to: ``facetOf``'s (two rows set ``is:``), the key otherwise. */
+export function rowOf(key: string, value: string): string {
+  return facetOf(key, value)?.id ?? key
+}
+
+export function chipFilter(chips: string[]): ChipFilter {
+  const rows = new Map<string, Term[]>()
+  const every: Term[] = []
+  for (const chip of chips) {
+    const parts = chipParts(chip)
+    const terms = parseQuery(chip)
+    if (!parts || parts.exclude) {
+      every.push(...terms)
+      continue
+    }
+    const row = rowOf(parts.key, parts.value)
+    rows.set(row, [...(rows.get(row) ?? []), ...terms])
+  }
+  return { rows: [...rows.values()], every }
+}
+
+/** ``score`` with the chips: 0 when a row has no chip the song matches; its best hit per row adds to the score. */
+export function scoreWith(song: SongSummary, terms: Term[], filter: ChipFilter, context: Context): number {
+  let total = score(song, [...terms, ...filter.every], context)
+  if (!total) return 0
+  for (const row of filter.rows) {
+    const best = Math.max(0, ...row.map((term) => matches(song, term, context)))
+    if (!best) return 0
+    total += best
+  }
+  return total
+}
+
 /** The songs that match a search and chips. */
 export function matching(songs: SongSummary[], query: string, chips: string[], context: Context): SongSummary[] {
-  const terms = parseQuery([query, ...chips].join(' '))
-  return songs.filter((song) => score(song, terms, context) > 0)
+  const terms = parseQuery(query)
+  const filter = chipFilter(chips)
+  return songs.filter((song) => scoreWith(song, terms, filter, context) > 0)
 }
 
 /** The filter rows for ``songs`` with a search and chips on (owner's request 2026-10-18: the numbers follow the
  * filters - after *from 1.0.0*, *instrumental* says how many of those songs are instrumental, and a value none
- * of them has is gone). The counts are of the songs that match everything; a row of one choice (Plenio version,
- * tempo, length) counts without its own chip, so its other choices stay to switch to. Rows that could not narrow
- * the songs further are left out, unless a chip of theirs is on. ``found``: the songs that match, when known. */
+ * of them has is gone). The counts are of the songs that match everything else: a row counts without the chips
+ * of its own that keep songs (they are alternatives), so its other values stay to add or switch to. Rows that
+ * could not narrow the songs further are left out, unless a chip of theirs is on. ``found``: the songs that
+ * match, when known. */
 export function filterRows(songs: SongSummary[], query: string, chips: string[], context: Context, found = matching(songs, query, chips, context)): FilterRow[] {
   const rows: FilterRow[] = []
   for (const def of [...FACETS, PLENIO_ROW] as (FacetDef | typeof PLENIO_ROW)[]) {
     const own = chips.filter((chip) => {
       const parts = chipParts(chip)
-      return !!parts && parts.key === def.key && !parts.exclude && (facetOf(parts.key, parts.value)?.id ?? parts.key) === def.id
+      return !!parts && parts.key === def.key && !parts.exclude && rowOf(parts.key, parts.value) === def.id
     })
-    const pool = SINGLE_CHOICE_FACETS.has(def.key) && own.length ? matching(songs, query, chips.filter((c) => !own.includes(c)), context) : found
+    const pool = own.length ? matching(songs, query, chips.filter((c) => !own.includes(c)), context) : found
     const all = def.values ? facetValues(pool, def as FacetDef, context) : versionSteps(pool)
     let on = false
     for (const chip of chips) {
       const parts = chipParts(chip)
-      if (!parts || parts.key !== def.key || (facetOf(parts.key, parts.value)?.id ?? parts.key) !== def.id) continue
+      if (!parts || parts.key !== def.key || rowOf(parts.key, parts.value) !== def.id) continue
       on = true
       if (!all.some(([v]) => v === parts.value)) all.push([parts.value, 0])
     }
@@ -421,7 +466,7 @@ const FIXED_VALUES: Record<string, [string, string][]> = {
   bpm: TEMPOS,
   len: LENGTHS,
   creativity: CREATIVITY_RANGES,
-  vocals: [['instrumental', 'no singing'], ['sung', 'with singing']],
+  vocals: [['instrumental', 'no singing'], ['sparse', 'only a few sung phrases'], ['sung', 'with singing']],
 }
 
 /** The values a field takes in this library, with counts. */

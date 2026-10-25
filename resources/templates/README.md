@@ -9,7 +9,7 @@ group: Pop
 genre: pop
 tempo: Midtempo (100-120 BPM)
 meter: 4/4
-vocals: sung | instrumental
+vocals: sung | sparse vocals | instrumental
 language: German
 voice: male vocal
 theme: hope & resilience

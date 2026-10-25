@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { SongSummary } from '../src/player/api'
 import { CREATIVITY_RANGES, creativityLevel, describeCreativity, describeSampling, isReference } from '../src/player/creativity'
-import { FACETS, facetValues, filterRows, parseQuery, score, suggest, toggleFilterChip } from '../src/player/search'
+import { FACETS, facetValues, filterRows, matching, parseQuery, score, suggest, toggleFilterChip } from '../src/player/search'
 import { FIXED_NOTE, samplingFacts, songFacts } from '../src/player/songFacts'
 
 function song(over: Partial<SongSummary> & { id: string }): SongSummary {
@@ -99,10 +99,11 @@ describe('the creativity', () => {
     expect(find('creativity:varied')).toEqual(['varied'])
     expect(find('creativity:50')).toEqual(['old'])
     expect(find('-creativity:balanced')).toEqual(['steady', 'varied', 'wild', 'other'])
-    // one level at a time: a new choice takes the place of the last
+    // several levels at a time: the songs of either
     let chips = toggleFilterChip([], 'creativity', '61-80')
     chips = toggleFilterChip(chips, 'creativity', '81-100')
-    expect(chips).toEqual(['creativity:"81-100"'])
+    expect(chips).toEqual(['creativity:"61-80"', 'creativity:"81-100"'])
+    expect(matching(SONGS, '', chips, context).map((s) => s.id)).toEqual(['varied', 'wild'])
     const rows = filterRows(SONGS, '', chips, context)
     expect(rows.find((r) => r.key === 'creativity')?.all.map(([v]) => v)).toEqual(['0-19', '40-60', '61-80', '81-100'])
   })

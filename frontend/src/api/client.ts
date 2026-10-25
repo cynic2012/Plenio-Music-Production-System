@@ -42,6 +42,8 @@ export interface ResolveRequest {
   max_seconds?: number
   target_seconds?: number | null
   brief_mode?: 'batch' | 'careful' | null
+  /** A song with sparse vocals: the lyrics are checked against its few lines. */
+  sparse?: boolean
 }
 
 export function resolveSheet(fetcher: Fetcher, request: ResolveRequest): Promise<SheetPayload> {

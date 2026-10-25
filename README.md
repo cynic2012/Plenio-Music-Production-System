@@ -200,7 +200,7 @@ Open them from ComfyUI's template browser (listed under this package's name):
 | Template | For |
 |---|---|
 | **0 · System Check** | versions, GPUs, which model files each template still needs, and a hardware table with your row marked |
-| **1 · YuE2 · Song** | new songs with YuE2, sung or instrumental, with an editable score ([guide](docs/user/paths/yue2-song.md)) |
+| **1 · YuE2 · Song** | new songs with YuE2, sung, with sparse vocals or instrumental, with an editable score ([guide](docs/user/paths/yue2-song.md)) |
 | **2 · YuE2 · Cover** | a new version of a recording you own or may use: instrumental, original or new lyrics ([guide](docs/user/paths/yue2-cover.md)) |
 | **3 · MiniMax · Song** | new songs with MiniMax Music 3 and its structured caption ([guide](docs/user/paths/minimax-song.md)) |
 | **4 · Enhance & Master** | EQ, loudness and export for a file you already have; runs on the CPU ([guide](docs/user/paths/enhance-master.md)) |

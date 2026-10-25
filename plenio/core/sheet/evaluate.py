@@ -47,6 +47,8 @@ class SheetEvaluation:
     target_seconds: float | None = None
     brief_mode: str | None = None
     """The brief's work mode: in a series (``batch``) an edit belongs to its song."""
+    sparse: bool = False
+    """A song with sparse vocals (a few sung lines)."""
 
     @property
     def fingerprint(self) -> str | None:
@@ -111,6 +113,7 @@ class SheetEvaluation:
             "instrumental": self.instrumental,
             "target_seconds": self.target_seconds,
             "brief_mode": self.brief_mode,
+            "sparse": self.sparse,
         }
 
     def report(self) -> Report:
@@ -205,6 +208,7 @@ def evaluate_sheet(
     context: Mapping[str, str] | None = None,
     target_seconds: float | None = None,
     extra_findings: Iterable[Finding] = (),
+    sparse: bool = False,
 ) -> SheetEvaluation:
     """Resolve the owned documents, validate them with the engine's rules and decide the review gate.
 
@@ -232,6 +236,7 @@ def evaluate_sheet(
             max_seconds=max_seconds,
             check=checked,
             target_seconds=target_seconds,
+            sparse=sparse,
         )
         findings.extend(result.findings)
         validation = result.to_dict()
@@ -267,4 +272,5 @@ def evaluate_sheet(
         instrumental,
         target_seconds,
         brief_mode,
+        sparse,
     )

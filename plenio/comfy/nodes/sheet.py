@@ -195,6 +195,7 @@ class PlenioSongSheet(io.ComfyNode):
             tokenizer=engine.tokenizer if engine is not None else None,
             max_seconds=brief.max_seconds if brief is not None else None,
             target_seconds=brief.target_seconds if brief is not None else None,
+            sparse=bool(getattr(brief, "sparse", False)),
             context=context,
             extra_findings=[
                 *_cover_findings(brief, upstream, state),

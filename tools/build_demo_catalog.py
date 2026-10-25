@@ -77,7 +77,9 @@ def load(path: Path) -> dict[str, Any]:
     template = brief.get("template", "none")
     meta = template_meta(template)
     vocals = brief.get("vocals", "sung")
-    language = brief.get("vocals.language") or (meta.get("language", "") if vocals == "sung" else "")
+    language = brief.get("vocals.language") or (
+        meta.get("language", "") if vocals in ("sung", "sparse vocals") else ""
+    )
     return {
         "record": path.name,
         "template": template,

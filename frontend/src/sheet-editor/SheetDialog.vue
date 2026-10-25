@@ -358,7 +358,8 @@ async function validate() {
       context: changedScore.value ? { ...props.payload.context, score: changedScore.value } : props.payload.context,
       target_seconds: props.payload.target_seconds ?? null,
       // a series: the same rule as the node (an edit belongs to its song)
-      brief_mode: props.payload.brief_mode ?? null
+      brief_mode: props.payload.brief_mode ?? null,
+      sparse: props.payload.sparse ?? false
     })
   } catch (e) {
     error.value = e instanceof PlenioApiError ? `${e.message}${e.hint ? ` — ${e.hint}` : ''}` : String(e)

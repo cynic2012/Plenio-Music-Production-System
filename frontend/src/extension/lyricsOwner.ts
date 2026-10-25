@@ -174,7 +174,8 @@ export async function writeScore(
       engine: ownerPayload.engine,
       instrumental: ownerPayload.instrumental,
       context: ownerPayload.context,
-      target_seconds: ownerPayload.target_seconds ?? null
+      target_seconds: ownerPayload.target_seconds ?? null,
+      sparse: ownerPayload.sparse ?? false
     })
     const clean = !resolved.findings.some((f) => f.severity === 'error')
     if (!clean || !resolved.fingerprint) return state

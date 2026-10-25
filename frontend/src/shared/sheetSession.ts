@@ -49,6 +49,8 @@ export interface SheetPayload {
   /** The brief's work mode (``batch``: a new song every run, where an edit belongs to its song); the editor
    * sends it back when it validates, so it resolves the documents as the node does. */
   brief_mode?: 'batch' | 'careful' | null
+  /** A song with sparse vocals (a few sung lines); sent back when the editor validates. */
+  sparse?: boolean
   timeline?: TimelinePayload
   reference_audio?: { filename: string; subfolder: string; type: string }
   /** From Sung Pitch: the source's vocal line (a MIDI pitch every 20 ms), or why there is none. */

@@ -12,7 +12,7 @@ Song Brief -> Write Song -> Song Sheet -> MiniMax Render -> Master -> Export Rel
 ## Quick start
 
 1. Open **3 · MiniMax · Song** from the template browser.
-2. In **Song Brief**, choose the **mode** - *new song every run* (the template default: a different song every run, no stops) or *one song, stop to review* (the run stops at the Song Sheet until you approve) - then pick a template or describe the song. *length* (1:00 to 6:00) and *vocals* (sung or instrumental) are set only here.
+2. In **Song Brief**, choose the **mode** - *new song every run* (the template default: a different song every run, no stops) or *one song, stop to review* (the run stops at the Song Sheet until you approve) - then pick a template or describe the song. *length* (1:00 to 6:00) and *vocals* (sung, sparse vocals or instrumental) are set only here.
 3. Press **Run**. The first run downloads missing models (MiniMax Music 3: diffusion model, int8 text encoder, VAE; the Gemma 4 E4B writer).
 4. The mastered song appears in the preview and in `output/plenio/`, with the unmastered take as `(original).flac` and its release record.
 
@@ -48,6 +48,10 @@ As in [1 · YuE2 · Song](yue2-song.md#a-series-or-one-song-the-mode):
 - **one song, stop to review:** the run stops at the **Song Sheet** until you press **Approve**; after that every run is a new take (the take seed changes, the documents are cached).
 - **Draft seed** (node in *2 · WRITE*, also in App mode): 🔒 *same seed* keeps the draft, 🎲 *new seed* writes a new draft every run - more variety in a series; keep it 🔒 when you review ([Seeds](../concepts/seeds.md)).
 - Edit documents in the **Song Sheet** (your edit wins until its draft changes, then the run stops with a conflict; in a series, make a fixed document *manual*). The sheet's *review* follows the brief (*as the brief says*); set it to *continue* or *stop for review* to override. See [Song Sheet](../concepts/song-sheet.md).
+
+## Sparse vocals
+
+Set *vocals* to *sparse vocals* for a mostly instrumental song whose voice sings only a few short phrases (a hook, a call, a chant, wordless sounds). The lyrics are a map as long as an instrumental's - MiniMax ends short maps early - of empty *[Instrumental]* sections, a *[Break]* and two to four *[Hook]* sections with one or two short lines each (at most 6 lines for 3:00); the caption's *Vocal Details* say that the voice sings only now and then. The Song Sheet warns when the lyrics have more than twice as many lines, not when they have fewer than a sung song. Not yet measured with MiniMax.
 
 ## Instrumental songs
 

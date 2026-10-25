@@ -91,7 +91,10 @@ def resolve_length(value: str) -> tuple[str, str | None]:
     return chosen, f"length {text!r} is not one of the options; used {chosen!r}"
 
 
-VOCALS = ("sung", "instrumental")
+SPARSE = "sparse vocals"
+VOCALS = ("sung", SPARSE, "instrumental")
+"""A song's vocals: sung, *sparse vocals* (mostly instrumental - the voice sings only a few short phrases, a hook,
+a call, wordless sounds) or instrumental."""
 SONG_MODES = {"new song every run": "batch", "one song, stop to review": "careful"}
 COVER_MODES = {"new cover every run": "batch", "one cover, stop to review": "careful"}
 """The work mode, the first choice of a brief. *batch*: every run writes and renders a new song
@@ -208,6 +211,11 @@ class SongBrief:
         return self.vocals == "instrumental"
 
     @property
+    def sparse(self) -> bool:
+        """Sparse vocals: sung, but only a few short phrases (``core.lyrics.sparse_line_limit``)."""
+        return self.vocals == SPARSE
+
+    @property
     def target_seconds(self) -> float:
         return LENGTHS[self.length]
 
@@ -257,7 +265,11 @@ class SongBrief:
             if self.lead_instrument:
                 lines.append(f"Lead instrument: {self.lead_instrument}")
         else:
-            lines.append("Vocals: sung")
+            lines.append(
+                "Vocals: sparse - mostly instrumental; the voice sings only a few short phrases now and then"
+                if self.sparse
+                else "Vocals: sung"
+            )
             for label, value in (
                 ("Language", self.language),
                 ("Voice", self.voice),

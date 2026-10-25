@@ -361,7 +361,12 @@ def check_lyrics(lyrics: str, *, instrumental: bool) -> list[Finding]:
 
 
 def check_score(
-    score: str, *, instrumental: bool, lyrics: str = "", target_seconds: float | None = None
+    score: str,
+    *,
+    instrumental: bool,
+    lyrics: str = "",
+    target_seconds: float | None = None,
+    sparse: bool = False,
 ) -> tuple[list[Finding], float | None]:
     """Findings and the nominal score duration (``None`` without a valid score)."""
     if not score.strip():
@@ -407,6 +412,9 @@ def check_score(
             "YuE2 chooses the length of instrumental plans itself, and Score Tools 'fit length' could not bring "
             "this one close: repeat or delete sections in the score, or plan again with another seed."
             if instrumental
+            else "With sparse vocals the plan follows the sections: add or remove empty sections in the lyrics, "
+            "plan again with another seed, or edit the score."
+            if sparse
             else "The plan follows the amount of lyrics: shorten or lengthen them, or edit the score."
         )
         findings.append(
@@ -443,18 +451,22 @@ def validate_documents(
     max_seconds: float | None = None,
     check: tuple[str, ...] = ("style", "lyrics", "score"),
     target_seconds: float | None = None,
+    sparse: bool = False,
 ) -> Validation:
-    """Validate the documents a Song Sheet owns (``check``) with the others as context."""
+    """Validate the documents a Song Sheet owns (``check``) with the others as context; ``sparse``: a song with
+    sparse vocals (a few sung lines)."""
     style, lyrics, score = docs.get("style", ""), docs.get("lyrics", ""), docs.get("score", "")
     findings: list[Finding] = []
     if "style" in check:
         findings += check_style(style, instrumental=instrumental)
     if "lyrics" in check:
         findings += check_lyrics(lyrics, instrumental=instrumental)
+        if sparse and target_seconds:
+            findings += lyrics_rules.check_sparse(lyrics, lyrics_rules.sparse_line_limit(target_seconds))
     duration: float | None = None
     if "score" in check:
         score_findings, duration = check_score(
-            score, instrumental=instrumental, lyrics=lyrics, target_seconds=target_seconds
+            score, instrumental=instrumental, lyrics=lyrics, target_seconds=target_seconds, sparse=sparse
         )
         findings += score_findings
     elif score.strip():
@@ -547,8 +559,18 @@ def section_plan(target_seconds: float) -> list[str]:
     ]
 
 
-def writing_rules(*, instrumental: bool, target_seconds: float) -> dict[str, Any]:
-    plan = section_plan(target_seconds)
+def sparse_sections(target_seconds: float) -> list[str]:
+    """The section map of a song with sparse vocals: as many sections as a sung song of the length (the planner
+    gives empty sections their own music, as in upstream's instrumental planning), its words in a few hooks."""
+    return lyrics_rules.sparse_form(
+        len(section_plan(target_seconds)), lyrics_rules.sparse_hooks(target_seconds)
+    )
+
+
+def writing_rules(*, instrumental: bool, target_seconds: float, sparse: bool = False) -> dict[str, Any]:
+    """The writer's rules; ``sparse``: a sung song with sparse vocals (a few short lines in a mostly instrumental
+    song)."""
+    plan = sparse_sections(target_seconds) if sparse else section_plan(target_seconds)
     style = (
         f"Style: one line of comma-separated descriptors, at most {STYLE_TARGET_WORDS} words: genre and sub-genre, "
         "key instruments, "
@@ -560,6 +582,9 @@ def writing_rules(*, instrumental: bool, target_seconds: float) -> dict[str, Any
     lyrics = (
         "Lyrics: write only the tag [instrumental] - no words and no other tags (YuE2 plans the form itself)."
         if instrumental
+        else lyrics_rules.sparse_rule(plan, lyrics_rules.sparse_line_limit(target_seconds))
+        + " YuE2 plays the empty sections as instrumental parts."
+        if sparse
         else "Lyrics: each section starts with a tag on its own line (for example [Verse]), followed by the sung "
         "lines; a blank line between sections. Only words to be sung: no stage directions, no notes, no "
         "parentheses, no repeat marks like (x2) - write repeated lines out. Instrumental sections such as "
@@ -571,6 +596,9 @@ def writing_rules(*, instrumental: bool, target_seconds: float) -> dict[str, Any
         "cinematic post-rock, clean electric guitars, piano, strings, warm bass, brushed drums, lead guitar melody, "
         "uplifting, spacious, 92 BPM"
         if instrumental
+        else "English, atmospheric downtempo, airy female voice with sparse vocal hooks, warm pads, deep bass, soft "
+        "drums, hypnotic, spacious, 90 BPM"
+        if sparse
         else "English, warm piano pop, expressive female voice, acoustic piano, rounded bass and light drums, "
         "lyrical memorable melody, unhurried phrasing, 88 BPM"
     )

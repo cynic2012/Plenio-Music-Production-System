@@ -202,8 +202,8 @@ def writer_lines(
 
     ``engine_id``: MiniMax Music 3 writes a caption in three headed parts, every other engine one descriptor line
     (YuE2 sang longer style prose; yue2-design.md §3.1). ``lyrics``: ``write`` (the writer writes them),
-    ``melody`` (new lyrics on a given melody - the syllable counts rule, so the lines keep their length) or
-    ``none``. ``fixed_sections``: the sections come from a score and must not change."""
+    ``melody`` (new lyrics on a given melody - the syllable counts rule, so the lines keep their length),
+    ``sparse`` (sparse vocals: a few short phrases) or ``none``. ``fixed_sections``: the sections come from a score and must not change."""
     level = creativity_level(creativity)
     if level == BALANCED:
         return []
@@ -220,4 +220,6 @@ def writer_lines(
         lines.append("- " + _LYRICS[level] + extra)
     elif not instrumental and lyrics == "melody":
         lines.append("- " + _LYRICS_ON_A_MELODY[level] + " The syllable counts above still rule.")
+    elif not instrumental and lyrics == "sparse":
+        lines.append("- " + _LYRICS_ON_A_MELODY[level] + " The words stay as few as the lyrics rule says.")
     return lines

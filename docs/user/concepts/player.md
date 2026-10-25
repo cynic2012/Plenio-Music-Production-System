@@ -144,23 +144,25 @@ fields - **as you type, the search suggests them**: `gen` offers `genre:`, `genr
 | `"a phrase"` `-word` | an exact phrase; leave out songs with a word |
 
 The **filters** under the search are rows of chips - your tags, genres, moods, what made the song (Plenio or
-other music) and the model; **More filters** opens vocals, language, tempo (slow, 90-119, 120-139, fast), length
+other music) and the model; **More filters** opens vocals (sung, sparse vocals, instrumental), language, tempo (slow, 90-119, 120-139, fast), length
 (under 3, 3-5, over 5 minutes), key, creative mode, creativity (steady 0-19, restrained 20-39, balanced 40-60,
 varied 61-80, experimental 81-100), template, year, Plenio version, what a song has (timed
 lyrics, sheet music, notation, an unmastered take, a cover picture) and listening (favourites, played, never
 played, no tags yet). A row shows its most common values first; **+ 113 more** opens it to every value - every
 genre a template gave, the rare ones too - with a field to find one in a long row.
 
-- **A click** on a chip keeps only the songs with it; a second click takes the filter off.
+- **A click** on a chip keeps only the songs with it; a second click takes the filter off. **Several chips in one
+  row** are alternatives: *jazz* and *pop* keep the songs of either genre, *slow* and *fast* both tempos. The rows
+  must all match (*jazz* or *pop*, and under 3 minutes).
 - **A right click** (a long press on a phone) **leaves those songs out**: the chip turns red and struck
   through, *not Genre: jazz* in the Filtered row.
 - **The numbers follow the filters**: they are how many of the songs shown have that value - after *from 1.0.0*,
   *instrumental* says how many of the 1.0 songs are instrumentals, and a value none of them has is gone. So
-  every chip says how many songs would stay. A row that could not narrow the songs further is left out; a row
-  of one choice (Plenio version, tempo, length, creativity) keeps its other values to switch to.
+  every chip says how many songs would stay. A row counts without its own chips, so its other values say how
+  many songs they add. A row that could not narrow the songs further is left out.
 - **Plenio version** offers *from 1.0.0*, *from 0.8.0* … for an archive with songs of older versions: only the
-  songs made with that version or a newer one. Tempo, length, creativity and Plenio version take one choice at a
-  time (a click on another replaces it). A song made before the creativity slider counts as *balanced*: it was
+  songs made with that version or a newer one. It is the one row with one choice at a time (a click on another
+  replaces it): *from 0.8.0* already holds the newer versions. A song made before the creativity slider counts as *balanced*: it was
   made as 50 makes it now.
 
 You can sort by newest, oldest, title, length, tempo, loudness, most played or recently played, and switch

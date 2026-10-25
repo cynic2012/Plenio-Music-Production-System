@@ -86,6 +86,71 @@ def tags_only(tags: Sequence[str]) -> str:
     return "\n\n".join(f"[{tag}]" for tag in tags)
 
 
+SPARSE_TAG = "Hook"
+"""The section of a song with sparse vocals that carries its few words; every other section stays empty."""
+SPARSE_LINES_PER_HOOK = 2
+
+
+def sparse_hooks(target_seconds: float) -> int:
+    """How many [Hook] sections a song with sparse vocals has: about one a minute, two to four."""
+    return max(2, min(4, round(target_seconds / 60)))
+
+
+def sparse_line_limit(target_seconds: float) -> int:
+    """The most sung lines a song with sparse vocals has: two per hook (a sung song of 3:00 has 22 to 36)."""
+    return SPARSE_LINES_PER_HOOK * sparse_hooks(target_seconds)
+
+
+def sparse_form(sections: int, hooks: int) -> list[str]:
+    """A section map for sparse vocals of about ``sections`` sections: [Intro], empty [Instrumental] sections with
+    ``hooks`` [Hook] sections spread evenly among them, a [Break] before the last hook when there is room,
+    [Outro]."""
+    body = max(sections - 2, 2 * hooks)
+    tags = ["Instrumental"] * body
+    places = [((2 * k + 1) * body) // (2 * hooks) for k in range(hooks)]
+    for place in places:
+        tags[place] = SPARSE_TAG
+    before_last = places[-1] - 1
+    if body >= 6 and tags[before_last] == "Instrumental" and before_last > places[-2]:
+        tags[before_last] = "Break"
+    return ["Intro", *tags, "Outro"]
+
+
+def sparse_rule(tags: Sequence[str], limit: int, *, fixed: bool = False) -> str:
+    """The writer's lyrics rule for sparse vocals: the map ``tags``, words only in its hooks, at most ``limit``
+    lines. ``fixed``: ``tags`` are a score's sections - the words go into a few of them."""
+    order = " ".join(f"[{tag}]" for tag in tags)
+    where = (
+        "Words go only into one to three of these sections where a short sung phrase fits best (a chorus or a hook "
+        "first)"
+        if fixed
+        else f"Words go only into the [{SPARSE_TAG}] sections"
+    )
+    return (
+        "Lyrics: sparse vocals - the song is mostly instrumental and the voice appears only now and then. Use "
+        f"exactly these sections, in this order, each tag on its own line and a blank line between sections: {order}"
+        + (" (they follow the score and must not change). " if fixed else ". ")
+        + f"{where}: one or two short lines each (2 to 6 words a line), at most {limit} sung lines in the whole "
+        "song; every other section stays empty. The few words carry the song: a hook phrase, a call, a short chant "
+        "or wordless vocal sounds (for example 'ooh', 'ah', 'hey') that fit the theme, sit on the melody and come "
+        "back rather than tell a story. Only words to be sung: no stage directions, no parentheses, no repeat marks."
+    )
+
+
+def check_sparse(text: str, limit: int) -> list[Finding]:
+    """Sparse vocals: a warning when the lyrics have far more lines than ``limit`` (``sparse_line_limit``)."""
+    lines = sum(len(section.lines) for section in parse_lyrics(text).sections)
+    if lines <= 2 * limit:
+        return []
+    return [
+        warning(
+            f"Sparse vocals: the lyrics have {lines} sung lines; at most about {limit} keep the song mostly "
+            "instrumental. Delete lines, or leave more sections empty.",
+            "lyrics",
+        )
+    ]
+
+
 def estimate_syllables(line: str, language: str = "") -> int:
     """A syllable estimate of a sung line (``syllables.count``: rules for English and German); a hint, not a
     measurement."""

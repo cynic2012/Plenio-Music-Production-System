@@ -4722,10 +4722,41 @@
      "vocals": [
       "COMFY_DYNAMICCOMBO_V3",
       {
-       "tooltip": "Sung song or instrumental. Instrumental hides all vocal settings.",
+       "tooltip": "sung: a song with lyrics. sparse vocals: mostly instrumental, the voice sings only a few short phrases (a hook, a call, wordless sounds like 'ooh'). instrumental: no singing; hides all vocal settings.",
        "options": [
         {
          "key": "sung",
+         "inputs": {
+          "required": {
+           "language": [
+            "STRING",
+            {
+             "tooltip": "Language of the lyrics, e.g. 'English'.",
+             "default": "",
+             "multiline": false
+            }
+           ],
+           "voice": [
+            "STRING",
+            {
+             "tooltip": "Vocal character, e.g. 'warm female voice'.",
+             "default": "",
+             "multiline": false
+            }
+           ],
+           "theme": [
+            "STRING",
+            {
+             "tooltip": "What the lyrics are about.",
+             "default": "",
+             "multiline": false
+            }
+           ]
+          }
+         }
+        },
+        {
+         "key": "sparse vocals",
          "inputs": {
           "required": {
            "language": [
