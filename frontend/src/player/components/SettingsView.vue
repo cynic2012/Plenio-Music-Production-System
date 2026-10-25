@@ -20,6 +20,7 @@ import AccountsPanel from './AccountsPanel.vue'
 import { guest, me, session } from '../account'
 import { DEPARTS_EXTRA, DEPARTS_HEARD } from '../lyricsVersion'
 import NetworkAccess from './NetworkAccess.vue'
+import MakeSettings from './MakeSettings.vue'
 import { isPortable, portable } from '../portable'
 
 const shelf = ref<FoldersAnswer | null>(null)
@@ -218,6 +219,8 @@ async function stop(): Promise<void> {
     </section>
 
     <NetworkAccess v-if="!isPortable" />
+
+    <MakeSettings v-if="!isPortable" />
 
     <section v-if="!isPortable && !remote" class="block">
       <h3><Icon name="external" /> ComfyUI</h3>

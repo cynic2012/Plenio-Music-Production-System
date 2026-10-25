@@ -805,6 +805,9 @@ class Library:
         self.other = {Path(f).resolve() for f in other}
         # the folders it started with (--folder, the default): back to them when Settings forgets its own
         self.started_with = list(self.folders)
+        self.extra: list[Path] = []
+        """Folders read besides the library's own - the party songs' when they are outside them (``maker``); not
+        listed in Settings, and not read where one of the library's folders holds them already."""
         self.cache_path = cache
         self._lock = threading.Lock()
         self._songs: dict[str, Song] = {}
@@ -829,8 +832,20 @@ class Library:
             self.other = {Path(f).resolve() for f in other}
         self.scan(force=True)
 
+    def roots(self) -> list[Path]:
+        """The folders read: the library's, and the extra ones none of them holds."""
+        found = list(self.folders)
+        for extra in self.extra:
+            try:
+                folder = Path(extra).resolve()
+            except OSError:
+                continue
+            if not any(folder == root or root in folder.parents for root in found):
+                found.append(folder)
+        return found
+
     def _records(self) -> Iterable[tuple[Path, Path]]:
-        for root in self.folders:
+        for root in self.roots():
             if not root.exists():
                 continue
             for path in sorted(root.rglob(f"*{RECORD_SUFFIX}")):
@@ -953,6 +968,18 @@ class Library:
     def song(self, song_id: str) -> Song | None:
         self.scan()
         return self._songs.get(song_id)
+
+    def find_record(self, record: Path) -> Song | None:
+        """The song of a release record file (``None``: not in the library)."""
+        self.scan()
+        try:
+            wanted = Path(record).resolve()
+        except OSError:
+            return None
+        for song in list(self._songs.values()):
+            if not song.other and song.record.name == wanted.name and song.record.resolve() == wanted:
+                return song
+        return None
 
     def remove(self, song_id: str, action: str) -> dict[str, Any] | None:
         """Retire or delete a song (:func:`remove_song`) and read the folders again; ``None``: no such song."""

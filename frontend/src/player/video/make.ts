@@ -8,20 +8,28 @@
  * shape (also a spinning record), pulsing with the beat; the lyrics word by word, in a place of their own or a
  * new place every line, coming in with a fade, a rise, a zoom, a drop, a blur, a wipe or a glitch - in one
  * beat when they follow it; and the title, the lyrics and the cover drawn into a Plenio Drop visual's smoke.
+ *
+ * And the visuals planned over the video (owner's request 2026-10-25, plan.ts): one all the way, a new one at
+ * every section or every so many seconds - each chosen, or one at random from a seed - changing on the beat if
+ * wished; and looks (looks.ts): the cover glowing from behind, the picture breathing with the beat, a vignette,
+ * grain, cinema bars, the section's name, fades from and to black, an end card, colours that change with the
+ * visual, how strongly the visuals react.
  */
 import { api, media, type SongDetail, type SongSummary } from '../api'
 import { paletteFrom, songHue } from '../colors'
 import { fontOf, litColor, lyricsWithDefaults, type LyricsStyle } from '../lyricsStyle'
 import { linesFor, type LyricsVersion, versionOf } from '../lyricsVersion'
 import { settings } from '../store'
-import { lineAt, sectionAt, sectionsInSong, songAnchors, type TimedSection } from '../timing'
-import { chooseVisual } from '../visuals/chooser'
+import { lineAt, sectionAt, sectionName, sectionsInSong, songAnchors, type TimedSection } from '../timing'
+import { chooseVisual, songMoods } from '../visuals/chooser'
 import { DropRenderer } from '../visuals/drop/renderer'
 import { storySprites, tellRenderer, textPicture } from '../visuals/drop/story'
 import { SceneMixer, fadeWithDefaults, type FadeStyle } from '../visuals/mixer'
 import { allPresets, makeColors, presetById, type Scheme } from '../visuals/presets'
+import { DEFAULT_LOOK, LookCache, barHeight, drawBackdrop, drawBars, drawBeatZoom, drawBlack, drawEndCard, drawGrain, drawSectionName, drawVignette, endCardSeconds, fadeAt, lookWithDefaults, type Look } from './looks'
 import { NotationStrip } from './notationStrip'
 import { OfflineAnalysis } from './offline'
+import { resolvePlan, slotAt, slotsOf, type RandomFrom, type Slot } from './plan'
 import { drawCorner, drawCoverBadge, drawCredit, drawMovingLyrics, drawProgress, drawTitleCard, drawWords, type CoverLook, type Entrance, type LyricsLook, type LyricsPlace, type TitleInfo } from './overlay'
 
 export interface VideoOptions {
@@ -37,6 +45,18 @@ export interface VideoOptions {
   /** Another visual: never, at every section of the song, or every ``interval`` seconds. */
   change: 'never' | 'section' | 'interval'
   interval: number
+  /** The visual chosen for each section or span (by its place; ``''``: at random) - kept per song. */
+  picks: string[]
+  /** Where the random ones come from: the visuals ticked in the visuals' settings, every visual, or those that suit
+   * the song; and the seed they are drawn with (the same seed, the same visuals). */
+  randomFrom: RandomFrom
+  seed: number
+  /** Sections of one name (every chorus) show the same visual. */
+  repeats: boolean
+  /** A change waits for the next beat (at most a second and a half). */
+  changeOnBeat: boolean
+  /** More for the look (looks.ts). */
+  look: Look
   /** How one visual turns into the next, and over how many seconds (owner's request 2026-10-18: softly). */
   fade: FadeStyle
   fadeSeconds: number
@@ -85,6 +105,12 @@ export const DEFAULT_VIDEO: VideoOptions = {
   visual: '',
   change: 'never',
   interval: 20,
+  picks: [],
+  randomFrom: 'pool',
+  seed: 1,
+  repeats: true,
+  changeOnBeat: true,
+  look: DEFAULT_LOOK,
   fade: 'blend',
   fadeSeconds: 3,
   scheme: 'song',
@@ -113,6 +139,12 @@ export function videoWithDefaults(raw: unknown, lyrics?: unknown, version?: unkn
   delete (out as { eachSection?: boolean }).eachSection
   if (!['never', 'section', 'interval'].includes(out.change)) out.change = 'never'
   out.interval = Math.min(600, Math.max(3, Number(out.interval) || 20))
+  out.picks = Array.isArray(given.picks) ? given.picks.map((p) => (typeof p === 'string' ? p : '')).slice(0, 400) : []
+  if (!['pool', 'all', 'match'].includes(out.randomFrom)) out.randomFrom = 'pool'
+  out.seed = Number.isInteger(out.seed) && out.seed >= 0 ? out.seed : 1
+  out.repeats = out.repeats !== false
+  out.changeOnBeat = out.changeOnBeat !== false
+  out.look = lookWithDefaults(given.look)
   const fade = fadeWithDefaults(out.fade, out.fadeSeconds)
   out.fade = fade.style
   out.fadeSeconds = fade.seconds
@@ -183,11 +215,14 @@ export class Composer {
   private readonly analysis: OfflineAnalysis
   private readonly mixer: SceneMixer
   private drop: DropRenderer | null | undefined
-  private turn = 0
-  private lastChange = 0
-  private section: TimedSection | null = null
+  /** The slot whose visual shows, and when it changed (the visual's clock). */
+  private slot = -1
   private readonly look: { stack: string; weight: number; lit: string }
   private readonly sections: TimedSection[]
+  /** The plan: the slots of the part and each one's visual. */
+  readonly slots: Slot[]
+  readonly plan: string[]
+  private readonly looks = new LookCache()
   /** The lines drawn: as written or as sung; the sections and the notation follow the written ones. */
   private readonly shown: SongDetail['lines']
   private readonly hue: number
@@ -208,7 +243,7 @@ export class Composer {
     this.canvas.width = width
     this.canvas.height = height
     this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D
-    this.analysis = new OfflineAnalysis(sound, options.fps, settings.visuals.sensitivity)
+    this.analysis = new OfflineAnalysis(sound, options.fps, settings.visuals.sensitivity * options.look.reactivity)
     this.mixer = new SceneMixer((preset) => preset.create({ drop: { renderer: () => this.dropRenderer(), scale: 1 } }))
     this.sections = sectionsInSong(detail.notation.sections, songAnchors(detail.lines, detail.notation), detail.notation.warp, sound.duration)
     this.shown = linesFor(detail, options.lyricsVersion)
@@ -218,6 +253,9 @@ export class Composer {
     this.look = { ...font, lit: litColor(options.lyricsStyle, this.accent) }
     const rest = Math.max(0, sound.duration - options.start)
     this.length = options.length > 0 ? Math.min(options.length, rest) : rest
+    const plan = planOf(song, options, this.sections, this.length)
+    this.slots = plan.slots
+    this.plan = plan.visuals
   }
 
   /** ``scale``: smaller than the video, for a preview. */
@@ -252,27 +290,24 @@ export class Composer {
     return this.drop
   }
 
-  /** The visual for this moment: the one chosen, or as the visuals' settings choose; another at a new
-   * section, or every few seconds, when asked. */
-  private pick(t: number, elapsed: number): void {
-    const { change, interval } = this.options
-    const section = change === 'section' ? sectionAt(this.sections, t) : null
-    const due =
-      this.mixer.preset === null ||
-      (change === 'section' && section !== this.section) ||
-      (change === 'interval' && elapsed - this.lastChange >= Math.max(3, interval))
-    if (!due) return
-    if (this.mixer.preset) this.turn += 1
-    this.section = section
-    this.lastChange = elapsed
-    let id = this.options.visual
-    if (!id || (change !== 'never' && this.turn > 0)) {
-      const pool = { ...settings.visuals, songs: this.turn > 0 ? {} : settings.visuals.songs }
-      if (this.options.visual && this.turn > 0) Object.assign(pool, { mode: 'cycle' as const })
-      id = chooseVisual({ settings: pool, song: this.song, previous: this.mixer.preset?.id ?? (this.options.visual || null), turn: this.turn })
-    }
+  /** The visual for this moment, as planned: a new slot changes it - on the next beat when wished (at most a second
+   * and a half after the slot's start). */
+  private pick(t: number, beat: boolean): void {
+    const due = Math.max(0, slotAt(this.slots, t))
+    if (due === this.slot && this.mixer.preset) return
+    const late = t - (this.slots[due]?.start ?? t)
+    if (this.mixer.preset && this.options.changeOnBeat && !beat && late < 1.5) return
+    this.slot = due
+    const id = this.plan[due] || this.plan[0]
     // the change as the video's crossfade says: both visuals play on while the new one comes in
     this.mixer.use(presetById(id) ?? allPresets()[0], { style: this.options.fade, seconds: this.options.fadeSeconds })
+  }
+
+  /** The colours now: the scheme chosen - or another one at every change of the visual. */
+  private scheme(): Scheme {
+    if (!this.options.look.cycleColors || this.slot <= 0) return this.options.scheme
+    const start = SCHEMES.indexOf(this.options.scheme)
+    return SCHEMES[(Math.max(0, start) + this.slot) % SCHEMES.length]
   }
 
   /** Over a visual that is not Plenio Drop, the song's title, line and cover chosen into it - as a glow (the
@@ -314,8 +349,9 @@ export class Composer {
     const h = this.canvas.height
     const ctx = this.ctx
     const frame = this.analysis.frame(t, 1 / fps, elapsed)
-    this.pick(t, elapsed)
-    const colors = makeColors(this.hue, this.options.scheme, elapsed)
+    this.pick(t, frame.beat)
+    const colors = makeColors(this.hue, this.scheme(), elapsed)
+    const style = this.options.look
     const into = this.options.into
     const lines = this.shown
     if (this.mixer.preset?.kind === 'drop') {
@@ -328,6 +364,13 @@ export class Composer {
     }
     this.mixer.draw(ctx, frame, w, h, colors)
     if (this.mixer.preset?.kind !== 'drop' && (into.title || into.lyrics || into.cover)) this.glowInto(ctx, t, elapsed, w, h, frame.pulse)
+    // the looks of the picture itself: the cover from behind, the beat's breath, the vignette, the grain, the bars
+    if (style.backdrop > 0 && this.info.image) drawBackdrop(ctx, this.looks, this.info.image, style.backdrop, elapsed, w, h, frame.pulse)
+    if (style.zoom > 0) drawBeatZoom(ctx, this.looks, style.zoom, frame.pulse, w, h)
+    if (style.vignette) drawVignette(ctx, this.looks, w, h)
+    if (style.grain > 0) drawGrain(ctx, this.looks, style.grain, w, h)
+    if (style.bars) drawBars(ctx, w, h)
+    const bars = style.bars ? barHeight(w, h) : 0
     // what is drawn over it
     const upright = h > w * 1.2
     const stripH = Math.round(h * (upright ? 0.16 : 0.25))
@@ -362,8 +405,45 @@ export class Composer {
     if (this.options.corner) drawCorner(ctx, this.info, w, h, after, nudge)
     if (this.options.credit) drawCredit(ctx, w, h)
     if (this.options.progress) drawProgress(ctx, t, this.sound.duration, this.sections, this.accent, w, h)
+    if (style.sections) {
+      const section = sectionAt(this.sections, t)
+      if (section && section.at > this.options.start + 0.5) drawSectionName(ctx, sectionName(section.label), t - section.at, this.accent, w, h, bars + (this.options.corner ? Math.min(w, h) * 0.08 : 0))
+    }
     if (this.options.title) drawTitleCard(ctx, this.info, elapsed, w, h)
+    if (style.endCard) drawEndCard(ctx, this.info, this.byline, this.length - elapsed, endCardSeconds(this.length), w, h)
+    if (style.fades) drawBlack(ctx, fadeAt(elapsed, this.length), w, h)
   }
+
+  /** Who made the song, for the end card: its artist and album tags (a party song's *Guest*, *Party-Song …*). */
+  private get byline(): string {
+    const tags = this.song.tags ?? {}
+    return [tags.artist || this.song.artist, tags.album || this.song.album].filter(Boolean).join(' · ') || this.info.subtitle
+  }
+}
+
+const SCHEMES: Scheme[] = ['song', 'neon', 'sunset', 'winamp', 'mono']
+
+/** The visuals of a video: its slots (one, each section, each span of seconds) and each one's visual - the one
+ * chosen, else at random from the seed (or, for one visual, as the visuals' settings choose for the song). */
+export function planOf(song: SongSummary, options: VideoOptions, sections: TimedSection[], length: number): { slots: Slot[]; visuals: string[] } {
+  const slots = slotsOf(options.change, options.interval, sections, options.start, length, sectionName)
+  const exists = (id: string): boolean => !!presetById(id)
+  if (options.change === 'never') {
+    const id = options.visual && exists(options.visual) ? options.visual : chooseVisual({ settings: settings.visuals, song, previous: null, turn: 0 })
+    return { slots, visuals: [id] }
+  }
+  const all = allPresets()
+  let pool: string[]
+  if (options.randomFrom === 'all') pool = all.map((p) => p.id)
+  else if (options.randomFrom === 'match') {
+    const moods = songMoods(song)
+    const fitting = all.filter((p) => !moods.length || p.suits.some((s) => moods.includes(s)))
+    pool = (fitting.length ? fitting : all).map((p) => p.id)
+  } else {
+    const ticked = settings.visuals.pool.filter(exists)
+    pool = ticked.length ? ticked : all.map((p) => p.id)
+  }
+  return { slots, visuals: resolvePlan(slots, options.picks, pool, options.seed, options.repeats, exists) }
 }
 
 /** One frame of the video at ``at`` seconds into the song, small - after a few seconds drawn before it, so

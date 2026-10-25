@@ -159,6 +159,8 @@ class Graph:
         """The groups standing in one row (``align``): their tops and their bottoms line up."""
         self._next_node = first_id
         self._next_link = 1
+        self.extra: dict[str, Any] = {}
+        """Entries for the workflow's ``extra`` (a template's ``plenio_api``: the Song API runs it)."""
 
     # --- nodes ------------------------------------------------------------------
 
@@ -692,6 +694,7 @@ def workflow(graph: Graph, name: str, blueprints: list[Blueprint], app: App | No
     }  # the HQ Mastering & Cover Art switches above group 1 in view, with the group's title
     if app is not None:
         extra["linearData"] = app.to_json()
+    extra.update(graph.extra)
     return {
         "id": stable_uuid("workflow", name),
         "revision": 0,

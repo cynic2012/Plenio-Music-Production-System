@@ -245,6 +245,67 @@ def prompt_server_routes() -> Any:
     return PromptServer.instance.routes
 
 
+def prompt_server() -> Any:
+    from server import PromptServer
+
+    return PromptServer.instance
+
+
+def node_info(node_type: str) -> dict[str, Any] | None:
+    """A node type's definition as ``/object_info`` gives it - its inputs in their order, its outputs, its name -
+    read now (a list of files is the one on disk now); ``None`` for a type this ComfyUI does not have."""
+    import nodes
+
+    node_class = nodes.NODE_CLASS_MAPPINGS.get(node_type)
+    if node_class is None:
+        return None
+    v3 = getattr(node_class, "GET_NODE_INFO_V1", None)
+    if callable(v3):
+        return dict(v3())
+    inputs = node_class.INPUT_TYPES()
+    returns = tuple(getattr(node_class, "RETURN_TYPES", ()))
+    return {
+        "input": inputs,
+        "input_order": {section: list(entries) for section, entries in inputs.items()},
+        "output": list(returns),
+        "output_name": list(getattr(node_class, "RETURN_NAMES", returns)),
+        "name": node_type,
+        "display_name": nodes.NODE_DISPLAY_NAME_MAPPINGS.get(node_type, node_type),
+        "output_node": bool(getattr(node_class, "OUTPUT_NODE", False)),
+    }
+
+
+def input_directory() -> Path:
+    import folder_paths
+
+    return Path(folder_paths.get_input_directory())
+
+
+def interrupt() -> None:
+    import comfy.model_management
+
+    comfy.model_management.interrupt_current_processing()
+
+
+def tls_enabled() -> bool:
+    """ComfyUI serves HTTPS (``--tls-keyfile``)."""
+    try:
+        from comfy.cli_args import args
+    except ImportError:
+        return False
+    return bool(getattr(args, "tls_keyfile", None))
+
+
+def progress_state() -> Any:
+    """ComfyUI's progress of the nodes of the run that runs (``None``: a ComfyUI without it)."""
+    try:
+        from comfy_execution.progress import get_progress_state
+
+        return get_progress_state()
+    except Exception:  # noqa: BLE001 - an older ComfyUI: no progress of nodes
+        return None
+
+
 def execution_blocker(message: str | None = None) -> Any:
     """A per-output blocker: ``None`` blocks silently, a message blocks with an error."""
     from comfy_execution.graph_utils import ExecutionBlocker

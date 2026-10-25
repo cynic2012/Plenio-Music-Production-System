@@ -6,26 +6,45 @@
  * the take - a preview frame to see it. *Make the video* puts it in the queue (owner's request 2026-10-18: in
  * the background): the dialog shows how far it is with a live picture, and may be closed - it goes on, under
  * *In the making*. Another video with other settings can follow at once.
+ *
+ * The visuals over the video's time (owner's request 2026-10-25): one all the way, a new one at every section or
+ * every so many seconds, each chosen in a gallery of little windows playing to the song, or at random
+ * (VisualTimeline.vue) - kept per song; and more looks (video/looks.ts).
  */
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 
 import { api, type SongDetail, type SongSummary } from '../api'
 import { frameWatchers, jobs, progressOf, progressText, queueVideo, stopJob } from '../jobs'
 import { COLORS, EFFECTS, FONTS, lyricsWithDefaults } from '../lyricsStyle'
 import { LYRICS_VERSIONS, sungOf, versionFor } from '../lyricsVersion'
 import { go, settings } from '../store'
-import { formatTime, sectionName } from '../timing'
-import { CLASSIC, PRESETS, type Scheme } from '../visuals/presets'
-import { myPresets } from '../visuals/drop'
+import { formatTime, sectionName, sectionsInSong, songAnchors } from '../timing'
+import type { Scheme } from '../visuals/presets'
 import { FADE_STYLES } from '../visuals/mixer'
-import { COVER_PLACES, SIZES, preview, videoWithDefaults, type VideoOptions } from '../video/make'
+import { COVER_PLACES, SIZES, preview, soundOf, videoWithDefaults, type VideoOptions } from '../video/make'
 import { ENTRANCES } from '../video/overlay'
+import { PreviewMaker } from '../video/previews'
+import { media } from '../api'
 import Icon from './Icon.vue'
+import VisualTimeline from './VisualTimeline.vue'
 
 const props = defineProps<{ song: SongSummary }>()
 const emit = defineEmits<{ close: [] }>()
 
 const options = reactive<VideoOptions>(videoWithDefaults(settings.video, settings.lyrics))
+/** The plans of the songs made into videos before (song id -> when the visual changes, and the visuals chosen). */
+type Plan = Pick<VideoOptions, 'change' | 'interval' | 'picks' | 'seed'>
+const plans = (): Record<string, Plan> => {
+  const raw = settings.video.plans
+  return raw && typeof raw === 'object' ? (raw as Record<string, Plan>) : {}
+}
+{
+  const kept = plans()[props.song.id]
+  if (kept) Object.assign(options, videoWithDefaults({ ...options, ...kept }, options.lyricsStyle, options.lyricsVersion), { start: 0, length: 0 })
+  else options.seed = Math.floor(Math.random() * 2 ** 31)
+}
+/** The little moving previews of the visuals with this song (made when its sound is read). */
+const maker = shallowRef<PreviewMaker | null>(null)
 const detail = ref<SongDetail | null>(null)
 const shot = ref<HTMLDivElement | null>(null)
 const error = ref('')
@@ -50,15 +69,16 @@ const SCHEMES: [Scheme, string][] = [
   ['sunset', 'Sunset'],
   ['mono', 'Monochrome'],
 ]
-const groups = computed(() => [
-  ['Classic', CLASSIC],
-  ['Plenio Drop', PRESETS.filter((p) => p.kind === 'drop')],
-  ['My presets', myPresets.value],
-] as const)
 const hasLines = computed(() => (detail.value?.lines.length ?? 0) > 0)
 const hasSung = computed(() => !!sungOf(detail.value))
 const PLACE_NAMES: Record<string, string> = { 'top-left': 'top left', top: 'top', 'top-right': 'top right', left: 'left', center: 'in the middle', right: 'right', 'bottom-left': 'bottom left', bottom: 'bottom', 'bottom-right': 'bottom right', drift: 'drifting slowly' }
 const usesDrop = computed(() => !options.visual || options.visual.startsWith('drop-') || options.visual.startsWith('my-'))
+/** The song's sections on its time line (the plan's slots). */
+const timed = computed(() => {
+  const d = detail.value
+  return d ? sectionsInSong(d.notation.sections, songAnchors(d.lines, d.notation), d.notation.warp, duration.value || Infinity) : []
+})
+const wide = computed(() => options.width >= options.height * 1.3)
 const hasNotation = computed(() => !!detail.value?.notation.abc)
 const sections = computed(() => {
   const d = detail.value
@@ -77,9 +97,11 @@ const estimate = computed(() => {
 })
 
 function remember(): void {
-  // which lyrics belongs to the song (its page, the player bar), not to every video
-  const { start: _s, length: _l, lyricsVersion: _v, ...kept } = options
-  settings.video = { ...kept }
+  // which lyrics belongs to the song (its page, the player bar), not to every video; the visuals chosen belong to
+  // the song too (its sections): kept per song, the last 40
+  const { start: _s, length: _l, lyricsVersion: _v, picks, seed, ...kept } = options
+  const others = Object.entries(plans()).filter(([id]) => id !== props.song.id).slice(-39)
+  settings.video = { ...kept, plans: Object.fromEntries([...others, [props.song.id, { change: options.change, interval: options.interval, picks: [...picks], seed }]]) }
 }
 watch(options, remember, { deep: true })
 
@@ -136,6 +158,34 @@ function part(at: number, until: number): void {
 }
 const sizeText = (bytes: number): string => (bytes > 2 ** 30 ? `${(bytes / 2 ** 30).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / 2 ** 20))} MB`)
 
+/** The previews' maker for the song as set (its sound, the video's shape, the colours). */
+async function makePreviews(): Promise<void> {
+  const d = detail.value
+  if (!d) return
+  try {
+    const sound = await soundOf(props.song, options.take)
+    const cover = props.song.has.cover ? await loadCover() : null
+    maker.value?.stop()
+    maker.value = new PreviewMaker(props.song, d, sound, options.width / options.height, options.scheme, cover, settings.visuals.sensitivity * options.look.reactivity)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  }
+}
+let coverImage: Promise<HTMLImageElement | null> | null = null
+function loadCover(): Promise<HTMLImageElement | null> {
+  coverImage ??= new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => resolve(null)
+    img.src = media(props.song.id, 'cover')
+  })
+  return coverImage
+}
+watch(
+  () => [options.take, options.scheme, options.width / options.height, options.look.reactivity],
+  () => void makePreviews()
+)
+
 onMounted(async () => {
   try {
     detail.value = await api.song(props.song.id)
@@ -143,13 +193,16 @@ onMounted(async () => {
     if (!detail.value.lines.length && options.lyrics !== 'off') options.lyrics = 'off'
     if (!detail.value.notation.abc) options.notation = false
     if (options.take === 'original' && !props.song.has.original) options.take = 'master'
+    if (options.change === 'section' && !detail.value.notation.sections?.length) options.change = 'never'
     void look()
+    void makePreviews()
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   }
 })
 onBeforeUnmount(() => {
   for (const id of mine.value) frameWatchers.delete(id)
+  maker.value?.stop()
 })
 </script>
 
@@ -203,21 +256,8 @@ onBeforeUnmount(() => {
           </fieldset>
 
           <fieldset>
-            <legend>The visual</legend>
-            <select v-model="options.visual">
-              <option value="">As the visuals’ settings choose for this song</option>
-              <optgroup v-for="[label, list] in groups" :key="label" :label="label">
-                <option v-for="p in list" :key="p.id" :value="p.id">{{ p.name }}</option>
-              </optgroup>
-            </select>
-            <label>A new visual
-              <select v-model="options.change">
-                <option value="never">never - the same one throughout</option>
-                <option value="section" :disabled="!sections.length">at every section (verse, chorus …)</option>
-                <option value="interval">every few seconds</option>
-              </select>
-            </label>
-            <label v-if="options.change === 'interval'" class="inline">every <input v-model.number="options.interval" type="number" min="3" max="600" /> seconds</label>
+            <legend>The visuals</legend>
+            <VisualTimeline :song="song" :options="options" :sections="timed" :length="partLength" :maker="maker" />
             <div v-if="options.change !== 'never'" class="row">
               <label>Crossfade
                 <select v-model="options.fade">
@@ -227,6 +267,24 @@ onBeforeUnmount(() => {
               <label v-if="options.fade !== 'cut'" class="inline">over <input v-model.number="options.fadeSeconds" type="range" min="0.5" max="8" step="0.5" /> {{ options.fadeSeconds }} s</label>
             </div>
             <label>Colours <select v-model="options.scheme"><option v-for="[id, label] in SCHEMES" :key="id" :value="id">{{ label }}</option></select></label>
+            <label v-if="options.change !== 'never'" class="check"><input v-model="options.look.cycleColors" type="checkbox" /> other colours at every change of the visual</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>The look</legend>
+            <label class="inline" title="The song's cover, blurred and slowly drifting, glows through the visual from behind">The cover behind the visual <input v-model.number="options.look.backdrop" type="range" min="0" max="1" step="0.05" :disabled="!song.has.cover" /> {{ options.look.backdrop ? `${Math.round(options.look.backdrop * 100)} %` : 'off' }}</label>
+            <label class="inline" title="The picture grows a little on every beat and settles between them">Breathes with the beat <input v-model.number="options.look.zoom" type="range" min="0" max="1" step="0.05" /> {{ options.look.zoom ? `${Math.round(options.look.zoom * 100)} %` : 'off' }}</label>
+            <label class="inline" title="How strongly the visuals react to the music">The visuals react <input v-model.number="options.look.reactivity" type="range" min="0.5" max="2" step="0.1" /> {{ options.look.reactivity.toFixed(1) }}×</label>
+            <label class="inline" title="A film's grain over the picture">Film grain <input v-model.number="options.look.grain" type="range" min="0" max="1" step="0.05" /> {{ options.look.grain ? `${Math.round(options.look.grain * 100)} %` : 'off' }}</label>
+            <div class="row">
+              <label class="check"><input v-model="options.look.vignette" type="checkbox" /> darker corners</label>
+              <label class="check" :title="wide ? 'Black bars above and below: a picture of 2.39:1' : 'For a wide video only'"><input v-model="options.look.bars" type="checkbox" :disabled="!wide" /> cinema bars</label>
+              <label class="check"><input v-model="options.look.fades" type="checkbox" /> in from black, out to black</label>
+            </div>
+            <div class="row">
+              <label class="check" :title="sections.length ? 'Verse, Chorus … in large letters for a moment as each section begins' : 'This song has no sections'"><input v-model="options.look.sections" type="checkbox" :disabled="!sections.length" /> the section’s name as it begins</label>
+              <label class="check" title="The last seconds: the cover, the title, who made it"><input v-model="options.look.endCard" type="checkbox" /> an end card</label>
+            </div>
           </fieldset>
 
           <fieldset>

@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "build:player": "vite build --config vite.player.config.ts",
+    "build:player": "vite build --config vite.player.config.ts && vite build --config vite.guest.config.ts",
     "dev:player": "vite --config vite.player.config.ts",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",

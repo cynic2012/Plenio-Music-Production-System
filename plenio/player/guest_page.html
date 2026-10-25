@@ -69,6 +69,18 @@
            padding: 10px 16px; border-radius: 99px; font-size: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); opacity: 0; transition: opacity 0.25s; pointer-events: none; }
   .toast.on { opacity: 1; }
   footer { text-align: center; color: var(--muted); font-size: 12px; }
+  /* Make your own song (owner's request 2026-10-25): when the host lets guests make songs */
+  .make { position: relative; overflow: hidden; display: grid; grid-template-columns: 46px 1fr auto; gap: 12px; align-items: center; padding: 14px 16px;
+          border-radius: 18px; text-decoration: none; color: #120c1c; background: linear-gradient(120deg, #a78bfa, #f472b6 55%, #fbbf24); background-size: 180% 100%;
+          box-shadow: 0 12px 34px rgba(244, 114, 182, 0.35); animation: drift 6s ease-in-out infinite; }
+  .make .spark { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: rgba(255, 255, 255, 0.35); font-size: 24px; }
+  .make b { display: block; font-size: 17px; }
+  .make small { color: rgba(18, 12, 28, 0.75); font-size: 13px; }
+  .make .go { font-weight: 800; font-size: 22px; }
+  .make::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%);
+                 transform: translateX(-120%); animation: shine 3.2s ease-in-out infinite; pointer-events: none; }
+  @keyframes drift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  @keyframes shine { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -79,6 +91,11 @@
     <span id="pill" class="pill off">…</span>
   </header>
   <p id="note" class="note">Connecting …</p>
+  <a id="makeBox" class="make" href="make/" hidden>
+    <span class="spark">✨</span>
+    <span><b>Make your own song</b><small>Pick a style, say what it is about - it plays here when it is ready</small></span>
+    <span class="go">›</span>
+  </a>
   <section id="now" class="now" hidden>
     <div id="nowArt" class="art"></div>
     <div>
@@ -161,6 +178,7 @@
     }
   }
   function show(text) {
+    $("makeBox").hidden = !(view && view.make);
     $("note").hidden = false;
     $("note").textContent = text;
     for (const id of ["now", "nextBox", "addBox", "playedBox"]) $(id).hidden = true;
@@ -171,6 +189,7 @@
   function render() {
     const v = view;
     const change = v.mode === "change";
+    $("makeBox").hidden = !v.make;
     if (!v.open) return show("The player's page is closed at the moment - the live playlist shows again when it is open.");
     $("pill").className = v.live ? "pill" : "pill off";
     $("pill").textContent = v.live ? "LIVE" : "NOT LIVE";

@@ -2533,6 +2533,8 @@ ABOUT_YUE2 = f"""# 1 · YuE2 · Song
 
 def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g = Graph()
+    # the Song API runs it (owner's request 2026-10-25: party songs from the player; docs/design/party-songs.md)
+    g.extra["plenio_api"] = {"id": "yue2-song", "kind": "song"}
     about_note(g, ABOUT_YUE2, height=1300)
     brief = g.add(
         "PlenioSongBrief",
@@ -2739,6 +2741,8 @@ ABOUT_COVER = f"""# 2 · YuE2 · Cover
 
 def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g = Graph()
+    # the Song API runs it (owner's request 2026-10-25: party covers from the player)
+    g.extra["plenio_api"] = {"id": "yue2-cover", "kind": "cover"}
     about_note(g, ABOUT_COVER, height=1440)
     # group 1: the switches, the writer model, the source; the brief beside it in group 2 (owner's request
     # 2026-10-24: every section at the top of one row - before, 2 · COVER stood under 1 · SOURCE)

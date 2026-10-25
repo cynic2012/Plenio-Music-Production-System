@@ -14,6 +14,7 @@ import re
 import threading
 import time
 import urllib.request
+from collections.abc import Callable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -23,6 +24,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 from .. import __version__
 from . import accounts as account_rules
 from . import folders as folder_choice
+from . import maker as maker_rules
 from . import other as other_music
 from .guest import GuestHub
 from .library import RETIRED_DIR, Library, song_detail
@@ -140,6 +142,22 @@ def find_comfyui(preferred: str = "") -> dict[str, Any] | None:
     return None
 
 
+def studio_finder(preferred: str = "", every: float = 10.0) -> Callable[[], str | None]:
+    """The address of the ComfyUI on this computer for the party songs, looked for at most every ``every`` seconds
+    (``preferred``: the one that started the player)."""
+    found: list[Any] = [-1e9, None]
+    lock = threading.Lock()
+
+    def url() -> str | None:
+        with lock:
+            if time.monotonic() - found[0] > every:
+                found[1] = (find_comfyui(preferred) or {}).get("url")
+                found[0] = time.monotonic()
+            return str(found[1]) if found[1] else None
+
+    return url
+
+
 def make_handler(
     library: Library,
     state: State,
@@ -150,6 +168,7 @@ def make_handler(
     guests: GuestHub | None = None,
     network: NetworkAccess | None = None,
     accounts: account_rules.Accounts | None = None,
+    maker: maker_rules.PartySongs | None = None,
 ) -> type[BaseHTTPRequestHandler]:
     """The requests' handler; with ``hosts`` it answers only requests addressed to one of them (a player on
     the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding).
@@ -157,7 +176,8 @@ def make_handler(
     page shows and the guests' wishes). ``network``: the player and ComfyUI from the network (gateways of
     their own; here their settings) - requests that come by them do all but what belongs to this computer
     alone. ``accounts``: the login (``plenio.player.accounts``) - each user's state of their own; without it
-    every page has the player's state, as before."""
+    every page has the player's state, as before. ``maker``: the party songs (``plenio.player.maker``) - songs
+    made from the page through ComfyUI's Song API."""
 
     jobs = VideoJobs(videos_dir(state.path.parent))
     packages = PackageJobs()
@@ -225,6 +245,73 @@ def make_handler(
             if found is not None:
                 return found if not (found.get("admin") and self.remote) else None
             return None if self.remote else accounts.admin()
+
+        def _maker_who(self) -> tuple[dict[str, Any], str]:
+            """Who makes a party song: the admin, a user - or a guest, known by a cookie of their own (set now
+            when the browser has none: the second value)."""
+            account = self.account
+            if account is not None:
+                kind = "admin" if account.get("admin") else "user"
+                return {
+                    "kind": kind,
+                    "id": str(account.get("id")),
+                    "name": str(account.get("name") or ""),
+                }, ""
+            token = maker_rules.token_of(self.headers.get("Cookie"))
+            cookie = ""
+            if not token:
+                token = maker_rules.new_guest_token()
+                cookie = maker_rules.guest_cookie(token)
+            return {
+                "kind": "guest",
+                "id": maker_rules.guest_id(token),
+                "name": maker_rules.GUEST_NAME,
+            }, cookie
+
+        def _make(self, method: str, route: str, query: dict[str, str], raw: bytes | None) -> None:
+            """The party songs: ``GET /api/make`` (may I, the settings, my songs), ``GET /api/make/form``, ``POST
+            /api/make/jobs``, ``PUT /api/make/jobs/<id>``, ``POST /api/make/jobs/<id>/move``, ``DELETE
+            /api/make/jobs/<id>``, ``POST /api/make/sources?name=`` (the recording), ``PUT /api/make/settings``."""
+            if maker is None:
+                return self._error(404, "no party songs")
+            who, cookie = self._maker_who()
+            job = re.fullmatch(r"/api/make/jobs/([0-9a-f]{16})(/move)?", route)
+            try:
+                if method == "GET" and route == "/api/make":
+                    return self._json(maker.status(who, everyone=query.get("all") == "1"), cookie=cookie)
+                if method == "GET" and route == "/api/make/form":
+                    return self._json(maker.form(who), cookie=cookie)
+                if method == "POST" and route == "/api/make/sources":
+                    if not self._binary_from_this_page():
+                        return self._error(403, "only from the player's page")
+                    return self._json(maker.add_source(who, query.get("name", ""), raw or b""), 201, cookie)
+                # a change: JSON from the player's page (a DELETE as it is - no other site's page sends one without
+                # asking first, and this server never says yes)
+                if not (self._from_this_page() or (method == "DELETE" and self._binary_from_this_page())):
+                    return self._error(403, "only from the player's page")
+                body = json.loads(raw.decode("utf-8")) if raw else {}
+                if not isinstance(body, dict):
+                    return self._error(400, "not JSON")
+                if method == "PUT" and route == "/api/make/settings":
+                    if who["kind"] != "admin":
+                        return self._error(403, "only the admin")
+                    return self._json({"settings": maker.configure(body)})
+                if method == "POST" and route == "/api/make/jobs":
+                    return self._json(maker.create(who, body), 201, cookie)
+                if job and method == "PUT" and not job.group(2):
+                    return self._json(maker.update(who, job.group(1), body), cookie=cookie)
+                if job and method == "POST" and job.group(2):
+                    by = body.get("by")
+                    return self._json(
+                        maker.move(who, job.group(1), by if isinstance(by, int) else 0), cookie=cookie
+                    )
+                if job and method == "DELETE" and not job.group(2):
+                    return self._json(maker.remove(who, job.group(1)), cookie=cookie)
+            except maker_rules.MakerError as error:
+                return self._error(error.status, str(error))
+            except ValueError:
+                return self._error(400, "not JSON")
+            return self._error(404, "not found")
 
         def _not_from_network(self, what: str) -> bool:
             """Answer 403 to a request from the network for what only this computer does; ``True``: answered."""
@@ -334,11 +421,9 @@ def make_handler(
                 return self._json({"found": found})
             if route == "/api/find":
                 # the song of a record file (Export Release's button in ComfyUI opens the player at it)
-                wanted = Path(query.get("record", ""))
-                for summary in library.songs():
-                    song = library.song(summary["id"])
-                    if song and wanted.name == song.record.name and song.record.resolve() == wanted.resolve():
-                        return self._json({"id": song.id})
+                found_song = library.find_record(Path(query.get("record", "")))
+                if found_song is not None:
+                    return self._json({"id": found_song.id})
                 return self._error(404, "no such song")
             if route == "/api/library":
                 return self._json(
@@ -359,6 +444,8 @@ def make_handler(
                     return self._error(500, str(error))
             if route == "/api/session":
                 return self._session()
+            if route == "/api/make" or route.startswith("/api/make/"):
+                return self._make("GET", route, query, None)
             if route == "/api/users":
                 if accounts is None:
                     return self._error(404, "no login")
@@ -483,6 +570,14 @@ def make_handler(
                 origin is None or origin in (f"http://{host}", f"https://{host}")
             )
 
+        def _upload(self, limit: int) -> bytes | None:
+            """A large body (a recording), read whole; ``None`` when it is larger than ``limit``."""
+            length = int(self.headers.get("Content-Length") or 0)
+            if length > limit:
+                self.close_connection = True
+                return None
+            return self.rfile.read(length) if length > 0 else b""
+
         def _body(self) -> bytes | None:
             """The request's body, read before any answer (an answer with the body unread makes Windows
             reset the connection); ``None`` when there is none or it is too large (the connection closes)."""
@@ -497,6 +592,8 @@ def make_handler(
             route = unquote(urlparse(self.path).path)
             if route.startswith("/api/users/"):
                 return self._put_user(route, body)
+            if route.startswith("/api/make/"):
+                return self._make("PUT", route, {}, body)
             if route not in ("/api/state", "/api/folders", "/api/guests", "/api/network"):
                 return self._error(404, "not found")
             if not self._from_this_page():
@@ -636,8 +733,10 @@ def make_handler(
                 return self._error(status, str(error))
 
         def do_DELETE(self) -> None:  # noqa: N802
-            self._body()
+            raw = self._body()
             route = unquote(urlparse(self.path).path)
+            if route.startswith("/api/make/"):
+                return self._make("DELETE", route, {}, raw)
             picture = re.fullmatch(r"/api/users/([0-9a-f]{12}|admin)/avatar", route)
             gone = re.fullmatch(r"/api/users/([0-9a-f]{12})", route)
             if accounts is None or not (picture or gone):
@@ -799,8 +898,17 @@ def make_handler(
             return self._json({"file": made.name, "size": made.stat().st_size, "folder": str(jobs.folder)})
 
         def do_POST(self) -> None:  # noqa: N802
+            parsed = urlparse(self.path)
+            route = unquote(parsed.path)
+            if route == "/api/make/sources":
+                # a recording for a cover: larger than the state's limit
+                upload = self._upload(maker_rules.SOURCE_LIMIT)
+                if upload is None:
+                    return self._error(413, f"a recording of at most {maker_rules.SOURCE_LIMIT // 2**20} MB")
+                return self._make("POST", route, {k: v[0] for k, v in parse_qs(parsed.query).items()}, upload)
             raw = self._body()
-            route = unquote(urlparse(self.path).path)
+            if route.startswith("/api/make/"):
+                return self._make("POST", route, {}, raw)
             if route == "/api/rescan":
                 library.scan(force=True)
                 return self._json({"songs": len(library.songs())})
@@ -914,10 +1022,11 @@ def serve(
     guests: GuestHub | None = None,
     network: NetworkAccess | None = None,
     accounts: account_rules.Accounts | None = None,
+    maker: maker_rules.PartySongs | None = None,
 ) -> ThreadingHTTPServer:
     """The player's server; on the loopback address only for requests addressed to it. ``comfyui``: the
     ComfyUI that started it (where *Open in ComfyUI* goes); ``guests``: the guests' access; ``network``: the
-    player and ComfyUI from the network; ``accounts``: the login."""
+    player and ComfyUI from the network; ``accounts``: the login; ``maker``: the party songs."""
 
     class Server(ThreadingHTTPServer):
         daemon_threads = True
@@ -940,6 +1049,7 @@ def serve(
                     guests=guests,
                     network=network,
                     accounts=accounts,
+                    maker=maker,
                 )
 
     return Server(
@@ -952,5 +1062,6 @@ def serve(
             guests=guests,
             network=network,
             accounts=accounts,
+            maker=maker,
         ),
     )

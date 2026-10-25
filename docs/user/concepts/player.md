@@ -507,9 +507,22 @@ moving with the music, and over it what you choose.
   (upright, for Shorts, Reels and TikTok). **30 or 60 frames a second**, standard or high quality.
 - **The part**: the whole song, or from - to (in seconds; the section chips set a section). A part cut out
   of the song fades in and out.
-- **The visual**: any visual - classic, Plenio Drop or your own presets - or *as the visuals' settings
-  choose for this song*; **a new visual** never, at every section, or **every few seconds**, with its
-  **crossfade** (morph, melt, fade, zoom, slide, flash on the beat …) and how long it takes; the colours.
+- **The visuals**: **one visual** all the way, **a new one at every section** (verse, chorus …) or **every few
+  seconds**. A strip shows the part of the song with its sections or spans, as wide as they last, each with a still
+  of its visual; click one, and a **gallery** opens with every visual - classic, Plenio Drop, your own presets - each
+  in a little window **playing to the music of that part**, so you see how it moves with this song before you choose.
+  The first window, **At random**, leaves the choice to the dice: *Shuffle the random ones* draws others, from the
+  visuals ticked in the visuals' settings, from those that suit the song, or from every visual. **The same visual for
+  every chorus, every verse …** (on by default) gives every section of one name the visual of the first one - a
+  choice for one is a choice for all. **Change on the beat** lets a change wait for the next beat (at most a second
+  and a half). The **crossfade** (morph, melt, fade, zoom, slide, flash on the beat …) and how long it takes; the
+  colours - and, if you like, **other colours at every change**. The visuals chosen are kept per song.
+- **The look**: **the cover behind the visual** - blurred, slowly drifting, glowing through the dark of the visual;
+  **breathes with the beat** - the picture grows a little on every beat; **how strongly the visuals react**;
+  **film grain**; **darker corners**; **cinema bars** (2.39:1, for a wide video); **in from black, out to black** (on
+  by default); **the section's name** in large letters for a moment as each section begins; **an end card** - the
+  cover, the title and who made it (the song's artist and album, *Guest · Party-Song …* for a party song) over the
+  last seconds.
 - **Over the visual**: the **lyrics** as subtitles, as **karaoke** (large, the line before and after it) or
   **word by word** (the word sung now large, popping in on a little tilt, the words before it smaller above),
   lit up as they are sung - in the player's font, colour and effect, or another for the video (*as in the
@@ -602,6 +615,51 @@ first time, **Windows may ask whether Python may accept connections**: allow it 
 the phones cannot reach the player. On a network you do not trust (a café, a hotel) leave it off. It stays on
 when the player starts again, with the same address; `--guests-host` (or `PLENIO_GUESTS_HOST`) sets where it
 listens (every network by default). Guests see the live playlist while the player's page is open - the page keeps the playlist.
+
+## Party songs: guests make songs
+
+At a party - or at home - your guests and users make **songs of their own** from the player: they pick a style,
+say in a few words what the song is about, and press **Generate Song**. The studio - YuE2 in the ComfyUI on this
+computer - writes the lyrics, composes, sings and paints the cover, one song after the other; when a song is ready it
+joins **Live Play** as every new song does (next, at the end or at random, as you set it there).
+
+**Switch it on**: *Settings > Party songs > Let people make songs* (you as the admin; it is off until you do) and
+choose who may: **logged-in users**, **guests** - in the network without an account, and the party's phones on
+Live Play's guests' page -, and whether they may make **covers** too. Also: how many songs one person may have in the
+making (3), and the longest song (*about 4:00*). You as the admin always may, and longer and as many as you like.
+
+**Make a song** (in the sidebar, with the number of your songs in the making; on the guests' page *Make your own
+song*):
+
+1. **A new song**, or **a cover** - then drop the original song (MP3, FLAC, WAV, M4A …; its melody, form, tempo and
+   key stay).
+2. **Pick a style**: a vibe (*Pop*, *Rock*, *Latin*, *EDM* … - each click another template of it), any of the style
+   templates by name, or **Surprise me**. The style fills every field below - and the description.
+3. **What is it about**: the description, filled from the style - change it as you like.
+4. **The details**: genre, mood, tempo, length, vocals, language, voice, theme, key and meter - each a list of every
+   value the style templates have, or **✎ Your own …** to type one instead. Only what applies is asked: an
+   instrumental has no voice, a cover no tempo or length.
+5. **Generate Song**.
+
+**Your songs** - in their order, each with its title once made (before: its style, length and voice, and the start
+of its description), and where it is:
+
+- **#2 in line** - and roughly when it will be ready (*ready about 21:40*). **↑ ↓** move it past your next song (the
+  admin moves any song), **✎** changes it, **✕** takes it out.
+- **Being made** - for how long, what the studio does now (*writing the lyrics*, *composing*, *singing and playing*,
+  *painting the cover*, *mastering and saving*), roughly when it is ready. **✕** stops it.
+- **Ready 21:14** - in the library and at the party; **▶** plays it.
+
+The times are estimates: from the song's length and how long the songs before took on this computer - the first
+estimate is rough, then they get better. Songs wait in the player's own line until the studio takes them, one at a
+time; your own runs in ComfyUI come first. When ComfyUI does not run, songs wait until it does.
+
+Every party song: YuE2, **HQ mastering off** (twice as fast), **cover art on**, saved in `plenio/Party-Songs-<date>` of
+ComfyUI's output folder, album **Party-Song <date>**, artist the user's name or **Guest**. The player reads that
+folder by itself, also when it is not one of its folders. A shared player has none of this: making songs needs this
+computer.
+
+It is made through Plenio's **[Song API](song-api.md)** - which other programs can use too.
 
 ## The player in your network
 

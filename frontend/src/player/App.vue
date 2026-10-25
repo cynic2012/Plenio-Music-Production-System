@@ -14,6 +14,7 @@ import PlaylistsView from './components/PlaylistsView.vue'
 import SettingsView from './components/SettingsView.vue'
 import LiveView from './components/LiveView.vue'
 import JobsView from './components/JobsView.vue'
+import MakeView from './components/MakeView.vue'
 import VideoDialog from './components/VideoDialog.vue'
 import ShareDialog from './components/ShareDialog.vue'
 import QueuePanel from './components/QueuePanel.vue'
@@ -55,6 +56,7 @@ import { loadMyPresets } from './visuals/drop'
 import { loadJobs, videosAtWork } from './jobs'
 import './live'
 import { isPortable } from './portable'
+import { pollMake } from './make/state'
 
 const queueOpen = ref(false)
 const help = ref(false)
@@ -76,6 +78,7 @@ const page = computed(() => {
   if (first === 'settings') return { kind: 'settings' as const }
   if (first === 'live') return { kind: 'live' as const }
   if (first === 'jobs') return { kind: 'jobs' as const }
+  if (first === 'make' && !isPortable) return { kind: 'make' as const }
   if (first === 'favorites' || first === 'top' || first === 'recent') return { kind: 'library' as const, collection: first as 'favorites' | 'top' | 'recent' }
   return { kind: 'library' as const, collection: 'all' as const }
 })
@@ -269,6 +272,8 @@ onMounted(() => {
   void loadMyPresets()
   // the guests' access as it was left: on, the page tells the guests what plays again
   void loadGuests()
+  // party songs: the sidebar's entry and count, and a word when a song of one's own is ready
+  pollMake(false, (job) => say(`Your song “${job.result?.title || job.label}” is ready${settings.live.on ? ' - it joins the party' : ''}`, 6000))
   if (!isPortable) presetTimer = window.setInterval(() => {
     if (document.visibilityState === 'visible') void loadMyPresets()
   }, 3000)
@@ -304,6 +309,7 @@ onBeforeUnmount(() => {
         <SettingsView v-else-if="page.kind === 'settings'" />
         <LiveView v-else-if="page.kind === 'live'" />
         <JobsView v-else-if="page.kind === 'jobs'" />
+        <MakeView v-else-if="page.kind === 'make'" />
         <LibraryView v-else ref="libraryView" :key="page.collection" :collection="page.collection" />
       </template>
     </main>

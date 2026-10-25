@@ -12,6 +12,10 @@ library and the guests' wishes. Nothing else: no audio, no records, no paths, no
 The live playlist lives in the player's page (its queue). The page sends what it shows (``publish``) and asks
 for the guests' wishes (``take``), which it carries out itself - so the playlist has one owner, and a wish for
 a song that has moved on is simply not done.
+
+When the host lets guests make songs (``plenio.player.maker``, owner's request 2026-10-25), the guests' page has
+*Make your own song*: a page of its own below the token (``make/``, built into ``guest_static``), and the party
+songs' routes for guests (``api/make...``) - a guest is known by a cookie of their own.
 """
 
 from __future__ import annotations
@@ -30,10 +34,14 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
+from . import maker as maker_rules
 from . import other as other_music
 from .library import Library
 
 PAGE = Path(__file__).resolve().parent / "guest_page.html"
+MAKER_PAGE = Path(__file__).resolve().parent / "guest_static"
+"""The guests' song form (``frontend/src/guest``, built by ``npm run build:player``)."""
+SOURCES_PER_MINUTE = 6
 PORTS = range(8770, 8780)
 MODES = ("view", "change")
 SHOWS = ("both", "qr", "address", "none")
@@ -46,6 +54,12 @@ WISHES_PER_MINUTE = 40
 """Wishes one guest (address) may send in a minute."""
 LIST_LIMIT = 200
 BODY_LIMIT = 64 * 1024
+ASSET_TYPES = {
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
+}
 DEFAULTS: dict[str, Any] = {"on": False, "mode": "view", "show": "both", "token": "", "port": 0}
 ALL_NETWORKS = ("0.0.0.0", "")  # noqa: S104 - the guests' access is meant for the network
 
@@ -97,6 +111,9 @@ class GuestHub:
         self.last_wish = 0
         self.sent: dict[str, deque[float]] = {}
         self.seen: dict[str, float] = {}
+        self.maker: maker_rules.PartySongs | None = None
+        """The party songs, when the player makes them (guests may when the host lets them)."""
+        self.uploads: dict[str, deque[float]] = {}
 
     # --- settings and the server -------------------------------------------------------------------
     def _load(self) -> dict[str, Any]:
@@ -258,7 +275,8 @@ class GuestHub:
             now = dict(snapshot["now"])
             now["position"] = round(min(now["seconds"] or 1e9, now["position"] + age), 2)
             snapshot["now"] = now
-        return {"open": bool(fresh), "mode": self.settings["mode"], **snapshot}
+        make = bool(self.maker is not None and self.maker.guests_may())
+        return {"open": bool(fresh), "mode": self.settings["mode"], "make": make, **snapshot}
 
     def wish(self, guest: str, data: Any) -> tuple[int, dict[str, Any]]:
         """A guest's wish (change mode only): a song up, down, next, out - or a song of the library added
@@ -335,6 +353,16 @@ class GuestHub:
 
 
 IMAGE_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+MAKER_HEADERS = {
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": (
+        "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+        "media-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    ),
+}
+"""The song form is a built page (its own scripts and styles from this server, nothing from elsewhere)."""
 PAGE_HEADERS = {
     # the token is in the address: it goes to no other site, and the page runs only its own code
     "Referrer-Policy": "no-referrer",
@@ -356,23 +384,119 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
         def log_message(self, format: str, *args: Any) -> None:  # noqa: A002 - the base class's name
             pass
 
-        def _send(self, status: int, body: bytes, kind: str, headers: dict[str, str] | None = None) -> None:
+        def _send(
+            self,
+            status: int,
+            body: bytes,
+            kind: str,
+            headers: dict[str, str] | None = None,
+            *,
+            page: dict[str, str] | None = None,
+        ) -> None:
             self.send_response(status)
             self.send_header("Content-Type", kind)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
-            for name, value in {**PAGE_HEADERS, **(headers or {})}.items():
+            for name, value in {**(page or PAGE_HEADERS), **(headers or {})}.items():
                 self.send_header(name, value)
             self.end_headers()
             if self.command != "HEAD":
                 self.wfile.write(body)
 
-        def _json(self, data: Any, status: int = 200) -> None:
+        def _json(self, data: Any, status: int = 200, cookie: str = "") -> None:
             self._send(
                 status,
                 json.dumps(data, ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8",
+                {"Set-Cookie": cookie} if cookie else None,
             )
+
+        # --- the party songs (when the host lets guests make them) ---
+        def _guest(self) -> tuple[dict[str, Any], str]:
+            token = maker_rules.token_of(self.headers.get("Cookie"))
+            cookie = ""
+            if not token:
+                token = maker_rules.new_guest_token()
+                cookie = maker_rules.guest_cookie(token)
+            return {
+                "kind": "guest",
+                "id": maker_rules.guest_id(token),
+                "name": maker_rules.GUEST_NAME,
+            }, cookie
+
+        def _maker_page(self, route: str) -> None:
+            if route in ("/make", "/make/"):
+                target = MAKER_PAGE / "index.html"
+            elif route.startswith("/make/assets/"):
+                name = route.removeprefix("/make/assets/")
+                target = MAKER_PAGE / "assets" / name
+                if "/" in name or "\\" in name or name.startswith(".") or target.suffix not in ASSET_TYPES:
+                    return self._nothing()
+            else:
+                return self._nothing()
+            try:
+                body = target.read_bytes()
+            except OSError:
+                return self._nothing()
+            kind = "text/html; charset=utf-8" if target.suffix == ".html" else ASSET_TYPES[target.suffix]
+            cache = {"Cache-Control": "max-age=86400"} if target.suffix != ".html" else None
+            return self._send(200, body, kind, cache, page=MAKER_HEADERS)
+
+        def _make(self, method: str, route: str, query: dict[str, str], raw: bytes) -> None:
+            maker = hub.maker
+            if maker is None or not maker.guests_may():
+                return self._json({"error": "the host does not let guests make songs"}, 403)
+            who, cookie = self._guest()
+            job = re.fullmatch(r"/api/make/jobs/([0-9a-f]{16})(/move)?", route)
+            try:
+                if method == "GET" and route == "/api/make":
+                    return self._json(maker.status(who), cookie=cookie)
+                if method == "GET" and route == "/api/make/form":
+                    return self._json(maker.form(who), cookie=cookie)
+                if method == "POST" and route == "/api/make/sources":
+                    # a header another site's page cannot send without asking first (this server never says yes)
+                    if self.headers.get("X-Plenio-Live") != "1":
+                        return self._json({"error": "from the guests' page only"}, 403)
+                    now = time.monotonic()
+                    with hub.lock:
+                        sent = hub.uploads.setdefault(self.client_address[0], deque())
+                        while sent and now - sent[0] > 60:
+                            sent.popleft()
+                        if len(sent) >= SOURCES_PER_MINUTE:
+                            return self._json({"error": "slow down a little"}, 429)
+                        sent.append(now)
+                    return self._json(maker.add_source(who, query.get("name", ""), raw), 201, cookie)
+                # JSON only (DELETE as it is: no other site's page sends one without asking first)
+                if method != "DELETE" and not (self.headers.get("Content-Type") or "").startswith(
+                    "application/json"
+                ):
+                    return self._json({"error": "JSON only"}, 415)
+                body = json.loads(raw.decode("utf-8")) if raw else {}
+                if not isinstance(body, dict):
+                    return self._json({"error": "not JSON"}, 400)
+                if method == "POST" and route == "/api/make/jobs":
+                    return self._json(maker.create(who, body), 201, cookie)
+                if job and method == "PUT" and not job.group(2):
+                    return self._json(maker.update(who, job.group(1), body), cookie=cookie)
+                if job and method == "POST" and job.group(2):
+                    by = body.get("by")
+                    return self._json(
+                        maker.move(who, job.group(1), by if isinstance(by, int) else 0), cookie=cookie
+                    )
+                if job and method == "DELETE" and not job.group(2):
+                    return self._json(maker.remove(who, job.group(1)), cookie=cookie)
+            except maker_rules.MakerError as error:
+                return self._json({"error": str(error)}, error.status)
+            except ValueError:
+                return self._json({"error": "not JSON"}, 400)
+            return self._nothing()
+
+        def _read(self, limit: int) -> bytes | None:
+            length = int(self.headers.get("Content-Length") or 0)
+            if length > limit:
+                self.close_connection = True
+                return None
+            return self.rfile.read(length) if length > 0 else b""
 
         def _nothing(self) -> None:
             self._send(404, b"not found", "text/plain; charset=utf-8")
@@ -409,6 +533,17 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
                     return self._nothing()
             if route == "/api/live":
                 return self._json(hub.view(guest))
+            if route == "/make":
+                # without its last slash the page's own links would miss
+                self.send_response(301)
+                self.send_header("Location", f"{unquote(urlparse(self.path).path)}/")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return None
+            if route.startswith("/make/"):
+                return self._maker_page(route)
+            if route == "/api/make" or route.startswith("/api/make/"):
+                return self._make("GET", route, query, b"")
             if route == "/api/songs":
                 if hub.settings["mode"] != "change":
                     return self._json({"error": "the host lets guests only look"}, 403)
@@ -422,12 +557,17 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
             return self._nothing()
 
         def do_POST(self) -> None:  # noqa: N802
-            length = int(self.headers.get("Content-Length") or 0)
-            if length > BODY_LIMIT:
-                self.close_connection = True
-                return self._json({"error": "too large"}, 413)
-            raw = self.rfile.read(length) if length > 0 else b""
             found = self._route()
+            if found is not None and found[0] == "/api/make/sources":
+                upload = self._read(maker_rules.SOURCE_LIMIT)
+                if upload is None:
+                    return self._json({"error": "too large"}, 413)
+                return self._make("POST", found[0], found[1], upload)
+            raw = self._read(BODY_LIMIT)
+            if raw is None:
+                return self._json({"error": "too large"}, 413)
+            if found is not None and found[0].startswith("/api/make/"):
+                return self._make("POST", found[0], found[1], raw)
             if found is None or found[0] != "/api/wish":
                 return self._nothing()
             # JSON only: another site's page in a guest's browser cannot send it without asking first
@@ -439,6 +579,24 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
                 return self._json({"error": "not JSON"}, 400)
             status, answer = hub.wish(self.client_address[0], data)
             return self._json(answer, status)
+
+        def do_PUT(self) -> None:  # noqa: N802
+            raw = self._read(BODY_LIMIT)
+            found = self._route()
+            if raw is None:
+                return self._json({"error": "too large"}, 413)
+            if found is None or not found[0].startswith("/api/make/"):
+                return self._nothing()
+            return self._make("PUT", found[0], found[1], raw)
+
+        def do_DELETE(self) -> None:  # noqa: N802
+            raw = self._read(BODY_LIMIT)
+            found = self._route()
+            if raw is None:
+                return self._json({"error": "too large"}, 413)
+            if found is None or not found[0].startswith("/api/make/"):
+                return self._nothing()
+            return self._make("DELETE", found[0], found[1], raw)
 
     class Server(ThreadingHTTPServer):
         daemon_threads = True

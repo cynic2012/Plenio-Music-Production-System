@@ -9,6 +9,7 @@ import Icon from './Icon.vue'
 import { active, jobs } from '../jobs'
 import { isPortable, loading, portable } from '../portable'
 import { avatarUrl, guest, initials, me, session, switchUser } from '../account'
+import { makeShown, makingNow } from '../make/state'
 
 const naming = ref(false)
 const name = ref('')
@@ -70,6 +71,9 @@ async function scan(): Promise<void> {
     </div>
     <a v-for="[path, label, icon] in LINKS" :key="path" class="link" :class="{ on: route === path }" @click="go(path)">
       <Icon :name="icon" :size="18" /> {{ label }} <small v-if="path === '/live' && settings.live.on" class="on-air">LIVE</small><small v-else>{{ counts[path] || '' }}</small>
+    </a>
+    <a v-if="makeShown" class="link make" :class="{ on: route === '/make' }" title="Make a song of your own: a style, a few words - it plays at the party when it is ready" @click="go('/make')">
+      <Icon name="wand" :size="18" /> Make a song <small v-if="makingNow" class="busy">{{ makingNow }}</small>
     </a>
     <a v-if="jobs.length" class="link" :class="{ on: route === '/jobs' }" title="Videos and shared players being made, waiting and made" @click="go('/jobs')">
       <Icon name="layers" :size="18" /> In the making <small v-if="active.length" class="busy">{{ active.length }}</small><small v-else>✓</small>

@@ -9,7 +9,7 @@ from comfy_api.latest import ComfyExtension, io
 from .. import __version__
 from ..core.dependencies import probe
 from ..core.errors import PlenioError
-from . import host, routes
+from . import host, routes, song_api
 from .nodes import NODES
 
 log = logging.getLogger("plenio")
@@ -19,6 +19,8 @@ class PlenioExtension(ComfyExtension):
     async def on_load(self) -> None:
         host.register_model_folders()
         routes.register(host.prompt_server_routes())
+        # the Song API: songs made by other programs, the Plenio Player first (docs/design/party-songs.md)
+        song_api.register(host.prompt_server_routes())
         try:
             config = host.load_config()
         except PlenioError as error:

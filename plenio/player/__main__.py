@@ -19,9 +19,10 @@ from . import folders as folder_choice
 from .accounts import Accounts
 from .guest import GuestHub
 from .library import Library
+from .maker import PartySongs, Studio
 from .network import NetworkAccess
 from .paths import default_folders, state_dir
-from .server import State, find_comfyui, serve
+from .server import State, find_comfyui, serve, studio_finder
 
 
 def say(text: str) -> None:
@@ -70,6 +71,9 @@ def main(argv: list[str] | None = None) -> int:
     library = make_library(started, directory)
     folders = library.folders
     guests = GuestHub(library, directory, host=args.guests_host)
+    # party songs: made through the Song API of the ComfyUI on this computer (found again every few seconds)
+    maker = PartySongs(library, directory, Studio(studio_finder(args.comfyui)))
+    guests.maker = maker
     ports: list[int] = []
     network = NetworkAccess(
         directory,
@@ -87,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
             guests=guests,
             network=network,
             accounts=Accounts(directory),
+            maker=maker,
         )
     except OSError as error:
         say(
@@ -107,6 +112,7 @@ def main(argv: list[str] | None = None) -> int:
         say(f"{len(library.songs())} songs ({len(library.errors)} records could not be read)")
 
     threading.Thread(target=read_songs, name="plenio-library", daemon=True).start()
+    maker.start()
     guests.resume()
     network.resume()
     if network.status()["on"]:
@@ -122,6 +128,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         pass
     finally:
+        maker.close()
         guests.close()
         network.close()
         server.server_close()
