@@ -440,7 +440,7 @@ defineExpose({ focus: () => input.value?.focus(), cardOfCurrent, filterByTag })
       </div>
       <div v-if="!isPhone" class="facet-foot">
         <button v-if="moreRows.length" class="link" @click="settings.moreFilters = !settings.moreFilters">{{ settings.moreFilters ? 'Fewer filters' : `More filters: ${moreRows.map((f) => f.label.toLowerCase()).join(', ')}` }}</button>
-        <small>Click a chip to keep only those songs, right-click to leave them out. The numbers: how many of the songs shown.</small>
+        <small>{{ touch ? 'Tap a chip to keep only those songs, hold it to leave them out.' : 'Click a chip to keep only those songs, right-click to leave them out.' }} The numbers: how many of the songs shown.</small>
       </div>
       <p v-else class="sheet-hint">Tap a value to keep only those songs, hold it to leave them out. The numbers: how many songs stay.</p>
      </div>
