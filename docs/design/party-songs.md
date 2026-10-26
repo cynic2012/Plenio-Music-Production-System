@@ -117,10 +117,15 @@ refused).
 
 `GET /queue` reports how long API runs took (from the history's `execution_start` to `execution_success`) with
 their template and length. The player estimates a song as a fixed part and a part per second of music (song: 120 s
-+ 3.0 s/s, cover: 180 s + 3.2 s/s of the recording) times a factor per kind that it learns from every song it made
++ 3.0 s/s, cover: 120 s + 1.5 s/s of the recording, a song's new take: 60 s + 1.5 s/s) times a factor per kind that it learns from every song it made
 (half the old factor, half the new). Measured on 2026-10-25 on an RTX 5060 Ti (GPU 1, the owner's ComfyUI busy on
 GPU 0): four songs of about 1:00 through the API took 416 s (the models loaded for the first time), 357 s, 300 s and
-155 s (an instrumental).
+155 s (an instrumental). Measured on 2026-10-26 (GPU 1, the player's line, the real models): a new take of a song 192 s
+for 1:29 (the models loaded first) and 164 s for 1:09; a cover of a library song of 1:33 262 s; a new take of a cover
+225 s for 1:42; a new song of 1:06 from the network with a GGUF writer and no cover art 84 s (YuE2 still loaded). Hence
+the priors: song 120 s + 3.0 s/s, cover 120 s + 1.5 s/s of the recording, a song's take 60 s + 1.5 s/s - a cover's
+take counts as a cover, since it reads its original's melody and words again (the cover template's transcription
+feeds the sheets' display inputs, which are not lazy).
 
 ### 2.7 Review stops later
 
@@ -174,7 +179,64 @@ keeps its workflow for that. Nothing in v1's request or answer has to change for
   has to be kept and songs made before show it too. The guests' live page gets `made_by` for the song that plays
   and the next ones when the credit is on.
 
-## 5. Checked
+## 5. Again from a song; the whole studio
+
+The owner's follow-up request (2026-10-26): a song of one's own - or any song of the library, of a playlist - is
+chosen in the player and made again as **a new take of it**, **a new song like it** or **a cover of it**; and whoever
+comes through *In your network* gets **the whole studio** - every field of the template and of Export Release, at any
+time, without the party's limits.
+
+### 5.1 A new take
+
+A take is the same song rendered again: the Song Sheets keep the documents the song was made with (title, style,
+lyrics, score, artwork prompt) as *manual*, and only the take seed is new - no writer, no plan, so it takes less than
+a new song. The Song API grew the piece that makes this possible:
+
+- **`documents` in a job request**: a document goes into the sheet that keeps it as `{"state": "manual", "text": …}`
+  (`song_api.prepare`, `_documents`; a document the template does not keep is refused by name), so the run keeps it.
+- **`POST /from-record`**: the body is a release record; the answer is the request its prompt stands for - the
+  template, the fields, the release fields, the seeds and the documents - with `take.possible` and, when it is not,
+  the reason (another music model, no lyrics or no score in the record, a cover's recording gone from the input
+  folder), and `warnings` for values the template no longer takes (`song_api.request_from_record`). A cover's
+  recording is named in its fields (`source.audio`), so a take of a cover needs that file to still be there.
+- **The player** asks for the record's request (`PartySongs.remake`, `GET /api/make/from/<song id>`), shows what can be
+  made of the song, and orders the take with the song's documents as changed and its seeds without `take`. Changed
+  lyrics drop the score, so the notes are planned anew for them (`request_of`); a cover's lyrics are not changed (they
+  follow the original's melody). The label says *New take of <title>*; a song's take is estimated with
+  `PRIOR["take"]` (60 s + 1.5 s/s), a cover's as a cover (§2.6).
+
+### 5.2 A new song like it, a cover of it
+
+The same record gives the form its fields: *a new song like it* fills the simple form from the brief (`brief_fields`,
+read from the prompt without ComfyUI), *a cover of it* uses the song's own audio file as the original - found in the
+library (`_audio_of`: FLAC, else WAV, else MP3), uploaded to ComfyUI's input folder when the song is sent. A song is
+audio in its record's folder only; the library is never written for it.
+
+### 5.3 The whole studio
+
+`PartySongs.full(who)`: the admin, and whoever arrives through the network gateway (`who.remote`, the header the
+gateway sets) while `settings["remote"]` is on. `full` decides the rights (`may`), the lengths, the covers, the limit
+of songs in the making - and `form()` then carries the Song API's description of both templates (`studio.template`,
+`fields`, `release`, `documents`), which the page draws as *Every setting of the studio*: grouped by what they are
+about, a field shown only when its `when` condition holds, the value a field shows is the song's, else the party's,
+else the template's (`studioStart`). The player checks what it can (an unknown field, a value's type and length, a
+release folder below the output folder) and the Song API checks the rest.
+
+A take with the studio carries the song's own release and template fields, changed where chosen - all but the
+collision rule, so a take never overwrites the song it comes from (`_own_release`); a new song like it carries the
+song's template fields and the party's release (folder, album, artist) as its start, so it is not credited to the one
+who made the first (`againStudio`). The party's guests see none of it: their page has the simple
+form only.
+
+### 5.4 Entries in the page
+
+**A new version…** (the wand) when songs may be made and the player is not a shared one (`makeShown && !isPortable`):
+a song's page and its ⋯ menu, a playlist's rows, Live Play's *Up next*, and *Again…* on a finished song in *Your
+songs*; each opens `#/make/<song id>`. `MakeView` reads `makeApi.remake(id)` and hands `remake` and `coverOf` to
+`MakeForm`; after a song is ordered it goes back to `#/make`. Editing a waiting take order loads the remake again for
+its documents. The party guests' page has *Again…* on their own finished songs, without the studio panel.
+
+## 6. Checked
 
 - The converter's prompts equal the ones ComfyUI's frontend 1.57 makes of both templates - as shipped and with a
   DynamicCombo's new choice, the Cover Art switch off and the optional excerpt on (`tools/frontend_prompts.mjs` wrote
@@ -183,8 +245,15 @@ keeps its workflow for that. Nothing in v1's request or answer has to change for
   folder, album and artist, HQ mastering off, a cover, the workflow.
 - The whole party in a browser: a guest's phone orders a song, it is made, it joins Live Play by itself and plays; the
   guests' page shows it playing.
+- Again from a song, on 2026-10-26 (GPU 1, the real models, through the player's routes): a party user's new take of
+  a party song (the documents identical, only the take seed new, every document *manual* in the sheets, no writing or
+  composing stage, the party's folder, album and artist); a new song from the network with the whole studio while song
+  making was off (its own folder made, FLAC and MP3, no cover art, the GGUF writer in the prompt, artist *Guest*); a
+  cover of a library song (its FLAC uploaded under a new name, the original unchanged, titled `<title>-cover`); a new
+  take of a cover (a new title as chosen, its style, lyrics and score kept). All 2926 YuE2 release records of Plenio
+  0.1 to 1.2 on the owner's machine give a take request that `prepare` accepts.
 
-## 6. Tests
+## 7. Tests
 
 `tests/unit/test_workflow_prompt.py` (the converter against the frontend's prompts and by construction:
 subgraphs, bypass, mute, promoted widgets, DynamicCombo, seed controls), `tests/unit/test_song_api.py` (fields,

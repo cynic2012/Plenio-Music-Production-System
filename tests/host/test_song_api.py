@@ -9,6 +9,7 @@ party's folder, album and artist."""
 from __future__ import annotations
 
 import json
+import random
 import time
 import urllib.request
 from pathlib import Path
@@ -18,6 +19,7 @@ import pytest
 
 from harness import PROJECT, ComfyServer
 from plenio.core.models import load_catalogue
+from plenio.core.song_api import api_templates, load_template, prepare
 
 pytestmark = pytest.mark.host
 
@@ -182,3 +184,115 @@ def test_a_recording_is_uploaded_and_a_cover_is_queued_and_cancelled(
     status, stopped = server.request("DELETE", f"{BASE}/jobs/{job['id']}")
     assert status == 200 and stopped["id"] == job["id"]
     assert finished(server, job["id"])["status"] in ("cancelled", "failed")
+
+
+# --- a record back into a request (owner's request 2026-10-26; docs/design/party-songs.md §2) ---------------
+
+
+def record_of(
+    server: ComfyServer, template_id: str, request: dict[str, Any], documents: dict[str, str]
+) -> tuple[dict[str, Any], Any]:
+    """A release record as Export Release writes it - the request's prompt and workflow, its documents, its seeds."""
+    workflows = {
+        path.stem: json.loads(path.read_text(encoding="utf-8"))
+        for path in (PROJECT / "example_workflows").glob("*.json")
+    }
+    name, workflow = api_templates(workflows)[template_id]
+    info = server.get("/object_info")
+    prepared = prepare(load_template(name, workflow, info.get), request, info.get, rng=random.Random(7))
+    record = {
+        "schema": "plenio.record/1",
+        "title": "Neon",
+        "created": "2026-10-26T12:00:00Z",
+        "prompt": prepared.prompt,
+        "workflow": prepared.workflow,
+        "documents": {kind: {"state": "auto", "text": text} for kind, text in documents.items()},
+        "audio": {"seconds": 64.0, "tags": {"artist": "Guest", "album": "Party-Song 2026-10-26"}},
+        "files": [{"name": "Neon.flac", "format": "flac"}],
+    }
+    return record, prepared
+
+
+SONG_REQUEST = {
+    "template": "yue2-song",
+    "fields": {
+        "genre": "synthwave",
+        "description": "a night drive through a rainy city",
+        "length": "very short (about 1:00)",
+        "vocals": "sung",
+        "language": "English",
+        "finish.cover_art": True,
+    },
+    "release": {"folder": "plenio/Host-Record", "album": "Night drives", "artist": "Guest"},
+}
+DOCUMENTS = {
+    "title": "Neon",
+    "style": "synthwave, warm female vocal",
+    "lyrics": "[verse]\nCity lights\n\n[chorus]\nNeon nights",
+    "score": "X:1\nK:C\nC|",
+    "artwork_prompt": "a car at night",
+}
+
+
+def test_a_record_gives_the_request_that_makes_its_song_again(models: ComfyServer) -> None:
+    server = models
+    record, prepared = record_of(server, "yue2-song", SONG_REQUEST, DOCUMENTS)
+    status, answer = server.request("POST", f"{BASE}/from-record", record)
+    assert status == 200, answer
+    assert answer["template"] == "yue2-song" and answer["kind"] == "song" and answer["model"] == "YuE2"
+    assert answer["take"] == {"possible": True, "why": ""} and answer["warnings"] == []
+    # the song's fields and release fields as its prompt has them, its seeds and its documents
+    assert answer["fields"]["genre"] == "synthwave" and answer["fields"]["vocals"] == "sung"
+    assert answer["fields"]["description"] == "a night drive through a rainy city"
+    assert answer["fields"]["finish.cover_art"] is True
+    assert (
+        answer["release"]["folder"] == "plenio/Host-Record" and answer["release"]["album"] == "Night drives"
+    )
+    assert answer["seeds"] == prepared.seeds
+    assert answer["documents"] == {
+        kind: DOCUMENTS[kind] for kind in ("title", "style", "lyrics", "score", "artwork_prompt")
+    }
+    # the same request without the take seed makes a new take: the documents stay, the seed is drawn anew
+    body = {key: answer[key] for key in ("template", "fields", "release", "seeds", "documents")}
+    body["seeds"] = {k: v for k, v in answer["seeds"].items() if k != "take"}
+    body["client"] = {"name": "host from-record"}
+    status, job = server.request("POST", f"{BASE}/jobs", body)
+    assert status == 201, job
+    assert job["seeds"]["take"] != answer["seeds"]["take"] and sorted(job["documents"]) == sorted(DOCUMENTS)
+    _ = server.request("DELETE", f"{BASE}/jobs/{job['id']}")
+    # the documents are manual in the sheets that keep them
+    view = finished(server, job["id"])
+    assert view["status"] in ("cancelled", "failed")
+    prompt = server.get(f"/history/{job['id']}")[job["id"]]["prompt"][2]
+    states = [
+        json.loads(node["inputs"]["sheet_state"])
+        for node in prompt.values()
+        if node["class_type"] == "PlenioSongSheet" and node["inputs"].get("sheet_state")
+    ]
+    kept = {kind: doc for state in states for kind, doc in (state.get("docs") or {}).items()}
+    assert kept["lyrics"] == {"state": "manual", "text": DOCUMENTS["lyrics"]}
+    assert kept["score"] == {"state": "manual", "text": DOCUMENTS["score"]}
+
+
+def test_a_covers_record_needs_its_recording_in_the_input_folder(models: ComfyServer) -> None:
+    server = models
+    request = {
+        "template": "yue2-cover",
+        "fields": {"source.audio": "host-from-record.flac", "genre": "jazz", "vocals": "original lyrics"},
+        "release": {"folder": "plenio/Host-Record"},
+    }
+    (server.base / "input" / "host-from-record.flac").write_bytes(b"RIFF" + b"\x00" * 32)
+    record, _prepared = record_of(server, "yue2-cover", request, {**DOCUMENTS, "style": "jazz, brushes"})
+    status, answer = server.request("POST", f"{BASE}/from-record", record)
+    assert status == 200, answer
+    assert answer["kind"] == "cover" and answer["fields"]["source.audio"] == "host-from-record.flac"
+    assert answer["take"]["possible"] is True
+    # without the recording, no new take - and the reason says so
+    (server.base / "input" / "host-from-record.flac").unlink()
+    status, answer = server.request("POST", f"{BASE}/from-record", record)
+    assert status == 200 and answer["take"] == {
+        "possible": False,
+        "why": "Its original recording is no longer in ComfyUI's input folder.",
+    }
+    status, wrong = server.request("POST", f"{BASE}/from-record", {"schema": "nope"})
+    assert status == 400 and wrong["error"]["code"] == "bad_request"

@@ -48,6 +48,7 @@ The answer of `POST /jobs` (`201`) is the job: `status` `queued`, its place in C
 | `GET /briefs?kind=song` | The style templates of the brief (id, name, group, fields) and, per field, every value they have. |
 | `POST /uploads?name=<file>` | A source recording for a cover (the request's body: MP3, FLAC, WAV, OGG, M4A, OPUS, AAC, AIFF; up to 200 MB). The answer's `name` goes into the field `source.audio`. |
 | `POST /jobs` | Make a song (see below). |
+| `POST /from-record` | The request that makes a released song again (see below): a new take of it, or a new song of its brief. The body is the song's release record (`<name>.plenio.json`). |
 | `GET /jobs` | The API's jobs ComfyUI still knows, newest first. |
 | `GET /jobs/{id}` | One job. |
 | `DELETE /jobs/{id}` | Cancel it: out of the queue while it waits, interrupted while it runs. |
@@ -77,12 +78,58 @@ The answer of `POST /jobs` (`201`) is the job: `status` `queued`, its place in C
   `date`, `genre`, `comment`, `mp3`, `sheet_music` …
 - **`seeds`** - a seed per part (`draft`, `plan`, `arrangement`, `take`, `cover`): the same seeds and fields make the
   same song. A seed you leave out is drawn anew, as the template's *new seed* switch does.
+- **`documents`** - the Song Sheets' documents (`title`, `style`, `lyrics`, `score`, `artwork_prompt`, as
+  `GET /templates/{id}` lists them under `documents`): a document you give goes into its sheet as **manual**, so the
+  run keeps it instead of writing or planning it anew. The documents of a song, with `take` left out of the seeds,
+  make a new take of that song (see *Again: a new take* below). A document the template does not keep is refused
+  (`unknown_field`) - or left out with `"strict": false`.
 - **`client`** - who asks: kept with the job and shown in its listing.
 - **`strict`** - `false` leaves out fields the template does not have (named in the job's `warnings`) instead of
   refusing the request. A field that does not apply to the choices made - a voice for an instrumental - is left out
   with a warning either way.
 - **`Idempotency-Key`** (a header): the same key again returns the first job instead of making a second song - for a
   program that repeats a request whose answer it lost.
+
+## Again: a new take, a new song of the same brief
+
+`POST /from-record` turns a song's **release record** - the `<name>.plenio.json` Export Release writes next to the
+song - back into a request, so that a program can make the song again without knowing its fields:
+
+```bash
+curl -X POST http://127.0.0.1:8188/plenio/api/v1/from-record \
+  -H "Content-Type: application/json" \
+  --data-binary @"Night Drive.plenio.json"
+```
+
+The answer is the request the record's song was made with - its `template`, `fields`, `release`, `seeds` and
+`documents` - plus what the API can tell about it:
+
+```json
+{"template": "yue2-song", "kind": "song", "title": "Night Drive", "model": "YuE2",
+ "fields": {"genre": "synthwave", "length": "short (about 1:30)", "vocals": "sung"},
+ "release": {"folder": "plenio/Party-Songs-2026-10-25", "album": "Party-Song 2026-10-25"},
+ "seeds": {"draft": 11, "plan": 12, "take": 13, "cover": 14},
+ "documents": {"title": "Night Drive", "style": "synthwave …", "lyrics": "[verse] …", "score": "X:1 …"},
+ "take": {"possible": true, "why": ""}, "warnings": []}
+```
+
+What you make of it:
+
+- **The same song again**: send the answer to `POST /jobs` as it is - the same fields, seeds and documents.
+- **A new take of it**: send it without `seeds.take`. The take seed is drawn anew, so the song is sung and played
+  again with the same title, words and notes; change a document (or leave one out) to make a new take with other
+  words or another style. Changed lyrics need new notes: leave the `score` out when you change the `lyrics`.
+- **A new song of its brief**: send only `template`, `fields` and `release` - no documents, no seeds. The writer and
+  the plan work as they do for any new song.
+
+`take.possible` says whether the record's documents make a new take here, with the reason when they do not: the
+song was made with another music model (a new take is YuE2's), its record has no score or no lyrics, or - for a
+cover - its original recording is no longer in ComfyUI's input folder. A value the template no longer takes is left
+out and named in `warnings`. The route reads nothing but the record in its body.
+
+A cover's record names its original recording (`fields["source.audio"]`, a file in ComfyUI's input folder); a new
+take of a cover needs that file to still be there. To make a cover of a song whose recording has other formats,
+upload it with `POST /uploads` first and put the answer's `name` into `source.audio`.
 
 ## Errors
 

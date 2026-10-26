@@ -11,6 +11,15 @@ until a song starts it can be moved, edited and deleted. A user or guest moves t
 in the line; the admin moves any. How long a song takes is estimated from its length and from how long the songs
 made before took on this computer.
 
+**Again from a song** (owner's request 2026-10-26): from any song of the library - one's own party song, a song of a
+playlist - a **new take** (its title, style, lyrics and notes kept, sung and played anew: the Song API's
+``/from-record`` gives its request, with its documents and a new take seed), a **new song like it** (the form filled
+from its brief) or a **cover of it** (its audio file the original). The party's guests do so with their own songs.
+
+**The whole studio** for the admin and for whoever comes through *In your network* (while the admin lets them,
+``remote``): every field of the template - the Song Brief's, the writer model, HQ mastering and Cover Art - and the
+Export Release's (the folder, the formats, the tags), at any time and without the party's limits.
+
 Standard library only (PyAV, where it is, reads a recording's length).
 """
 
@@ -31,7 +40,7 @@ from typing import Any
 
 from ..core import brief as brief_rules
 from ..core.errors import PlenioUserError
-from ..core.song_api import brief_values
+from ..core.song_api import brief_values, model_of
 from . import other as other_music
 from .library import Library
 
@@ -47,8 +56,10 @@ DEFAULTS: dict[str, Any] = {
     "max_length": "about 4:00",
     "covers": True,
     "credit": "off",
+    "remote": True,
 }
-"""Off until the admin switches it on; then users and guests may, three songs each waiting, up to about 4:00."""
+"""Off until the admin switches it on; then users and guests may, three songs each waiting, up to about 4:00. Who
+comes through *In your network* has the whole studio, at any time (``remote``; the admin always has)."""
 CREDITS = ("off", "spotlight", "drift")
 """Who made a party song, while it plays (Now playing, the visual, the guests' page): not shown; *spotlight* -
 large as it begins, at every new section and as it ends, a small badge between; *drift* - the name floats
@@ -72,6 +83,14 @@ SONG_FIELDS = (
 COVER_FIELDS = ("template", "description", "genre", "mood", "vocals", "language", "voice", "theme")
 """What the form asks. A cover keeps the original's tempo, length, key and meter."""
 SUNG_ONLY = ("language", "voice", "theme")
+BRIEF_INPUTS = {"language": "vocals.language", "voice": "vocals.voice", "theme": "vocals.theme"}
+"""The form's fields that are a DynamicCombo's inputs in the brief (``vocals.language``)."""
+AGAIN = ("take", "song", "cover")
+"""What is made again from a song: a new take of it, a new song like it, a cover of it."""
+DOCUMENT_LIMITS = {"title": 200, "style": 2000, "lyrics": 20000}
+"""A new take's documents one may change, and their characters at most."""
+STUDIO_VALUE_LIMIT = 4000
+RECORD_LIMIT = 32 * 2**20
 DESCRIPTION_LIMIT = 1500
 TEXT_LIMIT = 120
 SOURCE_LIMIT = 100 * 2**20
@@ -82,9 +101,11 @@ KEEP_FINISHED_S = 12 * 3600
 SOURCES_KEPT_S = 6 * 3600
 POLL_S = 2.0
 STUDIO_EVERY_S = 5.0
-PRIOR = {"song": (120.0, 3.0), "cover": (180.0, 3.2)}
-"""Seconds of work before the first song is measured: a fixed part and so many per second of music (measured
-2026-10-25 on an RTX 5060 Ti: a song of about 1:00 took 300-360 s once the models were loaded)."""
+PRIOR = {"song": (120.0, 3.0), "cover": (120.0, 1.5), "take": (60.0, 1.5)}
+"""Seconds of work before the first song is measured: a fixed part and so many per second of music (measured on an
+RTX 5060 Ti: 2026-10-25 a song of about 1:00 took 300-360 s once the models were loaded; 2026-10-26 a new take of a
+song - nothing written, nothing planned - 164 s for 1:09 and 192 s for 1:29 with the models loaded first, a cover of
+a 1:33 recording 262 s, a new take of a cover 225 s for 1:42: it reads its original again, so it counts as a cover)."""
 ACTIVE = ("sending", "queued", "running")
 FINISHED = ("done", "failed", "cancelled")
 LOOPBACK = re.compile(r"https?://(127\.0\.0\.1|localhost|\[::1\]):\d{2,5}/?")
@@ -191,6 +212,9 @@ class Studio:
     def cancel(self, job_id: str) -> dict[str, Any]:
         return dict(self._call("DELETE", f"/jobs/{job_id}", timeout=10.0))
 
+    def from_record(self, record: Mapping[str, Any]) -> dict[str, Any]:
+        return dict(self._call("POST", "/from-record", record, timeout=20.0))
+
     def queue(self) -> dict[str, Any]:
         return dict(self._call("GET", "/queue", timeout=5.0))
 
@@ -201,6 +225,48 @@ def party_maker(tags: Mapping[str, Any]) -> str | None:
     if not PARTY_ALBUM.fullmatch(str(tags.get("album") or "").strip()):
         return None
     return str(tags.get("artist") or "").strip() or GUEST_NAME
+
+
+def _release_folder_ok(value: str) -> bool:
+    """A release folder below ComfyUI's output folder (the Song API's rule, said early)."""
+    text = value.strip().replace("\\", "/")
+    return bool(
+        text
+        and not text.startswith("/")
+        and not re.match(r"^[A-Za-z]:", text)
+        and not any(p in ("..", ".") for p in text.split("/"))
+    )
+
+
+def _own_release(release: Any) -> dict[str, Any]:
+    """A song's release fields to make it again with: all but the collision rule - a song made again never
+    overwrites the one it comes from (the template's rule, a new number, holds unless chosen in the studio)."""
+    return {k: v for k, v in dict(release or {}).items() if k != "collision"}
+
+
+def record_kind(record: Mapping[str, Any]) -> str:
+    """``song`` or ``cover`` by the record's brief (``""``: none - a file finished, not made)."""
+    classes = {n.get("class_type") for n in (record.get("prompt") or {}).values() if isinstance(n, Mapping)}
+    return "cover" if "PlenioCoverBrief" in classes else "song" if "PlenioSongBrief" in classes else ""
+
+
+def brief_fields(record: Mapping[str, Any], names: tuple[str, ...]) -> dict[str, str]:
+    """The form's fields as the record's brief has them (without ComfyUI: from its prompt)."""
+    brief = next(
+        (
+            n
+            for n in (record.get("prompt") or {}).values()
+            if isinstance(n, Mapping) and n.get("class_type") in ("PlenioSongBrief", "PlenioCoverBrief")
+        ),
+        None,
+    )
+    inputs = (brief or {}).get("inputs") or {}
+    out: dict[str, str] = {}
+    for name in names:
+        value = inputs.get(BRIEF_INPUTS.get(name, name), inputs.get(name))
+        if isinstance(value, (str, int, float)) and not isinstance(value, bool):
+            out[name] = str(value)
+    return out
 
 
 def guest_id(token: str) -> str:
@@ -299,6 +365,7 @@ class PartySongs:
             settings["max_length"] = DEFAULTS["max_length"]
         if settings["credit"] not in CREDITS:
             settings["credit"] = DEFAULTS["credit"]
+        settings["remote"] = bool(settings["remote"])
         jobs = [j for j in data.get("jobs") or [] if isinstance(j, dict) and isinstance(j.get("id"), str)]
         rates = {
             k: float(v)
@@ -329,8 +396,13 @@ class PartySongs:
                 time.sleep(0.05)
 
     # --- rights -----------------------------------------------------------------------------------------
+    def full(self, who: Mapping[str, Any]) -> bool:
+        """The whole studio - every field, at any time, without the party's limits: the admin, and whoever comes
+        through *In your network* while the admin lets them."""
+        return who.get("kind") == "admin" or bool(who.get("remote") and self.settings["remote"])
+
     def may(self, who: Mapping[str, Any]) -> tuple[bool, str]:
-        if who.get("kind") == "admin":
+        if self.full(who):
             return True, ""
         if not self.settings["on"]:
             return False, "Making songs is switched off - the host switches it on in Settings."
@@ -356,7 +428,7 @@ class PartySongs:
     # --- the settings -----------------------------------------------------------------------------------
     def configure(self, changes: Mapping[str, Any]) -> dict[str, Any]:
         with self.lock:
-            for key in ("on", "users", "guests", "covers"):
+            for key in ("on", "users", "guests", "covers", "remote"):
                 if key in changes:
                     self.settings[key] = bool(changes[key])
             if "per_person" in changes:
@@ -377,8 +449,21 @@ class PartySongs:
 
     # --- the form ---------------------------------------------------------------------------------------
     def _lengths(self, who: Mapping[str, Any]) -> list[str]:
-        limit = length_seconds(self.settings["max_length"]) if who.get("kind") != "admin" else float("inf")
+        limit = length_seconds(self.settings["max_length"]) if not self.full(who) else float("inf")
         return [option for option, seconds in brief_rules.LENGTHS.items() if seconds <= limit]
+
+    def _too_long(self, who: Mapping[str, Any], length: Any) -> bool:
+        """A song made again is longer than the party allows (the whole studio: never; a length older versions
+        named otherwise is let through)."""
+        seconds = brief_rules.LENGTHS.get(str(length or ""))
+        return (
+            not self.full(who)
+            and seconds is not None
+            and seconds > length_seconds(self.settings["max_length"])
+        )
+
+    def _covers(self, who: Mapping[str, Any]) -> bool:
+        return bool(self.settings["covers"]) or self.full(who)
 
     def form(self, who: Mapping[str, Any]) -> dict[str, Any]:
         """What the form offers: the style templates (to fill every field), every value their fields have (the
@@ -396,10 +481,25 @@ class PartySongs:
             "description": DESCRIPTION_LIMIT,
             "text": TEXT_LIMIT,
             "source_mb": SOURCE_LIMIT // 2**20,
-            "max_length": self.settings["max_length"] if who.get("kind") != "admin" else "",
+            "max_length": self.settings["max_length"] if not self.full(who) else "",
+            "documents": dict(DOCUMENT_LIMITS),
         }
-        form["covers"] = bool(self.settings["covers"]) or who.get("kind") == "admin"
+        form["covers"] = self._covers(who)
+        studio = form.pop("studio_templates", None)
+        if self.full(who):
+            form["studio"] = (
+                {**studio, "defaults": self._studio_defaults(who)}
+                if studio
+                else {"unavailable": "ComfyUI is not running - its settings show once it runs."}
+            )
         return form
+
+    def _studio_defaults(self, who: Mapping[str, Any]) -> dict[str, Any]:
+        """What the whole studio starts from: the party's release and switches (HQ mastering off, Cover Art on)."""
+        return {
+            "fields": {"finish.hq_mastering": False, "finish.cover_art": True},
+            "release": self._party_release({"kind": who.get("kind"), "name": who.get("name")}, self.clock()),
+        }
 
     def _form_from_studio(self) -> dict[str, Any] | None:
         try:
@@ -422,8 +522,17 @@ class PartySongs:
         def default(template: Mapping[str, Any], name: str) -> Any:
             return field_of(template, name).get("default")
 
+        def described(template: Mapping[str, Any]) -> dict[str, Any]:
+            return {
+                "template": template.get("id"),
+                "fields": list(template.get("fields") or []),
+                "release": list(template.get("release") or []),
+                "documents": list(template.get("documents") or []),
+            }
+
         return {
             "source": "studio",
+            "studio_templates": {"song": described(song), "cover": described(cover)},
             "templates": [
                 {"id": b["id"], "name": b["name"], "group": b["group"], "fields": b.get("fields") or {}}
                 for b in briefs.get("briefs") or []
@@ -513,14 +622,25 @@ class PartySongs:
         allowed, why = self.may(who)
         if not allowed:
             raise MakerError(why, 403)
+        again, base, record = self._again(who, data)
         source_id = str(data.get("source") or "")
-        kind = "cover" if source_id else "song"
-        if kind == "cover" and not (self.settings["covers"] or who.get("kind") == "admin"):
+        if again == "take":
+            kind = record_kind(record or {})
+            fields = brief_fields(record or {}, SONG_FIELDS if kind == "song" else COVER_FIELDS)
+            if kind == "song" and self._too_long(who, fields.get("length")):
+                raise MakerError(
+                    f"The host allows songs up to {self.settings['max_length']} - this one is longer."
+                )
+        else:
+            kind = "cover" if source_id or again == "cover" else "song"
+            fields = self._clean(who, data, kind=kind)
+        if kind == "cover" and not self._covers(who):
             raise MakerError("The host lets guests make new songs only, no covers.", 403)
-        fields = self._clean(who, data, kind=kind)
+        documents = self._edits(data, kind) if again == "take" else {}
+        studio = self._studio_values(who, data, kind)
         with self.lock:
             open_jobs = [j for j in self.jobs if self._mine(who, j) and j["status"] not in FINISHED]
-            if who.get("kind") != "admin" and len(open_jobs) >= self.settings["per_person"]:
+            if not self.full(who) and len(open_jobs) >= self.settings["per_person"]:
                 raise MakerError(
                     f"You have {len(open_jobs)} songs in the making - the host allows {self.settings['per_person']}. "
                     "Wait until one is done.",
@@ -528,7 +648,11 @@ class PartySongs:
                 )
             if len(self._waiting()) >= LINE_LIMIT:
                 raise MakerError("The line is full just now - try again in a few minutes.", 429)
-            source = self._source(source_id, who) if kind == "cover" else None
+            source = None
+            if again == "cover" and base is not None:
+                source = {"song": base["song"], "title": base["title"], "seconds": base["seconds"]}
+            elif kind == "cover" and again != "take":
+                source = self._source(source_id, who)
             job = {
                 "id": secrets.token_hex(8),
                 "owner": {
@@ -537,6 +661,11 @@ class PartySongs:
                     "name": who.get("name") or GUEST_NAME,
                 },
                 "kind": kind,
+                "again": again,
+                "base": base,
+                "documents": documents,
+                "studio": studio,
+                "full": self.full(who),
                 "fields": fields,
                 "source": source,
                 "status": "waiting",
@@ -561,15 +690,251 @@ class PartySongs:
             job = self._job(job_id, who)
             if job["status"] != "waiting":
                 raise MakerError("The song is being made already - it can no longer be changed.", 409)
-            job["fields"] = self._clean(who, data, kind=job["kind"])
+            if job.get("again") == "take":
+                job["documents"] = self._edits(data, job["kind"])
+            else:
+                job["fields"] = self._clean(who, data, kind=job["kind"])
+            if "studio" in data:
+                job["studio"] = self._studio_values(who, data, job["kind"])
             if (
                 job["kind"] == "cover"
+                and job.get("again") is None
                 and data.get("source")
                 and data.get("source") != (job.get("source") or {}).get("id")
             ):
                 job["source"] = self._source(str(data["source"]), who)
             self._save()
             return self.view(job, who)
+
+    # --- again from a song --------------------------------------------------------------------------------
+    def _record(self, song_id: str) -> tuple[Any, dict[str, Any] | None]:
+        """A song of the library and its release record (``None``: other music, or a record not to be read)."""
+        song = self.library.song(song_id) if re.fullmatch(r"[0-9a-f]{6,64}", song_id or "") else None
+        if song is None:
+            raise MakerError("No such song in the library.", 404)
+        if song.other:
+            return song, None
+        try:
+            if song.record.stat().st_size > RECORD_LIMIT:
+                return song, None
+            record = json.loads(song.record.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return song, None
+        return song, record if isinstance(record, dict) else None
+
+    def made_by(self, who: Mapping[str, Any], song_id: str) -> bool:
+        """Whether ``who`` made the song here (the party's guests make again only their own songs)."""
+        return any(
+            self._mine(who, j) and (j.get("result") or {}).get("song") == song_id and j["status"] == "done"
+            for j in self.jobs
+        )
+
+    def _audio_of(self, song: Any) -> Path | None:
+        if song.other:
+            return Path(song.record) if Path(song.record).is_file() else None
+        for kind in ("audio_flac", "audio_wav", "audio_mp3"):
+            path = song.files.get(kind)
+            if path is not None and Path(path).is_file():
+                return Path(path)
+        return None
+
+    def _again(
+        self, who: Mapping[str, Any], data: Mapping[str, Any]
+    ) -> tuple[str | None, dict[str, Any] | None, dict[str, Any] | None]:
+        """What a request makes again: (``take``/``song``/``cover`` or ``None``, the song it comes from, its
+        record)."""
+        raw = data.get("from")
+        if not raw:
+            return None, None, None
+        if not isinstance(raw, Mapping) or raw.get("as") not in AGAIN or not isinstance(raw.get("song"), str):
+            raise MakerError(f"from: the song's id and what to make ({', '.join(AGAIN)}).")
+        again = str(raw["as"])
+        if who.get("party") and not self.made_by(who, raw["song"]):
+            raise MakerError("No such song of yours.", 404)
+        song, record = self._record(raw["song"])
+        summary = song.summary
+        base = {
+            "song": song.id,
+            "title": str(summary.get("title") or "a song")[:200],
+            "seconds": round(float(summary.get("seconds") or 0.0), 1),
+        }
+        if again == "take":
+            why = self._take_why(record)
+            if why:
+                raise MakerError(f"No new take of this song: {why}", 409)
+        if again == "cover" and self._audio_of(song) is None:
+            raise MakerError("The song's audio file is not there.", 409)
+        return again, base, record
+
+    def _take_why(self, record: Mapping[str, Any] | None) -> str:
+        """Why a song makes no new take, as far as the player can tell without ComfyUI (``""``: it does)."""
+        if record is None:
+            return "it was not made with Plenio."
+        model = model_of(record)
+        if model != "YuE2":
+            return (
+                f"it was made with {model} - a new take is YuE2's."
+                if model
+                else "it was not made by a model."
+            )
+        texts = {
+            k
+            for k, d in (record.get("documents") or {}).items()
+            if isinstance(d, Mapping) and str(d.get("text") or "").strip()
+        }
+        lacking = [k for k in ("style", "lyrics", "score") if k not in texts]
+        return f"its record has no {' and no '.join(lacking)}." if lacking else ""
+
+    def remake(self, who: Mapping[str, Any], song_id: str) -> dict[str, Any]:
+        """What the form starts from to make a song again: the song, what can be made of it (a new take, a new
+        song like it, a cover of it - and why not), its brief's fields, the documents a new take may change - and
+        for the whole studio every field as the song had it."""
+        allowed, why = self.may(who)
+        if not allowed:
+            raise MakerError(why, 403)
+        if who.get("party") and not self.made_by(who, song_id):
+            raise MakerError("No such song of yours.", 404)
+        song, record = self._record(song_id)
+        summary = song.summary
+        kind = record_kind(record or {})
+        answer: dict[str, Any] | None = None
+        if record is not None and kind:
+            try:
+                answer = self.studio.from_record(record)
+            except (StudioUnavailableError, StudioError):
+                answer = None
+        can: dict[str, bool] = {}
+        reasons: dict[str, str] = {}
+        take_why = self._take_why(record)
+        if not take_why and answer is not None and not (answer.get("take") or {}).get("possible"):
+            take_why = str((answer.get("take") or {}).get("why") or "ComfyUI makes no new take of it.")
+            take_why = take_why[0].lower() + take_why[1:]
+        fields = brief_fields(record or {}, SONG_FIELDS if kind != "cover" else COVER_FIELDS)
+        if not take_why and kind == "song" and self._too_long(who, fields.get("length")):
+            take_why = f"it is longer than the host allows ({self.settings['max_length']})."
+        can["take"], reasons["take"] = not take_why, take_why
+        can["song"] = bool(kind)
+        reasons["song"] = "" if kind else "it has no Song Brief to start from."
+        has_audio = self._audio_of(song) is not None
+        can["cover"] = has_audio and self._covers(who)
+        reasons["cover"] = (
+            ""
+            if can["cover"]
+            else "the host lets guests make new songs only."
+            if has_audio
+            else "its audio file is not there."
+        )
+        song_fields = {k: fields[k] for k in SONG_FIELDS if k in fields}
+        if kind == "cover":
+            # a new song like a cover: its sound and its voice, sung
+            song_fields["vocals"] = "instrumental" if fields.get("vocals") == "instrumental" else "sung"
+        texts = {
+            str(k): str(d.get("text") or "")
+            for k, d in ((record or {}).get("documents") or {}).items()
+            if isinstance(d, Mapping)
+        }
+        out: dict[str, Any] = {
+            "song": {
+                "id": song.id,
+                "title": str(summary.get("title") or ""),
+                "genre": str(summary.get("genre") or ""),
+                "seconds": round(float(summary.get("seconds") or 0.0), 1),
+                "cover": bool((summary.get("has") or {}).get("cover")),
+                "other": bool(song.other),
+                "model": model_of(record or {}),
+                "kind": kind,
+            },
+            "can": can,
+            "why": reasons,
+            "start": next((k for k in AGAIN if can[k]), ""),
+            "kind": kind or "song",
+            "fields": song_fields,
+            "documents": {k: texts.get(k, "") for k in DOCUMENT_LIMITS},
+            "studio": None,
+        }
+        if self.full(who) and answer is not None:
+            out["studio"] = {
+                "template": answer.get("template"),
+                "fields": dict(answer.get("fields") or {}),
+                "release": _own_release(answer.get("release")),
+                "warnings": list(answer.get("warnings") or []),
+            }
+        return out
+
+    def _edits(self, data: Mapping[str, Any], kind: str) -> dict[str, str]:
+        """A new take's documents as changed (title, style, lyrics), checked - a cover's words stay: they follow
+        the original's melody."""
+        raw = data.get("documents") or {}
+        if not isinstance(raw, Mapping):
+            raise MakerError("documents: the title, style and lyrics.")
+        out: dict[str, str] = {}
+        for name, limit in DOCUMENT_LIMITS.items():
+            text = raw.get(name)
+            if kind == "cover" and name == "lyrics":
+                continue
+            if text is None:
+                continue
+            if not isinstance(text, str):
+                raise MakerError(f"The {name} is text.")
+            text = text.replace("\r\n", "\n").strip()
+            if len(text) > limit:
+                raise MakerError(f"The {name} is too long ({limit} characters at most).")
+            if any(ord(c) < 32 and c not in "\n\t" for c in text) or (name != "lyrics" and "\n" in text):
+                raise MakerError(
+                    f"The {name}: {'lines of text' if name == 'lyrics' else 'one line of text'}."
+                )
+            if text:
+                out[name] = text
+        return out
+
+    def _studio_values(
+        self, who: Mapping[str, Any], data: Mapping[str, Any], kind: str
+    ) -> dict[str, dict[str, Any]] | None:
+        """The whole studio's values (the template's fields, the release's), checked as far as the player can - the
+        Song API checks them all."""
+        raw = data.get("studio")
+        if not raw:
+            return None
+        if not self.full(who):
+            raise MakerError(
+                "Every setting of the studio is for the admin and for the player in your network.", 403
+            )
+        if not isinstance(raw, Mapping):
+            raise MakerError("studio: the fields and the release.")
+        cached = (self._form[1] if self._form else {}).get("studio_templates") or {}
+        spec = cached.get(kind) or {}
+        known = {
+            "fields": {str(f.get("id")): f for f in spec.get("fields") or [] if isinstance(f, Mapping)},
+            "release": {str(f.get("id")): f for f in spec.get("release") or [] if isinstance(f, Mapping)},
+        }
+        out: dict[str, dict[str, Any]] = {}
+        for part in ("fields", "release"):
+            values = raw.get(part) or {}
+            if not isinstance(values, Mapping) or len(values) > 120:
+                raise MakerError(f"studio.{part}: names and values.")
+            clean: dict[str, Any] = {}
+            for name, value in values.items():
+                if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_.]{1,80}", name):
+                    raise MakerError(f"studio.{part}: {str(name)[:40]!r} is no field.")
+                if known[part] and name not in known[part]:
+                    raise MakerError(f"The studio has no field {name!r}.")
+                found = known[part].get(name) or {}
+                if found.get("fixed") or found.get("type") == "upload":
+                    continue  # the run-through mode, a cover's recording: the player's own
+                if isinstance(value, str):
+                    if len(value) > STUDIO_VALUE_LIMIT:
+                        raise MakerError(f"{name}: {STUDIO_VALUE_LIMIT} characters at most.")
+                elif value is not None and not isinstance(value, (bool, int, float)):
+                    raise MakerError(f"{name}: a text, a number or yes/no.")
+                if value is None:
+                    continue
+                if part == "release" and name == "folder" and not _release_folder_ok(str(value)):
+                    raise MakerError(
+                        "The folder is one below ComfyUI's output folder, like 'plenio/My-Songs'."
+                    )
+                clean[name] = value
+            out[part] = clean
+        return out
 
     def move(self, who: Mapping[str, Any], job_id: str, by: int) -> dict[str, Any]:
         """One place up (``-1``) or down (``1``) in the line: past the next song of one's own (the admin: past the
@@ -670,6 +1035,9 @@ class PartySongs:
 
     def _source_file(self, job: Mapping[str, Any]) -> Path | None:
         source = job.get("source") or {}
+        if source.get("song"):  # a song of the library is the original
+            song = self.library.song(str(source["song"]))
+            return self._audio_of(song) if song is not None else None
         suffix = Path(str(source.get("name") or "")).suffix.lower()
         path = self.sources / f"{source.get('id')}{suffix}"
         return path if source.get("id") and path.is_file() else None
@@ -687,13 +1055,26 @@ class PartySongs:
     def estimate(self, job: Mapping[str, Any]) -> float:
         """Seconds the song takes to make: a fixed part and a part per second of music, times what this computer
         showed so far."""
-        kind = str(job.get("kind") or "song")
+        kind = self._work(job)
         base, per_second = PRIOR.get(kind, PRIOR["song"])
-        if kind == "cover":
-            seconds = float((job.get("source") or {}).get("seconds") or 0.0) or 180.0
-        else:
-            seconds = length_seconds(str((job.get("fields") or {}).get("length") or ""))
-        return (base + per_second * seconds) * self.rates.get(kind, 1.0)
+        return (base + per_second * self._seconds(job)) * self.rates.get(kind, 1.0)
+
+    @staticmethod
+    def _work(job: Mapping[str, Any]) -> str:
+        """What a song's making is like: a new take of a song (no writing, no planning), a cover - also a new take of
+        one, which reads its original's melody and words again -, a song."""
+        if job.get("again") == "take" and job.get("kind") == "song":
+            return "take"
+        return str(job.get("kind") or "song")
+
+    @staticmethod
+    def _seconds(job: Mapping[str, Any]) -> float:
+        """About how long the song will be."""
+        if job.get("again") == "take" and (job.get("base") or {}).get("seconds"):
+            return float(job["base"]["seconds"])
+        if job.get("kind") == "cover":
+            return float((job.get("source") or {}).get("seconds") or 0.0) or 180.0
+        return length_seconds(str((job.get("fields") or {}).get("length") or ""))
 
     def _timeline(self) -> dict[str, tuple[float, float]]:
         """When each song in the making will be done, roughly: (start, ready) by job id."""
@@ -728,6 +1109,9 @@ class PartySongs:
     def label(self, job: Mapping[str, Any]) -> str:
         """What identifies a song before it has a title: its style, its length, its voice."""
         fields = job.get("fields") or {}
+        base = job.get("base") or {}
+        if job.get("again") == "take":
+            return f"New take of {base.get('title') or 'a song'}"
         minutes = re.search(r"\d+:\d\d", str(fields.get("length") or ""))
         parts = [fields.get("genre") or "", minutes.group(0) if minutes else ""]
         if job.get("kind") == "cover":
@@ -741,6 +1125,8 @@ class PartySongs:
             parts.append(fields.get("voice") or fields.get("language") or "")
         if not parts[0] and fields.get("template") not in (None, "", "none"):
             parts[0] = str(fields["template"]).rsplit("/", 1)[-1].replace("-", " ")
+        if job.get("again") == "song" and base.get("title"):
+            parts.insert(0, f"Like {base['title']}")
         return " · ".join(p for p in parts if p) or "A new song"
 
     def view(
@@ -777,6 +1163,8 @@ class PartySongs:
             "stage": job.get("stage"),
             "progress": job.get("progress"),
             "result": result,
+            "again": job.get("again"),
+            "from": dict(job.get("base") or {}) or None,
             "error": job.get("error") or "",
             "note": job.get("note") or "",
             "can": {
@@ -789,6 +1177,8 @@ class PartySongs:
         if mine or admin:
             out["fields"] = dict(job.get("fields") or {})
             out["source"] = dict(job.get("source") or {}) or None
+            out["documents"] = dict(job.get("documents") or {})
+            out["studio"] = dict(job.get("studio") or {}) or None
         return out
 
     def listing(self, who: Mapping[str, Any], *, everyone: bool = False) -> list[dict[str, Any]]:
@@ -813,7 +1203,12 @@ class PartySongs:
             "on": bool(self.settings["on"]),
             "may": allowed,
             "why": why,
-            "me": {"kind": who.get("kind"), "name": who.get("name") or GUEST_NAME},
+            "me": {
+                "kind": who.get("kind"),
+                "name": who.get("name") or GUEST_NAME,
+                "full": self.full(who),
+                "remote": bool(who.get("remote")),
+            },
             "admin": admin,
             "settings": settings,
             "studio": {
@@ -901,32 +1296,23 @@ class PartySongs:
             except OSError:
                 pass
 
-    def request_of(self, job: Mapping[str, Any], audio: str = "") -> dict[str, Any]:
-        """The Song API request for a song: the form's fields, HQ mastering off, Cover Art on, the party's folder,
-        album and artist."""
-        fields = dict(job.get("fields") or {})
-        if fields.get("vocals") in ("instrumental",):
-            for name in SUNG_ONLY:
-                fields.pop(name, None)
-        if job.get("kind") == "cover":
-            if fields.get("vocals") != "new lyrics":
-                fields.pop("theme", None)
-            fields["source.audio"] = audio
-        fields = {k: v for k, v in fields.items() if v != "" or k in ("description",)}
-        fields["finish.hq_mastering"] = False
-        fields["finish.cover_art"] = True
-        date = _today(float(job.get("sent") or self.clock()))
-        owner = job.get("owner") or {}
+    def _party_release(self, owner: Mapping[str, Any], when: float) -> dict[str, Any]:
+        date = _today(when)
         return {
-            "template": TEMPLATES[str(job.get("kind") or "song")],
-            "fields": fields,
-            "release": {
-                "folder": f"plenio/Party-Songs-{date}",
-                "album": f"Party-Song {date}",
-                "artist": str(owner.get("name") or GUEST_NAME)
-                if owner.get("kind") != "guest"
-                else GUEST_NAME,
-            },
+            "folder": f"plenio/Party-Songs-{date}",
+            "album": f"Party-Song {date}",
+            "artist": str(owner.get("name") or GUEST_NAME) if owner.get("kind") != "guest" else GUEST_NAME,
+        }
+
+    def request_of(
+        self, job: Mapping[str, Any], audio: str = "", base: Mapping[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """The Song API request for a song: the form's fields, HQ mastering off, Cover Art on, the party's folder,
+        album and artist - for a new take the song's own request (``base``: the Song API's ``/from-record``) with its
+        documents as changed and a new take seed; with the whole studio every value as chosen."""
+        owner = job.get("owner") or {}
+        request: dict[str, Any] = {
+            "release": self._party_release(owner, float(job.get("sent") or self.clock())),
             "client": {
                 "name": "Plenio Player",
                 "job": str(job.get("id")),
@@ -934,19 +1320,71 @@ class PartySongs:
             },
             "strict": False,
         }
+        if job.get("again") == "take" and base is not None:
+            fields = dict(base.get("fields") or {})
+            documents = {str(k): str(v) for k, v in (base.get("documents") or {}).items()}
+            edits = dict(job.get("documents") or {})
+            if (
+                base.get("kind") == "song"
+                and "lyrics" in edits
+                and edits["lyrics"].strip() != documents.get("lyrics", "").strip()
+            ):
+                documents.pop("score", None)  # new words: the notes are planned anew for them
+            documents.update(edits)
+            request.update(
+                template=str(base.get("template") or TEMPLATES[str(job.get("kind") or "song")]),
+                documents=documents,
+                seeds={k: v for k, v in (base.get("seeds") or {}).items() if k != "take"},
+            )
+            if job.get("full"):
+                request["release"] = {**request["release"], **_own_release(base.get("release"))}
+        else:
+            fields = dict(job.get("fields") or {})
+            if fields.get("vocals") in ("instrumental",):
+                for name in SUNG_ONLY:
+                    fields.pop(name, None)
+            if job.get("kind") == "cover":
+                if fields.get("vocals") != "new lyrics":
+                    fields.pop("theme", None)
+                fields["source.audio"] = audio
+            fields = {k: v for k, v in fields.items() if v != "" or k in ("description",)}
+            request["template"] = TEMPLATES[str(job.get("kind") or "song")]
+        studio = job.get("studio") if job.get("full") else None
+        if studio:
+            fields.update(studio.get("fields") or {})
+            request["release"] = {**request["release"], **(studio.get("release") or {})}
+        else:
+            fields["finish.hq_mastering"] = False
+            fields["finish.cover_art"] = True
+        request["fields"] = fields
+        return request
 
     def _send(self, job: dict[str, Any]) -> None:
         job["sent"] = self.clock()
         try:
             audio = ""
-            if job["kind"] == "cover":
+            base = None
+            if job.get("again") == "take":
+                try:
+                    _song, record = self._record(str((job.get("base") or {}).get("song") or ""))
+                except MakerError as error:
+                    raise StudioError(404, "not_found", "The song is no longer in the library.") from error
+                if record is None:
+                    raise StudioError(404, "not_found", "The song's record can no longer be read.")
+                base = self.studio.from_record(record)
+                if not (base.get("take") or {}).get("possible"):
+                    raise StudioError(
+                        409,
+                        "no_take",
+                        str((base.get("take") or {}).get("why") or "No new take of this song."),
+                    )
+            elif job["kind"] == "cover":
                 path = self._source_file(job)
                 if path is None:
                     raise StudioError(400, "missing_field", "The original recording is gone - add it again.")
-                audio = str(
-                    self.studio.upload(path, str((job.get("source") or {}).get("name") or path.name))["name"]
-                )
-            answer = self.studio.create(self.request_of(job, audio), key=f"plenio-player-{job['id']}")
+                name = str((job.get("source") or {}).get("name") or path.name)
+                audio = str(self.studio.upload(path, name if Path(name).suffix else path.name)["name"])
+            answer = self.studio.create(self.request_of(job, audio, base), key=f"plenio-player-{job['id']}")
         except StudioUnavailableError as error:
             with self.lock:
                 if job["status"] == "sending":
@@ -1049,16 +1487,11 @@ class PartySongs:
     def _learn(self, job: Mapping[str, Any]) -> None:
         """How long the song took against the estimate: the next estimates follow (half the old, half the new)."""
         took = float(job.get("finished") or 0) - float(job.get("started") or 0)
-        kind = str(job.get("kind") or "song")
+        kind = self._work(job)
         if took <= 10:
             return
         base, per_second = PRIOR.get(kind, PRIOR["song"])
-        seconds = (
-            float((job.get("source") or {}).get("seconds") or 180.0)
-            if kind == "cover"
-            else length_seconds(str((job.get("fields") or {}).get("length") or ""))
-        )
-        factor = max(0.25, min(4.0, took / (base + per_second * seconds)))
+        factor = max(0.25, min(4.0, took / (base + per_second * self._seconds(job))))
         self.rates[kind] = factor if kind not in self.rates else 0.5 * self.rates[kind] + 0.5 * factor
 
     def _file(self, job: dict[str, Any]) -> None:

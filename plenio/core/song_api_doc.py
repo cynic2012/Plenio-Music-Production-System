@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-from .song_api import API_NAME, API_VERSION, LINE_LIMIT, TEXT_LIMIT, Field, Template
+from .song_api import API_NAME, API_VERSION, DOCUMENT_LIMIT, LINE_LIMIT, TEXT_LIMIT, Field, Template
 
 JOB_STATUSES = ("queued", "running", "succeeded", "failed", "cancelled", "waiting_for_review")
 """``waiting_for_review`` is reserved: a run stopped at a Song Sheet (review stops are not in v1)."""
@@ -67,6 +67,18 @@ def _request(template: Template) -> dict[str, Any]:
                     s.id: {"type": "integer", "minimum": 0, "maximum": 2**32 - 1, "title": s.title}
                     for s in template.seeds
                 },
+            },
+            "documents": {
+                "type": "object",
+                "description": (
+                    "Documents the Song Sheets keep as manual: the run keeps them instead of writing or planning "
+                    "them anew. A song's documents with a new take seed make a new take of it (POST /from-record "
+                    "gives them)."
+                ),
+                "properties": {
+                    kind: {"type": "string", "maxLength": DOCUMENT_LIMIT} for kind in template.documents
+                },
+                "additionalProperties": False,
             },
             "client": {
                 "type": "object",
@@ -194,6 +206,26 @@ def openapi(templates: Iterable[Template], *, plenio: str = "", comfyui: str = "
                     "responses": {"201": answer(job, "Queued"), **errors},
                 },
             },
+            "/from-record": {
+                "post": {
+                    "summary": "The request that makes a record's song again (a new take of it, or a new song)",
+                    "description": (
+                        "The body is a release record (<name>.plenio.json). The answer is a job request - template, "
+                        "fields, release, seeds, documents - as the record's prompt has them, with 'take' (whether "
+                        "its documents make a new take here) and 'warnings' (values the template no longer takes). "
+                        "Leave out seeds.take for a new take; the documents and the seeds for a new song."
+                    ),
+                    "requestBody": {
+                        "required": True,
+                        "content": {"application/json": {"schema": {"type": "object"}}},
+                    },
+                    "responses": {
+                        "200": answer({"$ref": "#/components/schemas/FromRecord"}),
+                        **errors,
+                        "422": answer(error, "No template makes the record's song"),
+                    },
+                }
+            },
             "/jobs/{id}": {
                 "get": {
                     "summary": "A job",
@@ -248,8 +280,31 @@ def openapi(templates: Iterable[Template], *, plenio: str = "", comfyui: str = "
                         "finished_at": {"type": ["number", "null"]},
                         "stage": {"type": ["object", "null"]},
                         "seeds": {"type": "object"},
+                        "documents": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "The documents given (kept as manual)",
+                        },
                         "result": {"type": ["object", "null"]},
                         "error": {"type": ["object", "null"]},
+                        "warnings": {"type": "array", "items": {"type": "string"}},
+                    },
+                },
+                "FromRecord": {
+                    "type": "object",
+                    "properties": {
+                        "template": {"type": "string"},
+                        "kind": {"type": "string", "enum": ["song", "cover"]},
+                        "title": {"type": "string"},
+                        "model": {"type": "string", "description": "The music model the song was made with"},
+                        "fields": {"type": "object"},
+                        "release": {"type": "object"},
+                        "seeds": {"type": "object"},
+                        "documents": {"type": "object"},
+                        "take": {
+                            "type": "object",
+                            "properties": {"possible": {"type": "boolean"}, "why": {"type": "string"}},
+                        },
                         "warnings": {"type": "array", "items": {"type": "string"}},
                     },
                 },

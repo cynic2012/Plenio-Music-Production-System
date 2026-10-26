@@ -7,7 +7,9 @@ import type { SongSummary } from '../api'
 import { vFocus } from '../focus'
 import { similarSongs } from '../similar'
 import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, openInComfyUI, playSongs, removing, say, settings, songTags, state, toggleFavorite, videoFor } from '../store'
+import { makeShown } from '../make/state'
 import { isPortable } from '../portable'
+import Icon from './Icon.vue'
 import TagEditor from './TagEditor.vue'
 
 const props = defineProps<{ song: SongSummary; x: number; y: number }>()
@@ -51,6 +53,7 @@ function create(): void {
       <button @click="radio">Start a radio of songs alike</button>
       <button @click="toggleFavorite(song.id); done()">{{ isFavorite(song.id) ? 'Remove from favourites' : 'Add to favourites' }}</button>
       <button @click="go(`/song/${song.id}`); done()">Open the song’s page</button>
+      <button v-if="makeShown && !isPortable" @click="go(`/make/${song.id}`); done()"><Icon name="wand" :size="15" /> A new version…</button>
       <button :class="{ open: tagging }" @click="tagging = !tagging">Tags…<small v-if="songTags(song.id).length">{{ songTags(song.id).map((t) => `#${t}`).join(' ') }}</small></button>
       <div v-if="tagging" class="tags"><TagEditor :ids="[song.id]" autofocus @filter="songsTagged" /></div>
       <button v-if="!song.other && !isPortable" @click="comfy">Open in ComfyUI</button>

@@ -54,6 +54,8 @@ async function change(key: string, value: unknown): Promise<void> {
         </select>
       </label>
     </div>
+    <label class="check remote"><input type="checkbox" :checked="settings.remote !== false" :disabled="saving" @change="change('remote', ($event.target as HTMLInputElement).checked)" /> From the network (<i>In your network</i>): the whole studio, at any time</label>
+    <small class="note">Who comes through “Open the player from your network” chooses the writer model, HQ mastering, cover art, the folder, the formats and the tags - and may make songs while song making is off.</small>
     <label class="field credit">Who made it, while the song plays
       <select :value="settings.credit ?? 'off'" :disabled="saving" @change="change('credit', ($event.target as HTMLSelectElement).value)">
         <option v-for="c in CREDITS" :key="c.value" :value="c.value">{{ c.label }}</option>
@@ -98,6 +100,17 @@ async function change(key: string, value: unknown): Promise<void> {
 }
 .check.big {
   font-weight: 650;
+}
+.check.remote {
+  margin-top: 14px;
+  font-weight: 600;
+}
+.note {
+  display: block;
+  margin: 4px 0 0 24px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 .who {
   display: grid;

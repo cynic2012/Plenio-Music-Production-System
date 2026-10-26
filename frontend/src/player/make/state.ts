@@ -60,7 +60,8 @@ export function pollMake(page: boolean, ready?: (job: MakeJob) => void): void {
   }, page ? ON_PAGE_MS : ELSEWHERE_MS)
 }
 
-/** *Make a song* in the sidebar: for whoever may make songs (the admin always, to switch it on). */
-export const makeShown = computed(() => !isPortable && !!makeStatus.value && (makeStatus.value.admin || (makeStatus.value.on && makeStatus.value.may)))
+/** *Make a song* in the sidebar: for whoever may make songs (the admin always, to switch it on; the whole studio
+ * from the network also while the party's song making is off). */
+export const makeShown = computed(() => !isPortable && !!makeStatus.value && (makeStatus.value.admin || !!makeStatus.value.me.full || (makeStatus.value.on && makeStatus.value.may)))
 /** One's songs in the making (the sidebar's count). */
 export const makingNow = computed(() => (makeStatus.value?.jobs ?? []).filter((j) => j.mine && !['done', 'failed', 'cancelled'].includes(j.status)).length)

@@ -248,7 +248,7 @@ def make_handler(
 
         def _maker_who(self) -> tuple[dict[str, Any], str]:
             """Who makes a party song: the admin, a user - or a guest, known by a cookie of their own (set now
-            when the browser has none: the second value)."""
+            when the browser has none: the second value); ``remote``: by *In your network* (the whole studio)."""
             account = self.account
             if account is not None:
                 kind = "admin" if account.get("admin") else "user"
@@ -256,6 +256,7 @@ def make_handler(
                     "kind": kind,
                     "id": str(account.get("id")),
                     "name": str(account.get("name") or ""),
+                    "remote": self.remote,
                 }, ""
             token = maker_rules.token_of(self.headers.get("Cookie"))
             cookie = ""
@@ -266,12 +267,14 @@ def make_handler(
                 "kind": "guest",
                 "id": maker_rules.guest_id(token),
                 "name": maker_rules.GUEST_NAME,
+                "remote": self.remote,
             }, cookie
 
         def _make(self, method: str, route: str, query: dict[str, str], raw: bytes | None) -> None:
-            """The party songs: ``GET /api/make`` (may I, the settings, my songs), ``GET /api/make/form``, ``POST
-            /api/make/jobs``, ``PUT /api/make/jobs/<id>``, ``POST /api/make/jobs/<id>/move``, ``DELETE
-            /api/make/jobs/<id>``, ``POST /api/make/sources?name=`` (the recording), ``PUT /api/make/settings``."""
+            """The party songs: ``GET /api/make`` (may I, the settings, my songs), ``GET /api/make/form``, ``GET
+            /api/make/from/<song id>`` (to make it again), ``POST /api/make/jobs``, ``PUT /api/make/jobs/<id>``,
+            ``POST /api/make/jobs/<id>/move``, ``DELETE /api/make/jobs/<id>``, ``POST /api/make/sources?name=`` (the
+            recording), ``PUT /api/make/settings``."""
             if maker is None:
                 return self._error(404, "no party songs")
             who, cookie = self._maker_who()
@@ -281,6 +284,9 @@ def make_handler(
                     return self._json(maker.status(who, everyone=query.get("all") == "1"), cookie=cookie)
                 if method == "GET" and route == "/api/make/form":
                     return self._json(maker.form(who), cookie=cookie)
+                again = re.fullmatch(r"/api/make/from/([0-9a-f]{6,64})", route)
+                if method == "GET" and again:
+                    return self._json(maker.remake(who, again.group(1)), cookie=cookie)
                 if method == "POST" and route == "/api/make/sources":
                     if not self._binary_from_this_page():
                         return self._error(403, "only from the player's page")

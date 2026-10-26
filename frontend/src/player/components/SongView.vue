@@ -33,6 +33,7 @@ import { linesFor, sungOf, versionFor } from '../lyricsVersion'
 import { songFacts } from '../songFacts'
 import { formatTime, sectionName } from '../timing'
 import { similarSongs, takesOf } from '../similar'
+import { makeShown } from '../make/state'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 import Karaoke from './Karaoke.vue'
@@ -204,6 +205,7 @@ function timingSourceText(source: string, note?: string): string {
           <button class="primary" @click="play"><Icon :name="isCurrent && playing ? 'pause' : 'play'" /> {{ isCurrent && playing ? 'Pause' : 'Play' }}</button>
           <button class="ghost" :class="{ on: isFavorite(song.id) }" @click="toggleFavorite(song.id)"><Icon name="heart" :filled="isFavorite(song.id)" /> {{ isFavorite(song.id) ? 'Favourite' : 'Add to favourites' }}</button>
           <button class="ghost" @click="menu = { x: $event.clientX, y: $event.clientY }"><Icon name="plus" /> Playlist, queue …</button>
+          <button v-if="makeShown && !isPortable" class="ghost" title="Make a new take of it, a new song like it, or a cover of it" @click="go(`/make/${song.id}`)"><Icon name="wand" /> A new version…</button>
           <button v-if="!song.other && !isPortable" class="ghost" :disabled="opening" title="Open the song's workflow in ComfyUI - with its lyrics, score and settings - to work on it" @click="toComfyUI"><Icon name="external" /> {{ opening ? 'Opening ComfyUI …' : 'Open in ComfyUI' }}</button>
           <button v-if="!isPortable" class="ghost" title="Save the song as an MP4 video: a visual, its lyrics, its notation …" @click="videoFor = song"><Icon name="layers" /> Video…</button>
           <button v-if="!isPortable" class="ghost down" title="Remove the song from the library: to the retired songs, or deleted" @click="removing = song"><Icon name="thumbdown" /> Remove…</button>

@@ -11,17 +11,24 @@ are read from the template itself, every time, so that they follow the workflow 
   (``finish.cover_art``: the nodes marked ``plenio_switch: cover`` run or are bypassed) and its optional nodes
   (``excerpt.enabled``: a node titled *(optional)* runs);
 * the **release fields** - the Export Release's widgets (``folder``, ``artist``, ``album`` ...);
-* the **seeds** - the template's Plenio · Seed nodes by their part (``take``, ``draft``, ``plan``, ``cover``).
+* the **seeds** - the template's Plenio · Seed nodes by their part (``take``, ``draft``, ``plan``, ``cover``);
+* the **documents** - what the template's Song Sheets keep (``title``, ``style``, ``lyrics``, ``score``,
+  ``artwork_prompt``): given with a request, a document goes into its sheet as *manual*, and the run keeps it
+  instead of writing or planning it anew - the documents of a song and a new take seed make a new take of it.
 
 A request is checked against the node definitions of the ComfyUI that runs it, written into a copy of the
-workflow (the widgets, a DynamicCombo's new choice with its inputs, the modes), its seeds drawn or given - and then
-the workflow is the API prompt (``workflow_prompt``). Review stops are not part of v1: the brief's work mode is
-its run-through choice.
+workflow (the widgets, a DynamicCombo's new choice with its inputs, the modes, the sheets' states), its seeds drawn
+or given - and then the workflow is the API prompt (``workflow_prompt``). Review stops are not part of v1: the
+brief's work mode is its run-through choice.
+
+``request_from_record`` turns a release record back into a request: the song's fields, release fields, seeds and
+documents as its prompt has them (owner's request 2026-10-26: a new take, or a new song, of any song of the player).
 """
 
 from __future__ import annotations
 
 import copy
+import json
 import random
 import re
 from collections.abc import Iterable, Mapping, Sequence
@@ -30,6 +37,7 @@ from typing import Any
 
 from . import brief as brief_rules
 from .errors import PlenioUserError
+from .sheet.state import DOCUMENT_KINDS, SHEET_STATE_SCHEMA
 from .workflow_prompt import (
     BYPASS,
     CONTROL,
@@ -55,6 +63,7 @@ MARKER = "plenio_api"
 BRIEF_TYPES = {"PlenioSongBrief": "song", "PlenioCoverBrief": "cover"}
 EXPORT_TYPE = "PlenioExportRelease"
 SEED_TYPE = "PlenioSeed"
+SHEET_TYPE = "PlenioSongSheet"
 NODE_NAMES = {
     "PlenioWriterChoice": "writer",
     "PlenioHQMastering": "finish",
@@ -79,6 +88,10 @@ TEXT_LIMIT = 4000
 LINE_LIMIT = 400
 UPLOAD_PREFIX = "plenio-api-"
 """Uploaded source recordings are saved in ComfyUI's input folder under names that start with this."""
+DOCUMENT_LIMIT = 200_000
+"""A document's characters at most (a long score in ABC is some ten thousand)."""
+MODELS = (("YuE2", "YuE2"), ("MiniMax", "MiniMax Music 3"))
+"""The music model a record's prompt ran, by the start of its classes' names."""
 RUN_THROUGH = {
     "PlenioSongBrief": next(k for k, v in brief_rules.SONG_MODES.items() if v == "batch"),
     "PlenioCoverBrief": next(k for k, v in brief_rules.COVER_MODES.items() if v == "batch"),
@@ -281,6 +294,12 @@ class Template:
     fields: tuple[Field, ...]
     release: tuple[Field, ...]
     seeds: tuple[Seed, ...]
+    sheets: tuple[tuple[str, int], ...] = ()
+    """The documents the template's Song Sheets keep: (kind, the sheet's node id), in the order of DOCUMENT_KINDS."""
+
+    @property
+    def documents(self) -> list[str]:
+        return [kind for kind, _ in self.sheets]
 
     @property
     def title(self) -> str:
@@ -307,6 +326,7 @@ class Template:
             "fields": [f.to_dict() for f in self.fields],
             "release": [f.to_dict() for f in self.release],
             "seeds": [s.to_dict() for s in self.seeds],
+            "documents": self.documents,
             "aliases": dict(FIELD_ALIASES.get(self.id, {})),
         }
 
@@ -590,6 +610,7 @@ def load_template(name: str, workflow: Mapping[str, Any], info: InfoLookup) -> T
                 keep=bool(values[1]) if len(values) > 1 else False,
             )
         )
+    owners = sheet_owners(workflow)
     return Template(
         id=template_id,
         kind=str(marker.get("kind") or BRIEF_TYPES[str(brief.get("type"))]),
@@ -598,7 +619,22 @@ def load_template(name: str, workflow: Mapping[str, Any], info: InfoLookup) -> T
         fields=tuple(fields),
         release=tuple(release),
         seeds=tuple(seeds),
+        sheets=tuple((kind, owners[kind]) for kind in DOCUMENT_KINDS if kind in owners),
     )
+
+
+def sheet_owners(workflow: Mapping[str, Any]) -> dict[str, int]:
+    """Which Song Sheet keeps each document: kind -> the node id of the sheet whose input of that name is linked
+    (the draft comes from upstream there)."""
+    owners: dict[str, int] = {}
+    for node in _top_nodes(workflow):
+        if node.get("type") != SHEET_TYPE:
+            continue
+        for slot in node.get("inputs") or []:
+            name = slot.get("name") if isinstance(slot, Mapping) else None
+            if name in DOCUMENT_KINDS and slot.get("link") is not None:
+                owners.setdefault(str(name), int(node["id"]))
+    return owners
 
 
 def switch_nodes(workflow: Mapping[str, Any], switch: str) -> list[Mapping[str, Any]]:
@@ -629,6 +665,8 @@ class Prepared:
     release: dict[str, Any]
     seeds: dict[str, int]
     warnings: list[str] = field(default_factory=list)
+    documents: list[str] = field(default_factory=list)
+    """The documents given (kept as manual in the sheets)."""
 
 
 def _coerce(field: Field, value: Any) -> Any:
@@ -789,7 +827,13 @@ def prepare(
     raw_fields = request.get("fields") or {}
     raw_release = request.get("release") or {}
     raw_seeds = request.get("seeds") or {}
-    for name, value in (("fields", raw_fields), ("release", raw_release), ("seeds", raw_seeds)):
+    raw_documents = request.get("documents") or {}
+    for name, value in (
+        ("fields", raw_fields),
+        ("release", raw_release),
+        ("seeds", raw_seeds),
+        ("documents", raw_documents),
+    ):
         if not isinstance(value, Mapping):
             raise SongApiError("bad_request", f"'{name}' is an object of names and values.", field=name)
     aliases = FIELD_ALIASES.get(template.id, {})
@@ -853,6 +897,7 @@ def prepare(
             ):
                 release[parent] = choices[0]
                 warnings.append(f"release {parent!r} set to {choices[0]!r} for {field_id!r}")
+    documents = _documents(template, raw_documents, strict, warnings)
     missing = [f.id for f in template.fields if f.required and not str(given.get(f.id) or "").strip()]
     if missing:
         raise SongApiError(
@@ -881,6 +926,22 @@ def prepare(
         node_info = info(str(node.get("type")))
         if node_info is not None:
             _set_widgets(workflow, node_id, node_info, changes)
+    # the documents given: manual in the sheets that keep them (the run keeps them instead of drafting anew)
+    sheet_info = info(SHEET_TYPE) if documents else None
+    for kind, node_id in template.sheets:
+        if kind not in documents or sheet_info is None:
+            continue
+        node = next(n for n in workflow["nodes"] if int(n.get("id", -1)) == node_id)
+        state = _sheet_state(
+            decode_widgets(sheet_info, list(node.get("widgets_values") or [])).get("sheet_state")
+        )
+        state["docs"][kind] = {"state": "manual", "text": documents[kind]}
+        _set_widgets(
+            workflow,
+            node_id,
+            sheet_info,
+            {"sheet_state": json.dumps(state, ensure_ascii=False, separators=(",", ":"))},
+        )
     # switches and optional nodes: run (0) or bypassed (4)
     for found in template.fields:
         if found.kind not in ("switch", "enabled") or found.id not in given:
@@ -930,7 +991,226 @@ def prepare(
         release=release,
         seeds=seeds,
         warnings=warnings,
+        documents=sorted(documents, key=DOCUMENT_KINDS.index),
     )
+
+
+def _documents(
+    template: Template, raw: Mapping[str, Any], strict: bool, warnings: list[str]
+) -> dict[str, str]:
+    """The documents of a request, checked: kinds the template's sheets keep, text (an empty one is left to the
+    sheet)."""
+    kept = dict(template.sheets)
+    out: dict[str, str] = {}
+    for kind, text in raw.items():
+        if kind not in kept:
+            if strict:
+                raise SongApiError(
+                    "unknown_field",
+                    f"The template {template.id!r} keeps no document {kind!r}.",
+                    hint=f"Its documents: {', '.join(template.documents)}.",
+                    field=f"documents.{kind}",
+                )
+            warnings.append(f"no document {kind!r} - left out")
+            continue
+        if not isinstance(text, str):
+            raise SongApiError("invalid_value", f"The document {kind!r} is text.", field=f"documents.{kind}")
+        if len(text) > DOCUMENT_LIMIT:
+            raise SongApiError(
+                "invalid_value",
+                f"The document {kind!r} takes at most {DOCUMENT_LIMIT} characters.",
+                field=f"documents.{kind}",
+            )
+        if any(ord(c) < 32 and c not in "\n\t\r" for c in text):
+            raise SongApiError(
+                "invalid_value",
+                f"The document {kind!r} has control characters.",
+                field=f"documents.{kind}",
+            )
+        if text.strip():
+            out[str(kind)] = text
+    return out
+
+
+def _sheet_state(value: Any) -> dict[str, Any]:
+    """A Song Sheet's state as the template has it (an empty one: none yet), ready to take documents."""
+    try:
+        state = json.loads(value) if isinstance(value, str) and value.strip() else {}
+    except ValueError:
+        state = {}
+    state = dict(state) if isinstance(state, Mapping) else {}
+    state["schema"] = SHEET_STATE_SCHEMA
+    docs = state.get("docs")
+    state["docs"] = dict(docs) if isinstance(docs, Mapping) else {}
+    return state
+
+
+# --- a record back into a request -----------------------------------------------------------------------
+
+
+def _is_link(value: Any) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) == 2
+        and isinstance(value[0], str)
+        and isinstance(value[1], int)
+        and not isinstance(value[1], bool)
+    )
+
+
+def _prompt_node(
+    prompt: Mapping[str, Any], node_type: str, title: str, *, unique: bool = True
+) -> Mapping[str, Any] | None:
+    """The prompt's node of a template node: the one of its class and title - one of the workflow's own (not inside
+    a block) first; by its class alone only when the template has one node of that class (``unique``: a seed is
+    one of several - a bypassed one is not in the prompt, and another must not stand in for it)."""
+    found = [
+        (str(node_id), node)
+        for node_id, node in prompt.items()
+        if isinstance(node, Mapping) and node.get("class_type") == node_type
+    ]
+    titled = [(i, n) for i, n in found if str((n.get("_meta") or {}).get("title") or "") == title]
+    pools = [[n for i, n in titled if ":" not in i], [n for _, n in titled]]
+    if unique:
+        pools += [[n for i, n in found if ":" not in i]]
+    for pool in pools:
+        if pool:
+            return pool[0]
+    return None
+
+
+def _unique(template: Template, node_type: str) -> bool:
+    return sum(1 for n in _top_nodes(template.workflow) if n.get("type") == node_type) <= 1
+
+
+def _prompt_value(node: Mapping[str, Any] | None, names: Iterable[str]) -> tuple[bool, Any]:
+    inputs = (node or {}).get("inputs") or {}
+    for name in names:
+        if name in inputs and not _is_link(inputs[name]):
+            return True, inputs[name]
+    return False, None
+
+
+def model_of(record: Mapping[str, Any]) -> str:
+    """The music model a record's song was made with (``""``: none - a file finished, not made)."""
+    classes = {
+        str(n.get("class_type") or "")
+        for n in (record.get("prompt") or {}).values()
+        if isinstance(n, Mapping)
+    }
+    for start, name in MODELS:
+        if any(c.startswith(start) for c in classes):
+            return name
+    return ""
+
+
+def template_for_record(templates: Mapping[str, Template], record: Mapping[str, Any]) -> Template | None:
+    """The API's template for a record: the one its workflow names, else one of its brief's kind."""
+    marker = ((record.get("workflow") or {}).get("extra") or {}).get(MARKER)
+    if isinstance(marker, Mapping) and str(marker.get("id")) in templates:
+        return templates[str(marker["id"])]
+    classes = {n.get("class_type") for n in (record.get("prompt") or {}).values() if isinstance(n, Mapping)}
+    kind = next((k for brief, k in BRIEF_TYPES.items() if brief in classes), None)
+    if kind is None:
+        return None
+    return next((t for t in templates.values() if t.kind == kind), None)
+
+
+def request_from_record(template: Template, record: Mapping[str, Any]) -> dict[str, Any]:
+    """The request that makes a record's song again with ``template``: the fields, release fields and seeds as the
+    record's prompt has them, and its documents. A value the template no longer takes is left out (said in
+    ``warnings``); ``take`` says whether the documents make a new take with this template.
+
+    Sent as it is, the request makes the song again (the same documents, seeds and settings); without ``seeds.take``
+    a new take of it; without the documents and the seeds a new song of the same brief."""
+    found_prompt = record.get("prompt")
+    prompt: Mapping[str, Any] = found_prompt if isinstance(found_prompt, Mapping) else {}
+    warnings: list[str] = []
+    fields: dict[str, Any] = {}
+    files = [f for f in record.get("files") or [] if isinstance(f, Mapping)]
+    for found in template.fields:
+        if found.kind == "fixed":
+            continue
+        value: Any
+        if found.kind == "switch":
+            members = switch_nodes(template.workflow, found.switch)
+            ran = any(
+                _prompt_node(
+                    prompt,
+                    str(m.get("type")),
+                    str(m.get("title") or ""),
+                    unique=_unique(template, str(m.get("type"))),
+                )
+                is not None
+                for m in members
+            )
+            value = ran or (found.switch == "cover" and any(f.get("role") == "cover" for f in files))
+        elif found.kind == "enabled":
+            value = (
+                _prompt_node(
+                    prompt, found.node_type, found.node_title, unique=_unique(template, found.node_type)
+                )
+                is not None
+            )
+        else:
+            node = _prompt_node(
+                prompt, found.node_type, found.node_title, unique=_unique(template, found.node_type)
+            )
+            has, value = _prompt_value(node, found.inputs)
+            if not has:
+                continue
+        try:
+            fields[found.id] = _coerce(found, value)
+        except SongApiError as error:
+            warnings.append(f"{found.id}: {error.message} - the template's value instead")
+    release: dict[str, Any] = {}
+    export = _prompt_node(prompt, EXPORT_TYPE, "")
+    for found in template.release:
+        has, value = _prompt_value(export, found.inputs)
+        if not has:
+            continue
+        try:
+            release[found.id] = _coerce(found, value)
+        except SongApiError as error:
+            warnings.append(f"release {found.id}: {error.message} - the template's value instead")
+    seeds: dict[str, int] = {}
+    for seed in template.seeds:
+        has, value = _prompt_value(
+            _prompt_node(prompt, SEED_TYPE, seed.title, unique=_unique(template, SEED_TYPE)), ("seed",)
+        )
+        if has and isinstance(value, int) and not isinstance(value, bool) and 0 <= value < SEED_LIMIT:
+            seeds[seed.id] = value
+    texts = {
+        str(kind): str(doc["text"])
+        for kind, doc in (record.get("documents") or {}).items()
+        if isinstance(doc, Mapping) and isinstance(doc.get("text"), str) and doc["text"].strip()
+    }
+    documents = {kind: texts[kind] for kind in template.documents if kind in texts}
+    model = model_of(record)
+    needed = [kind for kind in ("style", "lyrics", "score") if kind in template.documents]
+    why = ""
+    if model != "YuE2":
+        why = (
+            f"It was made with {model} - a new take here is YuE2's."
+            if model
+            else "It was not made by a music model - it was finished from a file."
+        )
+    elif lacking := [kind for kind in needed if kind not in documents]:
+        why = f"Its record has no {' and no '.join(lacking)}."
+    elif template.field("source.audio") is not None and not str(fields.get("source.audio") or "").strip():
+        why = "Its record names no original recording."
+    return {
+        "template": template.id,
+        "kind": template.kind,
+        "title": str(record.get("title") or ""),
+        "model": model,
+        "fields": fields,
+        "release": release,
+        "seeds": seeds,
+        "documents": documents,
+        "take": {"possible": not why, "why": why},
+        "warnings": warnings,
+    }
 
 
 def _seed_linked(node: Mapping[str, Any]) -> bool:
@@ -981,7 +1261,11 @@ __all__ = [
     "default_choice",
     "group_of",
     "load_template",
+    "model_of",
     "prepare",
+    "request_from_record",
+    "sheet_owners",
     "song_nodes",
     "stage_of",
+    "template_for_record",
 ]

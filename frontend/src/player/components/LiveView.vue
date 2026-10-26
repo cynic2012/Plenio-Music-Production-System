@@ -10,8 +10,9 @@ import { computed, ref } from 'vue'
 import type { SongSummary } from '../api'
 import { addLive, isNew, liveLog, startLive, stopLive } from '../live'
 import { parseQuery, score } from '../search'
-import { byId, current, duration, index, library, liveWaiting, newPlaylist, nowPlayingOpen, playAt, playing, queue, say, settings, state, time } from '../store'
+import { byId, current, duration, go, index, library, liveWaiting, newPlaylist, nowPlayingOpen, playAt, playing, queue, say, settings, state, time } from '../store'
 import { formatTime } from '../timing'
+import { makeShown } from '../make/state'
 import CoverArt from './CoverArt.vue'
 import GuestAccess from './GuestAccess.vue'
 import GuestWayIn from './GuestWayIn.vue'
@@ -187,6 +188,7 @@ const ago = (at: number): string => {
         <span class="len">{{ formatTime(song.seconds) }}</span>
         <button class="icon-btn" title="Play now" @click="playAt(i)"><Icon name="play" :size="16" /></button>
         <button class="icon-btn" title="Play next" :disabled="i === index + 1" @click="playNext(i)"><Icon name="up" :size="16" /></button>
+        <button v-if="makeShown && !isPortable" class="icon-btn again" title="A new version… - a new take of it, a new song like it, or a cover of it" @click="go(`/make/${song.id}`)"><Icon name="wand" :size="16" /></button>
         <button class="icon-btn" title="Take out of the playlist" @click="remove(i)"><Icon name="close" :size="16" /></button>
       </div>
       <div class="row end" :class="{ over: over === queue.length }" @dragover.prevent="over = queue.length" @drop.prevent="drop(queue.length)">drop here for the end</div>
@@ -213,6 +215,7 @@ const ago = (at: number): string => {
       <div v-for="{ i, song } in played" :key="`p${i}-${song.id}`" class="row">
         <CoverArt :song="song" rounded />
         <span class="t">{{ song.title }}<small>{{ song.genre }}</small></span>
+        <button v-if="makeShown && !isPortable" class="icon-btn again" title="A new version… - a new take of it, a new song like it, or a cover of it" @click="go(`/make/${song.id}`)"><Icon name="wand" :size="16" /></button>
         <button class="ghost small" title="Play it again after this one" @click="playNext(i)">Again</button>
       </div>
     </section>
@@ -389,16 +392,21 @@ input[type='checkbox'] {
 }
 .row {
   display: grid;
-  grid-template-columns: auto auto 40px 1fr auto auto auto auto;
+  grid-template-columns: auto auto 40px 1fr auto auto auto auto auto;
   gap: 10px;
   align-items: center;
   padding: 6px 10px;
   border-radius: 10px;
   border: 1px solid transparent;
 }
-.add .row,
-.past .row {
+.add .row {
   grid-template-columns: 40px 1fr auto auto;
+}
+.past .row {
+  grid-template-columns: 40px 1fr auto auto auto;
+}
+.again {
+  color: var(--accent);
 }
 .row:hover {
   background: rgba(255, 255, 255, 0.04);

@@ -4,17 +4,23 @@
  * making, side by side; the admin sees everybody's songs too and finds the switches in Settings. The songs are made
  * by YuE2 in the ComfyUI on this computer - HQ mastering off, cover art on - and join Live Play when ready.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
 import { media } from '../api'
 import MakeForm from '../make/MakeForm.vue'
 import MakeQueue from '../make/MakeQueue.vue'
-import type { MakeJob } from '../make/form'
+import { retryRequest } from '../make/form'
+import type { MakeJob, Remake } from '../make/form'
 import { everybody, loadForm, loadMake, makeApi, makeError, makeForm, makeStatus, pollMake } from '../make/state'
 import { byId, go, playSong, reloadLibrary, say, settings } from '../store'
 import Icon from './Icon.vue'
 
+const props = defineProps<{ from?: string }>()
+
 const editing = ref<MakeJob | null>(null)
+const remake = shallowRef<Remake | null>(null)
+const remakeError = ref('')
+const reading = ref(false)
 const busy = ref('')
 const error = ref('')
 const now = ref(Date.now() / 1000)
@@ -32,6 +38,7 @@ const studio = computed(() => {
 
 onMounted(async () => {
   pollMake(true)
+  if (props.from) void readAgain(props.from)
   try {
     await loadForm()
   } catch (e) {
@@ -44,10 +51,34 @@ onBeforeUnmount(() => {
 })
 watch(everybody, () => void loadMake())
 
+/** What the form starts from to make the song at ``#/make/<song id>`` again. */
+async function readAgain(songId: string): Promise<void> {
+  reading.value = true
+  remakeError.value = ''
+  try {
+    remake.value = await makeApi.remake(songId)
+  } catch (e) {
+    remake.value = null
+    remakeError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    reading.value = false
+  }
+}
+/** The cover of the song made again (``null``: none to show). */
+const coverOf = (songId: string): string | null => (byId.value.get(songId)?.has.cover ? media(songId, 'cover') : null)
+
 function made(job: MakeJob, edited: boolean): void {
   editing.value = null
+  remake.value = null
   say(edited ? 'Changed - it keeps its place in the line' : job.position ? `Ordered - #${job.position} in line` : 'Ordered', 4000)
   void loadMake()
+  if (props.from) go('/make', true)
+}
+/** Change a song waiting in the line - a song made again has its remake loaded for its documents. */
+function edit(job: MakeJob): void {
+  editing.value = job
+  if (job.again && job.from?.song) void readAgain(job.from.song)
+  else remake.value = null
 }
 async function act(job: MakeJob, work: () => Promise<unknown>): Promise<void> {
   busy.value = job.id
@@ -75,7 +106,18 @@ async function play(job: MakeJob): Promise<void> {
   else say('The song is not in the library yet - a moment', 3000)
 }
 function again(job: MakeJob): void {
-  void act(job, () => makeApi.create({ fields: job.fields ?? {}, ...(job.source ? { source: job.source.id } : {}) }))
+  void act(job, () => makeApi.create(retryRequest(job)))
+}
+/** Leave a waiting song as it was - and the form as it was before: the song of ``#/make/<song id>``, else a new
+ * song. */
+function cancel(): void {
+  editing.value = null
+  if (props.from) void readAgain(props.from)
+  else remake.value = null
+}
+/** A song that is ready, made again: a new take, a new song like it, or a cover. */
+function remakeSong(job: MakeJob): void {
+  if (job.result?.song) go(`/make/${job.result.song}`)
 }
 const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.get(job.result.song)?.has.cover ? media(job.result.song, 'cover') : null)
 </script>
@@ -101,9 +143,25 @@ const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.g
 
     <div class="grid">
       <section class="card">
-        <h2>{{ editing ? 'Change your song' : 'Your new song' }}</h2>
-        <MakeForm v-if="makeForm" :client="makeApi" :form="makeForm" :status="status" :editing="editing" @made="made" @cancel="editing = null" />
-        <p v-else class="empty">Reading the styles …</p>
+        <h2>{{ editing ? 'Change your song' : remake ? 'Again, from a song' : 'Your new song' }}</h2>
+        <p v-if="remake && !editing" class="again-note">
+          <Icon name="wand" :size="16" /> {{ remake.song.title }} - choose a new take, a new song like it or a cover, or <a @click="go('/make')">start a new song instead</a>.
+        </p>
+        <p v-if="remakeError" class="banner bad">
+          <Icon name="info" :size="16" /> {{ remakeError }} <a @click="go('/make')">Make a new song instead</a>
+        </p>
+        <MakeForm
+          v-if="makeForm && (!from || remake)"
+          :client="makeApi"
+          :form="makeForm"
+          :status="status"
+          :editing="editing"
+          :remake="remake"
+          :cover-of="coverOf"
+          @made="made"
+          @cancel="cancel"
+        />
+        <p v-else class="empty">{{ reading ? 'Reading the song …' : 'Reading the styles …' }}</p>
       </section>
       <section class="card songs">
         <h2>
@@ -121,17 +179,19 @@ const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.g
           :owners="everybody"
           :busy="busy"
           playable
-          @edit="(job) => (editing = job)"
+          @edit="edit"
           @move="(job, by) => act(job, () => makeApi.move(job.id, by))"
           @remove="remove"
           @play="play"
           @again="again"
+          @remake="remakeSong"
         />
         <div v-else class="empty">
           <Icon name="music" :size="34" />
           <p>No songs yet. The ones you order show here - in line, being made, ready - and you can move, change or take them out while they wait.</p>
         </div>
-        <p class="foot">Made by YuE2 on this computer · HQ mastering off, cover art on · album “Party-Song {{ new Date().toISOString().slice(0, 10) }}” · saved in plenio/Party-Songs-… · a song ready joins Live Play like every new song.</p>
+        <p v-if="status?.me.full" class="foot">Made by YuE2 in this computer’s ComfyUI · you have the whole studio: the writer model, HQ mastering, cover art, the folder, the formats and the tags under <i>Every setting of the studio</i> - it starts from the party’s settings (album “Party-Song {{ new Date().toISOString().slice(0, 10) }}” in plenio/Party-Songs-…) · a song ready joins Live Play like every new song.</p>
+        <p v-else class="foot">Made by YuE2 in this computer’s ComfyUI · HQ mastering off, cover art on · album “Party-Song {{ new Date().toISOString().slice(0, 10) }}” · saved in plenio/Party-Songs-… · a song ready joins Live Play like every new song.</p>
       </section>
     </div>
   </div>
@@ -168,6 +228,20 @@ h1 :deep(svg) {
   color: var(--muted);
   max-width: 680px;
   line-height: 1.5;
+}
+.again-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: -6px 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.again-note a {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
 }
 .chips {
   display: flex;

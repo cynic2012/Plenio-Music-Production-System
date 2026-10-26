@@ -10,12 +10,15 @@ import Icon from '../player/components/Icon.vue'
 import MakeForm from '../player/make/MakeForm.vue'
 import MakeQueue from '../player/make/MakeQueue.vue'
 import { makeClient } from '../player/make/client'
-import type { FormData, MakeJob, MakeStatus } from '../player/make/form'
+import { retryRequest } from '../player/make/form'
+import type { FormData, MakeJob, MakeStatus, Remake } from '../player/make/form'
 
 const client = makeClient('../api/make', { 'X-Plenio-Live': '1' })
 const status = shallowRef<MakeStatus | null>(null)
 const form = shallowRef<FormData | null>(null)
 const editing = ref<MakeJob | null>(null)
+const remake = shallowRef<Remake | null>(null)
+const reading = ref(false)
 const error = ref('')
 const note = ref('')
 const busy = ref('')
@@ -55,6 +58,7 @@ async function load(): Promise<void> {
 
 function made(job: MakeJob, edited: boolean): void {
   editing.value = null
+  remake.value = null
   say(edited ? 'Changed' : job.position ? `Ordered - #${job.position} in line` : 'Ordered')
   tab.value = 'mine'
   void load()
@@ -77,8 +81,31 @@ function remove(job: MakeJob): void {
 function edit(job: MakeJob): void {
   editing.value = job
   tab.value = 'make'
+  if (job.again && job.from?.song) void readAgain(job.from.song)
+  else remake.value = null
 }
-const cover = (job: MakeJob): string | null => (job.result?.song ? `../cover/${job.result.song}` : null)
+/** What the form starts from to make a song of one's own again. */
+async function readAgain(songId: string): Promise<void> {
+  reading.value = true
+  try {
+    remake.value = await client.remake(songId)
+  } catch (e) {
+    remake.value = null
+    say(e instanceof Error ? e.message : String(e))
+  } finally {
+    reading.value = false
+  }
+}
+/** A song of one's own that is ready, made again: a new take, a new song like it, or a cover. */
+async function remakeSong(job: MakeJob): Promise<void> {
+  const id = job.result?.song
+  if (!id) return
+  editing.value = null
+  tab.value = 'make'
+  await readAgain(id)
+}
+const coverOf = (songId: string): string => `../cover/${songId}`
+const cover = (job: MakeJob): string | null => (job.result?.song ? coverOf(job.result.song) : null)
 
 onMounted(() => {
   void load()
@@ -112,11 +139,25 @@ onBeforeUnmount(() => {
         <button :class="{ on: tab === 'mine' }" @click="tab = 'mine'"><Icon name="music" :size="16" /> My songs <b v-if="making">{{ making }}</b></button>
       </nav>
       <section v-show="tab === 'make'" class="card">
-        <MakeForm v-if="form" :client="client" :form="form" :status="status" :editing="editing" @made="made" @cancel="editing = null" />
-        <p v-else class="empty">Reading the styles …</p>
+        <p v-if="remake" class="again-bar">
+          <Icon name="wand" :size="15" /> Again, from <b>{{ remake.song.title }}</b>
+          <button type="button" class="link" @click="remake = null; editing = null">New song instead</button>
+        </p>
+        <MakeForm
+          v-if="form && (!remake || !reading)"
+          :client="client"
+          :form="form"
+          :status="status"
+          :editing="editing"
+          :remake="remake"
+          :cover-of="coverOf"
+          @made="made"
+          @cancel="editing = null; remake = null"
+        />
+        <p v-else class="empty">{{ reading ? 'Reading the song …' : 'Reading the styles …' }}</p>
       </section>
       <section v-show="tab === 'mine'" class="card">
-        <MakeQueue v-if="mine.length" :jobs="mine" :now="now" :cover="cover" :busy="busy" @edit="edit" @move="(job, by) => act(job, () => client.move(job.id, by))" @remove="remove" @again="(job) => act(job, () => client.create({ fields: job.fields ?? {}, ...(job.source ? { source: job.source.id } : {}) }))" />
+        <MakeQueue v-if="mine.length" :jobs="mine" :now="now" :cover="cover" :busy="busy" @edit="edit" @move="(job, by) => act(job, () => client.move(job.id, by))" @remove="remove" @again="(job) => act(job, () => client.create(retryRequest(job)))" @remake="remakeSong" />
         <p v-else class="empty">Your songs show here - in line, being made, ready. Order one under <b>New song</b>.</p>
       </section>
     </template>
@@ -255,6 +296,27 @@ header {
   border-radius: 20px;
   background: rgba(18, 15, 28, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.again-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.again-bar b {
+  color: #fff;
+}
+.link {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: 13px var(--font);
+  padding: 0;
 }
 .empty {
   margin: 0;

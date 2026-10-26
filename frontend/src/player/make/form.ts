@@ -6,6 +6,8 @@
  */
 
 export type Kind = 'song' | 'cover'
+/** What is made again from a song: a new take of it, a new song like it, a cover of it. */
+export type Again = 'take' | 'song' | 'cover'
 
 export interface StyleTemplate {
   id: string
@@ -20,8 +22,67 @@ export interface FormData {
   values: Record<string, string[]>
   song: { fields: string[]; choices: { length: string[]; vocals: string[] }; defaults: { length?: string; vocals?: string } }
   cover: { fields: string[]; choices: { vocals: string[] }; defaults: { vocals?: string } }
-  limits: { description: number; text: number; source_mb: number; max_length: string }
+  limits: { description: number; text: number; source_mb: number; max_length: string; documents?: Record<string, number> }
   covers: boolean
+  /** The whole studio (the admin, the player in your network): the Song API's fields of each template. */
+  studio?: StudioForm
+}
+
+/** A field of the Song API (``GET /plenio/api/v1/templates/<id>``). */
+export interface ApiField {
+  id: string
+  label: string
+  type: 'text' | 'string' | 'integer' | 'number' | 'boolean' | 'choice' | 'upload'
+  default: unknown
+  description: string
+  group: string
+  node?: { id: number; type: string; title: string }
+  choices?: string[]
+  minimum?: number
+  maximum?: number
+  step?: number
+  when?: Record<string, string[]>
+  fixed?: boolean
+  required?: boolean
+  advanced?: boolean
+}
+
+export interface StudioSpec {
+  template: string
+  fields: ApiField[]
+  release: ApiField[]
+  documents: string[]
+}
+
+export interface StudioForm {
+  song?: StudioSpec
+  cover?: StudioSpec
+  defaults?: { fields: Record<string, unknown>; release: Record<string, unknown> }
+  /** Why the fields cannot show (ComfyUI is not running). */
+  unavailable?: string
+}
+
+export interface StudioValues {
+  fields: Record<string, unknown>
+  release: Record<string, unknown>
+}
+
+export interface SongDocuments {
+  title: string
+  style: string
+  lyrics: string
+}
+
+/** What the form starts from to make a song again (``GET /api/make/from/<song id>``). */
+export interface Remake {
+  song: { id: string; title: string; genre: string; seconds: number; cover: boolean; other: boolean; model: string; kind: string }
+  can: Record<Again, boolean>
+  why: Record<Again, string>
+  start: Again | ''
+  kind: Kind
+  fields: Record<string, string>
+  documents: SongDocuments
+  studio: (StudioValues & { template: string; warnings: string[] }) | null
 }
 
 export interface Source {
@@ -35,6 +96,13 @@ export interface Draft {
   kind: Kind
   fields: Record<string, string>
   source: Source | null
+  /** Made again from a song (``null``: a song of its own). */
+  again?: Again | null
+  base?: Remake['song'] | null
+  /** A new take's title, style and lyrics (as changed). */
+  documents?: SongDocuments
+  /** The whole studio's values. */
+  studio?: StudioValues
 }
 
 export interface Stage {
@@ -67,6 +135,10 @@ export interface MakeJob {
   can: { edit: boolean; up: boolean; down: boolean; delete: boolean }
   fields?: Record<string, string>
   source?: Source | null
+  again?: Again | null
+  from?: { song: string; title: string; seconds: number } | null
+  documents?: Partial<SongDocuments>
+  studio?: StudioValues | null
 }
 
 /** Who made a party song, while it plays: not shown, large at its moments with a badge between, or floating
@@ -110,9 +182,9 @@ export interface MakeStatus {
   on: boolean
   may: boolean
   why: string
-  me: { kind: 'admin' | 'user' | 'guest'; name: string }
+  me: { kind: 'admin' | 'user' | 'guest'; name: string; full?: boolean; remote?: boolean }
   admin: boolean
-  settings: { on?: boolean; users?: boolean; guests?: boolean; per_person: number; max_length: string; covers: boolean; credit?: Credit }
+  settings: { on?: boolean; users?: boolean; guests?: boolean; per_person: number; max_length: string; covers: boolean; credit?: Credit; remote?: boolean }
   studio: { reachable: boolean; error: string }
   line: { waiting: number; making: boolean; free: number }
   jobs: MakeJob[]
@@ -230,17 +302,164 @@ export function surprise(templates: StyleTemplate[], kind: Kind, random: () => n
 /** What is still missing before the song can be made (an empty list: nothing). */
 export function missing(draft: Draft): string[] {
   const out: string[] = []
-  if (draft.kind === 'cover' && !draft.source) out.push('the original recording')
+  if (draft.again === 'take') return draft.documents?.title.trim() ? out : ['a title']
+  if (draft.kind === 'cover' && !draft.source && draft.again !== 'cover') out.push('the original recording')
   const template = draft.fields.template
   if ((!template || template === 'none') && !draft.fields.genre?.trim() && !draft.fields.description?.trim()) out.push('a style, a genre or a description')
   return out
 }
 
-/** The request for the server: the fields that apply, the recording for a cover. */
-export function requestOf(draft: Draft): { fields: Record<string, string>; source?: string } {
+export interface MakeRequest {
+  fields: Record<string, string>
+  source?: string
+  from?: { song: string; as: Again }
+  documents?: Partial<SongDocuments>
+  studio?: StudioValues
+}
+
+/** The request for the server: the fields that apply, the recording for a cover; made again from a song, the song
+ * and what (a new take: its documents as changed against ``original``); the whole studio's values that apply. */
+export function requestOf(draft: Draft, studio: StudioSpec | null = null, original: SongDocuments | null = null): MakeRequest {
   const fields: Record<string, string> = {}
-  for (const [name, value] of Object.entries(draft.fields)) if (name === 'template' || name === 'description' || applies(name, draft)) fields[name] = value
-  return draft.kind === 'cover' && draft.source ? { fields, source: draft.source.id } : { fields }
+  if (draft.again !== 'take') for (const [name, value] of Object.entries(draft.fields)) if (name === 'template' || name === 'description' || applies(name, draft)) fields[name] = value
+  const body: MakeRequest = { fields }
+  if (draft.again && draft.base) body.from = { song: draft.base.id, as: draft.again }
+  else if (draft.kind === 'cover' && draft.source) body.source = draft.source.id
+  if (draft.again === 'take' && draft.documents) {
+    const changed: Partial<SongDocuments> = {}
+    for (const key of ['title', 'style', 'lyrics'] as const) {
+      const text = draft.documents[key].trim()
+      if (text && text !== (original?.[key] ?? '').trim()) changed[key] = text
+    }
+    body.documents = changed
+  }
+  if (studio && draft.studio) body.studio = studioRequest(studio, draft.studio, draft)
+  return body
+}
+
+/** A song that failed, ordered again as it was - made again from a song with its documents, the whole studio's
+ * values, the recording of a cover. */
+export function retryRequest(job: MakeJob): MakeRequest {
+  const body: MakeRequest = { fields: job.fields ?? {} }
+  if (job.again && job.from) body.from = { song: job.from.song, as: job.again }
+  else if (job.source?.id) body.source = job.source.id
+  if (job.documents && Object.keys(job.documents).length) body.documents = job.documents
+  if (job.studio) body.studio = job.studio
+  return body
+}
+
+// --- the whole studio ------------------------------------------------------------------------------------------
+
+/** The fields the simple form asks itself (and the work mode, fixed): not again in the studio's. */
+const OWN = new Set<string>(['mode', 'template', 'description', 'genre', 'mood', 'tempo', 'length', 'vocals', 'language', 'voice', 'theme', 'key', 'meter', 'source.audio'])
+const STUDIO_FIRST = ['writer.model', 'finish.hq_mastering', 'finish.cover_art']
+
+export interface StudioGroup {
+  title: string
+  part: 'fields' | 'release'
+  fields: ApiField[]
+}
+
+/** The studio's fields by what they are about: the studio (the writer model, HQ mastering, Cover Art), the rest of
+ * the brief, a cover's excerpt, the release (folder, formats, tags). */
+export function studioGroups(spec: StudioSpec): StudioGroup[] {
+  const own = spec.fields.filter((f) => !OWN.has(f.id) && !f.fixed && f.type !== 'upload')
+  const groups: StudioGroup[] = [
+    { title: 'The studio', part: 'fields', fields: STUDIO_FIRST.map((id) => own.find((f) => f.id === id)).filter((f): f is ApiField => !!f) },
+    { title: 'The Song Brief', part: 'fields', fields: own.filter((f) => !STUDIO_FIRST.includes(f.id) && !f.id.includes('.')) },
+    { title: 'An excerpt of the original', part: 'fields', fields: own.filter((f) => f.id.startsWith('excerpt.')) },
+    { title: 'Export Release - folder, formats, tags', part: 'release', fields: spec.release.filter((f) => !f.fixed) },
+  ]
+  return groups.filter((g) => g.fields.length)
+}
+
+/** The value a field shows: as chosen, else the template's. */
+export function studioValue(field: ApiField, values: Record<string, unknown>): unknown {
+  return field.id in values ? values[field.id] : field.default
+}
+
+/** Whether a field applies to the choices made (``when``: a voice only for sung vocals, the tags' fields only with
+ * tags) - the form's own choice first (the vocals), else the studio value, else the field's default. */
+export function studioApplies(field: ApiField, values: Record<string, unknown>, draft: Draft | null, siblings: ApiField[] = []): boolean {
+  for (const [parent, choices] of Object.entries(field.when ?? {})) {
+    const sibling = siblings.find((f) => f.id === parent)
+    const chosen =
+      parent in values
+        ? values[parent]
+        : draft && parent in draft.fields
+          ? draft.fields[parent]
+          : sibling
+            ? sibling.default
+            : undefined
+    if (chosen !== undefined && chosen !== '' && !choices.includes(String(chosen))) return false
+  }
+  return true
+}
+
+/** What the studio starts from: the template's values, the party's (``defaults``: HQ mastering off, Cover Art on,
+ * the party's folder), and a song's own when it is made again. */
+export function studioStart(spec: StudioSpec, defaults: StudioForm['defaults'] | undefined, song: StudioValues | null = null): StudioValues {
+  const fields: Record<string, unknown> = {}
+  const release: Record<string, unknown> = {}
+  for (const g of studioGroups(spec)) for (const f of g.fields) (g.part === 'fields' ? fields : release)[f.id] = f.default
+  Object.assign(fields, pick(defaults?.fields, fields), pick(song?.fields, fields))
+  Object.assign(release, pick(defaults?.release, release), pick(song?.release, release))
+  return { fields, release }
+}
+
+/** The song's own values the studio starts from when it is made again: a new take keeps its settings and its release
+ * (folder, album, artist); a new song like it keeps its settings, and its release is the party's, as for every new
+ * song (so it is not credited to the one who made the first); a cover of it starts from the cover template. */
+export function againStudio(mode: Again, remake: Remake): StudioValues | null {
+  if (!remake.studio || mode === 'cover') return null
+  return mode === 'take' ? remake.studio : { fields: remake.studio.fields, release: {} }
+}
+
+function pick(from: Record<string, unknown> | undefined, known: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(from ?? {}).filter(([k]) => k in known))
+}
+
+/** The studio's values for the request: those of the fields that apply. */
+export function studioRequest(spec: StudioSpec, values: StudioValues, draft: Draft): StudioValues {
+  const out: StudioValues = { fields: {}, release: {} }
+  for (const g of studioGroups(spec)) {
+    const own = values[g.part]
+    for (const f of g.fields) if (studioApplies(f, own, draft, g.part === 'release' ? spec.release : spec.fields)) out[g.part][f.id] = studioValue(f, own)
+  }
+  return out
+}
+
+/** One line that says how the studio makes it: HQ mastering, cover art, the writer, the folder, the formats. */
+export function studioSummary(values: StudioValues | undefined): string {
+  if (!values) return ''
+  const f = values.fields
+  const r = values.release
+  const formats = ['flac', 'mp3', 'wav'].filter((k) => r[k] === true).map((k) => k.toUpperCase())
+  return [
+    f['finish.hq_mastering'] === true ? 'HQ mastering on' : 'HQ mastering off',
+    f['finish.cover_art'] === false ? 'no cover art' : 'cover art on',
+    typeof f['writer.model'] === 'string' ? String(f['writer.model']).replace(/\.(gguf|safetensors)$/i, '') : '',
+    typeof r.folder === 'string' ? `output/${r.folder}` : '',
+    formats.join(' + '),
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+/** The form's fields from a song made again: the lists' values, a length the form offers. */
+export function fieldsOf(remake: Remake, kind: Kind, form: FormData): Record<string, string> {
+  if (kind === 'cover') return fromTemplate(null, 'cover', form)
+  const out = { ...fromTemplate(null, 'song', form), ...remake.fields }
+  out.template = remake.fields.template && form.templates.some((t) => t.id === remake.fields.template) ? remake.fields.template : 'none'
+  out.length = nearestLength(out.length || form.song.defaults.length || '', form.song.choices.length)
+  if (!form.song.choices.vocals.includes(out.vocals)) out.vocals = form.song.defaults.vocals || 'sung'
+  return out
+}
+
+export const AGAIN_TEXT: Record<Again, { title: string; text: string }> = {
+  take: { title: 'A new take', text: 'The same song - title, words, notes - sung and played anew' },
+  song: { title: 'A new song like it', text: 'Its style and brief - new words and music' },
+  cover: { title: 'A cover of it', text: 'Its melody, in another style' },
 }
 
 /** One line that says what the song will be: style, length, voice. */

@@ -4,19 +4,36 @@
  * of one's own; a style - a vibe (a template of that group, another at every click), any template, or *Surprise
  * me* - that fills every field; what the song is about; the fields as lists of every value the templates have, each
  * with a value of one's own; and **Generate Song**. The player's page and the party guests' page use it alike.
+ *
+ * Made again from a song (owner's request 2026-10-26): a new take of it (its title, style and lyrics to change), a
+ * new song like it (the form filled from its brief) or a cover of it - and for the admin and the player in your
+ * network every setting of the studio besides (StudioPanel).
  */
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 
 import Icon from '../components/Icon.vue'
 import ComboField from './ComboField.vue'
+import StudioPanel from './StudioPanel.vue'
 import type { MakeClient } from './client'
-import { LABELS, LIST_FIELDS, VOCALS_TEXT, applies, fromTemplate, grouped, missing, optionsFor, ownAllowed, requestOf, summary, surprise, timeOfDay, untilText } from './form'
-import type { Draft, FormData, Kind, MakeJob, MakeStatus, StyleTemplate } from './form'
+import { AGAIN_TEXT, LABELS, LIST_FIELDS, VOCALS_TEXT, againStudio, applies, clock, fieldsOf, fromTemplate, grouped, missing, optionsFor, ownAllowed, requestOf, studioStart, summary, surprise, timeOfDay, untilText } from './form'
+import type { Again, Draft, FormData, Kind, MakeJob, MakeStatus, Remake, SongDocuments, StudioSpec, StudioValues, StyleTemplate } from './form'
 
-const props = defineProps<{ client: MakeClient; form: FormData; status: MakeStatus | null; editing?: MakeJob | null }>()
+const props = defineProps<{
+  client: MakeClient
+  form: FormData
+  status: MakeStatus | null
+  editing?: MakeJob | null
+  /** Made again from a song: what it starts from. */
+  remake?: Remake | null
+  /** The cover of a song of the library (``null``: none to show). */
+  coverOf?: (songId: string) => string | null
+}>()
 const emit = defineEmits<{ made: [job: MakeJob, edited: boolean]; cancel: [] }>()
 
-const draft = reactive<Draft>({ kind: 'song', fields: {}, source: null })
+const AGAIN: Again[] = ['take', 'song', 'cover']
+const AGAIN_ICON: Record<Again, 'refresh' | 'sparkles' | 'mic'> = { take: 'refresh', song: 'sparkles', cover: 'mic' }
+const NO_DOCUMENTS: SongDocuments = { title: '', style: '', lyrics: '' }
+const draft = reactive<Draft>({ kind: 'song', fields: {}, source: null, again: null, base: null, documents: { ...NO_DOCUMENTS }, studio: { fields: {}, release: {} } })
 const lit = ref<Set<string>>(new Set())
 const query = ref('')
 const sending = ref(false)
@@ -36,6 +53,15 @@ const chosen = computed<StyleTemplate | null>(() => templates.value.find((t) => 
 const shownFields = computed(() => LIST_FIELDS.filter((name) => applies(name, draft)))
 const lacking = computed(() => missing(draft))
 const editingNow = computed(() => !!props.editing)
+const isTake = computed(() => draft.again === 'take')
+/** The whole studio: the admin, the player in your network - when ComfyUI describes its templates. */
+const full = computed(() => !!props.status?.me.full)
+const spec = computed<StudioSpec | null>(() => (full.value ? ((draft.kind === 'cover' ? props.form.studio?.cover : props.form.studio?.song) ?? null) : null))
+const original = computed<SongDocuments | null>(() => props.remake?.documents ?? null)
+const changedLyrics = computed(() => isTake.value && !!original.value && (draft.documents?.lyrics ?? '').trim() !== original.value.lyrics.trim())
+const changedDocuments = computed(() => isTake.value && !!original.value && (['title', 'style', 'lyrics'] as const).some((k) => (draft.documents?.[k] ?? '').trim() !== original.value?.[k].trim()))
+const baseCover = computed(() => (draft.base?.id && props.coverOf ? props.coverOf(draft.base.id) : null))
+const docLimit = (name: keyof SongDocuments): number => props.form.limits.documents?.[name] ?? (name === 'lyrics' ? 20000 : 2000)
 const ahead = computed(() => props.status?.line.waiting ?? 0)
 const free = computed(() => props.status?.line.free ?? 0)
 const now = ref(Date.now() / 1000)
@@ -84,6 +110,38 @@ function setKind(kind: Kind): void {
     draft.fields.vocals = draft.fields.vocals === 'instrumental' ? 'instrumental' : 'sung'
     draft.fields.length = draft.fields.length || props.form.song.defaults.length || props.form.song.choices.length[0]
   }
+  studioFor(kind)
+}
+
+/** The whole studio's values from its start: the template's, the party's - and a song's own made again. */
+function studioFor(kind: Kind, song: StudioValues | null = null): void {
+  const found = full.value ? (kind === 'cover' ? props.form.studio?.cover : props.form.studio?.song) : null
+  draft.studio = found ? studioStart(found, props.form.studio?.defaults, song) : { fields: {}, release: {} }
+}
+
+/** Make the song again as a new take, a new song like it, or a cover of it. */
+function setAgain(mode: Again): void {
+  const remake = props.remake
+  if (!remake || !remake.can[mode]) return
+  error.value = ''
+  draft.again = mode
+  draft.base = remake.song
+  draft.documents = { ...remake.documents }
+  if (mode === 'take') {
+    draft.kind = remake.kind
+    draft.fields = { ...remake.fields }
+    draft.source = null
+  } else if (mode === 'song') {
+    draft.kind = 'song'
+    draft.fields = fieldsOf(remake, 'song', props.form)
+    draft.source = null
+  } else {
+    draft.kind = 'cover'
+    draft.fields = fieldsOf(remake, 'cover', props.form)
+    draft.source = { id: '', name: '', title: remake.song.title, seconds: remake.song.seconds }
+  }
+  studioFor(draft.kind, againStudio(mode, remake))
+  epoch.value += 1
 }
 
 function start(): void {
@@ -93,13 +151,28 @@ function start(): void {
     draft.kind = job.kind
     draft.fields = { ...job.fields }
     draft.source = job.source ?? null
+    draft.again = job.again ?? null
+    draft.base = job.from ? { id: job.from.song, title: job.from.title, seconds: job.from.seconds, genre: '', cover: false, other: false, model: '', kind: job.kind } : null
+    draft.documents = { ...(props.remake?.documents ?? NO_DOCUMENTS), ...(job.documents ?? {}) }
+    studioFor(job.kind, job.studio ?? null)
     return
   }
+  if (props.remake?.start) {
+    setAgain(props.remake.start)
+    return
+  }
+  draft.again = null
+  draft.base = null
+  draft.documents = { ...NO_DOCUMENTS }
   draft.kind = draft.kind === 'cover' && props.form.covers ? 'cover' : 'song'
   draft.source = null
   draft.fields = fromTemplate(null, draft.kind, props.form)
+  studioFor(draft.kind)
 }
-watch(() => props.editing?.id, start, { immediate: true })
+watch(() => [props.editing?.id, props.remake?.song.id, full.value, !!props.form.studio?.song], start, { immediate: true })
+function resetDocuments(): void {
+  if (original.value) draft.documents = { ...original.value }
+}
 
 const ACCEPT = 'audio/*,.mp3,.flac,.wav,.ogg,.m4a,.opus,.aac,.aif,.aiff'
 async function addFile(file: File | undefined | null): Promise<void> {
@@ -136,7 +209,7 @@ async function generate(): Promise<void> {
   sending.value = true
   error.value = ''
   try {
-    const body = requestOf(draft)
+    const body = requestOf(draft, spec.value, original.value)
     const job = props.editing ? await props.client.update(props.editing.id, body) : await props.client.create(body)
     emit('made', job, !!props.editing)
   } catch (e) {
@@ -158,7 +231,53 @@ onBeforeUnmount(() => {
 
 <template>
   <form class="maker" @submit.prevent="generate">
-    <div class="kinds" role="radiogroup" aria-label="What to make">
+    <section v-if="remake || draft.again" class="from">
+      <div class="song">
+        <span class="art"><img v-if="baseCover" :src="baseCover" alt="" /><Icon v-else name="music" :size="22" /></span>
+        <span class="what">
+          <small>{{ editingNow ? 'Made again from' : 'Again, from' }}</small>
+          <b>{{ draft.base?.title || remake?.song.title }}</b>
+          <em v-if="remake">{{ [remake.song.genre, remake.song.seconds ? clock(remake.song.seconds) : '', remake.song.other ? 'other music' : remake.song.model].filter(Boolean).join(' · ') }}</em>
+        </span>
+      </div>
+      <div v-if="remake && !editingNow" class="kinds again" role="radiogroup" aria-label="What to make of it">
+        <button
+          v-for="mode in AGAIN"
+          :key="mode"
+          type="button"
+          class="kind"
+          :class="{ on: draft.again === mode, off: !remake.can[mode] }"
+          role="radio"
+          :aria-checked="draft.again === mode"
+          :disabled="!remake.can[mode]"
+          :title="remake.can[mode] ? AGAIN_TEXT[mode].text : `Not for this song: ${remake.why[mode]}`"
+          @click="setAgain(mode)"
+        >
+          <span class="badge"><Icon :name="AGAIN_ICON[mode]" :size="22" /></span>
+          <span><b>{{ AGAIN_TEXT[mode].title }}</b><small>{{ remake.can[mode] ? AGAIN_TEXT[mode].text : `Not for this song: ${remake.why[mode]}` }}</small></span>
+        </button>
+      </div>
+    </section>
+
+    <section v-if="isTake && draft.documents" class="step take">
+      <h3><i>1</i> The song <small>change what you like - everything else stays as it is</small></h3>
+      <label class="doc">
+        <span>Title</span>
+        <input v-model="draft.documents.title" :maxlength="docLimit('title')" />
+      </label>
+      <label class="doc">
+        <span>Style <small>what the music model is told: genre, instruments, voice</small></span>
+        <textarea v-model="draft.documents.style" rows="2" :maxlength="docLimit('style')" />
+      </label>
+      <label v-if="draft.kind === 'song'" class="doc">
+        <span>Lyrics <small v-if="changedLyrics" class="new">new words - the notes are made anew for them</small></span>
+        <textarea v-model="draft.documents.lyrics" rows="9" :maxlength="docLimit('lyrics')" />
+      </label>
+      <p v-else class="note">A cover’s words follow the original’s melody - they stay as they are.</p>
+      <button v-if="changedDocuments" type="button" class="link" @click="resetDocuments">Back to the song as it is</button>
+    </section>
+
+    <div v-if="!(remake || draft.again)" class="kinds" role="radiogroup" aria-label="What to make">
       <button type="button" class="kind" :class="{ on: draft.kind === 'song' }" role="radio" :aria-checked="draft.kind === 'song'" @click="setKind('song')">
         <span class="badge"><Icon name="music" :size="22" /></span>
         <span><b>A new song</b><small>Words and music, made for you</small></span>
@@ -169,7 +288,8 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <section v-if="draft.kind === 'cover'" class="step">
+    <p v-if="draft.again === 'cover'" class="note original"><Icon name="mic" :size="15" /> The original: <b>{{ draft.base?.title }}</b> from the library{{ draft.base?.seconds ? ` · ${clock(draft.base.seconds)}` : '' }} - its melody, form and tempo stay.</p>
+    <section v-if="draft.kind === 'cover' && !draft.again" class="step">
       <h3><i>1</i> The original song</h3>
       <label
         class="drop"
@@ -192,8 +312,8 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <section class="step">
-      <h3><i>{{ draft.kind === 'cover' ? 2 : 1 }}</i> Pick a style</h3>
+    <section v-if="!isTake" class="step">
+      <h3><i>{{ draft.kind === 'cover' && !draft.again ? 2 : 1 }}</i> Pick a style</h3>
       <div class="vibes">
         <button v-for="g in vibes" :key="g" type="button" class="chip" :class="{ on: chosen?.group === g && lastGroup === g }" @click="vibe(g)">{{ g }}</button>
       </div>
@@ -210,8 +330,8 @@ onBeforeUnmount(() => {
       <p v-if="chosen" class="chosen"><Icon name="sparkles" :size="14" /> <b>{{ chosen.name }}</b> <span>{{ chosen.group }}</span> - every field below is filled from it; change what you like.</p>
     </section>
 
-    <section class="step">
-      <h3><i>{{ draft.kind === 'cover' ? 3 : 2 }}</i> {{ draft.kind === 'cover' ? 'How should your cover sound?' : 'What is your song about?' }}</h3>
+    <section v-if="!isTake" class="step">
+      <h3><i>{{ draft.kind === 'cover' && !draft.again ? 3 : 2 }}</i> {{ draft.kind === 'cover' ? 'How should your cover sound?' : 'What is your song about?' }}</h3>
       <div class="describe" :class="{ lit: lit.has('description') }">
         <textarea
           v-model="draft.fields.description"
@@ -223,8 +343,8 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <section class="step">
-      <h3><i>{{ draft.kind === 'cover' ? 4 : 3 }}</i> The details <small>pick from the lists, or ✎ type your own</small></h3>
+    <section v-if="!isTake" class="step">
+      <h3><i>{{ draft.kind === 'cover' && !draft.again ? 4 : 3 }}</i> The details <small>pick from the lists, or ✎ type your own</small></h3>
       <div class="fields">
         <ComboField
           v-for="name in shownFields"
@@ -246,12 +366,16 @@ onBeforeUnmount(() => {
       <p v-else-if="form.limits.max_length" class="note">Songs up to {{ form.limits.max_length.replace(/^.*\(about (.*)\).*$/, '$1') }} at this party.</p>
     </section>
 
+    <StudioPanel v-if="spec && draft.studio" :key="`${draft.kind}-${draft.again}-${draft.base?.id ?? ''}`" :spec="spec" :values="draft.studio" :draft="draft" :warnings="remake?.studio?.warnings" />
+    <p v-else-if="full && form.studio?.unavailable" class="note">Every setting of the studio shows here once ComfyUI runs.</p>
+
     <footer class="go">
-      <p v-if="summary(draft)" class="what"><Icon name="music" :size="15" /> {{ summary(draft) }}</p>
+      <p v-if="isTake" class="what"><Icon name="refresh" :size="15" /> A new take of {{ draft.base?.title }}{{ changedDocuments ? ' - as changed' : '' }}</p>
+      <p v-else-if="summary(draft)" class="what"><Icon name="music" :size="15" /> {{ summary(draft) }}</p>
       <button type="submit" class="generate" :disabled="sending || uploading || lacking.length > 0 || (status !== null && !status.may)">
         <span class="shine" />
-        <Icon :name="editingNow ? 'check' : 'sparkles'" :size="22" />
-        {{ sending ? (editingNow ? 'Saving …' : 'Sending …') : editingNow ? 'Save the changes' : 'Generate Song' }}
+        <Icon :name="editingNow ? 'check' : isTake ? 'refresh' : 'sparkles'" :size="22" />
+        {{ sending ? (editingNow ? 'Saving …' : 'Sending …') : editingNow ? 'Save the changes' : isTake ? 'Make the new take' : 'Generate Song' }}
       </button>
       <button v-if="editingNow" type="button" class="link" @click="emit('cancel')">Leave it as it was</button>
       <p v-if="lacking.length" class="hint">Still needed: {{ lacking.join(' and ') }}.</p>
@@ -315,6 +439,98 @@ onBeforeUnmount(() => {
 .kind.on .badge {
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   color: #0b0a12;
+}
+.kind.off {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+.from {
+  display: grid;
+  gap: 12px;
+}
+.from .song {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.from .art {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex: none;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 55%, #1a1528), color-mix(in srgb, var(--accent2) 45%, #1a1528));
+}
+.from .art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.from .what {
+  display: grid;
+  min-width: 0;
+}
+.from .what small {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.from .what b {
+  font-size: 17px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.from .what em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.kinds.again {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+.take .doc {
+  display: grid;
+  gap: 6px;
+}
+.take .doc > span {
+  font: 600 13px var(--font);
+  color: rgba(255, 255, 255, 0.88);
+}
+.take .doc small {
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 6px;
+}
+.take .doc small.new {
+  color: #ffcf8a;
+}
+.take input {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 8, 18, 0.55);
+  color: #fff;
+  font: 600 15px var(--font);
+}
+.take input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.take textarea {
+  padding-bottom: 12px;
+  min-height: 0;
+}
+.note.original {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .step {
   display: grid;

@@ -288,6 +288,149 @@ def test_the_openapi_document_describes_every_template() -> None:
         "/uploads",
         "/jobs",
         "/jobs/{id}",
+        "/from-record",
         "/queue",
     }
     json.dumps(document)  # plain JSON
+
+
+# --- documents: a new take; a record back into a request (2026-10-26) ----------------------------------------
+
+
+def sheet_states(prompt: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {
+        str(n["_meta"]["title"]): json.loads(n["inputs"]["sheet_state"] or "{}")
+        for n in prompt.values()
+        if n["class_type"] == "PlenioSongSheet"
+    }
+
+
+def loaded() -> dict[str, song_api.Template]:
+    return {template_id: template(template_id) for template_id in TEMPLATES}
+
+
+def test_documents_go_into_the_sheets_that_keep_them_as_manual() -> None:
+    song = template("yue2-song")
+    assert song.documents == ["title", "style", "lyrics", "score", "artwork_prompt"]
+    assert dict(song.sheets) == {"title": 7, "style": 7, "lyrics": 7, "score": 13, "artwork_prompt": 7}
+    documents = {"title": "Neon", "lyrics": "[verse]\nHello", "score": "X:1\nK:C\nC|"}
+    prepared = prepare(
+        song, {"template": "yue2-song", "documents": documents}, NODES.get, rng=random.Random(1)
+    )
+    states = sheet_states(prepared.prompt)
+    assert states["Song Sheet · Text"]["docs"] == {
+        "title": {"state": "manual", "text": "Neon"},
+        "lyrics": {"state": "manual", "text": "[verse]\nHello"},
+    }
+    assert states["Song Sheet · Score"]["docs"] == {"score": {"state": "manual", "text": "X:1\nK:C\nC|"}}
+    assert prepared.documents == ["title", "lyrics", "score"]
+    # the workflow keeps them too (it opens in ComfyUI as it ran)
+    sheet = next(n for n in prepared.workflow["nodes"] if n["id"] == 7)
+    assert '"title":{"state":"manual","text":"Neon"}' in sheet["widgets_values"][1]
+    # without documents the sheets stay as the template has them
+    plain = prepare(song, {"template": "yue2-song"}, NODES.get, rng=random.Random(1))
+    assert all(not state for state in sheet_states(plain.prompt).values())
+
+
+@pytest.mark.parametrize(
+    ("documents", "field"),
+    [
+        ({"melody": "x"}, "documents.melody"),
+        ({"lyrics": 3}, "documents.lyrics"),
+        ({"title": "a\x07b"}, "documents.title"),
+    ],
+)
+def test_a_wrong_document_is_refused_by_name(documents: dict[str, Any], field: str) -> None:
+    with pytest.raises(SongApiError) as caught:
+        prepare(template("yue2-song"), {"template": "yue2-song", "documents": documents}, NODES.get)
+    assert caught.value.field == field
+
+
+def record_of(prepared: song_api.Prepared) -> dict[str, Any]:
+    texts = {
+        "title": "Neon",
+        "style": "synthwave, male vocal",
+        "lyrics": "[verse]\nHello",
+        "score": "X:1\nK:C\nC|",
+        "artwork_prompt": "a car at night",
+    }
+    return {
+        "schema": "plenio.record/1",
+        "title": "Neon",
+        "prompt": prepared.prompt,
+        "workflow": prepared.workflow,
+        "documents": {kind: {"state": "auto", "text": text} for kind, text in texts.items()},
+        "files": [],
+    }
+
+
+def test_a_record_gives_back_the_request_that_made_it() -> None:
+    song = template("yue2-song")
+    fields = {
+        "genre": "synthwave",
+        "language": "German",
+        "creativity": 70,
+        "finish.cover_art": False,
+        "finish.hq_mastering": True,
+    }
+    release = {"folder": "plenio/Neon", "mp3": True, "artist": "Anna"}
+    prepared = prepare(
+        song, {"template": "yue2-song", "fields": fields, "release": release}, NODES.get, rng=random.Random(7)
+    )
+    record = record_of(prepared)
+    found = song_api.template_for_record(loaded(), record)
+    assert found is not None and found.id == "yue2-song"  # the template its workflow names
+    back = song_api.request_from_record(song, record)
+    assert (back["template"], back["model"], back["take"]) == (
+        "yue2-song",
+        "YuE2",
+        {"possible": True, "why": ""},
+    )
+    assert {k: back["fields"][k] for k in fields} == fields
+    assert {k: back["release"][k] for k in release} == release
+    # the cover seed's node was bypassed with the cover art: no other seed stands in for it
+    assert back["seeds"] == {k: v for k, v in prepared.seeds.items() if k != "cover"}
+    assert list(back["documents"]) == song.documents
+    # sent again with the documents and without the take seed: the same song, played anew
+    seeds = {k: v for k, v in back["seeds"].items() if k != "take"}
+    again = prepare(
+        song,
+        {
+            "fields": back["fields"],
+            "release": back["release"],
+            "documents": back["documents"],
+            "seeds": seeds,
+        },
+        NODES.get,
+        rng=random.Random(8),
+    )
+    assert again.seeds["draft"] == prepared.seeds["draft"] and again.seeds["take"] != prepared.seeds["take"]
+    assert sheet_states(again.prompt)["Song Sheet · Score"]["docs"]["score"]["state"] == "manual"
+
+
+def test_a_record_says_when_its_documents_make_no_new_take() -> None:
+    song = template("yue2-song")
+    prepared = prepare(song, {"template": "yue2-song"}, NODES.get, rng=random.Random(2))
+    minimax = record_of(prepared)
+    minimax["prompt"] = {
+        **{k: v for k, v in prepared.prompt.items() if not v["class_type"].startswith("YuE2")},
+        "99": {"class_type": "MiniMaxMusicGenerate", "inputs": {}, "_meta": {"title": "MiniMax"}},
+    }
+    assert song_api.request_from_record(song, minimax)["take"] == {
+        "possible": False,
+        "why": "It was made with MiniMax Music 3 - a new take here is YuE2's.",
+    }
+    unplanned = record_of(prepared)
+    del unplanned["documents"]["score"]
+    assert song_api.request_from_record(song, unplanned)["take"]["why"] == "Its record has no score."
+    # a record of a cover: the cover template, by its brief (an older record names no template)
+    cover = template("yue2-cover")
+    made = prepare(
+        cover, {"template": "yue2-cover", "fields": {"source.audio": "plenio-api-1-x.flac"}}, NODES.get
+    )
+    record = record_of(made)
+    record["workflow"] = {"nodes": []}
+    found = song_api.template_for_record(loaded(), record)
+    assert found is not None and found.id == "yue2-cover"
+    back = song_api.request_from_record(cover, record)
+    assert back["fields"]["source.audio"] == "plenio-api-1-x.flac" and back["take"]["possible"]

@@ -20,7 +20,7 @@ const props = defineProps<{
   playable?: boolean
   busy?: string
 }>()
-const emit = defineEmits<{ edit: [job: MakeJob]; move: [job: MakeJob, by: -1 | 1]; remove: [job: MakeJob]; play: [job: MakeJob]; again: [job: MakeJob] }>()
+const emit = defineEmits<{ edit: [job: MakeJob]; move: [job: MakeJob, by: -1 | 1]; remove: [job: MakeJob]; play: [job: MakeJob]; again: [job: MakeJob]; remake: [job: MakeJob] }>()
 
 const initials = (text: string): string =>
   text
@@ -61,6 +61,7 @@ const removeTitle = (job: MakeJob): string =>
       </div>
       <div class="tools">
         <button v-if="playable && job.status === 'done' && job.result?.song" class="icon-btn play" title="Play it now" @click="emit('play', job)"><Icon name="play" :size="16" /></button>
+        <button v-if="job.status === 'done' && job.result?.song" class="icon-btn again" title="Again… - a new take of it, a new song like it, or a cover of it" @click="emit('remake', job)"><Icon name="wand" :size="16" /></button>
         <button v-if="job.status === 'failed' && job.can.edit !== undefined && job.fields" class="icon-btn" title="Try it again" :disabled="busy === job.id" @click="emit('again', job)"><Icon name="refresh" :size="16" /></button>
         <template v-if="job.status === 'waiting'">
           <button class="icon-btn" title="Earlier (past your next song)" :disabled="!job.can.up || busy === job.id" @click="emit('move', job, -1)"><Icon name="up" :size="16" /></button>
@@ -231,6 +232,9 @@ const removeTitle = (job: MakeJob): string =>
 .play {
   background: var(--accent);
   color: #0b0a12;
+}
+.again {
+  color: var(--accent);
 }
 /* a narrow list (beside the form, or a phone): the state under the song */
 @container (max-width: 620px) {

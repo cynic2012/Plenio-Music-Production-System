@@ -412,6 +412,317 @@ def test_the_guests_see_who_made_the_party_song_that_plays(party: Any, tmp_path:
     assert hub.snapshot["now"]["made_by"] == "Anna" and hub.snapshot["next"][0]["made_by"] == "Anna"
 
 
+# --- again from a song; the whole studio (2026-10-26) -------------------------------------------------------
+
+REMOTE = {"kind": "user", "id": "cccccccccccc", "name": "Cleo", "remote": True}
+DOCUMENTS = {
+    "title": "Neon",
+    "style": "synthwave, warm female vocal",
+    "lyrics": "[verse]\nCity lights\n\n[chorus]\nNeon nights",
+    "score": "X:1\nK:C\nC|",
+    "artwork_prompt": "a car at night",
+}
+
+
+def made_song(
+    folder: Path,
+    title: str,
+    *,
+    model: str = "YuE2GenerateMusic",
+    brief: str = "PlenioSongBrief",
+    length: str = "very short (about 1:00)",
+    **docs: Any,
+) -> None:
+    """A song as Export Release leaves it: its record (the brief, the model, the documents) and its audio."""
+    documents = {
+        k: {"state": "auto", "text": v} for k, v in {**DOCUMENTS, "title": title, **docs}.items() if v
+    }
+    data = {
+        "schema": "plenio.record/1",
+        "title": title,
+        "created": "2026-10-25T20:00:00Z",
+        "prompt": {
+            "2": {
+                "class_type": brief,
+                "inputs": {
+                    "genre": "synthwave",
+                    "length": length,
+                    "vocals": "sung",
+                    "vocals.voice": "warm female vocal",
+                    "description": "a night drive",
+                },
+                "_meta": {"title": "Song Brief"},
+            },
+            "15": {"class_type": model, "inputs": {}, "_meta": {"title": "render"}},
+        },
+        "documents": documents,
+        "audio": {"seconds": 64.0, "tags": {"artist": "Anna", "album": "Party-Song 2026-10-25"}},
+        "files": [{"name": f"{title}.flac", "format": "flac"}],
+    }
+    (folder / f"{title}.plenio.json").write_text(json.dumps(data), encoding="utf-8")
+    (folder / f"{title}.flac").write_bytes(b"fLaC" + b"\0" * 60)
+
+
+class AgainStudio(FakeStudio):
+    """The Song API's ``/from-record`` too: the song's request, from its record."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.records: list[dict[str, Any]] = []
+
+    def from_record(self, record: dict[str, Any]) -> dict[str, Any]:
+        self._check()
+        self.records.append(record)
+        cover = any(n.get("class_type") == "PlenioCoverBrief" for n in record["prompt"].values())
+        made = any(n.get("class_type", "").startswith("YuE2") for n in record["prompt"].values())
+        return {
+            "template": "yue2-cover" if cover else "yue2-song",
+            "kind": "cover" if cover else "song",
+            "title": record["title"],
+            "model": "YuE2" if made else "MiniMax Music 3",
+            "fields": {
+                "genre": "synthwave",
+                "creativity": 60,
+                "finish.hq_mastering": True,
+                "finish.cover_art": True,
+            },
+            "release": {"folder": "plenio", "album": "Night drives", "mp3": True},
+            "seeds": {"draft": 11, "plan": 12, "take": 13, "cover": 14},
+            "documents": {k: d["text"] for k, d in record["documents"].items()},
+            "take": {"possible": made, "why": "" if made else "It was made with MiniMax Music 3."},
+            "warnings": [],
+        }
+
+
+@pytest.fixture
+def again(tmp_path: Path) -> tuple[PartySongs, AgainStudio, Clock, Library, dict[str, str]]:
+    folder = tmp_path / "library"
+    folder.mkdir()
+    made_song(folder, "Neon")
+    made_song(folder, "Unplanned", score="")
+    made_song(folder, "Old", model="MiniMaxMusic")
+    library = Library([folder], cache=tmp_path / "state" / "cache.json")
+    library.scan(force=True)
+    ids = {s["title"]: s["id"] for s in library.songs()}
+    studio = AgainStudio()
+    clock = Clock()
+    songs = PartySongs(library, tmp_path / "state", studio, clock=clock)  # type: ignore[arg-type]
+    songs.configure({"on": True})
+    return songs, studio, clock, library, ids
+
+
+def test_a_song_of_the_library_says_what_can_be_made_of_it_again(again: Any) -> None:
+    songs, _studio, _clock, _library, ids = again
+    start = songs.remake(ANNA, ids["Neon"])
+    assert start["can"] == {"take": True, "song": True, "cover": True} and start["start"] == "take"
+    assert start["song"]["title"] == "Neon" and start["song"]["model"] == "YuE2"
+    assert start["fields"]["genre"] == "synthwave" and start["fields"]["voice"] == "warm female vocal"
+    assert (
+        start["documents"]["lyrics"].startswith("[verse]") and start["studio"] is None
+    )  # not the whole studio
+    assert songs.remake(ADMIN, ids["Neon"])["studio"]["release"]["album"] == "Night drives"
+    unplanned = songs.remake(ANNA, ids["Unplanned"])
+    assert not unplanned["can"]["take"] and unplanned["why"]["take"] == "its record has no score."
+    old = songs.remake(ANNA, ids["Old"])
+    assert not old["can"]["take"] and "MiniMax" in old["why"]["take"] and old["can"]["song"]
+    with pytest.raises(MakerError):
+        songs.create(ANNA, {"from": {"song": ids["Old"], "as": "take"}})
+    with pytest.raises(MakerError) as caught:
+        songs.remake(ANNA, "0123456789ab")
+    assert caught.value.status == 404
+
+
+def test_a_new_take_keeps_the_songs_documents_and_draws_a_new_take_seed(again: Any) -> None:
+    songs, studio, clock, _library, ids = again
+    job = songs.create(
+        ANNA, {"from": {"song": ids["Neon"], "as": "take"}, "documents": {"title": "Neon (live)"}}
+    )
+    assert job["label"] == "New take of Neon" and job["again"] == "take" and job["from"]["title"] == "Neon"
+    assert job["estimate"] == round(60 + 1.5 * 64)  # nothing to write or plan
+    songs.tick()
+    body = studio.sent[0]
+    assert body["template"] == "yue2-song" and studio.records[0]["title"] == "Neon"
+    assert body["documents"] == {**DOCUMENTS, "title": "Neon (live)"}  # the notes too: the same song
+    assert body["seeds"] == {"draft": 11, "plan": 12, "cover": 14}  # the take seed drawn anew
+    # the party's rules: HQ mastering off, cover art on, the party's folder - the song's own settings else
+    assert body["fields"] == {
+        "genre": "synthwave",
+        "creativity": 60,
+        "finish.hq_mastering": False,
+        "finish.cover_art": True,
+    }
+    assert body["release"]["album"] == f"Party-Song {maker_module._today(clock.now)}"
+
+
+def test_new_words_for_a_take_get_new_notes(again: Any) -> None:
+    songs, studio, _clock, _library, ids = again
+    lyrics = "[verse]\nCity rain\n\n[chorus]\nNeon again"
+    songs.create(ANNA, {"from": {"song": ids["Neon"], "as": "take"}, "documents": {"lyrics": lyrics}})
+    songs.tick()
+    body = studio.sent[0]
+    assert body["documents"]["lyrics"] == lyrics and "score" not in body["documents"]
+    with pytest.raises(MakerError):
+        songs.create(ANNA, {"from": {"song": ids["Neon"], "as": "take"}, "documents": {"title": "a\nb"}})
+
+
+def test_a_new_song_like_it_and_a_cover_of_it(again: Any) -> None:
+    songs, studio, clock, library, ids = again
+    like = songs.create(
+        ANNA, {"from": {"song": ids["Neon"], "as": "song"}, "fields": {**SONG, "genre": "italo disco"}}
+    )
+    assert like["label"].startswith("Like Neon · italo disco")
+    cover = songs.create(
+        BEN, {"from": {"song": ids["Neon"], "as": "cover"}, "fields": {"genre": "bossa nova"}}
+    )
+    assert cover["kind"] == "cover" and cover["label"].startswith("Cover of Neon")
+    songs.tick()
+    assert "documents" not in studio.sent[0] and studio.sent[0]["fields"]["genre"] == "italo disco"
+    studio.views["comfy-1"] = {"id": "comfy-1", "status": "succeeded", "result": {"title": "x", "record": ""}}
+    songs.tick()
+    songs.tick()
+    # the song's own audio file is the original - sent to ComfyUI, and nothing of the library removed
+    assert studio.uploads == [
+        ("Neon.flac", (library.song(ids["Neon"]).record.parent / "Neon.flac").read_bytes())
+    ]
+    assert studio.sent[1]["fields"]["source.audio"] == "plenio-api-000000000000-Neon.flac"
+    songs.remove(BEN, cover["id"])
+    assert (library.song(ids["Neon"]).record.parent / "Neon.flac").is_file()
+
+
+def test_the_partys_guests_make_again_only_their_own_songs(again: Any) -> None:
+    songs, studio, clock, _library, ids = again
+    party_guest = {**GUEST, "party": True}
+    with pytest.raises(MakerError) as caught:
+        songs.remake(party_guest, ids["Neon"])
+    assert caught.value.status == 404
+    with pytest.raises(MakerError):
+        songs.create(party_guest, {"from": {"song": ids["Neon"], "as": "take"}})
+    mine = songs.create(party_guest, {"fields": SONG})["id"]
+    job = next(j for j in songs.jobs if j["id"] == mine)
+    job.update(status="done", result={"title": "Neon", "record": "", "song": ids["Neon"]})
+    assert songs.remake(party_guest, ids["Neon"])["can"]["take"]
+    assert songs.create(party_guest, {"from": {"song": ids["Neon"], "as": "take"}})["again"] == "take"
+
+
+def test_the_whole_studio_from_the_network(again: Any) -> None:
+    songs, studio, clock, _library, ids = again
+    songs.configure({"on": False})
+    assert songs.may(REMOTE) == (True, "")  # at any time
+    assert songs.status(REMOTE)["me"]["full"] is True
+    assert songs.form(REMOTE)["studio"] == {
+        "unavailable": "ComfyUI is not running - its settings show once it runs."
+    }
+    studio_values = {
+        "fields": {
+            "finish.hq_mastering": True,
+            "finish.cover_art": False,
+            "writer.model": "qwen3.5-9b.gguf",
+            "creativity": 80,
+        },
+        "release": {"folder": "plenio/Cleo", "mp3": True, "wav": False, "album": "Home"},
+    }
+    long = {**SONG, "length": "very long (about 6:00)"}  # no party limit
+    songs.create(REMOTE, {"fields": long, "studio": studio_values})
+    songs.tick()
+    body = studio.sent[0]
+    assert body["fields"]["finish.hq_mastering"] is True and body["fields"]["finish.cover_art"] is False
+    assert body["fields"]["writer.model"] == "qwen3.5-9b.gguf" and body["fields"]["creativity"] == 80
+    assert body["release"] == {
+        "folder": "plenio/Cleo",
+        "album": "Home",
+        "artist": "Cleo",
+        "mp3": True,
+        "wav": False,
+    }
+    # a new take with the whole studio: the song's release, as changed
+    songs.create(
+        REMOTE,
+        {"from": {"song": ids["Neon"], "as": "take"}, "studio": {"fields": {}, "release": {"wav": True}}},
+    )
+    studio.views["comfy-1"] = {"id": "comfy-1", "status": "succeeded", "result": {"title": "x", "record": ""}}
+    songs.tick()
+    songs.tick()
+    take = studio.sent[1]
+    assert (
+        take["release"]["folder"] == "plenio"
+        and take["release"]["wav"] is True
+        and take["release"]["mp3"] is True
+    )
+    assert take["fields"]["finish.hq_mastering"] is True  # the song's own, not the party's
+    # not for others, and only folders below ComfyUI's output folder
+    with pytest.raises(MakerError) as caught:
+        songs.create({**ANNA}, {"fields": SONG, "studio": studio_values})
+    assert caught.value.status == 403
+    for folder in ("../outside", "C:/Windows", "/etc"):
+        with pytest.raises(MakerError):
+            songs.create(REMOTE, {"fields": SONG, "studio": {"release": {"folder": folder}}})
+    songs.configure({"remote": False})
+    assert songs.may(REMOTE)[0] is False and songs.status(REMOTE)["me"]["full"] is False
+
+
+def test_a_song_made_again_never_overwrites_the_one_it_comes_from(again: Any) -> None:
+    songs, studio, _clock, _library, ids = again
+    plain = studio.from_record
+
+    def overwriting(record: dict[str, Any]) -> dict[str, Any]:
+        answer = plain(record)
+        answer["release"] = {**answer["release"], "collision": "overwrite"}
+        return answer
+
+    studio.from_record = overwriting  # type: ignore[method-assign]
+    # the studio starts from the song's release - but a new number, the template's rule, for the files
+    assert songs.remake(ADMIN, ids["Neon"])["studio"]["release"] == {
+        "folder": "plenio",
+        "album": "Night drives",
+        "mp3": True,
+    }
+    songs.create(ADMIN, {"from": {"song": ids["Neon"], "as": "take"}})
+    songs.tick()
+    assert (
+        "collision" not in studio.sent[0]["release"] and studio.sent[0]["release"]["album"] == "Night drives"
+    )
+
+
+def test_a_covers_words_stay_as_they_are_in_a_new_take(again: Any, tmp_path: Path) -> None:
+    songs, studio, _clock, library, _ids = again
+    made_song(tmp_path / "library", "Covered", brief="PlenioCoverBrief")
+    library.scan(force=True)
+    covered = next(s["id"] for s in library.songs() if s["title"] == "Covered")
+    words = {"title": "Covered (again)", "lyrics": "[verse]\nOther words"}
+    job = songs.create(ANNA, {"from": {"song": covered, "as": "take"}, "documents": words})
+    assert job["kind"] == "cover" and job["documents"] == {"title": "Covered (again)"}
+    songs.tick()
+    body = studio.sent[0]
+    assert body["template"] == "yue2-cover" and body["documents"]["title"] == "Covered (again)"
+    # they follow the original's melody: the lyrics and the notes as the cover has them
+    assert (
+        body["documents"]["lyrics"] == DOCUMENTS["lyrics"]
+        and body["documents"]["score"] == DOCUMENTS["score"]
+    )
+    assert job["estimate"] == round(120 + 1.5 * 64)  # it reads the original again: as long as a cover
+
+
+def test_a_take_is_as_long_as_the_party_allows_but_the_whole_studio_has_no_limit(
+    again: Any, tmp_path: Path
+) -> None:
+    songs, _studio, _clock, library, _ids = again
+    made_song(tmp_path / "library", "Epic", length="very long (about 6:00)")
+    made_song(tmp_path / "library", "Early", length="1 minute")  # a length as Plenio 0.1 named it
+    library.scan(force=True)
+    found = {s["title"]: s["id"] for s in library.songs()}
+    assert (
+        songs.remake(ANNA, found["Epic"])["why"]["take"] == "it is longer than the host allows (about 4:00)."
+    )
+    with pytest.raises(MakerError):
+        songs.create(ANNA, {"from": {"song": found["Epic"], "as": "take"}})
+    assert (
+        songs.remake(ADMIN, found["Epic"])["can"]["take"]
+        and songs.remake(REMOTE, found["Epic"])["can"]["take"]
+    )
+    assert songs.create(REMOTE, {"from": {"song": found["Epic"], "as": "take"}})["again"] == "take"
+    assert songs.remake(ANNA, found["Early"])["can"]["take"]
+
+
 # --- the Song API over HTTP -----------------------------------------------------------------------------
 
 
@@ -478,9 +789,13 @@ def test_the_players_routes(servers: Any) -> None:
     port, _hub, songs, _studio = servers
     status, _headers, answer = call(port, "GET", "/api/make")
     assert status == 200 and answer["admin"] is True and answer["may"] is True and answer["on"] is False
-    # a guest from the network (the gateway's header): no account, a cookie of their own
+    # a guest from the network (the gateway's header): no account, a cookie of their own - and the whole studio,
+    # at any time, until the admin says no
     status, headers, answer = call(port, "GET", "/api/make", **{"X-Plenio-Remote": "1"})
-    assert answer["me"] == {"kind": "guest", "name": "Guest"} and answer["may"] is False
+    assert answer["me"] == {"kind": "guest", "name": "Guest", "full": True, "remote": True} and answer["may"]
+    songs.configure({"remote": False})
+    status, headers, answer = call(port, "GET", "/api/make", **{"X-Plenio-Remote": "1"})
+    assert answer["me"]["full"] is False and answer["may"] is False
     cookie = headers["Set-Cookie"].split(";")[0]
     assert cookie.startswith("plenio_maker=") and "HttpOnly" in headers["Set-Cookie"]
     assert (

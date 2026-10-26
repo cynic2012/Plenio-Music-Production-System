@@ -423,10 +423,12 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
             if not token:
                 token = maker_rules.new_guest_token()
                 cookie = maker_rules.guest_cookie(token)
+            # ``party``: a guest of the party makes again only their own songs
             return {
                 "kind": "guest",
                 "id": maker_rules.guest_id(token),
                 "name": maker_rules.GUEST_NAME,
+                "party": True,
             }, cookie
 
         def _maker_page(self, route: str) -> None:
@@ -458,6 +460,9 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
                     return self._json(maker.status(who), cookie=cookie)
                 if method == "GET" and route == "/api/make/form":
                     return self._json(maker.form(who), cookie=cookie)
+                again = re.fullmatch(r"/api/make/from/([0-9a-f]{6,64})", route)
+                if method == "GET" and again:
+                    return self._json(maker.remake(who, again.group(1)), cookie=cookie)
                 if method == "POST" and route == "/api/make/sources":
                     # a header another site's page cannot send without asking first (this server never says yes)
                     if self.headers.get("X-Plenio-Live") != "1":

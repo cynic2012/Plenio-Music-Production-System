@@ -650,6 +650,45 @@ of its description), and where it is:
   *painting the cover*, *mastering and saving*), roughly when it is ready. **✕** stops it.
 - **Ready 21:14** - in the library and at the party; **▶** plays it.
 
+### Again: a new take, a new song like it, a cover of it
+
+Any song of the library can be made again - one of your own party songs, a song of a playlist, a song that is years
+old. **A new version…** (the wand) opens it: on a song's page, in its ⋯ menu, in a playlist's rows and in Live Play's
+*Up next*; a finished song of yours has **Again…** (the wand) beside **▶** in *Your songs*.
+
+- **A new take** - *the same song, sung and played anew*: title, style and lyrics stay as they are, and the studio
+  sings and plays the very same notes once more. You may change the title, the style or the lyrics first; **new words
+  get new notes**, the rest stays of the song. Nothing is written and nothing is planned, so a take is quicker than a
+  new song (on an RTX 5060 Ti about 2:45 for a song of 1:09, where a new song of about 1:00 takes 5-6 minutes). A take
+  of a cover reads its original's melody and words once more, so it takes about as long as the cover did.
+- **A new song like it** - its style and brief fill the form (genre, mood, tempo, length, vocals, language, voice,
+  theme), and the words and the music are new. Change what you like and *Generate Song*.
+- **A cover of it** - its own audio file is the original: its melody, form and tempo stay, in the style you choose.
+
+What is not possible is said where the choice is, with the reason: a new take is YuE2's, so a song made with MiniMax
+Music 3, a song finished from a file, or a song whose release record has no lyrics or no score keeps *a new song like
+it* and *a cover* only. A new take of a cover needs the cover's original recording still in ComfyUI's input folder;
+without it the cover is made again as a new song like it or as a cover of it. A cover's words stay as they are in its
+new take - they follow the original's melody -, its title and style can change.
+
+### The whole studio from your network
+
+Who comes through *In your network* (the player opened from a phone or another computer with the link) has **the whole
+studio**: the simple form, and below it **Every setting of the studio** - the writer model, HQ mastering, Cover Art,
+and the rest of the Song Brief (arrangement, genre closeness, creativity, lyrics fidelity, a cover's excerpt) -, and
+**Export Release**: the folder (a folder below ComfyUI's output folder, made when it is not there), the name and the
+collision rule, FLAC, MP3 and WAV, the tags (artist, album, date, track, genre, comment, composer, lyrics), the sheet
+music and the subtitles. Fields that do not apply are not shown: a voice only for sung vocals, the tags' own fields
+only while tags are written. One line above the settings says how the song will be made (*HQ mastering off · cover
+art on · gemma4_e4b · output/plenio/Cleo · FLAC*).
+
+The same holds for the admin, and for the songs in the line: a waiting song keeps its settings, and *Edit* brings them
+back. A new take starts from the song's own settings and release - its folder, album and artist, with a new number
+for its files, never over the song it comes from -, a new song like it from the song's settings and the party's
+release. Whoever comes through the network may also make songs while song making is off, and makes them as long as the
+templates allow - the party's limits are for the party's guests. The admin switches it off with *Settings > Party
+songs > From the network (In your network): the whole studio, at any time*.
+
 **Who made it, while it plays** (*Settings > Party songs > Who made it*, not shown until you choose): a party song
 shows the name of the one who made it - the user's name or *Guest* - all the way through, in Now playing and over the
 visual:
@@ -687,6 +726,9 @@ the visuals, Live Play, videos and shared players. The music plays on the device
   ComfyUI* on a song's page works from there too.
 - From the network the player does everything but **choose its folders, stop, open folders on this
   computer's screen and delete songs for good** (it retires them) - those are done on the computer itself.
+- **Make a song** from there has the whole studio: every field of the template, the writer model, HQ mastering, Cover
+  Art and Export Release's folder, formats and tags - at any time, also while song making is off for the party's
+  guests ([Party songs](#the-whole-studio-from-your-network)).
 - Two devices at once - or two tabs: the player counts the changes, and a page that saved after another merges
   the two instead of overwriting them (a playlist both changed keeps the one saved last, favourites and tags
   keep both sides' changes, plays add up). Every few seconds each page takes in what another changed.

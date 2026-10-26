@@ -10,6 +10,7 @@ import { vFocus } from '../focus'
 import { byId, current, deletePlaylist, go, library, playSongs, playing, state, shareFor } from '../store'
 import { countOf, formatTime } from '../timing'
 import { lyricsSnippet, parseQuery, score } from '../search'
+import { makeShown } from '../make/state'
 import { allPresets } from '../visuals/presets'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
@@ -115,7 +116,7 @@ function removeAll(): void {
       </div>
     </section>
 
-    <ol class="rows">
+    <ol class="rows" :class="{ remaking: makeShown && !isPortable }">
       <li
         v-for="(song, i) in songs"
         :key="song.id"
@@ -136,6 +137,7 @@ function removeAll(): void {
         <span class="title"><a @click="go(`/song/${song.id}`)">{{ song.title }}</a><small>{{ song.genre }}</small></span>
         <span class="mood">{{ song.mood }}</span>
         <span class="len">{{ formatTime(song.seconds) }}</span>
+        <button v-if="makeShown && !isPortable" class="icon-btn again" title="A new version… - a new take of it, a new song like it, or a cover of it" @click="go(`/make/${song.id}`)"><Icon name="wand" :size="16" /></button>
         <button class="icon-btn rm" title="Remove from the playlist" @click="remove(i)"><Icon name="close" :size="16" /></button>
       </li>
     </ol>
@@ -316,6 +318,10 @@ h1 {
   border: 1px solid transparent;
   transition: background 0.15s;
 }
+/* a column for A new version… (the wand) when songs can be made */
+.rows.remaking li {
+  grid-template-columns: 34px 44px minmax(0, 2fr) minmax(0, 1fr) 60px 36px 36px;
+}
 .rows li:hover {
   background: rgba(255, 255, 255, 0.05);
 }
@@ -381,7 +387,12 @@ h1 {
 .rm {
   opacity: 0;
 }
-.rows li:hover .rm {
+.again {
+  opacity: 0;
+  color: var(--accent);
+}
+.rows li:hover .rm,
+.rows li:hover .again {
   opacity: 1;
 }
 .eq {
@@ -429,6 +440,9 @@ h1 {
   }
   .rows li {
     grid-template-columns: 30px 40px 1fr 50px 30px;
+  }
+  .rows.remaking li {
+    grid-template-columns: 30px 40px 1fr 50px 30px 30px;
   }
   .mood {
     display: none;

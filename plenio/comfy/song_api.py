@@ -5,7 +5,8 @@ A program - the Plenio Player first - makes a song with one request: a template 
 the fields of its song part, the release's fields, seeds if wanted. The template's fields are read from the
 template and the node definitions of this ComfyUI every time (``plenio.core.song_api``), the run is queued through
 ComfyUI's own ``POST /prompt`` on this server's address, and the job is ComfyUI's prompt: its status comes from
-ComfyUI's queue and history.
+ComfyUI's queue and history. ``POST /from-record`` turns a release record back into such a request - the song
+again, a new take of it (its documents kept), or a new song of its brief.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from aiohttp import ClientError, ClientSession, ClientTimeout, web
 
 from .. import __version__
 from ..core import song_api
+from ..core.release import RECORD_SCHEMA
 from ..core.song_api import SongApiError
 from ..core.song_api_doc import openapi
 from ..core.workflow_prompt import InfoLookup
@@ -78,6 +80,7 @@ class Job:
     workflow: dict[str, Any]
     warnings: list[str] = field(default_factory=list)
     started: float | None = None
+    documents: list[str] = field(default_factory=list)
 
 
 _jobs: dict[str, Job] = {}
@@ -351,6 +354,7 @@ def job_view(prompt_id: str) -> dict[str, Any] | None:
         "stage": None,
         "progress": None,
         "seeds": dict(job.seeds) if job else dict(meta.get("seeds") or {}),
+        "documents": list(job.documents) if job else list(meta.get("documents") or []),
         "client": dict(job.client) if job else dict(meta.get("client") or {}),
         "result": None,
         "error": None,
@@ -420,6 +424,7 @@ async def index(request: web.Request) -> web.StreamResponse:
                 "briefs": f"{BASE}/briefs",
                 "uploads": f"{BASE}/uploads",
                 "jobs": f"{BASE}/jobs",
+                "from_record": f"{BASE}/from-record",
                 "queue": f"{BASE}/queue",
                 "openapi": f"{BASE}/openapi.json",
             },
@@ -540,6 +545,7 @@ async def jobs_create(request: web.Request) -> web.StreamResponse:
         "seeds": prepared.seeds,
         "fields": {k: v for k, v in prepared.fields.items() if not isinstance(v, (dict, list))},
         "release": prepared.release,
+        "documents": prepared.documents,
     }
     answer = await _post_prompt(prepared.prompt, prepared.workflow, meta)
     prompt_id = str(answer["prompt_id"])
@@ -554,6 +560,7 @@ async def jobs_create(request: web.Request) -> web.StreamResponse:
         seeds=prepared.seeds,
         workflow=prepared.workflow,
         warnings=prepared.warnings,
+        documents=prepared.documents,
     )
     with _lock:
         _jobs[prompt_id] = job
@@ -572,6 +579,35 @@ async def jobs_create(request: web.Request) -> web.StreamResponse:
         "links": {"self": f"{BASE}/jobs/{prompt_id}"},
     }
     return web.json_response(view, status=201, headers={"Location": f"{BASE}/jobs/{prompt_id}"})
+
+
+async def from_record(request: web.Request) -> web.StreamResponse:
+    """The request that makes a record's song again (the record is the body): its template, fields, release fields,
+    seeds and documents - and whether its documents make a new take here (a cover's original recording must still
+    be in ComfyUI's input folder). Reads nothing but the body."""
+    record = await _body(request)
+    if record.get("schema") != RECORD_SCHEMA:
+        raise SongApiError(
+            "bad_request",
+            f"The body is a Plenio release record (schema {RECORD_SCHEMA}): the <name>.plenio.json of a song.",
+        )
+    template = song_api.template_for_record(_templates(_lookup()), record)
+    if template is None:
+        raise SongApiError(
+            "unknown_template",
+            "No template of the API makes this record's song - it has no Song Brief or Cover Brief.",
+            status=422,
+        )
+    answer = song_api.request_from_record(template, record)
+    source = str(answer["fields"].get("source.audio") or "")
+    if template.field("source.audio") is not None and answer["take"]["possible"]:
+        folder = host.input_directory()
+        if Path(source).name != source or not (folder / source).is_file():
+            answer["take"] = {
+                "possible": False,
+                "why": "Its original recording is no longer in ComfyUI's input folder.",
+            }
+    return web.json_response(answer)
 
 
 async def jobs_list(request: web.Request) -> web.StreamResponse:
@@ -674,6 +710,7 @@ ROUTES: tuple[tuple[str, str, Handler], ...] = (
     ("GET", f"{BASE}/briefs", briefs),
     ("POST", f"{BASE}/uploads", upload),
     ("POST", f"{BASE}/jobs", jobs_create),
+    ("POST", f"{BASE}/from-record", from_record),
     ("GET", f"{BASE}/jobs", jobs_list),
     ("GET", f"{BASE}/jobs/{{job_id}}", job_get),
     ("DELETE", f"{BASE}/jobs/{{job_id}}", job_delete),

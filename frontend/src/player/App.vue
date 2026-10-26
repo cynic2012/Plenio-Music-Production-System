@@ -78,7 +78,7 @@ const page = computed(() => {
   if (first === 'settings') return { kind: 'settings' as const }
   if (first === 'live') return { kind: 'live' as const }
   if (first === 'jobs') return { kind: 'jobs' as const }
-  if (first === 'make' && !isPortable) return { kind: 'make' as const }
+  if (first === 'make' && !isPortable) return { kind: 'make' as const, from: second ? decodeURIComponent(second) : '' }
   if (first === 'favorites' || first === 'top' || first === 'recent') return { kind: 'library' as const, collection: first as 'favorites' | 'top' | 'recent' }
   return { kind: 'library' as const, collection: 'all' as const }
 })
@@ -309,7 +309,7 @@ onBeforeUnmount(() => {
         <SettingsView v-else-if="page.kind === 'settings'" />
         <LiveView v-else-if="page.kind === 'live'" />
         <JobsView v-else-if="page.kind === 'jobs'" />
-        <MakeView v-else-if="page.kind === 'make'" />
+        <MakeView v-else-if="page.kind === 'make'" :key="page.from" :from="page.from" />
         <LibraryView v-else ref="libraryView" :key="page.collection" :collection="page.collection" />
       </template>
     </main>
