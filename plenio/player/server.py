@@ -7,10 +7,14 @@ Standard library only. It serves the files of the songs it found and nothing els
 
 from __future__ import annotations
 
+import functools
+import gzip
 import json
+import logging
 import mimetypes
 import os
 import re
+import secrets
 import threading
 import time
 import urllib.request
@@ -32,6 +36,7 @@ from .network import REMOTE_HEADER, REMOTE_HOST_HEADER, NetworkAccess
 from .package import MAX_SONGS, PackageJobs, package_file, packages_dir
 from .package import listing as package_listing
 from .peaks import peaks
+from .thumbs import thumbnail
 from .video import VideoJobs, videos_dir
 from .visuals import list_presets, open_folder, save_copy, show_folder, visuals_dir
 
@@ -50,10 +55,27 @@ MEDIA_KINDS = {
 }
 STATE_LIMIT = 4 * 2**20
 NEW_SONGS_EVERY = 2.0
+"""Live Play asks every few seconds for new songs: the folders are read again at most this often."""
 VIDEO_FPS = (24, 25, 30, 50, 60)
 VIDEO_MAX_SIDE = 3840
-"""Live Play asks every few seconds for new songs: the folders are read again at most this often."""
 CHUNK = 256 * 1024
+GZIP_MIN = 1400
+"""Answers at least this large go compressed to a browser that takes gzip: the library of 2958 songs is 9.6 MB of
+JSON, 1 MB compressed (2026-10-26) - a phone in the network had to load all of it at every start."""
+GZIP_TYPES = (".js", ".mjs", ".css", ".html", ".htm", ".svg", ".json")
+LIBRARY_WAIT_S = 2.0
+"""While the folders are read the first time, the library's answer waits this long, then says how far it is."""
+THUMB_SIZES = (96, 160, 256, 384, 512, 768)
+BOOT = secrets.token_hex(4)
+"""Part of every ETag: a player started again never answers *unchanged* for an answer of the one before."""
+SECURITY_HEADERS = (
+    ("X-Content-Type-Options", "nosniff"),
+    ("Referrer-Policy", "same-origin"),
+    # no other site may show the player in a frame of its own (and have a click land on Remove …)
+    ("X-Frame-Options", "SAMEORIGIN"),
+    ("Content-Security-Policy", "frame-ancestors 'self'"),
+)
+log = logging.getLogger("plenio.player")
 TYPES = {".mp4": "video/mp4", ".htm": "text/html; charset=utf-8", ".flac": "audio/flac", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".srt": "text/plain; charset=utf-8",
          ".json": "application/json", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".js": "text/javascript",
          ".mjs": "text/javascript", ".css": "text/css", ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
@@ -158,6 +180,48 @@ def studio_finder(preferred: str = "", every: float = 10.0) -> Callable[[], str 
     return url
 
 
+def _guarded(method: Callable[[Any], None]) -> Callable[[Any], None]:
+    """A request that fails answers ``500`` with the reason (before, the connection just closed: the page saw a
+    network error) and leaves it in the player's log; a browser that went away is no failure."""
+
+    @functools.wraps(method)
+    def run(handler: Any) -> None:
+        handler.answered = False
+        try:
+            method(handler)
+        except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError):
+            handler.close_connection = True
+        except Exception as error:  # noqa: BLE001 - said to the page, kept in the log
+            log.exception("Plenio Player: %s %s failed", handler.command, handler.path)
+            handler.close_connection = True
+            if not handler.answered:
+                try:
+                    handler._error(500, f"The player failed: {type(error).__name__}: {error}")
+                except OSError:
+                    pass
+
+    return run
+
+
+_gzipped: dict[tuple[str, int, int], bytes] = {}
+_gzipped_lock = threading.Lock()
+
+
+def gzipped_file(path: Path) -> bytes:
+    """A page asset compressed, kept while the file stays as it is (the player's own few files)."""
+    stat = path.stat()
+    key = (str(path), stat.st_size, stat.st_mtime_ns)
+    with _gzipped_lock:
+        found = _gzipped.get(key)
+    if found is None:
+        found = gzip.compress(path.read_bytes(), 6)
+        with _gzipped_lock:
+            if len(_gzipped) > 64:
+                _gzipped.clear()
+            _gzipped[key] = found
+    return found
+
+
 def make_handler(
     library: Library,
     state: State,
@@ -183,6 +247,27 @@ def make_handler(
     packages = PackageJobs()
     user_states: dict[str, State] = {}
     states_lock = threading.Lock()
+    # the library's answer, made once per change of the songs: JSON and compressed (``version``, raw, gzip)
+    listing: list[Any] = [None, b"", b""]
+    listing_lock = threading.Lock()
+
+    def library_answer() -> tuple[str, bytes, bytes]:
+        """The library as the page reads it - with its ETag: a page that has it gets ``304`` instead of 9 MB."""
+        songs = library.songs()
+        key = (library.version, tuple(str(f) for f in library.folders))
+        with listing_lock:
+            if listing[0] != key:
+                body = json.dumps(
+                    {
+                        "songs": songs,
+                        "folders": [str(f) for f in library.folders],
+                        "errors": library.errors[:20],
+                        "version": __version__,
+                    },
+                    ensure_ascii=False,
+                ).encode("utf-8")
+                listing[:] = [key, body, gzip.compress(body, 5)]
+            return f'"lib-{BOOT}-{library.version}"', listing[1], listing[2]
 
     def state_of(account: dict[str, Any] | None) -> State | None:
         """The state of a user (``None``: a guest, who keeps theirs in the browser)."""
@@ -327,31 +412,93 @@ def make_handler(
             return True
 
         # --- answers ------------------------------------------------------------------------------
-        def _json(self, data: Any, status: int = 200, cookie: str = "") -> None:
-            body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        def send_response(self, code: int, message: str | None = None) -> None:
+            self.answered = True
+            super().send_response(code, message)
+
+        def end_headers(self) -> None:
+            for name, value in SECURITY_HEADERS:
+                self.send_header(name, value)
+            super().end_headers()
+
+        @property
+        def takes_gzip(self) -> bool:
+            return "gzip" in (self.headers.get("Accept-Encoding") or "").lower()
+
+        def _send(
+            self,
+            status: int,
+            body: bytes,
+            kind: str,
+            *,
+            cache: str = "no-store",
+            cookie: str = "",
+            etag: str = "",
+            gzipped: bytes | None = None,
+        ) -> None:
+            """An answer with its body - compressed when it is large and the browser takes gzip (``gzipped``: the
+            body compressed already)."""
+            encoded = self.takes_gzip and len(body) >= GZIP_MIN
+            if encoded:
+                body = gzipped if gzipped is not None else gzip.compress(body, 5)
             self.send_response(status)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Type", kind)
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
+            self.send_header("Cache-Control", cache)
+            if encoded:
+                self.send_header("Content-Encoding", "gzip")
+            if self.takes_gzip or encoded:
+                self.send_header("Vary", "Accept-Encoding")
+            if etag:
+                self.send_header("ETag", etag)
             if cookie:
                 self.send_header("Set-Cookie", cookie)
             self.end_headers()
-            self.wfile.write(body)
+            if self.command != "HEAD":
+                self.wfile.write(body)
+
+        def _json(self, data: Any, status: int = 200, cookie: str = "") -> None:
+            body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+            self._send(status, body, "application/json; charset=utf-8", cookie=cookie)
 
         def _error(self, status: int, message: str) -> None:
             self._json({"error": message}, status)
 
+        def _unchanged(self, etag: str) -> bool:
+            """The browser has this version already (``If-None-Match``): ``304`` answered."""
+            wanted = self.headers.get("If-None-Match") or ""
+            if not etag or etag not in [tag.strip() for tag in wanted.split(",")]:
+                return False
+            self.send_response(HTTPStatus.NOT_MODIFIED)
+            self.send_header("ETag", etag)
+            self.end_headers()
+            return True
+
         def _file(self, path: Path, *, cache: bool = False, download: str = "") -> None:
             if not path.is_file():
                 return self._error(404, "not found")
-            size = path.stat().st_size
+            stat = path.stat()
+            size = stat.st_size
+            etag = f'"{size:x}-{stat.st_mtime_ns:x}"'
             kind = (
                 TYPES.get(path.suffix.lower())
                 or mimetypes.guess_type(path.name)[0]
                 or "application/octet-stream"
             )
-            start, end = 0, size - 1
             ranged = self.headers.get("Range")
+            if not ranged and not download and self._unchanged(etag):
+                return None
+            if not ranged and not download and path.suffix.lower() in GZIP_TYPES and self.takes_gzip:
+                # the page's own files (scripts, styles): read whole, small, compressed once
+                return self._send(
+                    200,
+                    path.read_bytes(),
+                    kind,
+                    cache="max-age=86400" if cache else "no-cache",
+                    etag=etag,
+                    gzipped=gzipped_file(path),
+                )
+            start, end = 0, size - 1
             match = re.fullmatch(r"bytes=(\d*)-(\d*)", ranged.strip()) if ranged else None
             if match and (match.group(1) or match.group(2)):
                 if match.group(1):
@@ -373,6 +520,7 @@ def make_handler(
             self.send_header("Accept-Ranges", "bytes")
             self.send_header("Content-Length", str(end - start + 1))
             self.send_header("Cache-Control", "max-age=86400" if cache else "no-cache")
+            self.send_header("ETag", etag)
             if download:
                 self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{quote(download)}")
             self.end_headers()
@@ -395,6 +543,7 @@ def make_handler(
         def do_HEAD(self) -> None:  # noqa: N802 - the base class's name
             self.do_GET()
 
+        @_guarded
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             route = unquote(parsed.path)
@@ -432,13 +581,25 @@ def make_handler(
                     return self._json({"id": found_song.id})
                 return self._error(404, "no such song")
             if route == "/api/library":
-                return self._json(
-                    {
-                        "songs": library.songs(),
-                        "folders": [str(f) for f in library.folders],
-                        "errors": library.errors[:20],
-                        "version": __version__,
-                    }
+                if not library.ready:
+                    # the first reading of the folders (thousands of records after an update take a while): a moment,
+                    # then the page hears how far it is and asks again
+                    library.scan(wait=False)
+                    if not library.wait_ready(LIBRARY_WAIT_S):
+                        return self._json(
+                            {
+                                "songs": [],
+                                "scanning": dict(library.progress),
+                                "folders": [str(f) for f in library.folders],
+                                "errors": [],
+                                "version": __version__,
+                            }
+                        )
+                etag, body, packed = library_answer()
+                if self._unchanged(etag):
+                    return None
+                return self._send(
+                    200, body, "application/json; charset=utf-8", cache="no-cache", etag=etag, gzipped=packed
                 )
             if route.startswith("/api/song/"):
                 song = library.song(route.removeprefix("/api/song/"))
@@ -546,6 +707,15 @@ def make_handler(
                 ):
                     # the picture inside the audio file, saved once into the cache
                     path = other_music.embedded_cover(song.record, song.id, state.path.parent / "cache")
+                if path and parts[3] == "cover" and query.get("size", "").isdigit():
+                    # a card's small picture: a cover of 1024 px is 150-300 KB, a page of cards 25 MB to a phone
+                    size = int(query["size"])
+                    small = (
+                        thumbnail(path, size, state.path.parent / "cache" / "thumbs")
+                        if size in THUMB_SIZES
+                        else None
+                    )
+                    return self._file(small or path, cache=True)
                 return self._file(path) if path else self._error(404, "no such file")
             # the page itself and its assets; every other path is the page (the player routes by #)
             target = (
@@ -576,10 +746,20 @@ def make_handler(
                 origin is None or origin in (f"http://{host}", f"https://{host}")
             )
 
+        def _length(self) -> int:
+            """The body's length as the request says it (``-1``: not a length - the connection closes)."""
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                length = -1
+            if length < 0:
+                self.close_connection = True
+            return length
+
         def _upload(self, limit: int) -> bytes | None:
             """A large body (a recording), read whole; ``None`` when it is larger than ``limit``."""
-            length = int(self.headers.get("Content-Length") or 0)
-            if length > limit:
+            length = self._length()
+            if length > limit or length < 0:
                 self.close_connection = True
                 return None
             return self.rfile.read(length) if length > 0 else b""
@@ -587,12 +767,13 @@ def make_handler(
         def _body(self) -> bytes | None:
             """The request's body, read before any answer (an answer with the body unread makes Windows
             reset the connection); ``None`` when there is none or it is too large (the connection closes)."""
-            length = int(self.headers.get("Content-Length") or 0)
-            if length > STATE_LIMIT:
+            length = self._length()
+            if length > STATE_LIMIT or length < 0:
                 self.close_connection = True
                 return None
             return self.rfile.read(length) if length > 0 else None
 
+        @_guarded
         def do_PUT(self) -> None:  # noqa: N802
             body = self._body()
             route = unquote(urlparse(self.path).path)
@@ -738,6 +919,7 @@ def make_handler(
                 status = error.status if isinstance(error, account_rules.AccountError) else 400
                 return self._error(status, str(error))
 
+        @_guarded
         def do_DELETE(self) -> None:  # noqa: N802
             raw = self._body()
             route = unquote(urlparse(self.path).path)
@@ -903,6 +1085,7 @@ def make_handler(
                 return self._error(500, f"could not make the video: {error}")
             return self._json({"file": made.name, "size": made.stat().st_size, "folder": str(jobs.folder)})
 
+        @_guarded
         def do_POST(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
             route = unquote(parsed.path)
@@ -916,6 +1099,8 @@ def make_handler(
             if route.startswith("/api/make/"):
                 return self._make("POST", route, {}, raw)
             if route == "/api/rescan":
+                if not self._from_this_page():
+                    return self._error(403, "only from the player's page")
                 library.scan(force=True)
                 return self._json({"songs": len(library.songs())})
             if route == "/api/login":

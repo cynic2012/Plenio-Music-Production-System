@@ -688,10 +688,9 @@ class App:
 
 def workflow(graph: Graph, name: str, blueprints: list[Blueprint], app: App | None = None) -> dict[str, Any]:
     graph.settle()
-    # The view opens on the About note (x = -560) and the first groups.
-    extra: dict[str, Any] = {
-        "ds": {"scale": 0.7, "offset": [640, 520]}
-    }  # the HQ Mastering & Cover Art switches above group 1 in view, with the group's title
+    # The view opens on the Models note (x = -1120), the About note (x = -560) and the first groups - the HQ
+    # Mastering & Cover Art switches above group 1 in view, with the group's title.
+    extra: dict[str, Any] = {"ds": {"scale": 0.7, "offset": [1180, 520]}}
     if app is not None:
         extra["linearData"] = app.to_json()
     extra.update(graph.extra)

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import random
+import re
 from pathlib import Path
 from typing import Any
 
@@ -282,15 +283,28 @@ def test_the_openapi_document_describes_every_template() -> None:
     assert schemas["JobRequest_yue2_cover"]["properties"]["fields"]["required"] == ["source.audio"]
     assert set(document["paths"]) == {
         "/",
+        "/openapi.json",
         "/templates",
         "/templates/{id}",
         "/briefs",
         "/uploads",
         "/jobs",
         "/jobs/{id}",
+        "/jobs/{id}/files/{name}",
         "/from-record",
         "/queue",
     }
+    # every call has its own operationId (client generators name their functions by it) and answers described
+    operations = [op for path in document["paths"].values() for op in path.values()]
+    ids = [op["operationId"] for op in operations]
+    assert len(ids) == len(set(ids)) == 13
+    assert all(op["responses"] and op["tags"] for op in operations)
+    job = schemas["Job"]["properties"]
+    assert job["result"]["oneOf"][0] == {"$ref": "#/components/schemas/Result"}
+    assert schemas["File"]["required"] == ["name", "url"]
+    # every reference points at a schema of the document
+    refs = re.findall(r'"\$ref": "#/components/schemas/([A-Za-z_0-9]+)"', json.dumps(document))
+    assert refs and set(refs) <= set(schemas)
     json.dumps(document)  # plain JSON
 
 
@@ -434,3 +448,30 @@ def test_a_record_says_when_its_documents_make_no_new_take() -> None:
     assert found is not None and found.id == "yue2-cover"
     back = song_api.request_from_record(cover, record)
     assert back["fields"]["source.audio"] == "plenio-api-1-x.flac" and back["take"]["possible"]
+
+
+# --- a finished job's files (API 1.1, 2026-10-26) --------------------------------------------------------------
+
+
+def test_a_finished_songs_files_are_given_and_nothing_else(tmp_path: Path) -> None:
+    output = tmp_path / "output"
+    folder = output / "plenio" / "Party"
+    folder.mkdir(parents=True)
+    record = folder / "Night Drive.plenio.json"
+    record.write_text("{}", encoding="utf-8")
+    for name in ("Night Drive.flac", "Night Drive.jpg", "secret.txt"):
+        (folder / name).write_bytes(b"x")
+    (output / "other.flac").write_bytes(b"x")
+    listed = ["Night Drive.flac", "Night Drive.jpg", "../other.flac", "gone.mp3"]
+    assert (
+        song_api.result_file(record, "Night Drive.flac", listed, output)
+        == (folder / "Night Drive.flac").resolve()
+    )
+    assert song_api.result_file(record, record.name, listed, output) == record.resolve()
+    for wrong in ("secret.txt", "../other.flac", "..", "", "gone.mp3", "Night Drive.flac/.."):
+        with pytest.raises(song_api.SongApiError) as refused:
+            song_api.result_file(record, wrong, listed, output)
+        assert refused.value.status == 404 and refused.value.code == "not_found"
+    # a record outside ComfyUI's output folder gives nothing
+    with pytest.raises(song_api.SongApiError):
+        song_api.result_file(record, "Night Drive.flac", listed, tmp_path / "elsewhere")

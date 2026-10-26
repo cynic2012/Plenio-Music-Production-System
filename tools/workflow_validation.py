@@ -287,7 +287,9 @@ def validate_file(
 
 
 ABOUT_TITLE = "About this template"
-EXTRA_NOTES = ("Tags & variables",)
+MODELS_TITLE = "Models · what goes where"
+"""Every template's note of its model files and their folders (owner's request 2026-10-26)."""
+EXTRA_NOTES = ("Tags & variables", MODELS_TITLE)
 """Notes a template may have besides its About note (1.0.0: the tags' variables beside Export Release)."""
 
 
@@ -354,6 +356,8 @@ def _check_template(
         problems.append(
             f"{where}: exactly one note titled {ABOUT_TITLE!r}, others only {EXTRA_NOTES} (found {notes})"
         )
+    if notes.count(MODELS_TITLE) != 1:
+        problems.append(f"{where}: exactly one note titled {MODELS_TITLE!r} (which model file goes where)")
     groups = data.get("groups", [])
     for node in nodes:
         if node["type"] in FRONTEND_ONLY_TYPES:

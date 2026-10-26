@@ -2070,6 +2070,193 @@ def about_note(g: Graph, text: str, height: float = ABOUT_SIZE[1]) -> Node:
     )
 
 
+MODELS_NOTE_X = -1120
+MODELS_NOTE_WIDTH = 520
+MODELS_ALTERNATIVES = {
+    "flux-2-klein-4b.safetensors": "flux-2-klein-4b-fp8.safetensors",
+    "qwen_3_4b.safetensors": "qwen_3_4b_fp4_flux2.safetensors",
+    "minimax_music3_dit_fp16.safetensors": "minimax_music3_dit_int8_convrot.safetensors",
+    "yue2_3b_int8_convrot.safetensors": "yue2_3b_bf16.safetensors",
+}
+"""The catalogue's alternative of a default file (docs/user/models.md, *Smaller GPUs*; the System Check's rules)."""
+MODELS_ROLES = {
+    "universr-audio": "HQ mastering (the *HQ Mastering* card): UniverSR regenerates the highs above 8.2 kHz",
+    "bs-roformer-4stem": (
+        "stems (the Master's *stems* switch); when it is there, Export Release also hears the lyrics on the vocal "
+        "stem - their times get more exact"
+    ),
+    "yue2-instrumental-lora": "the instrumental adapter in the model block (bypassed until you switch it on)",
+}
+"""A shorter word for the note where the catalogue's role is long."""
+MODELS_WHY = {
+    "audio_sr": "HQ mastering",
+    "audio_separation": "stems, the vocal stem for the lyrics times",
+    "loras": "the instrumental adapter",
+}
+"""What an optional file is for, by its folder (the note's tree)."""
+
+
+def _gb(size: int) -> str:
+    return f"{size / 1e9:.1f} GB" if size >= 1e9 else f"{size / 1e6:.0f} MB" if size else "see the model card"
+
+
+def _models_tree(models: list[ModelFile], needed: set[str], *, asr: bool) -> list[str]:
+    """The folders under ``ComfyUI/models`` with their files, drawn as ComfyUI's own templates draw them."""
+    folders: dict[str, list[str]] = {}
+    for model in models:
+        folders.setdefault(model.folder, []).append(model.file)
+    names = sorted(folders) + (["plenio/asr"] if asr else [])
+    tree = ["📂 ComfyUI/", "└── 📂 models/"]
+    for index, folder in enumerate(names):
+        last = index == len(names) - 1
+        if folder == "plenio/asr":
+            why, files = " (Plenio fetches these)", ["qwen3-asr-1.7b-hf/", "qwen3-forcedaligner-0.6b-hf/"]
+        else:
+            optional = folder in MODELS_WHY and not needed.intersection(folders[folder])
+            why, files = (f" ({MODELS_WHY[folder]})" if optional else ""), sorted(folders[folder])
+        tree.append(f"    {'└──' if last else '├──'} 📂 {folder}/{why}")
+        for number, file in enumerate(files):
+            tree.append(
+                f"    {'    ' if last else '│   '}{'└──' if number == len(files) - 1 else '├──'} {file}"
+            )
+    return ["```", *tree, "```"]
+
+
+def models_note_text(template: str) -> str:
+    """The *Models* note of a template, like the notes of ComfyUI's own templates (owner's request 2026-10-26): which
+    file goes into which folder, with its link and size, the optional ones, what Plenio fetches itself, and the files
+    for a smaller or a larger graphics card - all from the model catalogue, so the note and the loaders agree. The
+    System Check's note shows every template's files at once."""
+    from plenio.core.system import RULES
+
+    catalogue = [m for m in CATALOGUE.values() if m.default]
+    overview = template == "0 · System Check"
+    enhance = template == "4 · Enhance & Master"
+    needed = [m for m in catalogue if (m.templates if overview else template in m.templates)]
+    optional = [
+        m
+        for m in catalogue
+        if m not in needed and (m.optional_templates if overview else template in m.optional_templates)
+    ]
+    lines = ["# Models · what goes where", ""]
+    if overview:
+        lines.append(
+            "This template needs no model file. Run it: it lists what each template needs, what is installed, what is "
+            "missing - with the folder and the download link. Here is the whole set at a glance:"
+        )
+    else:
+        lines.append(
+            "When the template opens, ComfyUI offers the files it misses (*Missing models*: download them there). By "
+            "hand: put each file into its folder below - or into a folder of your `extra_model_paths.yaml`. "
+            "**0 · System Check** lists what is there and what is missing."
+        )
+
+    def entry(model: ModelFile, optional: bool = False) -> str:
+        role = MODELS_ROLES.get(model.id, model.role) if optional else model.role
+        if optional and enhance and model.id == "bs-roformer-4stem":
+            role = "the *Stems (optional)* block (bypassed: select it and press Ctrl+B)"
+        return f"- [{model.file}]({model.url}) · {_gb(model.bytes)} · {model.licence}  \n  {role}"
+
+    lines += ["", "## Needed" if not overview else "## The files", *[entry(m) for m in needed]]
+    if optional:
+        lines += ["", "## Optional", *[entry(m, optional=True) for m in optional]]
+    lines += [
+        "",
+        "## Where they go",
+        "",
+        *_models_tree([*needed, *optional], {m.file for m in needed}, asr=not enhance),
+    ]
+    if overview:
+        rows = ["| Template | Needs |", "|---|---|"]
+        for name in (
+            "1 · YuE2 · Song",
+            "2 · YuE2 · Cover",
+            "3 · MiniMax · Song",
+            "4 · Enhance & Master",
+            "5 · YuE2 · DAW",
+        ):
+            files = [m.file for m in catalogue if name in m.templates]
+            rows.append(f"| {name} | {', '.join(f'`{f}`' for f in files)} |")
+        lines += ["", *rows]
+    if not enhance:
+        lines += [
+            "",
+            "The lyrics ASR (Qwen3-ASR 1.7B, 4.1 GB, and its aligner, 1.8 GB) times the lyrics subtitles and hears a "
+            "cover's words: Plenio downloads it into `models/plenio/asr` the first time it is needed. Offline "
+            "(`PLENIO_OFFLINE=1`) it names the files to place.",
+        ]
+    if any("writer" in m.role.lower() for m in needed):
+        lines += [
+            "",
+            "**The writer** can also be a GGUF file of your own in `models/LLM` (or LM Studio's folder) or a model of a "
+            "running LM Studio, Ollama, llama.cpp, vLLM or Jan: choose it in *Writer model*. Only the one chosen is "
+            "loaded.",
+        ]
+    if enhance:
+        lines += [
+            "",
+            "## Your computer",
+            "",
+            "Enhance & Master runs on the CPU. HQ mastering (UniverSR) is faster on a graphics card: about 1.5 s per "
+            "second of music on an RTX 5060 Ti; switched off it needs no model at all.",
+        ]
+    else:
+        columns = (
+            [("YuE2", "yue2"), ("MiniMax Music 3", "minimax")]
+            if overview
+            else [("Music model", "minimax" if "MiniMax" in template else "yue2")]
+        )
+        rows = [
+            "| Graphics card | " + " | ".join(label for label, _ in columns) + " | Cover Art |",
+            "|---|" + "---|" * len(columns) + "---|",
+        ]
+        for rule in RULES:
+            cells = " | ".join(getattr(rule, key) for _, key in columns)
+            rows.append(f"| {rule.label} | {cells} | {rule.cover_art} |")
+        lines += [
+            "",
+            "## Your graphics card",
+            "",
+            *rows,
+            "",
+            "No graphics card: the music models are not practical on the CPU; 0 · System Check and 4 · Enhance & Master "
+            "run on it.",
+        ]
+        alternatives = [
+            (m, CATALOGUE[MODELS_ALTERNATIVES[m.file]]) for m in needed if m.file in MODELS_ALTERNATIVES
+        ]
+        if alternatives:
+            lines += [
+                "",
+                "**Files for another card** (choose them in the loader nodes - nothing is switched by itself):",
+                *[
+                    f"- instead of `{default.file}`: [{other.file}]({other.url}) · {_gb(other.bytes)} · `{other.folder}/`"
+                    for default, other in alternatives
+                ],
+            ]
+    lines += [
+        "",
+        "Licences: [docs/user/licensing.md](https://github.com/jplenio/Plenio-Music-Production-System/blob/main/docs/"
+        "user/licensing.md) · every file: [docs/user/models.md](https://github.com/jplenio/Plenio-Music-Production-System"
+        "/blob/main/docs/user/models.md)",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def models_note(g: Graph, template: str) -> Node:
+    """The *Models* note left of *About this template* - added last, so that the template's other node ids stay as
+    they were (continuing an older song maps its values by id)."""
+    text = models_note_text(template)
+    height = min(1500, 140 + 21 * sum(1 + len(line) // 62 for line in text.splitlines()))
+    return g.add_frontend(
+        "MarkdownNote",
+        (MODELS_NOTE_X, 0),
+        size=(MODELS_NOTE_WIDTH, height),
+        title="Models · what goes where",
+        widgets=[text],
+    )
+
+
 BRIEF_WIDTH = 520
 """The briefs' width (380 until 0.8.0): template names, typed genres and the creative mode's name fit
 (owner's report 2026-10-15: the inputs' text was cut)."""
@@ -2529,7 +2716,7 @@ ABOUT_YUE2 = f"""# 1 · YuE2 · Song
 
 {APP_TEXT}
 
-**Models** (ComfyUI offers the downloads when you open the template): YuE2 3B int8 (4.0 GB), the Gemma 4 E4B writer. YuE2 weights are **CC BY-NC 4.0 (non-commercial)**. The model block below is collapsed; expand it to choose other files.
+**Models:** every file, its folder and the files for a smaller or larger graphics card are in the note *Models · what goes where* on the left; ComfyUI offers the downloads when you open the template. YuE2 weights are **CC BY-NC 4.0 (non-commercial)**. The model block below is collapsed; expand it to choose other files.
 """
 
 
@@ -2737,7 +2924,7 @@ ABOUT_COVER = f"""# 2 · YuE2 · Cover
 
 **App mode:** switch *Graph / App* at the top left for a simple form: the source file, the mode, the cover style, the creative mode with both closeness sliders, the creativity, the writer model, the seeds, the two Song Sheet buttons (the review stops work in the app; their status line says where the run stands) and the results. The other options of *original lyrics* and *new lyrics* are set in the graph.
 
-**Models** (downloaded on first use): YuE2 3B int8, SheetSage2, the instrumental adapter, the Gemma 4 E4B writer; the lyrics ASR (Qwen3-ASR 1.7B with Qwen3-ForcedAligner 0.6B, 4.1 + 1.8 GB; faster-whisper large-v3, 3.1 GB, only for a language the aligner does not know) is fetched by Plenio when first needed. YuE2, SheetSage2 and the adapter are **CC BY-NC 4.0 (non-commercial)**.
+**Models:** every file, its folder and the files for a smaller or larger graphics card are in the note *Models · what goes where* on the left; ComfyUI offers the downloads when you open the template. The lyrics ASR (Qwen3-ASR 1.7B with Qwen3-ForcedAligner 0.6B, 4.1 + 1.8 GB; faster-whisper large-v3, 3.1 GB, only for a language the aligner does not know) is fetched by Plenio when first needed. YuE2, SheetSage2 and the adapter are **CC BY-NC 4.0 (non-commercial)**.
 """
 
 
@@ -3012,7 +3199,7 @@ ABOUT_MINIMAX = f"""# 3 · MiniMax · Song
 
 {APP_TEXT}
 
-**Models** (ComfyUI offers the downloads when you open the template): MiniMax Music 3 (diffusion model 4.9 GB, int8 text encoder 9.2 GB, VAE), the Gemma 4 E4B writer. MiniMax Music 3 weights: **MiniMax-Music3 Community License**. If decoding runs out of memory, turn on *tiled decode* in MiniMax Render.
+**Models:** every file, its folder and the files for a smaller or larger graphics card are in the note *Models · what goes where* on the left; ComfyUI offers the downloads when you open the template. MiniMax Music 3 weights: **MiniMax-Music3 Community License**. If decoding runs out of memory, turn on *tiled decode* in MiniMax Render.
 """
 
 
@@ -3124,7 +3311,7 @@ How to work:
 
 **App mode:** the mode, the brief (with key and meter - the empty score follows them), the writer model, the seeds, both Song Sheet buttons with their status line and the results - the app is usable for a first run, but the score is drawn in the graph's sheet editor.
 
-**Models:** YuE2 3B int8 (4.0 GB, **CC BY-NC 4.0, non-commercial**) and the Gemma 4 E4B writer. The model block below is collapsed; expand it to choose other files.
+**Models:** every file, its folder and the files for a smaller or larger graphics card are in the note *Models · what goes where* on the left; ComfyUI offers the downloads when you open the template. YuE2 weights are **CC BY-NC 4.0 (non-commercial)**. The model block below is collapsed; expand it to choose other files.
 """
 
 
@@ -3443,6 +3630,16 @@ def templates(bp: dict[str, Blueprint]) -> list[tuple[str, Graph, list[Blueprint
     daw, daw_app = yue2_daw(bp)
     enhance, enhance_app = enhance_master(bp)
     check, check_app = system_check()
+    # every template's Models note, made last (the other node ids stay as they were)
+    for graph, name in (
+        (check, "0 · System Check"),
+        (song, "1 · YuE2 · Song"),
+        (cover, "2 · YuE2 · Cover"),
+        (minimax, "3 · MiniMax · Song"),
+        (enhance, "4 · Enhance & Master"),
+        (daw, "5 · YuE2 · DAW"),
+    ):
+        models_note(graph, name)
     # Refine is in no template since Audio HQ (2026-10-21): its blueprint ships in subgraphs/ for the node
     # library only; the song templates' stems are inside Master since 2026-10-24 (the Stems block: Enhance)
     finish_bps = [bp["master"], bp["cover"]]

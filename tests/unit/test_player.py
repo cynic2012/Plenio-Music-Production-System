@@ -268,7 +268,9 @@ def test_the_state_is_kept_outside_the_songs_folder(server: tuple[str, int, Libr
     assert request(server, "PUT", "/api/state", json.dumps(state).encode())[0] == 403
     elsewhere = {"Content-Type": "application/json", "Origin": "http://evil.example"}
     assert request(server, "PUT", "/api/state", json.dumps(state).encode(), **elsewhere)[0] == 403
-    assert request(server, "POST", "/api/rescan")[0] == 200
+    # reading the folders again too: a form of another site could make the player read thousands of records
+    assert request(server, "POST", "/api/rescan")[0] == 403
+    assert request(server, "POST", "/api/rescan", b"{}", **{"Content-Type": "application/json"})[0] == 200
     assert sorted(p.name for p in songs.rglob("*")) == before
 
 

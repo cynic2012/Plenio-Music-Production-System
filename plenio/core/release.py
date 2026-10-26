@@ -89,7 +89,12 @@ def base_title(title: str) -> str:
 def numbered_title(title: str, taken: Iterable[str]) -> str:
     """``title``, or ``title (2)``, ``title (3)`` ... - the first no song of ``taken`` has (case does not count),
     as file names are numbered (owner's request 2026-10-22: covers of one song all had the same title)."""
-    used = {t.strip().casefold() for t in taken}
+    return numbered_title_in(title, {t.strip().casefold() for t in taken})
+
+
+def numbered_title_in(title: str, used: set[str]) -> str:
+    """:func:`numbered_title` with the titles taken already folded (``t.strip().casefold()``) - for numbering many
+    titles in a row, where folding every title again for each made it quadratic (thousands of songs)."""
     if title.strip().casefold() not in used:
         return title
     for number in range(2, 10000):

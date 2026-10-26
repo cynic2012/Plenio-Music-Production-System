@@ -11,6 +11,7 @@ again, a new take of it (its documents kept), or a new song of its brief.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -19,6 +20,7 @@ import re
 import tempfile
 import threading
 import time
+import urllib.parse
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -44,6 +46,11 @@ AUDIO_SUFFIXES = {".mp3", ".flac", ".wav", ".ogg", ".oga", ".m4a", ".opus", ".aa
 KEYS_KEPT_S = 24 * 3600
 """How long an ``Idempotency-Key`` returns its first job."""
 JOBS_KEPT = 500
+WAIT_LIMIT_S = 60.0
+"""``GET /jobs/{id}?wait=<s>`` answers at the latest after this long."""
+WAIT_STEP_S = 0.5
+LIST_LIMIT = 200
+FINISHED = ("succeeded", "failed", "cancelled")
 STAGE_TEXT = {
     "SONG": "reading the brief",
     "SOURCE": "reading the original",
@@ -88,6 +95,8 @@ _dropped: dict[str, float] = {}
 """Jobs taken out of the queue before they ran (ComfyUI keeps no trace of them): id -> when."""
 _keys: dict[str, tuple[str, float]] = {}
 _lock = threading.Lock()
+_key_locks: dict[str, asyncio.Lock] = {}
+"""One request at a time per ``Idempotency-Key``: two at once with one key made two songs."""
 
 
 # --- answers ------------------------------------------------------------------------------------------------
@@ -284,8 +293,9 @@ def _progress(prompt_id: str, total: int) -> dict[str, Any] | None:
     return out
 
 
-def _result(item: dict[str, Any]) -> dict[str, Any] | None:
-    """What a finished run made: the release record Export Release names (``plenio_player``), its title, its files."""
+def _result(item: dict[str, Any], prompt_id: str = "") -> dict[str, Any] | None:
+    """What a finished run made: the release record Export Release names (``plenio_player``), its title, its files -
+    each with the address to download it (``GET /jobs/{id}/files/{name}``)."""
     for output in (item.get("outputs") or {}).values():
         for entry in (output or {}).get("plenio_player") or []:
             path = Path(str((entry or {}).get("record") or ""))
@@ -308,6 +318,12 @@ def _result(item: dict[str, Any]) -> dict[str, Any] | None:
                 result["seconds"] = float((record.get("audio") or {}).get("seconds") or 0.0)
             except (OSError, ValueError):
                 pass
+            if prompt_id:
+                files = [*result["files"], {"name": path.name, "role": "record"}]
+                result["files"] = [
+                    {**f, "url": f"{BASE}/jobs/{prompt_id}/files/{urllib.parse.quote(f['name'])}"}
+                    for f in files
+                ]
             return result
     return None
 
@@ -399,7 +415,7 @@ def job_view(prompt_id: str) -> dict[str, Any] | None:
             }
         else:
             view["status"] = "succeeded"
-            view["result"] = _result(history)
+            view["result"] = _result(history, prompt_id)
     return view
 
 
@@ -428,7 +444,7 @@ async def index(request: web.Request) -> web.StreamResponse:
                 "queue": f"{BASE}/queue",
                 "openapi": f"{BASE}/openapi.json",
             },
-            "docs": "https://github.com/jplenio/Plenio-Music-Production-System/blob/main/docs/user/concepts/song-api.md",
+            "docs": "https://github.com/jplenio/Plenio-Music-Production-System/blob/main/docs/api/README.md",
         }
     )
 
@@ -515,16 +531,27 @@ async def upload(request: web.Request) -> web.StreamResponse:
 async def jobs_create(request: web.Request) -> web.StreamResponse:
     data = await _body(request)
     key = str(request.headers.get("Idempotency-Key") or "").strip()[:200]
-    if key:
-        with _lock:
-            now = time.time()
-            for old in [k for k, (_, at) in _keys.items() if now - at > KEYS_KEPT_S]:
-                _keys.pop(old, None)
-            known = _keys.get(key)
-        if known is not None:
-            view = job_view(known[0])
-            if view is not None:
-                return web.json_response(view, status=200)
+    if not key:
+        return await _create(data, key)
+    lock = _key_locks.setdefault(key, asyncio.Lock())
+    try:
+        async with lock:
+            with _lock:
+                now = time.time()
+                for old in [k for k, (_, at) in _keys.items() if now - at > KEYS_KEPT_S]:
+                    _keys.pop(old, None)
+                known = _keys.get(key)
+            if known is not None:
+                view = job_view(known[0])
+                if view is not None:
+                    return web.json_response(view, status=200)
+            return await _create(data, key)
+    finally:
+        if not lock.locked() and not getattr(lock, "_waiters", None):
+            _key_locks.pop(key, None)
+
+
+async def _create(data: dict[str, Any], key: str) -> web.StreamResponse:
     template_id = data.get("template")
     if not isinstance(template_id, str) or not template_id:
         raise SongApiError(
@@ -610,8 +637,34 @@ async def from_record(request: web.Request) -> web.StreamResponse:
     return web.json_response(answer)
 
 
+def _query_limit(request: web.Request) -> int:
+    raw = request.query.get("limit", "")
+    if not raw:
+        return LIST_LIMIT
+    try:
+        limit = int(raw)
+    except ValueError as error:
+        raise SongApiError("invalid_value", "limit: a whole number from 1.", field="limit") from error
+    if limit < 1:
+        raise SongApiError("invalid_value", "limit: a whole number from 1.", field="limit")
+    return min(limit, LIST_LIMIT)
+
+
 async def jobs_list(request: web.Request) -> web.StreamResponse:
-    """The API's jobs ComfyUI still knows (in its queue or its history), newest first."""
+    """The API's jobs ComfyUI still knows (in its queue or its history), newest first - ``?status=`` (one or several,
+    comma-separated), ``?client=`` (the client's name), ``?template=``, ``?limit=``."""
+    statuses = {s.strip() for s in request.query.get("status", "").split(",") if s.strip()}
+    unknown = statuses - {"queued", "running", *FINISHED}
+    if unknown:
+        raise SongApiError(
+            "invalid_value",
+            f"No job status {sorted(unknown)[0]!r}.",
+            hint="queued, running, succeeded, failed, cancelled",
+            field="status",
+        )
+    client = request.query.get("client", "")
+    template = request.query.get("template", "")
+    limit = _query_limit(request)
     running, pending = _queue_items()
     ids = [str(x[1]) for x in running + pending if isinstance(x[3], dict) and x[3].get("plenio_api")]
     history = host.prompt_server().prompt_queue.get_history(max_items=200)
@@ -621,17 +674,71 @@ async def jobs_list(request: web.Request) -> web.StreamResponse:
         if isinstance(extra, dict) and extra.get("plenio_api") and prompt_id not in ids:
             ids.append(str(prompt_id))
     views = [v for v in (job_view(i) for i in ids) if v is not None]
+    views = [
+        v
+        for v in views
+        if (not statuses or v["status"] in statuses)
+        and (not client or v["client"].get("name") == client)
+        and (not template or v["template"] == template)
+    ]
     views.sort(key=lambda v: v.get("created_at") or 0, reverse=True)
-    return web.json_response({"jobs": views})
+    return web.json_response({"jobs": views[:limit]})
+
+
+def _moment(view: dict[str, Any]) -> tuple[Any, ...]:
+    """What a waiting program wants to hear of: the status, the place in the queue, the stage."""
+    return view["status"], view.get("queue_position"), (view.get("stage") or {}).get("group")
 
 
 async def job_get(request: web.Request) -> web.StreamResponse:
-    view = job_view(request.match_info["job_id"])
+    """A job - with ``?wait=<seconds>`` (at most 60) the answer comes when its status, its place in the queue or its
+    stage changes, or the time is up: a program follows a song without asking every second."""
+    job_id = request.match_info["job_id"]
+    view = job_view(job_id)
     if view is None:
         raise SongApiError(
             "not_found", "ComfyUI knows no such job (it may have been restarted since).", status=404
         )
+    raw = request.query.get("wait", "")
+    if raw:
+        try:
+            wait = min(max(float(raw), 0.0), WAIT_LIMIT_S)
+        except ValueError as error:
+            raise SongApiError("invalid_value", "wait: seconds, at most 60.", field="wait") from error
+        first = _moment(view)
+        deadline = time.monotonic() + wait
+        while view["status"] not in FINISHED and time.monotonic() < deadline:
+            await asyncio.sleep(min(WAIT_STEP_S, max(0.0, deadline - time.monotonic())))
+            found = job_view(job_id)
+            if found is None:
+                break
+            view = found
+            if _moment(view) != first:
+                break
     return web.json_response(view)
+
+
+async def job_file(request: web.Request) -> web.StreamResponse:
+    """A file of a finished job's song: its audio, cover, sheet music, subtitles or release record - only what its
+    record lists, from the record's folder inside ComfyUI's output folder."""
+    job_id = request.match_info["job_id"]
+    name = request.match_info["name"]
+    history = _history(job_id)
+    result = _result(history, job_id) if history is not None else None
+    if not result or not result.get("record"):
+        view = job_view(job_id)
+        raise SongApiError(
+            "not_found",
+            "ComfyUI knows no such job."
+            if view is None
+            else f"The job has no finished song (it is {view['status']}).",
+            status=404,
+        )
+    path = song_api.result_file(
+        Path(result["record"]), name, [f["name"] for f in result["files"]], host.output_directory()
+    )
+    disposition = f"attachment; filename*=UTF-8''{urllib.parse.quote(path.name)}"
+    return web.FileResponse(path, headers={"Content-Disposition": disposition})
 
 
 async def job_delete(request: web.Request) -> web.StreamResponse:
@@ -713,6 +820,7 @@ ROUTES: tuple[tuple[str, str, Handler], ...] = (
     ("POST", f"{BASE}/from-record", from_record),
     ("GET", f"{BASE}/jobs", jobs_list),
     ("GET", f"{BASE}/jobs/{{job_id}}", job_get),
+    ("GET", f"{BASE}/jobs/{{job_id}}/files/{{name}}", job_file),
     ("DELETE", f"{BASE}/jobs/{{job_id}}", job_delete),
     ("GET", f"{BASE}/queue", queue_info),
 )

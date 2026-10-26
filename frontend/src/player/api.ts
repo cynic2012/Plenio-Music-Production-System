@@ -387,7 +387,7 @@ const serverApi = {
   find: (record: string) => json<{ id: string }>(`/api/find?record=${encodeURIComponent(record)}`),
   comfyui: (url = '') => json<{ found: ComfyFound | null }>(`/api/comfyui${url ? `?url=${encodeURIComponent(url)}` : ''}`),
   quit: () => json<{ ok: boolean }>('/api/quit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }),
-  rescan: () => json<{ songs: number }>('/api/rescan', { method: 'POST' }),
+  rescan: () => json<{ songs: number }>('/api/rescan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }),
   removeSong: (id: string, action: 'retire' | 'delete') =>
     json<RemoveAnswer>(`/api/song/${id}/remove`, {
       method: 'POST',

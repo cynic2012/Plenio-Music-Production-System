@@ -11,7 +11,7 @@ open ComfyUI.
   definitions of the running ComfyUI every time - a field a later Plenio adds to the brief is in the API at once.
 - **A job is a ComfyUI run**: its id is ComfyUI's prompt id, and the song lands where the template exports it.
 
-Design and reasons: [docs/design/party-songs.md](../../design/party-songs.md).
+**For programmers:** the complete guide - quick start in curl, Python and JavaScript, every endpoint, errors, retries, access from other computers, versions - is [docs/api/README.md](../../api/README.md), with every field of the templates ([fields.md](../../api/fields.md)), ready-to-run [examples](../../api/examples/) and the [OpenAPI reference](https://jplenio.github.io/Plenio-Music-Production-System/api/). Design and reasons: [docs/design/party-songs.md](../../design/party-songs.md).
 
 ## Quick start
 
@@ -33,9 +33,10 @@ curl http://127.0.0.1:8188/plenio/api/v1/jobs/<id>
 ```
 
 The answer of `POST /jobs` (`201`) is the job: `status` `queued`, its place in ComfyUI's queue, the seeds it drew. Ask
-`GET /jobs/<id>` every few seconds: `running` with the stage it is in (`"stage": {"group": "5 · RENDER", "text":
-"singing and playing"}`), then `succeeded` with the result - the song's title, its release record and its files - or
-`failed` with the error and the node it came from.
+`GET /jobs/<id>?wait=30` - it answers as soon as something changes, or after 30 seconds: `running` with the stage it
+is in (`"stage": {"group": "5 · RENDER", "text": "singing and playing"}`), then `succeeded` with the result - the
+song's title, its release record and its files, each with a `url` to download it - or `failed` with the error and the
+node it came from.
 
 ## The endpoints
 
@@ -49,8 +50,9 @@ The answer of `POST /jobs` (`201`) is the job: `status` `queued`, its place in C
 | `POST /uploads?name=<file>` | A source recording for a cover (the request's body: MP3, FLAC, WAV, OGG, M4A, OPUS, AAC, AIFF; up to 200 MB). The answer's `name` goes into the field `source.audio`. |
 | `POST /jobs` | Make a song (see below). |
 | `POST /from-record` | The request that makes a released song again (see below): a new take of it, or a new song of its brief. The body is the song's release record (`<name>.plenio.json`). |
-| `GET /jobs` | The API's jobs ComfyUI still knows, newest first. |
-| `GET /jobs/{id}` | One job. |
+| `GET /jobs` | The API's jobs ComfyUI still knows, newest first (`?status=`, `?client=`, `?template=`, `?limit=`). |
+| `GET /jobs/{id}` | One job; `?wait=<seconds>` (at most 60) answers when it changes. |
+| `GET /jobs/{id}/files/{name}` | A file of a finished job's song (its `result.files` list each with its `url`). |
 | `DELETE /jobs/{id}` | Cancel it: out of the queue while it waits, interrupted while it runs. |
 | `GET /queue` | How busy ComfyUI is, and how long the API's runs took lately. |
 

@@ -8,6 +8,7 @@ Without ``--folder`` it plays ComfyUI's output folder when Plenio sits in ``Comf
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 import threading
@@ -66,6 +67,8 @@ def main(argv: list[str] | None = None) -> int:
         "every network; PLENIO_NETWORK_HOST sets it too)",
     )
     args = parser.parse_args(argv)
+    # what goes wrong while it runs: with the time, in its window (or player.log, started from ComfyUI)
+    logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     started = args.folder or default_folders()
     directory = state_dir()
     library = make_library(started, directory)

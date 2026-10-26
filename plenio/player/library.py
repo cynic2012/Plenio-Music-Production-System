@@ -13,6 +13,7 @@ from __future__ import annotations
 import functools
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -27,10 +28,12 @@ from ..core import brief as brief_rules
 from ..core import creativity as creativity_rules
 from ..core import subtitles as subtitle_rules
 from ..core.errors import PlenioError
-from ..core.release import RECORD_SUFFIX, base_title, numbered_title
+from ..core.release import RECORD_SUFFIX, base_title, numbered_title_in
 from . import other as other_music
 
 CACHE_VERSION = 9
+REFRESH_S = 15.0
+"""A reader's songs are read again (in the background) when they are older than this."""
 RETIRED_DIR = "_retired"
 CLOCK_SLACK = 1.0
 """Seconds a file's time may run ahead of the clock read at a scan's start: on Windows a file written just
@@ -42,6 +45,7 @@ AUDIO_KINDS = ("flac", "mp3", "wav")
 ENGINE_NAMES = {"yue2": "YuE2", "minimax_music3": "MiniMax Music 3", "minimax": "MiniMax Music 3"}
 RESOURCES = Path(__file__).resolve().parents[2] / "resources"
 SEED_TITLES = {"take seed": "take", "draft seed": "draft", "arrangement seed": "arrangement"}
+log = logging.getLogger("plenio.player")
 _SRT_TIME = re.compile(r"(\d+):(\d+):(\d+)[,.](\d+)\s*-->\s*(\d+):(\d+):(\d+)[,.](\d+)")
 
 
@@ -496,15 +500,15 @@ def distinguish_titles(songs: Iterable[Song]) -> None:
     groups: dict[str, list[Song]] = {}
     for song in plenio:
         groups.setdefault(str(song.summary.get("title") or "").strip().casefold(), []).append(song)
-    taken = {str(song.summary.get("title") or "") for song in plenio}
+    used = {str(song.summary.get("title") or "").strip().casefold() for song in plenio}
     for group in groups.values():
         if len(group) < 2:
             continue
         group.sort(key=lambda song: (str(song.summary.get("created") or ""), song.id))
         for song in group[1:]:
             title = str(song.summary.get("title") or "")
-            shown = numbered_title(title, taken)
-            taken.add(shown)
+            shown = numbered_title_in(title, used)
+            used.add(shown.strip().casefold())
             # a new dict: the cache keeps the summary as the record has it
             song.summary = {**song.summary, "title": shown, "recorded_title": title}
 
@@ -798,7 +802,12 @@ def _spans(record: Mapping[str, Any]) -> list[list[int]]:
 
 class Library:
     """The songs below ``folders``; summaries cached on disk by the record's size and time. In the folders of
-    ``other``, audio files that no record owns are songs too."""
+    ``other``, audio files that no record owns are songs too.
+
+    Reading the folders again never holds up a reader: :meth:`songs`, :meth:`song` ... answer with the songs as last
+    read and, when those are older than :data:`REFRESH_S`, have them read again in the background - only the very
+    first time does a reader wait. Before (2026-10-26, 2958 records), every request after 15 s read them all again
+    while it held one lock - also the audio a song streams, and Live Play asked every two seconds."""
 
     def __init__(self, folders: Iterable[Path], cache: Path | None = None, other: Iterable[Path] = ()):
         self.folders = [Path(f).resolve() for f in folders]
@@ -810,13 +819,23 @@ class Library:
         listed in Settings, and not read where one of the library's folders holds them already."""
         self.cache_path = cache
         self._lock = threading.Lock()
+        """One reading of the folders at a time."""
+        self._background_lock = threading.Lock()
+        self._background: threading.Thread | None = None
+        self._first = threading.Event()
         self._songs: dict[str, Song] = {}
         self._cache: dict[str, Any] = {}
         self._scanned = 0.0
+        self._signature: tuple[Any, ...] | None = None
+        self._listing: tuple[int, list[dict[str, Any]]] = (-1, [])
         # when each song appeared (its record's or file's time), and the wall clock at the last scan's start
         self._appeared: dict[str, float] = {}
         self.scan_started = 0.0
         self.errors: list[str] = []
+        self.version = 0
+        """Counts the changes of the songs: the page's copy of the library is current while it has this one."""
+        self.progress: dict[str, int] = {"done": 0, "total": 0}
+        """The records read so far and how many there are, while the folders are read (the first time: shown)."""
         if cache and cache.exists():
             try:
                 data = json.loads(cache.read_text(encoding="utf-8"))
@@ -824,6 +843,14 @@ class Library:
                     self._cache = data.get("songs") or {}
             except (OSError, ValueError):
                 self._cache = {}
+
+    @property
+    def ready(self) -> bool:
+        """The folders were read at least once."""
+        return self._first.is_set()
+
+    def wait_ready(self, timeout: float) -> bool:
+        return self._first.wait(timeout)
 
     def set_folders(self, folders: Iterable[Path], other: Iterable[Path] = ()) -> None:
         """Read other folders from now on (chosen in Settings)."""
@@ -844,134 +871,211 @@ class Library:
                 found.append(folder)
         return found
 
-    def _records(self) -> Iterable[tuple[Path, Path]]:
+    def _walk(
+        self,
+    ) -> tuple[list[tuple[Path, Path, os.stat_result]], list[tuple[Path, Path, os.stat_result]]]:
+        """Every release record below the roots, and in the folders with other music every audio file - each with
+        its root and its stat, sorted by path. One pass with ``os.scandir``, which leaves the folders the library
+        skips out on the way and has each file's stat from the folder's listing (``rglob`` went into every folder
+        and read it twice: 0.34 s against 0.14 s for 44,000 files in 2,900 folders)."""
+        records: list[tuple[Path, Path, os.stat_result]] = []
+        audio: list[tuple[Path, Path, os.stat_result]] = []
         for root in self.roots():
-            if not root.exists():
-                continue
-            for path in sorted(root.rglob(f"*{RECORD_SUFFIX}")):
-                if not SKIP_DIRS.intersection(path.relative_to(root).parts):
-                    yield root, path
+            other = root in self.other and root in self.folders
+            stack = [str(root)]
+            while stack:
+                try:
+                    with os.scandir(stack.pop()) as entries:
+                        for entry in entries:
+                            try:
+                                if entry.is_dir(follow_symlinks=False):
+                                    if entry.name not in SKIP_DIRS:
+                                        stack.append(entry.path)
+                                elif entry.name.endswith(RECORD_SUFFIX):
+                                    records.append((root, Path(entry.path), entry.stat()))
+                                elif (
+                                    other
+                                    and os.path.splitext(entry.name)[1].lower() in other_music.AUDIO_SUFFIXES
+                                ):
+                                    audio.append((root, Path(entry.path), entry.stat()))
+                            except OSError:
+                                continue
+                except OSError:
+                    continue
+        records.sort(key=lambda found: found[1])
+        audio.sort(key=lambda found: found[1])
+        return records, audio
 
-    def _other_files(self, songs: Iterable[Song]) -> Iterable[tuple[Path, Path]]:
+    def _other_files(
+        self, songs: Iterable[Song], audio: Iterable[tuple[Path, Path, os.stat_result]]
+    ) -> Iterable[tuple[Path, Path, os.stat_result]]:
         """The audio files of the folders with other music that no Plenio song owns."""
-        roots = [root for root in self.folders if root in self.other and root.exists()]
-        if not roots:
-            return
         owned, stems = other_music.plenio_owned(songs)
         seen: set[Path] = set()
-        for root in roots:
-            for path in sorted(root.rglob("*")):
-                if path.suffix.lower() not in other_music.AUDIO_SUFFIXES or not path.is_file():
-                    continue
-                relative = path.relative_to(root).parts
-                if SKIP_DIRS.intersection(relative) or path.resolve() in seen:
-                    continue
-                seen.add(path.resolve())
-                if not other_music.is_plenio_file(path, owned, stems):
-                    yield root, path
+        for root, path, stat in audio:
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            if not other_music.is_plenio_file(path, owned, stems):
+                yield root, path, stat
 
-    def scan(self, *, force: bool = False, every: float = 15.0) -> None:
-        """Read the records again (at most every ``every`` seconds unless ``force``); unchanged ones come
-        from the cache."""
+    def scan(self, *, force: bool = False, every: float = 15.0, wait: bool = True) -> None:
+        """Read the records again (at most every ``every`` seconds unless ``force``); unchanged ones come from the
+        cache. ``wait=False``: in the background - the call returns at once (one reading at a time)."""
+        if not force and self._fresh(every):
+            return
+        if not wait:
+            self._in_background(every)
+            return
         with self._lock:
-            if not force and time.monotonic() - self._scanned < every:
+            if not force and self._fresh(every):
+                return  # read by another thread meanwhile
+            self._scan()
+
+    def _fresh(self, every: float) -> bool:
+        return self._first.is_set() and time.monotonic() - self._scanned < every
+
+    def _in_background(self, every: float) -> None:
+        with self._background_lock:
+            if self._background is not None and self._background.is_alive():
                 return
-            started = time.time()
-            appeared: dict[str, float] = {}
-            songs: dict[str, Song] = {}
-            cache: dict[str, Any] = {}
-            errors: list[str] = []
-            for root, path in self._records():
-                stat = path.stat()
+
+            def read() -> None:
+                try:
+                    self.scan(every=every)
+                except Exception:  # noqa: BLE001 - a reader goes on with the songs it has
+                    log.exception("Plenio Player: reading the song folders failed")
+
+            self._background = threading.Thread(target=read, name="plenio-library-scan", daemon=True)
+            self._background.start()
+
+    def _refresh(self) -> None:
+        """For a reader: the songs as last read - read again in the background when they are older than
+        :data:`REFRESH_S`; the first time (nothing read yet) the reader waits for them."""
+        self.scan(every=REFRESH_S, wait=not self._first.is_set())
+
+    def _scan(self) -> None:
+        started = time.time()
+        records, audio = self._walk()
+        # nothing came, went or changed since the last reading: the songs stay as they are (no 12 MB cache written
+        # again, no titles numbered again - a library of thousands is looked through in a fraction of a second)
+        signature = (
+            tuple(self.roots()),
+            tuple(sorted(self.other)),
+            tuple((path, stat.st_size, int(stat.st_mtime)) for _, path, stat in records),
+            tuple((path, stat.st_size, int(stat.st_mtime)) for _, path, stat in audio),
+        )
+        if signature == self._signature and self._first.is_set():
+            self.scan_started = max(
+                [started, *(at for at in self._appeared.values() if at <= started + CLOCK_SLACK)]
+            )
+            self._scanned = time.monotonic()
+            return
+        appeared: dict[str, float] = {}
+        songs: dict[str, Song] = {}
+        cache: dict[str, Any] = {}
+        errors: list[str] = []
+        read_anew = 0
+        self.progress = {"done": 0, "total": len(records)}
+        for done, (root, path, stat) in enumerate(records, 1):
+            key = path.as_posix()
+            stamp = [stat.st_size, int(stat.st_mtime)]
+            cached = self._cache.get(key)
+            try:
+                if cached and cached.get("stamp") == stamp:
+                    song = Song(cached["summary"]["id"], path, root, cached["summary"])
+                    song.files = {k: Path(v) for k, v in cached["files"].items()}
+                else:
+                    record = json.loads(path.read_text(encoding="utf-8"))
+                    song = summarize(record, path, root)
+                    read_anew += 1
+                songs[song.id] = song
+                appeared[song.id] = _appeared(stat)
+                cache[key] = {
+                    "stamp": stamp,
+                    "summary": song.summary,
+                    "files": {k: str(v) for k, v in song.files.items()},
+                }
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                errors.append(f"{path.name}: {error}")
+            self.progress["done"] = done
+        for root, path, stat in self._other_files(list(songs.values()), audio):
+            try:
                 key = path.as_posix()
                 stamp = [stat.st_size, int(stat.st_mtime)]
                 cached = self._cache.get(key)
-                try:
-                    if cached and cached.get("stamp") == stamp:
-                        song = Song(cached["summary"]["id"], path, root, cached["summary"])
-                        song.files = {k: Path(v) for k, v in cached["files"].items()}
-                    else:
-                        record = json.loads(path.read_text(encoding="utf-8"))
-                        song = summarize(record, path, root)
-                    songs[song.id] = song
-                    appeared[song.id] = _appeared(stat)
-                    cache[key] = {
-                        "stamp": stamp,
-                        "summary": song.summary,
-                        "files": {k: str(v) for k, v in song.files.items()},
-                    }
-                except (OSError, ValueError, KeyError, TypeError) as error:
-                    errors.append(f"{path.name}: {error}")
-            for root, path in self._other_files(list(songs.values())):
-                try:
-                    stat = path.stat()
-                    key = path.as_posix()
-                    stamp = [stat.st_size, int(stat.st_mtime)]
-                    cached = self._cache.get(key)
-                    if cached and cached.get("stamp") == stamp and cached.get("other"):
-                        summary = cached["summary"]
-                        files = {k: Path(v) for k, v in cached["files"].items()}
-                    else:
-                        summary, files = other_music.summarize_other(path, root, song_id(path, root))
-                    song = Song(summary["id"], path, root, summary, files, other=True)
-                    songs[song.id] = song
-                    appeared[song.id] = _appeared(stat)
-                    cache[key] = {
-                        "stamp": stamp,
-                        "other": True,
-                        "summary": summary,
-                        "files": {k: str(v) for k, v in files.items()},
-                    }
-                except (OSError, ValueError, KeyError, TypeError) as error:
-                    errors.append(f"{path.name}: {error}")
-            distinguish_titles(songs.values())
-            self._songs, self._cache, self.errors = songs, cache, errors
-            self._appeared = appeared
-            # "now" for Live Play: no song seen in this scan may count as newer than it on the next question
-            self.scan_started = max(
-                [started, *(at for at in appeared.values() if at <= started + CLOCK_SLACK)]
-            )
-            self._scanned = time.monotonic()
-            if self.cache_path:
-                try:
-                    self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-                    temp = self.cache_path.with_suffix(".tmp")
-                    temp.write_text(json.dumps({"version": CACHE_VERSION, "songs": cache}), encoding="utf-8")
-                    temp.replace(self.cache_path)
-                except OSError:
-                    pass
+                if cached and cached.get("stamp") == stamp and cached.get("other"):
+                    summary = cached["summary"]
+                    files = {k: Path(v) for k, v in cached["files"].items()}
+                else:
+                    summary, files = other_music.summarize_other(path, root, song_id(path, root))
+                    read_anew += 1
+                song = Song(summary["id"], path, root, summary, files, other=True)
+                songs[song.id] = song
+                appeared[song.id] = _appeared(stat)
+                cache[key] = {
+                    "stamp": stamp,
+                    "other": True,
+                    "summary": summary,
+                    "files": {k: str(v) for k, v in files.items()},
+                }
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                errors.append(f"{path.name}: {error}")
+        distinguish_titles(songs.values())
+        changed_cache = read_anew > 0 or cache.keys() != self._cache.keys()
+        self._songs, self._cache, self.errors = songs, cache, errors
+        self._appeared = appeared
+        self._signature = signature
+        self.version += 1
+        # "now" for Live Play: no song seen in this scan may count as newer than it on the next question
+        self.scan_started = max([started, *(at for at in appeared.values() if at <= started + CLOCK_SLACK)])
+        self._scanned = time.monotonic()
+        self._first.set()
+        if self.cache_path and changed_cache:
+            try:
+                self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+                temp = self.cache_path.with_suffix(".tmp")
+                temp.write_text(json.dumps({"version": CACHE_VERSION, "songs": cache}), encoding="utf-8")
+                temp.replace(self.cache_path)
+            except OSError:
+                pass
 
     def newer(self, since: float) -> list[dict[str, Any]]:
         """The songs that appeared after ``since`` (the wall clock, as :attr:`scan_started` gives it), oldest
         first - for Live Play, which adds the songs ComfyUI makes while the music plays."""
-        found = [
-            (at, self._songs[i].summary)
-            for i, at in self._appeared.items()
-            if at > since and i in self._songs
-        ]
+        songs, appeared = self._songs, self._appeared
+        found = [(at, songs[i].summary) for i, at in appeared.items() if at > since and i in songs]
         return [summary for _, summary in sorted(found, key=lambda x: x[0])]
 
     def counts(self) -> dict[Path, list[int]]:
         """Per folder: its Plenio songs and its other music."""
-        self.scan()
+        self._refresh()
         found: dict[Path, list[int]] = {root: [0, 0] for root in self.folders}
-        for song in self._songs.values():
+        for song in list(self._songs.values()):
             found.setdefault(song.root, [0, 0])[1 if song.other else 0] += 1
         return found
 
     def songs(self) -> list[dict[str, Any]]:
-        self.scan()
-        return sorted(
-            (s.summary for s in self._songs.values()), key=lambda s: s.get("created", ""), reverse=True
-        )
+        """Every song's summary, the newest first (made once per change of the songs)."""
+        self._refresh()
+        version, listing = self._listing
+        if version != self.version:
+            listing = sorted(
+                (s.summary for s in list(self._songs.values())),
+                key=lambda s: s.get("created", ""),
+                reverse=True,
+            )
+            self._listing = (self.version, listing)
+        return list(listing)
 
     def song(self, song_id: str) -> Song | None:
-        self.scan()
+        self._refresh()
         return self._songs.get(song_id)
 
     def find_record(self, record: Path) -> Song | None:
         """The song of a release record file (``None``: not in the library)."""
-        self.scan()
+        self._refresh()
         try:
             wanted = Path(record).resolve()
         except OSError:

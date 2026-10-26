@@ -33,6 +33,7 @@ import random
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from . import brief as brief_rules
@@ -57,7 +58,9 @@ from .workflow_prompt import (
 )
 
 API_NAME = "plenio-song-api"
-API_VERSION = "1.0"
+API_VERSION = "1.1"
+"""1.1 (2026-10-26) only adds: a finished job's files to download, waiting for a job's change, filters of the job
+list. A program written for 1.0 works unchanged."""
 """The API's version: a new minor version only adds (fields, paths, values); a new major one has its own path."""
 MARKER = "plenio_api"
 BRIEF_TYPES = {"PlenioSongBrief": "song", "PlenioCoverBrief": "cover"}
@@ -87,6 +90,10 @@ OPTIONAL_MARK = "(optional)"
 TEXT_LIMIT = 4000
 LINE_LIMIT = 400
 UPLOAD_PREFIX = "plenio-api-"
+UPLOAD_DESCRIPTION = (
+    "A recording in ComfyUI's input folder: upload it with POST /uploads?name=<file> and give the answer's name here."
+)
+"""An upload field's description where its node (ComfyUI's Load Audio) brings none."""
 """Uploaded source recordings are saved in ComfyUI's input folder under names that start with this."""
 DOCUMENT_LIMIT = 200_000
 """A document's characters at most (a long score in ABC is some ten thousand)."""
@@ -130,6 +137,26 @@ class SongApiError(ValueError):
         if self.details is not None:
             body["details"] = self.details
         return body
+
+
+def result_file(record: Path, name: str, listed: Iterable[str], output: Path) -> Path:
+    """A file of a finished song to download (``GET /jobs/{id}/files/{name}``): one its release record lists, or the
+    record itself - in the record's folder, inside ComfyUI's output folder. Nothing else, whatever the name says."""
+    missing = SongApiError(
+        "not_found",
+        f"The song has no file {name!r}.",
+        hint="The job's result lists its files, each with its url.",
+        status=404,
+    )
+    if not name or Path(name).name != name or name in (".", ".."):
+        raise missing
+    if name not in set(listed) | {record.name}:
+        raise missing
+    folder = record.parent.resolve()
+    path = (folder / name).resolve()
+    if path.parent != folder or output.resolve() not in path.parents or not path.is_file():
+        raise missing
+    return path
 
 
 # --- the template's anatomy ---------------------------------------------------------------------------------
@@ -479,7 +506,8 @@ def _node_fields(
                 kind=kind,
                 type=field_type,
                 label=_label(names[0], options),
-                description=str(options.get("tooltip") or ""),
+                description=str(options.get("tooltip") or "")
+                or (UPLOAD_DESCRIPTION if field_type == "upload" else ""),
                 default=current,
                 node=int(node["id"]),
                 node_type=str(node.get("type")),

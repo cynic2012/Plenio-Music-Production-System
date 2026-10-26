@@ -6,7 +6,7 @@ Published Registry versions are immutable: every fix is a new version.
 
 1. Version in `pyproject.toml` (`[project].version`), `plenio/__init__.py` and `frontend/package.json` (+ `package-lock.json`); a `CHANGELOG.md` section with the date.
 2. All suites green: the CI on GitHub (Ubuntu + Windows, ComfyUI host job, frontend with the build check) and, on the owner's machine, the full suite with the real models (`PLENIO_SMOKE=1`, `docs/dev/testing.md`).
-3. `tools/build_graphs.py` and `tools/build_thumbnails.py` leave no diff; `tools/workflow_validation.py` passes.
+3. `tools/build_graphs.py`, `tools/api_docs.py` (the Song API's reference in `docs/api`: its OpenAPI copy names the Plenio version) and `tools/build_thumbnails.py` leave no diff; `tools/workflow_validation.py` passes.
 4. Package check: `comfy node validate` and `comfy node pack` (comfy-cli: `python -m pip install comfy-cli` into the Python environment you work with; on Windows set `PYTHONUTF8=1` - its check prints characters the console code page cannot show). Run it **after committing**: `comfy node pack` takes the files git tracks, so an uncommitted new file is missing from `node.zip`. Then look into `node.zip`: the 6 templates, 13 blueprints, `plenio/`, `web/`, `resources/`, `locales/` (the blueprints' tooltips) and `docs/user/` must be there, `tests/`, `tools/`, `frontend/`, `assets/` and the rest of `docs/` must not (`.comfyignore`). Delete `node.zip` afterwards.
 5. No local paths, private addresses, personal prompt text or credentials in shipped files (`tests/unit/test_import_boundary.py`).
 
@@ -25,5 +25,7 @@ The listening page is GitHub Pages from the `docs/` folder of `main` (`docs/inde
 
 - **Songs from Plenio** - `docs/demo-plenio.js`, covers in `docs/assets/demo-plenio/`. Built by `python tools/build_demo_catalog.py <folder with *.plenio.json>` from the release records of a batch: one song per brief template (length against the brief, Song Sheet warnings, a render that matches the template's vocals, distinct titles; `--pick TEMPLATE=FILE` overrides a choice). It also writes the upload checklist `docs/demo-plenio-upload.md` (files, SoundCloud titles, descriptions, tags, alternatives per genre). Running it again keeps the `soundcloudUrl` and `comment` values typed into the catalog and its config. The tab shows only the songs that have a `soundcloudUrl` (the others stay in the catalog); a song's cover is its JPG in `docs/assets/demo-plenio/` when stored there (run the tool again after adding one), otherwise the page loads the track's SoundCloud artwork (oEmbed).
 - **MiniMax Music 3** and **YuE2 Cover** - `docs/demo-tracks.js`, `docs/demo-covers.js`, images in `docs/assets/demo-covers/`; built with the predecessor toolkit's scripts, new entries are added by hand in the same format.
+
+The Song API's reference is on the same site: `docs/api/index.html` (`/api/`) shows `docs/api/openapi.json` with Redoc, loaded from jsDelivr - the one page of the site that loads a script from elsewhere.
 
 Audio is streamed from SoundCloud: a track's `soundcloudUrl` is its public SoundCloud URL (a player loads when the visitor presses play; without a URL the card says *Coming to SoundCloud*), and the playlist button of a tab uses that catalog's `soundcloudPlaylistUrl`. The page loads nothing else from third parties.

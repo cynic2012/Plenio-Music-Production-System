@@ -444,9 +444,11 @@ def test_audio_hq_runs_in_the_master_block_before_the_eq() -> None:
         switch_slot = next(slot for slot in wrapper["inputs"] if slot["name"] == "hq_mastering")
         switch_link = next(link for link in template["links"] if link[0] == switch_slot["link"])
         switch = next(n for n in template["nodes"] if n["id"] == switch_link[1])
-        # off, the first node of group 1, and made last: the template's other node ids stay as they were
+        # off, the first node of group 1, and made last (only the Models note after it): the template's other node
+        # ids stay as they were
         assert switch["type"] == "PlenioHQMastering" and switch["widgets_values"] == [False], name
-        assert switch["pos"] == [0, 0] and switch["id"] == max(n["id"] for n in template["nodes"]), name
+        real = [n["id"] for n in template["nodes"] if n["type"] not in ("MarkdownNote", "Note")]
+        assert switch["pos"] == [0, 0] and switch["id"] == max(real), name
         assert [link[3] for link in template["links"] if link[1] == switch["id"]] == [wrapper["id"]], name
         loader = next(n for n in nodes if n["type"] == "PlenioAudioModelLoader")
         assert loader["widgets_values"][:2] == ["super-resolution", "pytorch_model.bin"]
@@ -779,3 +781,32 @@ def test_export_takes_the_brief_and_writes_tags_with_variables(name: str) -> Non
     note = next(n for n in nodes.values() if n.get("title") == "Tags & variables")
     for word in ("{genre}", "{mood}", "{lyrics}", "{take_seed}", "(notes).srt"):
         assert word in note["widgets_values"][0], word
+
+
+@pytest.mark.parametrize("name", sorted(TEMPLATES))
+def test_every_template_says_which_model_file_goes_where(name: str) -> None:
+    """Owner's request (2026-10-26): a note in every template, like ComfyUI's own templates have, with each model file,
+    its folder and link - and the files for a smaller or larger graphics card. Every file a loader of the template
+    downloads is in it, under its folder in the tree."""
+    template = TEMPLATES[name]
+    note = next(n for n in template["nodes"] if n.get("title") == "Models · what goes where")
+    text = note["widgets_values"][0]
+    assert (
+        note["pos"][0]
+        < next(n for n in template["nodes"] if n.get("title") == "About this template")["pos"][0]
+    )
+    downloads = [
+        entry for node in template["nodes"] for entry in (node.get("properties") or {}).get("models", [])
+    ] + [
+        entry
+        for definition in template["definitions"]["subgraphs"]
+        for node in definition["nodes"]
+        for entry in (node.get("properties") or {}).get("models", [])
+    ]
+    for entry in downloads:
+        assert f"[{entry['name']}]({entry['url']})" in text, (name, entry["name"])
+        assert f"📂 {entry['directory']}/" in text, (name, entry["directory"])
+    if name.startswith(("1 ", "2 ", "3 ", "5 ")):
+        assert "## Your graphics card" in text and "No graphics card" in text
+    # the view opens with the note in sight
+    assert template["extra"]["ds"]["offset"][0] + note["pos"][0] >= 0

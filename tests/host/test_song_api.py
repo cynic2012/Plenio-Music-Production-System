@@ -296,3 +296,61 @@ def test_a_covers_record_needs_its_recording_in_the_input_folder(models: ComfySe
     }
     status, wrong = server.request("POST", f"{BASE}/from-record", {"schema": "nope"})
     assert status == 400 and wrong["error"]["code"] == "bad_request"
+
+
+# --- API 1.1 (2026-10-26): waiting for a change, the list's filters, a finished job's files, one key at a time ---
+
+
+def test_a_program_waits_for_the_change_instead_of_asking_every_second(models: ComfyServer) -> None:
+    server = models
+    status, job = server.request(
+        "POST",
+        f"{BASE}/jobs",
+        {"template": "yue2-song", "fields": {"genre": "ska"}, "client": {"name": "wait test"}},
+    )
+    assert status == 201, job
+    asked = 0
+    view = job
+    deadline = time.monotonic() + 120
+    while view["status"] not in ("succeeded", "failed", "cancelled") and time.monotonic() < deadline:
+        view = server.get(f"{BASE}/jobs/{job['id']}?wait=20")
+        asked += 1
+    assert view["status"] == "failed" and asked <= 6, (asked, view)
+    assert server.request("GET", f"{BASE}/jobs/{job['id']}?wait=soon")[0] == 400
+    # the list, filtered: by the client's name, by status
+    mine = server.get(f"{BASE}/jobs?client=wait%20test")["jobs"]
+    assert [j["id"] for j in mine] == [job["id"]]
+    assert job["id"] in [j["id"] for j in server.get(f"{BASE}/jobs?status=failed,cancelled&limit=50")["jobs"]]
+    assert job["id"] not in [j["id"] for j in server.get(f"{BASE}/jobs?status=queued")["jobs"]]
+    status, wrong = server.request("GET", f"{BASE}/jobs?status=done")
+    assert status == 400 and wrong["error"]["field"] == "status"
+    # a failed job has no song: none of its files
+    status, missing = server.request("GET", f"{BASE}/jobs/{job['id']}/files/Song.flac")
+    assert status == 404 and "failed" in missing["error"]["message"]
+    assert server.request("GET", f"{BASE}/jobs/nope/files/Song.flac")[0] == 404
+
+
+def test_two_requests_at_once_with_one_key_make_one_job(models: ComfyServer) -> None:
+    import threading
+
+    server = models
+    body = json.dumps({"template": "yue2-song", "fields": {"genre": "polka"}}).encode("utf-8")
+    ids: list[str] = []
+
+    def post() -> None:
+        request = urllib.request.Request(
+            server.url + f"{BASE}/jobs",
+            data=body,
+            method="POST",
+            headers={"Content-Type": "application/json", "Idempotency-Key": "host-test-at-once"},
+        )
+        with urllib.request.urlopen(request, timeout=60) as answer:  # noqa: S310 - local test server
+            ids.append(json.loads(answer.read())["id"])
+
+    threads = [threading.Thread(target=post) for _ in range(3)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(60)
+    assert len(ids) == 3 and len(set(ids)) == 1, ids
+    finished(server, ids[0])
