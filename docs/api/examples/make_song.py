@@ -63,7 +63,9 @@ class Api:
         while job["status"] not in FINISHED:
             job = self.call("GET", f"/jobs/{job['id']}?wait=30")
             stage = (job.get("stage") or {}).get("text", "")
-            line = f"{job['status']}" + (f" - #{job['queue_position']} in line" if job.get("queue_position") else "")
+            line = f"{job['status']}" + (
+                f" - #{job['queue_position']} in line" if job.get("queue_position") else ""
+            )
             line += f" - {stage}" if stage else ""
             if line != shown:
                 print(line)
@@ -81,12 +83,16 @@ class Api:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("description", help="what the song is about and how it should sound")
     parser.add_argument("--api", default="http://127.0.0.1:8188/plenio/api/v1")
     parser.add_argument("--template", default="yue2-song")
     parser.add_argument("--genre", default="")
-    parser.add_argument("--length", default="short (about 1:30)", help="a length of the list, seconds or 3:15")
+    parser.add_argument(
+        "--length", default="short (about 1:30)", help="a length of the list, seconds or 3:15"
+    )
     parser.add_argument("--vocals", default="sung", choices=["sung", "sparse vocals", "instrumental"])
     parser.add_argument("--language", default="")
     parser.add_argument("--cover-art", action=argparse.BooleanOptionalAction, default=True)

@@ -90,9 +90,7 @@ OPTIONAL_MARK = "(optional)"
 TEXT_LIMIT = 4000
 LINE_LIMIT = 400
 UPLOAD_PREFIX = "plenio-api-"
-UPLOAD_DESCRIPTION = (
-    "A recording in ComfyUI's input folder: upload it with POST /uploads?name=<file> and give the answer's name here."
-)
+UPLOAD_DESCRIPTION = "A recording in ComfyUI's input folder: upload it with POST /uploads?name=<file> and give the answer's name here."
 """An upload field's description where its node (ComfyUI's Load Audio) brings none."""
 """Uploaded source recordings are saved in ComfyUI's input folder under names that start with this."""
 DOCUMENT_LIMIT = 200_000

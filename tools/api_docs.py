@@ -29,7 +29,9 @@ LIST_SHOWN = 12
 
 
 def _snapshot() -> dict[str, Any]:
-    data: dict[str, Any] = json.loads((PROJECT / "tools" / "data" / "node_types.json").read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads(
+        (PROJECT / "tools" / "data" / "node_types.json").read_text(encoding="utf-8")
+    )
     return data
 
 
@@ -50,7 +52,10 @@ def document() -> dict[str, Any]:
     data = openapi(templates(), plenio=__version__, comfyui=_comfyui(_snapshot()))
     # the copy describes the API of a ComfyUI on this computer: the full address, as a program would use it
     data["servers"] = [
-        {"url": "http://127.0.0.1:8188/plenio/api/v1", "description": "ComfyUI on this computer (its default port)"},
+        {
+            "url": "http://127.0.0.1:8188/plenio/api/v1",
+            "description": "ComfyUI on this computer (its default port)",
+        },
         {"url": "http://127.0.0.1:8000/plenio/api/v1", "description": "ComfyUI Desktop"},
     ]
     return data
@@ -77,7 +82,11 @@ def _when(field: Field) -> str:
 def _rows(fields: tuple[Field, ...]) -> list[str]:
     rows = ["| Field | Type | Default | Values | Only when | What it does |", "|---|---|---|---|---|---|"]
     for field in fields:
-        name = f"`{field.id}`" + (" (fixed)" if field.fixed else "") + (" **required**" if field.required else "")
+        name = (
+            f"`{field.id}`"
+            + (" (fixed)" if field.fixed else "")
+            + (" **required**" if field.required else "")
+        )
         default = json.dumps(field.default, ensure_ascii=False) if field.default not in ("", None) else ""
         rows.append(
             f"| {name} | {field.type} | {_cell(default)} | {_cell(_values(field))} | {_cell(_when(field))} | "
