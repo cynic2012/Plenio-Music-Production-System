@@ -19,6 +19,7 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 ## New in 1.3: party songs, a Song API, and videos that change with the song
 
 - **Party songs**: the listeners of the Plenio Player make songs of their own - *Make a song* in the player, *Make your own song* on the party guests' phones. A new song or a cover of an uploaded recording; a vibe (*Pop*, *Latin*, *Rock* …), any style template or *Surprise me* fills every field, the rest is a few lists and *Generate Song*. *Your songs* shows each song's place in line, a rough time it will be ready and what the studio does now; when it is ready, it plays in Live Play. Off by default: the admin decides who may, how many songs each and how long - and whether the name of the one who made it shows while the song plays, large at its beginning, its sections and its end, or floating across the visual. [Details](docs/user/concepts/player.md#party-songs-guests-make-songs)
+- **Again, from any song**: a new take of a song - the same title, words and notes, sung and played anew, in about half the time of a new song -, a new song like it or a cover of it, from the song's page, its menu, a playlist or Live Play. From *In your network* the player has **the whole studio**: the writer model, HQ mastering, cover art, the rest of the brief, the folder, the formats and the tags - at any time. [Details](docs/user/concepts/player.md#again-a-new-take-a-new-song-like-it-a-cover-of-it)
 - **The Song API**: `/plenio/api/v1` on the running ComfyUI makes a song from a template's fields with one HTTP request - for the player and for any other program. The fields are read from the template and the node definitions on every request, so the API follows the template when it changes; values are checked with the field and the reason named, jobs are followed through queue, stage and result, with uploads, cancel and an OpenAPI description. [Guide](docs/user/concepts/song-api.md)
 - **A video's visuals over its time**: one visual, a new one at every section or every few seconds - each chosen in a **gallery of little windows that play the visual to the song's own music**, or at random from a seed; the same visual for every chorus, changes on the beat. New looks: the cover behind the visual, the beat's breath, grain, vignette, cinema bars, section names, an end card, fades from and to black. [Details](docs/user/concepts/player.md#save-a-song-as-a-video)
 - **Sparse vocals** in the Song Brief: a song that is mostly instrumental, with a few sung hook lines. **Lyrics fidelity** renders a further take only while the best take so far sang less than 96 % of its lyrics. Several values in one row of the player's filters.
@@ -33,10 +34,15 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 </p>
 
 <p align="center">
+  <img src="assets/branding/1.3.0/player-again.jpg" alt="Again, from a song: Past Left Behind with A new take chosen beside A new song like it and A cover of it, its title, style and lyrics ready to change, and Everybody's songs - new takes, a cover of a library song, a new take of a cover and a song made from the network" width="49%" />
+  <img src="assets/branding/1.3.0/player-whole-studio.jpg" alt="Every setting of the studio: the writer model, HQ mastering and Cover Art, then the rest of the Song Brief - arrangement, genre closeness, lines under the singing, creativity and lyrics fidelity - with what each does" width="49%" />
+</p>
+
+<p align="center">
   <img src="assets/branding/1.3.0/player-who-made-it.jpg" alt="Who made it, over the visual while a party song plays: A party song by Guest as it begins, Verse by Guest as the verse begins, the name floating across the picture between, and made at this party by Guest - thank you as it ends" width="98%" />
 </p>
 
-*Make a song in the player · a guest orders on the phone, the song is ready and plays at the party · a video's visuals per section · the gallery that plays every visual to the music of the part · who made the song, over the visual as it plays.*
+*Make a song in the player · a guest orders on the phone, the song is ready and plays at the party · a video's visuals per section · the gallery that plays every visual to the music of the part · a song made again: a new take, a new song like it or a cover · every setting of the studio, from the network · who made the song, over the visual as it plays.*
 
 ## New in 1.2.1: lyrics sung as written, and heard more exactly
 
@@ -393,7 +399,7 @@ It finds every song Export Release wrote into ComfyUI's output folder. **Open in
 - **Playlists**: smart lists, your own lists, a radio of songs alike, crossfades, repeat (the playlist or the song), A/B with the unmastered take and a sleep timer.
 - **Live Play**: a playlist for a party that you change while it plays - and the songs you make in ComfyUI join it as soon as they are exported: next, at the end or anywhere. **Show the visual** puts it on the big screen.
 - **Guests in your network**: everyone on the party's Wi-Fi scans a QR code and sees the live playlist on the phone - and, if you allow it, moves songs, takes them out and adds songs from your library. Their QR code can stand over the visual on the big screen.
-- **Party songs** (new in 1.3): your listeners and the guests at a party make songs of their own - a style, a few choices, *Generate Song* - and each plays in Live Play when it is ready; you decide who may and how many.
+- **Party songs** (new in 1.3): your listeners and the guests at a party make songs of their own - a style, a few choices, *Generate Song* - and each plays in Live Play when it is ready; you decide who may and how many. Any song is made again - a new take, a new song like it, a cover of it -, and from your network the player has the whole studio.
 - **A song as a video**: an MP4 of the song's visual with its lyrics (subtitles, karaoke or word by word, in places of their own, coming in on the beat), the cover all the way through, its notation following the music and a title card - Full HD, 4K, square or upright for Shorts.
 - **Share your songs as a player**: one HTML file with the player and the songs you choose (as MP3) - send it, and anyone can double-click it and listen, with the lyrics, the notation and the visuals, no install. Also for hundreds of songs, in parts for a phone.
 - **In the making**: videos and shared players are made in the background while you listen; a list shows how far each is.
