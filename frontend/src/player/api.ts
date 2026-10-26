@@ -259,6 +259,30 @@ export interface LibraryAnswer {
   folders: string[]
   errors: string[]
   version: string
+  /** The folders are being read the first time: how far (the page asks again). */
+  scanning?: { done: number; total: number }
+}
+
+/** The studio - ComfyUI - the player can start itself (``plenio/player/studio.py``); the paths for the admin only. */
+export interface StudioStatus {
+  running: boolean
+  own: boolean
+  starting: boolean
+  since: number | null
+  can_start: boolean
+  why: string
+  url: string
+  auto: boolean
+  idle_stop_min: number
+  error: string
+  root?: string
+  chosen_root?: string
+  installed_root?: string
+  python?: string
+  args?: string
+  port?: number
+  command?: string
+  log?: string[]
 }
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
@@ -294,11 +318,20 @@ export interface GuestStatus {
   on: boolean
   mode: 'view' | 'change'
   show: 'both' | 'qr' | 'address' | 'none'
+  /** Guests may send reactions to the screen (🔥 ❤️ 🎉 ...). */
+  reactions: boolean
   port: number
   url: string
   urls: string[]
   guests: number
   error: string
+}
+
+/** A guest's reaction to the song that plays (``kind``: fire, heart, party, clap, dance, laugh). */
+export interface GuestReaction {
+  n: number
+  kind: string
+  id: string
 }
 
 export interface GuestWish {
@@ -388,6 +421,15 @@ const serverApi = {
   comfyui: (url = '') => json<{ found: ComfyFound | null }>(`/api/comfyui${url ? `?url=${encodeURIComponent(url)}` : ''}`),
   quit: () => json<{ ok: boolean }>('/api/quit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }),
   rescan: () => json<{ songs: number }>('/api/rescan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }),
+  studio: () => json<StudioStatus>('/api/studio', { cache: 'no-store' }),
+  studioStart: () => json<StudioStatus>('/api/studio/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }),
+  studioStop: () => json<StudioStatus>('/api/studio/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }),
+  studioSettings: async (changes: Record<string, unknown>) => {
+    const response = await fetch('/api/studio', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : `the studio's settings (${response.status})`)
+    return data as StudioStatus
+  },
   removeSong: (id: string, action: 'retire' | 'delete') =>
     json<RemoveAnswer>(`/api/song/${id}/remove`, {
       method: 'POST',
@@ -433,11 +475,15 @@ const serverApi = {
   guests: () => json<GuestStatus>('/api/guests'),
   /** Switch the guests' access on or off, choose what they may do and what the screen shows, or make a new
    * address (``regenerate``). */
-  setGuests: (changes: Partial<Pick<GuestStatus, 'on' | 'mode' | 'show'>> & { regenerate?: boolean }) =>
+  setGuests: (changes: Partial<Pick<GuestStatus, 'on' | 'mode' | 'show' | 'reactions'>> & { regenerate?: boolean }) =>
     json<GuestStatus>('/api/guests', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) }),
   /** What the page shows of the live playlist, for the guests. */
   showGuests: (shown: unknown) => post<{ ok: boolean }>('/api/guests/live', shown),
-  guestWishes: (after: number) => json<{ wishes: GuestWish[]; last: number }>(`/api/guests/wishes?after=${after}`),
+  /** The guests' wishes after ``after``, and their reactions after ``reacted`` (left out: only the counts). */
+  guestWishes: (after: number, reacted?: number) =>
+    json<{ wishes: GuestWish[]; last: number; reactions?: GuestReaction[]; last_reaction?: number }>(
+      `/api/guests/wishes?after=${after}${reacted === undefined ? '' : `&reacted=${reacted}`}`
+    ),
 }
 
 /** In a shared player: the songs inside the page, the listener's state in their browser; the rest is the
@@ -466,6 +512,10 @@ function sharedApi(): typeof serverApi {
     comfyui: async () => ({ found: null }),
     quit: none,
     rescan: async () => ({ songs: data.songs.length }),
+    studio: none,
+    studioStart: none,
+    studioStop: none,
+    studioSettings: none,
     removeSong: none,
     peaks: async (id: string) => {
       const levels = (await portablePage(id))?.peaks
@@ -501,6 +551,19 @@ export const api: typeof serverApi = isPortable ? sharedApi() : serverApi
 /** A song's file by kind (``audio``, ``cover``, ``pdf`` ...): its URL (in a shared player ``''`` until it is
  * made from the page, then the page shows it by itself). */
 export const media = (id: string, kind: string): string => (isPortable ? portableMedia(id, kind) : `/media/${id}/${kind}`)
+
+/** The sizes of the covers' small pictures the player makes (``plenio.player.server.THUMB_SIZES``). */
+export const COVER_SIZES = [128, 256, 512, 768]
+
+/** A song's cover for a place ``shown`` CSS pixels wide: the smallest small picture that is sharp there on this
+ * screen (a card of a phone gets 512 px, of a desktop 256 - not the whole cover of 1024), the cover itself beyond. */
+export function coverUrl(id: string, shown?: number): string {
+  const url = media(id, 'cover')
+  if (isPortable || !shown) return url
+  const ratio = typeof window === 'undefined' ? 1 : Math.min(3, window.devicePixelRatio || 1)
+  const size = COVER_SIZES.find((s) => s >= shown * ratio)
+  return size ? `${url}?size=${size}` : url
+}
 
 /** The file's URL once it can be used (a shared player makes it from the page first). */
 export const mediaReady = (id: string, kind: string): Promise<string> => (isPortable ? ensureMedia(id, kind) : Promise.resolve(`/media/${id}/${kind}`))

@@ -23,7 +23,8 @@ from .library import Library
 from .maker import PartySongs, Studio
 from .network import NetworkAccess
 from .paths import default_folders, state_dir
-from .server import State, find_comfyui, serve, studio_finder
+from .server import State, comfyui_at, find_comfyui, serve, studio_finder
+from .studio import StudioLauncher
 
 
 def say(text: str) -> None:
@@ -74,14 +75,17 @@ def main(argv: list[str] | None = None) -> int:
     library = make_library(started, directory)
     folders = library.folders
     guests = GuestHub(library, directory, host=args.guests_host)
+    # the studio - ComfyUI - the player can start itself (Settings > The studio), and where it then answers
+    launcher = StudioLauncher(directory, reachable=lambda url: comfyui_at(url, timeout=0.6) is not None)
     # party songs: made through the Song API of the ComfyUI on this computer (found again every few seconds)
-    maker = PartySongs(library, directory, Studio(studio_finder(args.comfyui)))
+    maker = PartySongs(library, directory, Studio(studio_finder(args.comfyui, also=launcher.url)))
+    maker.launcher = launcher
     guests.maker = maker
     ports: list[int] = []
     network = NetworkAccess(
         directory,
         player_port=lambda: ports[0] if ports else args.port,
-        comfyui=lambda: (find_comfyui(args.comfyui) or {}).get("url"),
+        comfyui=lambda: (find_comfyui(args.comfyui, launcher.url) or {}).get("url"),
         host=args.network_host,
     )
     try:
@@ -95,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
             network=network,
             accounts=Accounts(directory),
             maker=maker,
+            launcher=launcher,
         )
     except OSError as error:
         say(

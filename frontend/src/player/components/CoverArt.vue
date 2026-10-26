@@ -2,13 +2,15 @@
 /**
  * A song's cover: its own image when Export saved one, otherwise art drawn from the song itself - its
  * colour from the genre, waves from its title, always the same for the same song. ``live`` turns it slowly.
+ * ``size``: about how many CSS pixels wide it shows - the player sends a small picture of the cover, sharp at that
+ * size (a card 12 KB instead of 200).
  */
 import { computed } from 'vue'
 
-import { media, type SongSummary } from '../api'
+import { coverUrl, type SongSummary } from '../api'
 import { hashOf, songHue } from '../colors'
 
-const props = defineProps<{ song: SongSummary; live?: boolean; rounded?: boolean }>()
+const props = defineProps<{ song: SongSummary; live?: boolean; rounded?: boolean; size?: number }>()
 
 const hue = computed(() => songHue(props.song.id, props.song.genre))
 const seed = computed(() => hashOf(props.song.id + props.song.title))
@@ -35,7 +37,7 @@ const initials = computed(() =>
 
 <template>
   <div class="cover" :class="{ live, rounded }">
-    <img v-if="song.has.cover" :src="media(song.id, 'cover')" :alt="song.title" loading="lazy" />
+    <img v-if="song.has.cover" :src="coverUrl(song.id, size)" :alt="song.title" loading="lazy" decoding="async" />
     <svg v-else viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
       <defs>
         <linearGradient :id="`g${song.id}`" x1="0" y1="0" x2="1" y2="1">

@@ -61,7 +61,7 @@ function volume(event: Event): void {
   <footer class="bar" :style="paletteStyle">
     <div class="song" v-if="current">
       <button class="art" title="Now playing (F)" @click="nowPlayingOpen = true">
-        <CoverArt :song="current" :live="playing" rounded />
+        <CoverArt :song="current" :live="playing" rounded :size="56" />
         <span class="open"><Icon name="expand" :size="18" /></span>
       </button>
       <div class="meta">

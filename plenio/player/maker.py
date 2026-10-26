@@ -20,6 +20,11 @@ from its brief) or a **cover of it** (its audio file the original). The party's 
 ``remote``): every field of the template - the Song Brief's, the writer model, HQ mastering and Cover Art - and the
 Export Release's (the folder, the formats, the tags), at any time and without the party's limits.
 
+**Several takes, several songs** (owner's request 2026-10-26: several takes of a song): the whole studio orders two
+to four takes of one song - the first is made, and when it is ready its takes follow, the same title, words and notes
+sung and played anew (new take jobs of the song made, at the head of the line) - or up to five songs of one form at
+once. A new take of a song of the library comes as several takes the same way.
+
 Standard library only (PyAV, where it is, reads a recording's length).
 """
 
@@ -97,6 +102,10 @@ SOURCE_LIMIT = 100 * 2**20
 SOURCE_SUFFIXES = (".mp3", ".flac", ".wav", ".ogg", ".m4a", ".opus", ".aac", ".aif", ".aiff")
 LINE_LIMIT = 40
 """Songs waiting in the line at most (for everybody together)."""
+TAKES_LIMIT = 4
+"""Takes of one song ordered at once (the whole studio)."""
+COPIES_LIMIT = 5
+"""Songs of one form ordered at once (the whole studio)."""
 KEEP_FINISHED_S = 12 * 3600
 SOURCES_KEPT_S = 6 * 3600
 POLL_S = 2.0
@@ -337,6 +346,9 @@ class PartySongs:
         self._form: tuple[float, dict[str, Any]] | None = None
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self.launcher: Any = None
+        """The studio the player starts itself (``plenio.player.studio.StudioLauncher``): a song that waits starts it
+        when the admin wishes, and it stops after the idle minutes."""
         self.library.extra = [Path(f) for f in self.folders]
         # a song that was being sent when the player stopped: sent again (the API knows it by its job id)
         for job in self.jobs:
@@ -639,6 +651,7 @@ class PartySongs:
             raise MakerError("The host lets guests make new songs only, no covers.", 403)
         documents = self._edits(data, kind) if again == "take" else {}
         studio = self._studio_values(who, data, kind)
+        takes, copies = self._counts(who, data)
         with self.lock:
             open_jobs = [j for j in self.jobs if self._mine(who, j) and j["status"] not in FINISHED]
             if not self.full(who) and len(open_jobs) >= self.settings["per_person"]:
@@ -647,44 +660,130 @@ class PartySongs:
                     "Wait until one is done.",
                     429,
                 )
-            if len(self._waiting()) >= LINE_LIMIT:
+            # a new take of a song of the library: each take a job of its own; a new song with takes: the first
+            # job, and its takes once it is made; several songs of one form: a job each
+            count = takes if again == "take" else copies
+            if len(self._waiting()) + count > LINE_LIMIT:
                 raise MakerError("The line is full just now - try again in a few minutes.", 429)
             source = None
             if again == "cover" and base is not None:
                 source = {"song": base["song"], "title": base["title"], "seconds": base["seconds"]}
             elif kind == "cover" and again != "take":
                 source = self._source(source_id, who)
-            job = {
-                "id": secrets.token_hex(8),
-                "owner": {
-                    "kind": who.get("kind"),
-                    "id": who.get("id"),
-                    "name": who.get("name") or GUEST_NAME,
-                },
-                "kind": kind,
-                "again": again,
-                "base": base,
-                "documents": documents,
-                "studio": studio,
-                "full": self.full(who),
-                "fields": fields,
-                "source": source,
-                "status": "waiting",
-                "created": self.clock(),
-                "sent": None,
-                "started": None,
-                "finished": None,
-                "comfy": None,
-                "stage": None,
-                "progress": None,
-                "result": None,
-                "error": "",
-                "note": "",
-                "retried": False,
-            }
-            self.jobs.append(job)
+            group = secrets.token_hex(4) if takes > 1 or copies > 1 else ""
+            made = []
+            for number in range(count):
+                job = self._new_job(who, kind, again, base, documents, studio, fields, source)
+                if group:
+                    job["group"] = group
+                    job["of"] = count if again == "take" or copies > 1 else takes
+                    job["number"] = number + 1
+                if again != "take" and takes > 1:
+                    job["takes_left"] = takes - 1
+                self.jobs.append(job)
+                made.append(job)
             self._save()
-        return self.view(job, who)
+        return self.view(made[0], who)
+
+    def _counts(self, who: Mapping[str, Any], data: Mapping[str, Any]) -> tuple[int, int]:
+        """How many takes of the song, and how many songs of the form, a request orders: the whole studio up to
+        :data:`TAKES_LIMIT` and :data:`COPIES_LIMIT` (not both at once), everybody else one."""
+
+        def number(name: str, most: int) -> int:
+            raw = data.get(name, 1)
+            if isinstance(raw, bool) or not isinstance(raw, (int, float)) or int(raw) != raw:
+                raise MakerError(f"{name}: a whole number from 1 to {most}.")
+            if not 1 <= int(raw) <= most:
+                raise MakerError(f"{name}: from 1 to {most}.")
+            return int(raw)
+
+        takes, copies = number("takes", TAKES_LIMIT), number("copies", COPIES_LIMIT)
+        if (takes > 1 or copies > 1) and not self.full(who):
+            raise MakerError(
+                "Several takes or songs at once are for the whole studio (the admin, the network).", 403
+            )
+        if takes > 1 and copies > 1:
+            raise MakerError("Several takes of one song, or several songs - not both at once.")
+        return takes, copies
+
+    def _new_job(
+        self,
+        who: Mapping[str, Any],
+        kind: str,
+        again: str | None,
+        base: Mapping[str, Any] | None,
+        documents: Mapping[str, str],
+        studio: Mapping[str, Any] | None,
+        fields: Mapping[str, Any],
+        source: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
+        return {
+            "id": secrets.token_hex(8),
+            "owner": {
+                "kind": who.get("kind"),
+                "id": who.get("id"),
+                "name": who.get("name") or GUEST_NAME,
+            },
+            "kind": kind,
+            "again": again,
+            "base": dict(base) if base else None,
+            "documents": dict(documents),
+            "studio": dict(studio) if studio else studio,
+            "full": self.full(who),
+            "fields": dict(fields),
+            "source": dict(source) if source else None,
+            "status": "waiting",
+            "created": self.clock(),
+            "sent": None,
+            "started": None,
+            "finished": None,
+            "comfy": None,
+            "stage": None,
+            "progress": None,
+            "result": None,
+            "error": "",
+            "note": "",
+            "retried": False,
+        }
+
+    def _add_takes(self, job: dict[str, Any], song_id: str) -> None:
+        """The takes a song was ordered with, once it is made: new take jobs of it, at the head of the line (the
+        same owner and studio settings; the same title, words and notes, a new take seed each)."""
+        left = int(job.get("takes_left") or 0)
+        if left <= 0:
+            return
+        try:
+            song, record = self._record(song_id)
+        except MakerError:
+            return
+        why = self._take_why(record)
+        with self.lock:
+            job["takes_left"] = 0
+            if why:
+                job["note"] = f"no further takes: {why}"
+                self._save()
+                return
+            kind = record_kind(record or {})
+            fields = brief_fields(record or {}, SONG_FIELDS if kind == "song" else COVER_FIELDS)
+            base = {
+                "song": song.id,
+                "title": str(song.summary.get("title") or "a song")[:200],
+                "seconds": round(float(song.summary.get("seconds") or 0.0), 1),
+            }
+            owner = job.get("owner") or {}
+            who = {"kind": owner.get("kind"), "id": owner.get("id"), "name": owner.get("name")}
+            group = str(job.get("group") or secrets.token_hex(4))
+            job["group"] = group
+            total = left + 1
+            job["of"] = total
+            job["number"] = 1
+            first = next((k for k, j in enumerate(self.jobs) if j["status"] == "waiting"), len(self.jobs))
+            for number in range(left):
+                take = self._new_job(who, kind or "song", "take", base, {}, job.get("studio"), fields, None)
+                take["full"] = bool(job.get("full"))
+                take.update(group=group, of=total, number=number + 2)
+                self.jobs.insert(first + number, take)
+            self._save()
 
     def update(self, who: Mapping[str, Any], job_id: str, data: Mapping[str, Any]) -> dict[str, Any]:
         with self.lock:
@@ -1166,6 +1265,10 @@ class PartySongs:
             "result": result,
             "again": job.get("again"),
             "from": dict(job.get("base") or {}) or None,
+            "group": job.get("group") or "",
+            "number": job.get("number"),
+            "of": job.get("of"),
+            "takes_left": int(job.get("takes_left") or 0),
             "error": job.get("error") or "",
             "note": job.get("note") or "",
             "can": {
@@ -1259,6 +1362,10 @@ class PartySongs:
 
     def tick(self) -> None:
         """One step: follow the song being made, or send the next one; forget old finished songs."""
+        if self.launcher is not None:
+            with self.lock:
+                pending = any(j["status"] == "waiting" or j["status"] in ACTIVE for j in self.jobs)
+            self.launcher.tick(waiting=pending)
         self._check_studio()
         with self.lock:
             now = self.clock()
@@ -1514,6 +1621,7 @@ class PartySongs:
             with self.lock:
                 job["result"]["song"] = found
                 self._save()
+            self._add_takes(job, found)
 
     def _song_of(self, record: Path) -> str | None:
         self.library.scan(force=True)

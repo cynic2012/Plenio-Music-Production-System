@@ -6,13 +6,15 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
-import { media } from '../api'
+import { api, media, type StudioStatus } from '../api'
+import { isPhone } from '../layout'
 import MakeForm from '../make/MakeForm.vue'
 import MakeQueue from '../make/MakeQueue.vue'
 import { retryRequest } from '../make/form'
 import type { MakeJob, Remake } from '../make/form'
+import type { MakePreset } from '../make/presets'
 import { everybody, loadForm, loadMake, makeApi, makeError, makeForm, makeStatus, pollMake } from '../make/state'
-import { byId, go, playSong, reloadLibrary, say, settings } from '../store'
+import { byId, go, playSong, reloadLibrary, remote, say, settings } from '../store'
 import Icon from './Icon.vue'
 
 const props = defineProps<{ from?: string }>()
@@ -31,10 +33,59 @@ const making = computed(() => mine.value.filter((j) => !['done', 'failed', 'canc
 const studio = computed(() => {
   const s = status.value
   if (!s) return { text: 'Asking the studio …', tone: 'wait' }
+  if (!s.studio.reachable && studioInfo.value?.starting) return { text: `Starting the studio … ${Math.max(0, Math.round(now.value - (studioInfo.value.since ?? now.value)))} s`, tone: 'busy' }
   if (!s.studio.reachable) return { text: 'Studio not running - songs wait until ComfyUI runs', tone: 'bad' }
   if (s.line.making || s.line.waiting) return { text: `Studio busy · ${s.line.waiting} waiting`, tone: 'busy' }
   return { text: 'Studio ready', tone: 'ok' }
 })
+
+// --- the studio - ComfyUI - started from here (the admin, on this computer; owner's request 2026-10-26) ----------
+const studioInfo = ref<StudioStatus | null>(null)
+const startingStudio = ref(false)
+let studioTimer: number | undefined
+const mayStart = computed(() => !!status.value?.admin && !remote.value && !!studioInfo.value && !status.value?.studio.reachable)
+async function readStudio(): Promise<void> {
+  if (!status.value?.admin || remote.value) return
+  try {
+    studioInfo.value = await api.studio()
+  } catch {
+    studioInfo.value = null
+  }
+}
+async function startStudio(): Promise<void> {
+  startingStudio.value = true
+  error.value = ''
+  try {
+    studioInfo.value = await api.studioStart()
+    say('ComfyUI is starting - songs go to it as soon as it answers', 4000)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    startingStudio.value = false
+  }
+}
+watch(
+  () => status.value?.admin,
+  (admin) => {
+    window.clearInterval(studioTimer)
+    if (!admin || remote.value) return
+    void readStudio()
+    studioTimer = window.setInterval(() => void readStudio(), 3000)
+  },
+  { immediate: true }
+)
+
+// --- presets of one's own, kept with the settings -------------------------------------------------------------
+function savePreset(preset: MakePreset): void {
+  settings.makePresets = [...settings.makePresets.filter((p) => p.name.toLowerCase() !== preset.name.toLowerCase()), preset].slice(-40)
+  say(`Preset “${preset.name}” kept - it is there next time`, 3000)
+}
+function deletePreset(id: string): void {
+  settings.makePresets = settings.makePresets.filter((p) => p.id !== id)
+}
+
+/** A phone shows the form or one's songs, not both under each other (the list was far below the form). */
+const phoneTab = ref<'form' | 'songs'>('form')
 
 onMounted(async () => {
   pollMake(true)
@@ -47,6 +98,7 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   window.clearInterval(tick)
+  window.clearInterval(studioTimer)
   pollMake(false)
 })
 watch(everybody, () => void loadMake())
@@ -70,7 +122,9 @@ const coverOf = (songId: string): string | null => (byId.value.get(songId)?.has.
 function made(job: MakeJob, edited: boolean): void {
   editing.value = null
   remake.value = null
-  say(edited ? 'Changed - it keeps its place in the line' : job.position ? `Ordered - #${job.position} in line` : 'Ordered', 4000)
+  if (isPhone.value) phoneTab.value = 'songs'
+  const several = job.of && job.of > 1 ? (job.takes_left ? ` - its ${job.of - 1} more takes follow when it is ready` : ` - ${job.of} of them`) : ''
+  say(edited ? 'Changed - it keeps its place in the line' : job.position ? `Ordered - #${job.position} in line${several}` : `Ordered${several}`, 4500)
   void loadMake()
   if (props.from) go('/make', true)
 }
@@ -123,7 +177,7 @@ const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.g
 </script>
 
 <template>
-  <div class="make-page">
+  <div class="make-page" :class="{ phone: isPhone }">
     <header class="hero">
       <div>
         <h1><Icon name="wand" :size="30" /> Make a song</h1>
@@ -131,18 +185,24 @@ const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.g
       </div>
       <div class="chips">
         <span class="pill" :class="studio.tone"><i /> {{ studio.text }}</span>
+        <button v-if="mayStart && studioInfo?.can_start && !studioInfo.starting" class="primary start" :disabled="startingStudio" title="Start ComfyUI in the background - no workflow to open (Settings > The studio)" @click="startStudio"><Icon name="power" :size="16" /> Start the studio</button>
+        <button v-else-if="mayStart && studioInfo && !studioInfo.can_start" class="ghost start" :title="studioInfo.why" @click="go('/settings/studio')"><Icon name="info" :size="16" /> How to start it</button>
         <span v-if="status?.me" class="pill who"><Icon name="user" :size="13" /> {{ status.me.name }}{{ status.me.kind === 'admin' && status.me.name.toLowerCase() !== 'admin' ? ' · admin' : '' }}</span>
       </div>
     </header>
 
     <p v-if="status?.admin && !status.on" class="banner">
-      <Icon name="info" :size="16" /> Song making is off for guests and users - you can make songs as the admin. <a @click="go('/settings')">Switch it on in Settings</a>.
+      <Icon name="info" :size="16" /> <span>Song making is off for guests and users - you make songs as the admin. <a @click="go('/settings/party')">Switch it on in Settings</a>.</span>
     </p>
     <p v-else-if="status && !status.may" class="banner bad"><Icon name="info" :size="16" /> {{ status.why }}</p>
     <p v-if="makeError || error" class="banner bad">{{ error || makeError }}</p>
 
+    <nav v-if="isPhone" class="tabs" aria-label="The form or your songs">
+      <button :class="{ on: phoneTab === 'form' }" @click="phoneTab = 'form'"><Icon name="wand" :size="16" /> {{ editing ? 'Change' : 'New song' }}</button>
+      <button :class="{ on: phoneTab === 'songs' }" @click="phoneTab = 'songs'"><Icon name="music" :size="16" /> {{ everybody ? 'Everybody’s' : 'Your songs' }} <b v-if="making">{{ making }}</b></button>
+    </nav>
     <div class="grid">
-      <section class="card">
+      <section v-show="!isPhone || phoneTab === 'form'" class="card">
         <h2>{{ editing ? 'Change your song' : remake ? 'Again, from a song' : 'Your new song' }}</h2>
         <p v-if="remake && !editing" class="again-note">
           <Icon name="wand" :size="16" /> {{ remake.song.title }} - choose a new take, a new song like it or a cover, or <a @click="go('/make')">start a new song instead</a>.
@@ -158,12 +218,15 @@ const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.g
           :editing="editing"
           :remake="remake"
           :cover-of="coverOf"
+          :presets="settings.makePresets"
           @made="made"
           @cancel="cancel"
+          @save-preset="savePreset"
+          @delete-preset="deletePreset"
         />
         <p v-else class="empty">{{ reading ? 'Reading the song …' : 'Reading the styles …' }}</p>
       </section>
-      <section class="card songs">
+      <section v-show="!isPhone || phoneTab === 'songs'" class="card songs">
         <h2>
           {{ everybody ? 'Everybody’s songs' : 'Your songs' }} <small v-if="making">{{ making }} in the making</small>
           <span v-if="status?.admin" class="switch">
@@ -285,7 +348,7 @@ h1 :deep(svg) {
 .banner {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-start;
   margin: 16px 0 0;
   padding: 10px 14px;
   border-radius: 12px;
@@ -364,9 +427,64 @@ h2 small {
     order: -1;
   }
 }
+.start {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  border: 0;
+  border-radius: 99px;
+  background: none;
+  color: rgba(255, 255, 255, 0.7);
+  font: 600 14px var(--font);
+  cursor: pointer;
+}
+.tabs button.on {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: #fff;
+}
+.tabs b {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: var(--accent);
+  color: #0b0a12;
+  font: 700 11px/18px var(--font);
+}
 @media (max-width: 640px) {
   .make-page {
     padding: 16px 14px 40px;
+  }
+  .lead {
+    display: none;
+  }
+  .hero {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .hero .chips .who {
+    display: none;
+  }
+  .banner {
+    font-size: 13px;
+    margin-top: 10px;
   }
   h1 {
     font-size: 26px;

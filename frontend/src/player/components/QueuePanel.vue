@@ -68,13 +68,13 @@ const SLEEP = [15, 30, 45, 60, 90]
     <template v-if="earlier.length">
       <h4>Played</h4>
       <button v-for="{ i, song } in earlier" :key="`e${i}`" class="row past" @click="playAt(i)">
-        <CoverArt :song="song" rounded /><span class="t">{{ song.title }}<small>{{ song.genre }}</small></span><span class="len">{{ formatTime(song.seconds) }}</span>
+        <CoverArt :song="song" rounded :size="48" /><span class="t">{{ song.title }}<small>{{ song.genre }}</small></span><span class="len">{{ formatTime(song.seconds) }}</span>
       </button>
     </template>
 
     <h4>Now</h4>
     <div v-if="current" class="row now">
-      <CoverArt :song="current" :live="playing" rounded /><span class="t">{{ current.title }}<small>{{ current.genre }}</small></span>
+      <CoverArt :song="current" :live="playing" rounded :size="56" /><span class="t">{{ current.title }}<small>{{ current.genre }}</small></span>
       <span class="eq" :class="{ on: playing }"><i /><i /><i /></span>
     </div>
     <p v-else class="hint">Nothing plays.</p>
@@ -98,7 +98,7 @@ const SLEEP = [15, 30, 45, 60, 90]
         @dragend="dragging = over = -1"
         @dblclick="playAt(i)"
       >
-        <CoverArt :song="song" rounded />
+        <CoverArt :song="song" rounded :size="48" />
         <span class="t">{{ song.title }}<small>{{ song.genre }}</small></span>
         <span class="len">{{ formatTime(song.seconds) }}</span>
         <button class="icon-btn rm" title="Remove" @click="remove(i)"><Icon name="close" :size="14" /></button>

@@ -70,6 +70,37 @@ not start; open the running one, or start it with `--port 8766`. (ComfyUI's butt
 
 New songs show up when you click **Look for new songs** in the sidebar, or reload the page.
 
+## On a phone, a tablet and a large screen
+
+The player lays itself out for the screen it is on:
+
+- **A phone** (narrower than 700 px): a tab bar at the bottom - *Songs*, *Playlists*, *Live*, *Make* (or *Help*)
+  and *More*, the whole menu - and a slim player above it. **Swipe** the slim player sideways for the next or the
+  previous song, up for Now playing; in Now playing, swipe down to close it. The library begins with the song that
+  plays, your collections as chips and the songs right below them. **Filters** beside the search opens the filters
+  as a sheet from the bottom; a song's ⋯ menu and Now playing's ⋯ open as sheets too. A tap on a song's row plays
+  it, its ⋯ menu has its page - in the grid a tap opens the page.
+- **A tablet** (700-1100 px): the slim player, and the menu as a drawer (☰).
+- **A large screen**: the sidebar and the full bar.
+
+**Like an app**: *Add to Home screen* in the browser's menu (Android), or *Share › Add to Home Screen* (iPhone,
+iPad) - the player then opens on the whole screen, with its own icon.
+
+**Thousands of songs**: the player reads its folders in the background - the page shows at once, also while a
+large library is read for the first time (*Reading your songs - 1200 of 2969*) - and builds its list anew only
+when a file changed. A cover comes as a small picture sharp at the size shown (a card: about 12 KB instead of
+200 KB), the list grows as it scrolls, and the search waits for a pause in the typing. Measured with a library of
+2,969 songs: the library reaches the page compressed (1 MB instead of 9.6 MB) and again in 2-25 ms, a keystroke
+in the search takes 60-80 ms (before: 125-147 ms).
+
+## Help and tutorials
+
+**Help & tutorials** (in the sidebar, *Help* on a phone, or **H**) has short guides by topic - first steps,
+finding songs, Now playing and the visuals, Live Play and the party, making songs, phones and other computers,
+videos and shared players, what to check when something does not work - and the narrated **video tutorials**.
+The search above them finds a guide's lines and the tutorials by every word typed. A tutorial plays in the
+page, from `youtube-nocookie.com`, after a click on it: nothing is loaded from YouTube before.
+
 ## Your folders, and other music
 
 The player reads every release record below its folders: ComfyUI's output folder unless you choose others.
@@ -168,6 +199,10 @@ genre a template gave, the rare ones too - with a field to find one in a long ro
 You can sort by newest, oldest, title, length, tempo, loudness, most played or recently played, and switch
 between a grid and a list.
 
+**The rail at the side** of a long list jumps anywhere in it: sorted by title its letters, by date its months (its
+years when there are many), by length its minutes, by tempo its tens. Click a mark, or drag a finger along the
+rail - a bubble shows where it lands.
+
 **Saved filters**: *Save this filter…* in the Filtered row keeps the search and the filters under a name; the
 sidebar lists them under *Saved filters* - a click shows those songs again, × forgets one.
 
@@ -258,7 +293,9 @@ visuals' settings, or click ⛶ on the small visual in the bar at the bottom. Ag
 
 Every view has the song's sections as chips (*Verse*, *Chorus* …; click to jump) and the song's waveform:
 the part already played is filled in the song's colours, and hovering shows the time, the section and the
-line sung there. Click or drag the waveform to jump. A title card greets every new song.
+line sung there. Click or drag the waveform to jump. A title card greets every new song, and in its last 15
+seconds **Up next** names the one that follows, with its cover (on a large screen; with the title cards, *Title
+card when a song starts* in the visuals' settings) - for a party's big screen.
 
 The bar at the bottom always shows the song, the line sung right now, the controls and a small square
 visual - a bright ring of the music round a core that pulses with the bass, which breathes slowly when the
@@ -606,11 +643,16 @@ what played. The music keeps playing on your computer; the phones get no sound a
 - **Over the visual**: whether the card shows on the visual on the whole screen too (on by default), in which
   corner, and how large - *large* for a room to scan from afar. Also in the visuals' settings (✦), as *The
   guests' way in over the visual*.
+- **Reactions**: the guests' page has 🔥 ❤️ 🎉 👏 💃 😂 under the song that plays. A tap floats up an edge
+  of your screen - over the library, Live Play, Now playing and the visual on the whole screen - and Live Play
+  shows how the guests reacted to the song (*🔥 12 · ❤️ 4*); their phones show it too. One phone sends at most
+  60 a minute, and at most 40 float at once. **Reactions** switches them off.
 - *n guests are looking now* counts the phones that asked in the last half minute.
 
 The access is a small server of its own on port 8770 (8771-8779 when it is taken), apart from the player,
 which still answers this computer only. It answers only below the random part of the address - the guests'
-page, the live playlist with titles and covers, and in *change* mode the library's titles to add from. The
+page, the live playlist with titles and covers, the reactions, and in *change* mode the library's titles to add
+from. The
 first time, **Windows may ask whether Python may accept connections**: allow it for private networks, or
 the phones cannot reach the player. On a network you do not trust (a café, a hotel) leave it off. It stays on
 when the player starts again, with the same address; `--guests-host` (or `PLENIO_GUESTS_HOST`) sets where it
@@ -640,6 +682,30 @@ song*):
    value the style templates have, or **✎ Your own …** to type one instead. Only what applies is asked: an
    instrumental has no voice, a cover no tempo or length.
 5. **Generate Song**.
+
+**Presets** - above the style: a click sets the form's fields and, with the whole studio, its settings and how
+many takes:
+
+| Preset | Sets |
+|---|---|
+| **Best quality** | HQ mastering, cover art, the best of three takes for the words, FLAC and MP3 - takes longest |
+| **Party - fast** | about 1:30, cover art, no HQ mastering - ready in a few minutes |
+| **Quick sketch** | about 1:00, no cover art - the fastest way to hear an idea |
+| **Full song** | about 3:00, HQ mastering, cover art, the better of two takes for the words |
+| **Three takes** | one song, sung and played three times, with cover art |
+| **Instrumental** | no singing |
+
+**Save as preset…** keeps the form as it is under a name - the style, genre, mood, tempo, length, vocals,
+language, voice, theme, key and meter (not the description: that is the song), the studio's settings and the
+takes; your presets come after the built-in ones, × forgets one. A preset sets only what applies: the party's
+guests get its length and vocals, a cover keeps its own length.
+
+**How many** (the whole studio): 1 to 4 - **takes of one song** (the song is made, then its takes follow at the
+head of the line: the same words and notes, sung and played anew; keep the one you like best) or **different
+songs** of this form, each with words and music of its own.
+
+**The studio**: songs are made by the ComfyUI on this computer; the player plays without it. When it is not
+running, *Make a song* says so and offers **Start the studio** - see [The studio](#the-studio-comfyui-started-by-the-player).
 
 **Your songs** - in their order, each with its title once made (before: its style, length and voice, and the start
 of its description), and where it is:
@@ -711,6 +777,27 @@ folder by itself, also when it is not one of its folders. A shared player has no
 computer.
 
 It is made through Plenio's **[Song API](song-api.md)** - which other programs can use too.
+
+### The studio: ComfyUI started by the player
+
+The player runs on its own; ComfyUI is needed only to **make** songs, and nobody has to open a workflow for that.
+**Settings › The studio** (the admin, on this computer):
+
+- whether ComfyUI runs, **Start the studio** and **Stop it** (only a ComfyUI the player started itself), and
+  **Open ComfyUI**
+- **Start it by itself when a song is ordered** - a song ordered from *Make a song*, by a guest or through the
+  network starts ComfyUI, and the song waits until it is ready (a ComfyUI that ends at once - its port taken, say -
+  is tried again after two minutes; its log says why)
+- **Stop the ComfyUI the player started after** 15 minutes, 30 minutes, an hour or three hours without a song
+  (*never* by default) - the graphics card is free again
+- **How it starts ComfyUI**: its folder (empty: the ComfyUI Plenio is installed in), more arguments (such as
+  `--models-directory D:/AI/models --cuda-device 1`) and the port (8188); the command it runs, and the end of its
+  log (`comfyui.log` in the player's state folder)
+
+The Python is that ComfyUI's own - the portable build's `python_embeded`, a `.venv` or `venv` - or else the
+player's. ComfyUI starts in the background, without a window, and stays on this computer: `--listen`,
+`--enable-cors-header`, `--port` and the TLS arguments are refused (the network comes in through *In your
+network*). ComfyUI Desktop is an app: start it there.
 
 ## The player in your network
 
@@ -839,6 +926,7 @@ elsewhere.
 | M | mute |
 | Q | the queue |
 | / | search |
+| H | help and the video tutorials |
 | Esc | close |
 | ? | all keys |
 

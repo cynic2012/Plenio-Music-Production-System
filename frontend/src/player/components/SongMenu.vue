@@ -9,6 +9,8 @@ import { similarSongs } from '../similar'
 import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, openInComfyUI, playSongs, removing, say, settings, songTags, state, toggleFavorite, videoFor } from '../store'
 import { makeShown } from '../make/state'
 import { isPortable } from '../portable'
+import { isPhone } from '../layout'
+import BottomSheet from './BottomSheet.vue'
 import Icon from './Icon.vue'
 import TagEditor from './TagEditor.vue'
 
@@ -45,9 +47,10 @@ function create(): void {
 </script>
 
 <template>
-  <div class="veil" @click="done" @contextmenu.prevent="done">
-    <div class="menu" :style="place" @click.stop>
-      <p class="head">{{ song.title }}</p>
+  <!-- a phone: a sheet from the bottom; elsewhere the menu where the click was -->
+  <component :is="isPhone ? BottomSheet : 'div'" v-bind="isPhone ? { title: song.title } : { class: 'veil' }" v-on="isPhone ? { close: done } : { click: done, contextmenu: (e: Event) => { e.preventDefault(); done() } }">
+    <div class="menu" :class="{ inline: isPhone }" :style="isPhone ? undefined : place" @click.stop>
+      <p v-if="!isPhone" class="head">{{ song.title }}</p>
       <button @click="enqueue([song.id], true); done()">Play next</button>
       <button @click="enqueue([song.id]); done()">Add to the queue</button>
       <button @click="radio">Start a radio of songs alike</button>
@@ -69,7 +72,7 @@ function create(): void {
       </form>
       <button v-else class="plus" @click="naming = true">+ New playlist…</button>
     </div>
-  </div>
+  </component>
 </template>
 
 <style scoped>
@@ -77,6 +80,20 @@ function create(): void {
   position: fixed;
   inset: 0;
   z-index: 80;
+}
+.menu.inline {
+  position: static;
+  width: auto;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  animation: none;
+}
+.menu.inline button {
+  min-height: 46px;
+  font-size: 15px;
 }
 .menu {
   position: fixed;

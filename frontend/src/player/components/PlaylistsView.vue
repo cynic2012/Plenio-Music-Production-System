@@ -53,7 +53,7 @@ function create(): void {
     <div class="grid">
       <article v-for="{ p, songs } in own" :key="p.id" class="tile" :style="{ '--hue': p.hue ?? 260 }" @click="go(`/playlist/${p.id}`)">
         <div class="mosaic" :class="`n${Math.min(4, songs.length)}`">
-          <CoverArt v-for="s in songs.slice(0, 4)" :key="s.id" :song="s" />
+          <CoverArt v-for="s in songs.slice(0, 4)" :key="s.id" :song="s" :size="120" />
           <Icon v-if="!songs.length" name="playlist" :size="46" />
         </div>
         <button class="play" :disabled="!songs.length" @click.stop="playSongs(songs.map((s) => s.id), 0, p.id)"><Icon name="play" :size="20" /></button>

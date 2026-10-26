@@ -188,6 +188,59 @@ def test_the_host_decides_whether_guests_may_change_the_playlist(
     assert statuses[-1] == 429
 
 
+def test_guests_react_to_the_song_that_plays_and_the_host_can_switch_it_off(
+    party: tuple[Library, GuestHub, int],
+) -> None:
+    library, hub, player = party
+    status = json.loads(call(player, "PUT", "/api/guests", {"on": True})[2])
+    assert status["reactions"] is True
+    port, token = hub.settings["port"], hub.settings["token"]
+    song = ids(library)
+    fire = {"kind": "fire"}
+    assert call(port, "POST", f"/{token}/api/react", fire)[0] == 409  # nothing plays yet
+    shown = {
+        "live": True,
+        "playing": True,
+        "position": 3.0,
+        "now": {"id": song["River"], "at": 0},
+        "next": [],
+        "played": [],
+    }
+    call(player, "POST", "/api/guests/live", shown)
+    # a page that just opened learns only the count
+    opened = json.loads(call(player, "GET", "/api/guests/wishes?after=0")[2])
+    assert opened["last_reaction"] == 0 and opened["reactions"] == []
+    answer = call(port, "POST", f"/{token}/api/react", fire)
+    assert answer[0] == 200 and json.loads(answer[2])["cheers"] == {"fire": 1}
+    assert call(port, "POST", f"/{token}/api/react", {"kind": "heart"})[0] == 200
+    for bad in ({"kind": "poop"}, {"kind": "<b>fire</b>"}, ["fire"], {}):
+        assert call(port, "POST", f"/{token}/api/react", bad)[0] == 400
+    raw = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    raw.request("POST", f"/{token}/api/react", body=json.dumps(fire), headers={"Content-Type": "text/plain"})
+    assert raw.getresponse().status == 415
+    raw.close()
+    taken = json.loads(call(player, "GET", "/api/guests/wishes?after=0&reacted=0")[2])
+    assert [(r["kind"], r["id"], r["n"]) for r in taken["reactions"]] == [
+        ("fire", song["River"], 1),
+        ("heart", song["River"], 2),
+    ]
+    assert taken["last_reaction"] == 2 and taken["wishes"] == []
+    assert json.loads(call(player, "GET", "/api/guests/wishes?after=0&reacted=2")[2])["reactions"] == []
+    # the guests see the song's count
+    live = json.loads(call(port, "GET", f"/{token}/api/live")[2])
+    assert live["react"] is True and live["now"]["cheers"] == {"fire": 1, "heart": 1}
+    # one guest cannot flood the screen
+    statuses = [
+        call(port, "POST", f"/{token}/api/react", fire)[0] for _ in range(guest_module.REACTIONS_PER_MINUTE)
+    ]
+    assert statuses[-1] == 429
+    # the host switches them off - kept with the access's settings
+    assert json.loads(call(player, "PUT", "/api/guests", {"reactions": False})[2])["reactions"] is False
+    assert call(port, "POST", f"/{token}/api/react", fire)[0] == 403
+    assert json.loads(call(port, "GET", f"/{token}/api/live")[2])["react"] is False
+    assert json.loads(hub.path.read_text(encoding="utf-8"))["reactions"] is False
+
+
 def test_the_guests_address_is_on_this_computers_network() -> None:
     for address in guest_module.lan_addresses():
         assert not address.startswith(("127.", "169.254.")) and address.count(".") == 3

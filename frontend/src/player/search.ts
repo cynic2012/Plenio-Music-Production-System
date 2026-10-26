@@ -173,9 +173,26 @@ function creativityTest(value: string, creativity: number | null | undefined): b
   return numberTest(value, creativity)
 }
 
+/** Every text of a song folded once (a library of thousands of songs folded its lyrics again for every song at every
+ * key typed: 140 ms a key for 2958 songs). The summaries of a library do not change, so they are kept by the object. */
+const foldedTexts = new WeakMap<SongSummary, Map<string | undefined, string>>()
+function foldedOf(song: SongSummary, text: string | undefined): string {
+  let known = foldedTexts.get(song)
+  if (!known) {
+    known = new Map()
+    foldedTexts.set(song, known)
+  }
+  let found = known.get(text)
+  if (found === undefined) {
+    found = text ? fold(text) : ''
+    known.set(text, found)
+  }
+  return found
+}
+
 function matches(song: SongSummary, term: Term, context: Context): number {
   const v = fold(term.value)
-  const has = (text: string | undefined): boolean => !!text && fold(text).includes(v)
+  const has = (text: string | undefined): boolean => !!text && foldedOf(song, text).includes(v)
   switch (term.field) {
     case 'genre': return has(song.genre) ? 3 : 0
     case 'mood': return has(song.mood) ? 3 : 0

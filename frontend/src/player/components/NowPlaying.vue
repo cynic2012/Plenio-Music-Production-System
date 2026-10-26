@@ -3,16 +3,19 @@
  * Now playing, full screen: the visual behind everything, and four ways to watch - Stage (the cover and
  * the lyrics), Lyrics (karaoke, large), Notation (the sheet following the music) and Visual (only the
  * visual, the lyrics as subtitles, the controls fading away while the mouse rests). Sections are chips to
- * jump to; a title card greets every song.
+ * jump to; a title card greets every song, and in its last seconds *Up next* says which one follows (a big screen
+ * at a party: everyone sees what comes).
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { engine } from '../engine'
 import { lineIndex, lines, paletteStyle, playlistVisual, section, sections, writtenLines } from '../now'
-import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, openCurrentPage, playing, previous, settings, time, toggleFavorite } from '../store'
+import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, openCurrentPage, playing, previous, settings, time, toggleFavorite, upNext } from '../store'
 import { WAY_IN_SIDES } from '../liveSettings'
 import { formatTime, sectionName } from '../timing'
 import { partyMaker } from '../make/form'
+import { isPhone } from '../layout'
+import BottomSheet from './BottomSheet.vue'
 import { makeStatus } from '../make/state'
 import CoverArt from './CoverArt.vue'
 import GuestWayIn from './GuestWayIn.vue'
@@ -35,6 +38,27 @@ const lyricsPanel = ref(false)
 watch(panel, (open) => open && (lyricsPanel.value = false))
 watch(lyricsPanel, (open) => open && (panel.value = false))
 const visual = ref<InstanceType<typeof VisualCanvas> | null>(null)
+/** A phone's ⋯: the song's page, how the lyrics look, the visuals, the whole screen. */
+const phoneMenu = ref(false)
+const VIEW_LABELS = { stage: 'Stage', lyrics: 'Lyrics', notation: 'Notes', visual: 'Visual' } as const
+// a swipe down on a phone closes Now playing (from the top half, so the lyrics and the waveform keep their gestures)
+const pull = ref(0)
+let pullStart: { x: number; y: number } | null = null
+function pullDown(event: PointerEvent): void {
+  if (!isPhone.value || event.pointerType === 'mouse' || event.clientY > window.innerHeight * 0.55) return
+  pullStart = { x: event.clientX, y: event.clientY }
+}
+function pullMove(event: PointerEvent): void {
+  if (!pullStart) return
+  const dy = event.clientY - pullStart.y
+  if (dy > 0 && dy > Math.abs(event.clientX - pullStart.x)) pull.value = dy
+}
+function pullUp(): void {
+  if (!pullStart) return
+  pullStart = null
+  if (pull.value > 110) nowPlayingOpen.value = false
+  pull.value = 0
+}
 const activeVisual = ref('')
 const idle = ref(false)
 const card = ref(false)
@@ -46,6 +70,22 @@ const credit = computed(() => {
   const name = mode !== 'off' && current.value ? partyMaker(current.value.tags) : null
   return name && mode !== 'off' ? { name, mode } : null
 })
+
+/** *Up next* shows in a song's last seconds - not on a phone (the lyrics need the room), not for a short song -
+ * and goes as the next one begins (with a crossfade, a little earlier). */
+const UP_NEXT_S = 15
+const upNextShown = computed(() => {
+  const left = duration.value - time.value
+  return !isPhone.value && settings.visuals.titles && !!upNext.value && duration.value > 40 && left <= UP_NEXT_S && left > settings.crossfade + 0.8
+})
+const upNextBy = computed(() => {
+  const song = upNext.value
+  if (!song) return ''
+  const maker = (makeStatus.value?.settings.credit ?? 'off') !== 'off' ? partyMaker(song.tags) : null
+  return maker ? `a party song by ${maker}` : [song.other ? song.artist : song.genre, formatTime(song.seconds)].filter(Boolean).join(' · ')
+})
+// over the visual the corner the guests' QR code leaves free
+const upNextLeft = computed(() => view.value === 'visual' && settings.live.on && settings.live.overVisual && settings.live.wayInCorner === 'bottom-right')
 
 const subtitle = computed(() => {
   const i = lineIndex.value
@@ -99,9 +139,17 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
 </script>
 
 <template>
-  <div class="np" :class="[`view-${view}`, { idle }]" :style="paletteStyle">
+  <div
+    class="np"
+    :class="[`view-${view}`, { idle, phone: isPhone }]"
+    :style="[paletteStyle, pull ? { transform: `translateY(${pull}px)`, opacity: String(1 - Math.min(0.5, pull / 600)) } : {}]"
+    @pointerdown="pullDown"
+    @pointermove="pullMove"
+    @pointerup="pullUp"
+    @pointercancel="pullUp"
+  >
     <div class="backdrop">
-      <CoverArt v-if="current" :song="current" class="blur" />
+      <CoverArt v-if="current" :song="current" class="blur" :size="128" />
       <div class="tint" />
     </div>
     <div v-if="settings.visuals.enabled" class="visual" :class="{ dim: view !== 'visual' }">
@@ -109,13 +157,14 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
     </div>
 
     <header class="top">
-      <button class="icon-btn" title="Close (Esc)" @click="nowPlayingOpen = false"><Icon name="back" /></button>
+      <button class="icon-btn" title="Close (Esc)" @click="nowPlayingOpen = false"><Icon :name="isPhone ? 'chevron' : 'back'" /></button>
       <nav class="views">
         <button v-for="v in (['stage', 'lyrics', 'notation', 'visual'] as const)" :key="v" :class="{ on: view === v }" @click="view = v">
-          {{ { stage: 'Stage', lyrics: 'Lyrics', notation: 'Notation', visual: 'Visual' }[v] }}
+          {{ isPhone ? VIEW_LABELS[v] : { stage: 'Stage', lyrics: 'Lyrics', notation: 'Notation', visual: 'Visual' }[v] }}
         </button>
       </nav>
-      <div class="tools">
+      <button v-if="isPhone" class="icon-btn" title="More" @click="phoneMenu = true"><Icon name="more" /></button>
+      <div v-else class="tools">
         <button class="icon-btn" title="The song's page: lyrics, notation, details (I)" @click="openCurrentPage"><Icon name="info" /></button>
         <button class="icon-btn" :class="{ on: lyricsPanel }" title="How the lyrics look: font, colour, effect" @click="lyricsPanel = !lyricsPanel"><Icon name="mic" /></button>
         <button class="icon-btn" :class="{ on: panel }" title="Visuals (V)" @click="panel = !panel"><Icon name="sparkles" /></button>
@@ -142,7 +191,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
     <main v-if="current" class="stage" title="" @dblclick.self="visualFullscreen">
       <section v-if="view === 'stage'" class="cover-col">
         <div class="cover-wrap" :class="{ playing }">
-          <CoverArt :song="current" :live="playing" rounded />
+          <CoverArt :song="current" :live="playing" rounded :size="420" />
         </div>
         <h1 @click="go(`/song/${current.id}`); nowPlayingOpen = false">{{ current.title }}</h1>
         <p class="facts">
@@ -182,11 +231,33 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
       </div>
     </Transition>
 
+    <Transition name="upnext">
+      <div v-if="upNextShown && upNext" :key="upNext.id" class="up-next" :class="{ left: upNextLeft }">
+        <div class="thumb"><CoverArt :song="upNext" rounded :size="80" /></div>
+        <div class="text">
+          <small>Up next</small>
+          <b>{{ upNext.title }}</b>
+          <span>{{ upNextBy }}</span>
+        </div>
+      </div>
+    </Transition>
+
+    <BottomSheet v-if="phoneMenu" :title="current?.title" @close="phoneMenu = false">
+      <div class="np-menu">
+        <button class="ghost" @click="phoneMenu = false; openCurrentPage()"><Icon name="info" :size="18" /> The song's page</button>
+        <button class="ghost" @click="phoneMenu = false; lyricsPanel = true"><Icon name="mic" :size="18" /> How the lyrics look</button>
+        <button class="ghost" @click="phoneMenu = false; panel = true"><Icon name="sparkles" :size="18" /> Visuals</button>
+        <button class="ghost" @click="phoneMenu = false; visual?.next()"><Icon name="dice" :size="18" /> Another visual</button>
+        <button class="ghost" @click="phoneMenu = false; visualFullscreen()"><Icon name="expand" :size="18" /> Only the visual, whole screen</button>
+      </div>
+    </BottomSheet>
+
     <footer class="dock">
       <div class="chips">
         <button v-for="s in sections" :key="s.at" class="chip" :class="{ on: section?.at === s.at }" @click="engine.seek(s.at)">{{ sectionName(s.label) }}</button>
       </div>
       <Waveform :song-id="current?.id ?? null" :time="time" :duration="duration" :sections="sections" :lines="lines" tall />
+      <div v-if="isPhone" class="times"><span>{{ formatTime(time) }}</span><span>{{ formatTime(duration) }}</span></div>
       <div class="row">
         <span class="t">{{ formatTime(time) }}</span>
         <div class="controls">
@@ -211,7 +282,9 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
   inset: 0;
   z-index: 50;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  /* minmax(0, ...): a wide child (the sections, the waveform) never widens the page beyond the screen */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   color: #fff;
   overflow: hidden;
   background: #05040a;
@@ -462,6 +535,76 @@ h1 {
 .view-notation .title-card {
   display: none;
 }
+/* Up next: a lower third above the controls, at the bottom of the visual when they hide */
+.up-next {
+  position: absolute;
+  z-index: 4;
+  right: 6vw;
+  bottom: 200px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(460px, 42vw);
+  padding: 12px 20px 12px 12px;
+  border-radius: 18px;
+  background: rgba(12, 10, 22, 0.62);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  transition: bottom 0.6s;
+}
+.up-next.left {
+  right: auto;
+  left: 6vw;
+}
+.view-visual.idle .up-next {
+  bottom: 36px;
+}
+.up-next .thumb {
+  width: 72px;
+  flex: none;
+}
+.up-next .text {
+  min-width: 0;
+}
+.up-next small {
+  display: block;
+  font: 700 11px var(--font);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.up-next b {
+  display: block;
+  font: 800 20px/1.25 var(--font);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.up-next span {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upnext-enter-active,
+.upnext-leave-active {
+  transition: opacity 0.5s, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.upnext-enter-from {
+  opacity: 0;
+  transform: translateX(40px);
+}
+.up-next.left.upnext-enter-from {
+  transform: translateX(-40px);
+}
+.upnext-leave-to {
+  opacity: 0;
+  transform: translateY(14px);
+}
 .dock {
   grid-row: 3;
   position: relative;
@@ -560,5 +703,140 @@ h1 {
   .cover-col {
     display: none;
   }
+}
+/* a phone: the cover above the title and the lyrics (Stage), the views as one bar, the sections in one row that
+   scrolls, the controls large - and the screen's rounded corners and its home bar kept free */
+.np.phone {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  transition: transform 0.08s, opacity 0.08s;
+}
+.phone .top {
+  padding: 10px 10px 6px;
+  gap: 6px;
+}
+.phone .views {
+  flex: 1;
+  justify-content: space-between;
+  max-width: 330px;
+}
+.phone .views button {
+  flex: 1;
+  padding: 7px 4px;
+  font-size: 12.5px;
+}
+.phone.view-stage .stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 22px 0;
+}
+.phone.view-stage .cover-col {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  flex: none;
+}
+.phone .cover-wrap {
+  width: min(64vw, 34vh);
+}
+.phone h1 {
+  font-size: 24px;
+  margin: 16px 0 6px;
+  overflow-wrap: anywhere;
+}
+.phone .facts {
+  justify-content: center;
+}
+.phone .facts span:nth-child(n + 4) {
+  display: none;
+}
+.phone.view-stage .lyrics-col {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+.phone .lyrics-col :deep(.line) {
+  font-size: clamp(18px, 5.4vw, 24px);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.phone.view-lyrics .stage {
+  padding: 0 18px;
+}
+.phone.view-lyrics .lyrics-col :deep(.line) {
+  font-size: clamp(24px, 7vw, 34px);
+}
+.phone.view-notation .stage {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0 8px;
+}
+.phone.view-notation .side-lyrics {
+  display: none;
+}
+.phone .subtitle {
+  bottom: 200px;
+  padding: 0 18px;
+  font-size: calc(clamp(20px, 6vw, 30px) * var(--lyrics-scale, 1));
+}
+.phone .dock {
+  padding: 6px 18px 14px;
+}
+.phone .chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0 -18px 8px;
+  padding: 0 18px;
+  scrollbar-width: none;
+}
+.phone .chips .chip {
+  flex: none;
+}
+.phone .row {
+  margin-top: 6px;
+}
+.phone .controls {
+  gap: 10px;
+}
+.phone .controls .icon-btn {
+  width: 44px;
+  height: 44px;
+}
+.phone .play {
+  width: 66px;
+  height: 66px;
+}
+.phone .row .t {
+  display: none;
+}
+.phone .row {
+  justify-content: center;
+}
+.times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+  font: 11px var(--mono);
+  color: rgba(255, 255, 255, 0.7);
+}
+.phone .way-in {
+  display: none;
+}
+.phone .vpanel {
+  left: 10px;
+  right: 10px;
+  top: 58px;
+  bottom: 190px;
+  width: auto;
+}
+.np-menu {
+  display: grid;
+  gap: 8px;
+}
+.np-menu .ghost {
+  justify-content: flex-start;
+  height: 50px;
 }
 </style>

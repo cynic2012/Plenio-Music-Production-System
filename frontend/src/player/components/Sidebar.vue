@@ -112,11 +112,14 @@ async function scan(): Promise<void> {
       <a v-if="comfyLink" class="link small-link comfy" :href="comfyLink" target="_blank" rel="noopener" title="ComfyUI, in a tab of its own"><Icon name="external" :size="16" /> ComfyUI <small>↗</small></a>
       <button v-if="!isPortable" class="ghost small" :class="{ wide: true }" @click="shareFor = { songs: [], title: '' }"><Icon name="download" :size="14" /> Share as a player…</button>
       <button v-if="!isPortable" class="ghost small" :disabled="scanning" @click="scan"><Icon name="refresh" :size="14" :class="{ spin: scanning }" /> {{ scanning ? 'Looking …' : 'Look for new songs' }}</button>
-      <a class="link small-link" :class="{ on: route === '/settings' }" @click="go('/settings')">
+      <a class="link small-link" :class="{ on: route.startsWith('/help') }" title="Short guides and every tutorial as a video (key H)" @click="go('/help')">
+        <Icon name="help" :size="16" /> Help &amp; tutorials
+      </a>
+      <a class="link small-link" :class="{ on: route.startsWith('/settings') }" @click="go('/settings')">
         <Icon name="gear" :size="16" /> Settings
         <small :class="{ bad: saveError }" :title="saveError || 'Playlists, favourites and every setting are kept on this computer'">{{ saveError ? 'not saved' : lastSaved ? 'saved ✓' : 'kept ✓' }}</small>
       </a>
-      <p class="keys">Space play · ←→ seek · F now playing · I song page · ? keys</p>
+      <p class="keys">Space play · ←→ seek · F now playing · I song page · H help · ? keys</p>
     </div>
   </nav>
 </template>

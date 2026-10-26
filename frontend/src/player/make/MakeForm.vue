@@ -15,6 +15,7 @@ import Icon from '../components/Icon.vue'
 import ComboField from './ComboField.vue'
 import StudioPanel from './StudioPanel.vue'
 import type { MakeClient } from './client'
+import { applyPreset, BUILT_IN_PRESETS, presetMatters, presetOf, type MakePreset } from './presets'
 import { AGAIN_TEXT, LABELS, LIST_FIELDS, VOCALS_TEXT, againStudio, applies, clock, fieldsOf, fromTemplate, grouped, missing, optionsFor, ownAllowed, requestOf, studioStart, summary, surprise, timeOfDay, untilText } from './form'
 import type { Again, Draft, FormData, Kind, MakeJob, MakeStatus, Remake, SongDocuments, StudioSpec, StudioValues, StyleTemplate } from './form'
 
@@ -27,8 +28,10 @@ const props = defineProps<{
   remake?: Remake | null
   /** The cover of a song of the library (``null``: none to show). */
   coverOf?: (songId: string) => string | null
+  /** The presets of one's own (the player keeps them with the settings; the guests' page has none). */
+  presets?: MakePreset[]
 }>()
-const emit = defineEmits<{ made: [job: MakeJob, edited: boolean]; cancel: [] }>()
+const emit = defineEmits<{ made: [job: MakeJob, edited: boolean]; cancel: []; savePreset: [preset: MakePreset]; deletePreset: [id: string] }>()
 
 const AGAIN: Again[] = ['take', 'song', 'cover']
 const AGAIN_ICON: Record<Again, 'refresh' | 'sparkles' | 'mic'> = { take: 'refresh', song: 'sparkles', cover: 'mic' }
@@ -66,6 +69,36 @@ const ahead = computed(() => props.status?.line.waiting ?? 0)
 const free = computed(() => props.status?.line.free ?? 0)
 const now = ref(Date.now() / 1000)
 const clockTimer = window.setInterval(() => (now.value = Date.now() / 1000), 15000)
+
+// --- presets, and several takes or songs at once (owner's request 2026-10-26) ----------------------------------
+/** How many: takes of one song, or songs of this form (the whole studio). */
+const count = ref(1)
+const several = ref<'takes' | 'songs'>('takes')
+const chosenPreset = ref('')
+const naming = ref(false)
+const presetName = ref('')
+const presets = computed(() => [...BUILT_IN_PRESETS, ...(props.presets ?? [])].filter((p) => !props.form.templates.length || presetMatters(p, draft, props.form, full.value)))
+function usePreset(preset: MakePreset): void {
+  const applied = applyPreset(preset, draft, props.form, spec.value)
+  if (full.value) {
+    count.value = applied.takes
+    if (applied.takes > 1) several.value = 'takes'
+  }
+  chosenPreset.value = preset.id
+  epoch.value += 1
+  light(applied.set.filter((name) => !name.includes('.')))
+}
+function savePreset(): void {
+  emit('savePreset', presetOf(presetName.value, draft, several.value === 'takes' ? count.value : 1))
+  naming.value = false
+  presetName.value = ''
+}
+/** The request's count: takes of one song, or songs of this form - only the whole studio orders several. */
+function counts(): { takes?: number; copies?: number } {
+  if (!full.value || count.value <= 1 || editingNow.value) return {}
+  if (isTake.value || several.value === 'takes') return { takes: count.value }
+  return { copies: count.value }
+}
 
 function light(names: string[]): void {
   lit.value = new Set(names)
@@ -209,7 +242,7 @@ async function generate(): Promise<void> {
   sending.value = true
   error.value = ''
   try {
-    const body = requestOf(draft, spec.value, original.value)
+    const body = { ...requestOf(draft, spec.value, original.value), ...counts() }
     const job = props.editing ? await props.client.update(props.editing.id, body) : await props.client.create(body)
     emit('made', job, !!props.editing)
   } catch (e) {
@@ -287,6 +320,22 @@ onBeforeUnmount(() => {
         <span><b>A cover</b><small>Your song, in another style</small></span>
       </button>
     </div>
+
+    <section v-if="!editingNow && presets.length" class="presets" aria-label="Presets">
+      <span class="label"><Icon name="sliders" :size="14" /> Presets</span>
+      <div class="row">
+        <button v-for="p in presets" :key="p.id" type="button" class="preset" :class="{ on: chosenPreset === p.id, mine: !p.builtIn }" :title="p.text || `Your preset “${p.name}”`" @click="usePreset(p)">
+          <Icon :name="p.icon" :size="15" /> {{ p.name }}
+          <span v-if="!p.builtIn" class="x" title="Forget this preset" @click.stop="emit('deletePreset', p.id)"><Icon name="close" :size="12" /></span>
+        </button>
+        <button v-if="props.presets && !naming" type="button" class="preset add" title="Keep every setting of the form under a name" @click="naming = true"><Icon name="plus" :size="15" /> Save as preset…</button>
+        <form v-if="naming" class="name" @submit.prevent="savePreset">
+          <input v-model="presetName" maxlength="40" placeholder="A name - e.g. My party jazz" aria-label="The preset's name" @keydown.esc="naming = false" />
+          <button type="submit" class="ghost small">Save</button>
+        </form>
+      </div>
+      <p v-if="chosenPreset" class="preset-note">{{ presets.find((p) => p.id === chosenPreset)?.text || 'Your preset' }} - change anything below.</p>
+    </section>
 
     <p v-if="draft.again === 'cover'" class="note original"><Icon name="mic" :size="15" /> The original: <b>{{ draft.base?.title }}</b> from the library{{ draft.base?.seconds ? ` · ${clock(draft.base.seconds)}` : '' }} - its melody, form and tempo stay.</p>
     <section v-if="draft.kind === 'cover' && !draft.again" class="step">
@@ -370,12 +419,22 @@ onBeforeUnmount(() => {
     <p v-else-if="full && form.studio?.unavailable" class="note">Every setting of the studio shows here once ComfyUI runs.</p>
 
     <footer class="go">
-      <p v-if="isTake" class="what"><Icon name="refresh" :size="15" /> A new take of {{ draft.base?.title }}{{ changedDocuments ? ' - as changed' : '' }}</p>
+      <div v-if="full && !editingNow" class="many" role="group" aria-label="How many">
+        <span class="label">How many</span>
+        <div class="seg">
+          <button v-for="n in [1, 2, 3, 4]" :key="n" type="button" :class="{ on: count === n }" @click="count = n">{{ n }}</button>
+        </div>
+        <div v-if="count > 1 && !isTake" class="seg kinds-of">
+          <button type="button" :class="{ on: several === 'takes' }" title="One song, sung and played several times - the takes follow when it is made" @click="several = 'takes'">takes of one song</button>
+          <button type="button" :class="{ on: several === 'songs' }" title="Several songs of this form - each its own words and music" @click="several = 'songs'">different songs</button>
+        </div>
+      </div>
+      <p v-if="isTake" class="what"><Icon name="refresh" :size="15" /> {{ count > 1 ? `${count} new takes` : 'A new take' }} of {{ draft.base?.title }}{{ changedDocuments ? ' - as changed' : '' }}</p>
       <p v-else-if="summary(draft)" class="what"><Icon name="music" :size="15" /> {{ summary(draft) }}</p>
       <button type="submit" class="generate" :disabled="sending || uploading || lacking.length > 0 || (status !== null && !status.may)">
         <span class="shine" />
         <Icon :name="editingNow ? 'check' : isTake ? 'refresh' : 'sparkles'" :size="22" />
-        {{ sending ? (editingNow ? 'Saving …' : 'Sending …') : editingNow ? 'Save the changes' : isTake ? 'Make the new take' : 'Generate Song' }}
+        {{ sending ? (editingNow ? 'Saving …' : 'Sending …') : editingNow ? 'Save the changes' : isTake ? (count > 1 && full ? `Make ${count} takes` : 'Make the new take') : count > 1 && full ? (several === 'takes' ? `Generate · ${count} takes` : `Generate ${count} songs`) : 'Generate Song' }}
       </button>
       <button v-if="editingNow" type="button" class="link" @click="emit('cancel')">Leave it as it was</button>
       <p v-if="lacking.length" class="hint">Still needed: {{ lacking.join(' and ') }}.</p>
@@ -394,6 +453,112 @@ onBeforeUnmount(() => {
 .maker {
   display: grid;
   gap: 18px;
+}
+.presets {
+  display: grid;
+  gap: 8px;
+}
+.presets .label,
+.many .label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11px var(--font);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+.presets .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font: 600 13px var(--font);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+}
+.preset:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.preset.on {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 30%, transparent), color-mix(in srgb, var(--accent2) 14%, transparent));
+}
+.preset.add {
+  border-style: dashed;
+  color: var(--muted);
+}
+.preset .x {
+  display: inline-grid;
+  place-items: center;
+  margin-right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  opacity: 0.6;
+}
+.preset .x:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+}
+.presets .name {
+  display: flex;
+  gap: 6px;
+}
+.presets .name input {
+  height: 36px;
+  width: 230px;
+  padding: 0 12px;
+  border-radius: 99px;
+  border: 1px solid var(--accent);
+  background: rgba(10, 8, 18, 0.55);
+  color: #fff;
+  font: 14px var(--font);
+}
+.preset-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.many {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.seg button {
+  min-width: 38px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 99px;
+  background: none;
+  color: rgba(255, 255, 255, 0.75);
+  font: 600 13px var(--font);
+  cursor: pointer;
+}
+.seg button.on {
+  background: var(--accent);
+  color: #0b0a12;
 }
 .kinds {
   display: grid;
@@ -784,6 +949,35 @@ textarea:focus,
   }
 }
 @media (max-width: 640px) {
+  .kinds {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .kind {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+  }
+  .kind small {
+    font-size: 11.5px;
+    line-height: 1.35;
+  }
+  .badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+  }
+  .presets .row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -14px;
+    padding: 0 14px 4px;
+    scrollbar-width: none;
+  }
+  .preset {
+    flex: none;
+  }
   .pickrow {
     grid-template-columns: minmax(0, 1fr) auto;
   }

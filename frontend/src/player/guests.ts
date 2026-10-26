@@ -3,13 +3,14 @@
  * its own (``plenio/player/guest.py``); this page tells it what the live playlist shows - on every change and
  * every few seconds - and carries out the guests' wishes (a song up, down, out, or added), which it asks for
  * every second and a half. The live playlist keeps one owner, this page: a wish for a song that has moved on
- * is simply not done.
+ * is simply not done. The guests' reactions come along and float over the screen (``reactions.ts``).
  */
 import { ref, watch } from 'vue'
 
 import { api, type GuestStatus, type GuestWish } from './api'
 import { addLive, isNew, liveLog } from './live'
 import { isPortable } from './portable'
+import { receive } from './reactions'
 import { byId, current, index, liveWaiting, playing, queue, say, settings, time } from './store'
 
 export const guestStatus = ref<GuestStatus | null>(null)
@@ -98,6 +99,7 @@ let publishTimer: number | undefined
 let heartbeat: number | undefined
 let wishTimer: number | undefined
 let lastWish = 0
+let lastReaction: number | undefined
 
 function publish(soon = 250): void {
   window.clearTimeout(publishTimer)
@@ -106,8 +108,10 @@ function publish(soon = 250): void {
 
 async function pollWishes(): Promise<void> {
   try {
-    const { wishes, last } = await api.guestWishes(lastWish)
+    const { wishes, last, reactions, last_reaction } = await api.guestWishes(lastWish, lastReaction)
     lastWish = last
+    if (last_reaction !== undefined) lastReaction = last_reaction
+    if (reactions?.length) receive(reactions)
     let done = 0
     for (const wish of wishes) {
       const title = byId.value.get(wish.id)?.title ?? 'a song'
@@ -126,8 +130,10 @@ async function pollWishes(): Promise<void> {
 async function start(): Promise<void> {
   if (heartbeat !== undefined) return
   try {
-    // the wishes from before this page opened are not done again
-    lastWish = (await api.guestWishes(0)).last
+    // the wishes from before this page opened are not done again (nor shown, the reactions)
+    const first = await api.guestWishes(0)
+    lastWish = first.last
+    lastReaction = first.last_reaction
   } catch {
     lastWish = 0
   }

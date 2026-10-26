@@ -77,7 +77,7 @@ function removeAll(): void {
   <div v-if="playlist" class="pl" :style="{ '--hue': playlist.hue ?? 260 }">
     <section class="head">
       <div class="mosaic" :class="`n${covers.length}`">
-        <CoverArt v-for="s in covers" :key="s.id" :song="s" />
+        <CoverArt v-for="s in covers" :key="s.id" :song="s" :size="160" />
         <div v-if="!covers.length" class="blank"><Icon name="playlist" :size="54" /></div>
       </div>
       <div class="text">
@@ -108,7 +108,7 @@ function removeAll(): void {
       <label class="search"><Icon name="search" /><input v-model="find" v-focus placeholder="Find songs to add …" /></label>
       <div class="cands">
         <button v-for="{ song, snippet } in candidates" :key="song.id" class="cand" @click="add(song.id)">
-          <CoverArt :song="song" rounded />
+          <CoverArt :song="song" rounded :size="56" />
           <span class="t">{{ song.title }}<small>{{ snippet ? `“${snippet}”` : song.genre }}</small></span>
           <Icon name="plus" :size="16" />
         </button>
@@ -133,7 +133,7 @@ function removeAll(): void {
           <span v-if="current?.id === song.id && playing" class="eq"><i /><i /><i /></span>
           <template v-else>{{ i + 1 }}</template>
         </span>
-        <button class="art" @click="play(i)"><CoverArt :song="song" rounded /><Icon name="play" class="ov" :size="16" /></button>
+        <button class="art" @click="play(i)"><CoverArt :song="song" rounded :size="56" /><Icon name="play" class="ov" :size="16" /></button>
         <span class="title"><a @click="go(`/song/${song.id}`)">{{ song.title }}</a><small>{{ song.genre }}</small></span>
         <span class="mood">{{ song.mood }}</span>
         <span class="len">{{ formatTime(song.seconds) }}</span>

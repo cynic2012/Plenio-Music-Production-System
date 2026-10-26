@@ -36,6 +36,7 @@ from .network import REMOTE_HEADER, REMOTE_HOST_HEADER, NetworkAccess
 from .package import MAX_SONGS, PackageJobs, package_file, packages_dir
 from .package import listing as package_listing
 from .peaks import peaks
+from .studio import StudioLauncher, StudioLaunchError
 from .thumbs import thumbnail
 from .video import VideoJobs, videos_dir
 from .visuals import list_presets, open_folder, save_copy, show_folder, visuals_dir
@@ -62,10 +63,11 @@ CHUNK = 256 * 1024
 GZIP_MIN = 1400
 """Answers at least this large go compressed to a browser that takes gzip: the library of 2958 songs is 9.6 MB of
 JSON, 1 MB compressed (2026-10-26) - a phone in the network had to load all of it at every start."""
-GZIP_TYPES = (".js", ".mjs", ".css", ".html", ".htm", ".svg", ".json")
+GZIP_TYPES = (".js", ".mjs", ".css", ".html", ".htm", ".svg", ".json", ".webmanifest")
 LIBRARY_WAIT_S = 2.0
 """While the folders are read the first time, the library's answer waits this long, then says how far it is."""
-THUMB_SIZES = (96, 160, 256, 384, 512, 768)
+THUMB_SIZES = (128, 256, 512, 768)
+"""The sizes of the covers' small pictures (``?size=``): the page picks the smallest one large enough."""
 BOOT = secrets.token_hex(4)
 """Part of every ETag: a player started again never answers *unchanged* for an answer of the one before."""
 SECURITY_HEADERS = (
@@ -79,7 +81,7 @@ log = logging.getLogger("plenio.player")
 TYPES = {".mp4": "video/mp4", ".htm": "text/html; charset=utf-8", ".flac": "audio/flac", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".srt": "text/plain; charset=utf-8",
          ".json": "application/json", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".js": "text/javascript",
          ".mjs": "text/javascript", ".css": "text/css", ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
-         ".png": "image/png", ".woff2": "font/woff2"}  # fmt: skip
+         ".png": "image/png", ".woff2": "font/woff2", ".webmanifest": "application/manifest+json"}  # fmt: skip
 APP = "plenio-player"
 COMFYUI_PORTS = (8188, 8000)  # ComfyUI, ComfyUI Desktop
 LOOPBACK_URL = re.compile(r"https?://(127\.0\.0\.1|localhost|\[::1\]):\d{2,5}/?")
@@ -135,6 +137,13 @@ class State:
             return self.rev
 
 
+def from_this_computer(client: str, remote: bool) -> bool:
+    """A request of a browser on this computer itself: from a loopback address and not passed on by a gateway of
+    *In your network*. A player started with ``--host`` answers the network directly - its requests from other
+    computers are not this computer's, whatever the login says."""
+    return client in ("127.0.0.1", "::1") and not remote
+
+
 def comfyui_at(url: str, timeout: float = 0.8) -> dict[str, Any] | None:
     """The ComfyUI answering at ``url`` (a loopback address only: the player asks no other computer)."""
     if not LOOPBACK_URL.fullmatch(url):
@@ -150,10 +159,10 @@ def comfyui_at(url: str, timeout: float = 0.8) -> dict[str, Any] | None:
     return {"url": url.rstrip("/") + "/", "version": str(system.get("comfyui_version") or "")}
 
 
-def find_comfyui(preferred: str = "") -> dict[str, Any] | None:
+def find_comfyui(preferred: str = "", also: Callable[[], str] | None = None) -> dict[str, Any] | None:
     """ComfyUI on this computer: ``preferred`` (the one that started the player, or the address in the
-    settings), else the usual loopback ports."""
-    for url in [preferred] if preferred else []:
+    settings), the one the player starts itself (``also``: its address), else the usual loopback ports."""
+    for url in [u for u in (preferred, also() if also else "") if u]:
         found = comfyui_at(url)
         if found:
             return found
@@ -164,16 +173,18 @@ def find_comfyui(preferred: str = "") -> dict[str, Any] | None:
     return None
 
 
-def studio_finder(preferred: str = "", every: float = 10.0) -> Callable[[], str | None]:
+def studio_finder(
+    preferred: str = "", every: float = 10.0, also: Callable[[], str] | None = None
+) -> Callable[[], str | None]:
     """The address of the ComfyUI on this computer for the party songs, looked for at most every ``every`` seconds
-    (``preferred``: the one that started the player)."""
+    (``preferred``: the one that started the player; ``also``: the address of the one the player starts)."""
     found: list[Any] = [-1e9, None]
     lock = threading.Lock()
 
     def url() -> str | None:
         with lock:
             if time.monotonic() - found[0] > every:
-                found[1] = (find_comfyui(preferred) or {}).get("url")
+                found[1] = (find_comfyui(preferred, also) or {}).get("url")
                 found[0] = time.monotonic()
             return str(found[1]) if found[1] else None
 
@@ -233,6 +244,7 @@ def make_handler(
     network: NetworkAccess | None = None,
     accounts: account_rules.Accounts | None = None,
     maker: maker_rules.PartySongs | None = None,
+    launcher: StudioLauncher | None = None,
 ) -> type[BaseHTTPRequestHandler]:
     """The requests' handler; with ``hosts`` it answers only requests addressed to one of them (a player on
     the loopback address is then out of reach of web pages that rename themselves to it: DNS rebinding).
@@ -403,6 +415,34 @@ def make_handler(
             except ValueError:
                 return self._error(400, "not JSON")
             return self._error(404, "not found")
+
+        def _studio(self, route: str, raw: bytes | None) -> None:
+            """The studio - ComfyUI - started, stopped or set up from the player: the admin, on this computer, from
+            the player's own page (``plenio.player.studio``)."""
+            if launcher is None:
+                return self._error(404, "no studio here")
+            if not self._from_this_page():
+                return self._error(403, "only from the player's page")
+            # it runs a program: only from this computer itself, also when the player answers the network (--host)
+            if not from_this_computer(self.client_address[0], self.remote):
+                return self._error(
+                    403, "Starting ComfyUI - only on the computer itself, not from the network"
+                )
+            if not (self.account or {}).get("admin"):
+                return self._error(403, "only the admin")
+            try:
+                if route == "/api/studio/start":
+                    return self._json(launcher.start())
+                if route == "/api/studio/stop":
+                    return self._json(launcher.stop())
+                changes = json.loads(raw.decode("utf-8")) if raw else None
+                if not isinstance(changes, dict):
+                    return self._error(400, "the studio's settings: root, args, port, auto, idle_stop_min")
+                return self._json(launcher.configure(changes))
+            except StudioLaunchError as error:
+                return self._error(error.status, str(error))
+            except ValueError:
+                return self._error(400, "not JSON")
 
         def _not_from_network(self, what: str) -> bool:
             """Answer 403 to a request from the network for what only this computer does; ``True``: answered."""
@@ -611,6 +651,13 @@ def make_handler(
                     return self._error(500, str(error))
             if route == "/api/session":
                 return self._session()
+            if route == "/api/studio":
+                if launcher is None:
+                    return self._error(404, "no studio here")
+                local_admin = from_this_computer(self.client_address[0], self.remote) and bool(
+                    (self.account or {}).get("admin")
+                )
+                return self._json(launcher.status(admin=local_admin))
             if route == "/api/make" or route.startswith("/api/make/"):
                 return self._make("GET", route, query, None)
             if route == "/api/users":
@@ -638,7 +685,11 @@ def make_handler(
                     after = int(query.get("after", "0"))
                 except ValueError:
                     after = 0
-                return self._json(guests.take(after))
+                try:
+                    reacted: int | None = int(query["reacted"]) if "reacted" in query else None
+                except ValueError:
+                    reacted = None
+                return self._json(guests.take(after, reacted))
             if route == "/api/folders":
                 return self._json(folders_answer())
             if route == "/api/packages":
@@ -781,6 +832,8 @@ def make_handler(
                 return self._put_user(route, body)
             if route.startswith("/api/make/"):
                 return self._make("PUT", route, {}, body)
+            if route == "/api/studio":
+                return self._studio(route, body)
             if route not in ("/api/state", "/api/folders", "/api/guests", "/api/network"):
                 return self._error(404, "not found")
             if not self._from_this_page():
@@ -806,7 +859,7 @@ def make_handler(
                     changes = None
                 if guests is None or not isinstance(changes, dict):
                     return self._error(
-                        400 if guests else 404, "the guests' access: on, mode, show, regenerate"
+                        400 if guests else 404, "the guests' access: on, mode, show, reactions, regenerate"
                     )
                 return self._json(guests.configure(changes))
             if body is None:
@@ -1098,6 +1151,8 @@ def make_handler(
             raw = self._body()
             if route.startswith("/api/make/"):
                 return self._make("POST", route, {}, raw)
+            if route in ("/api/studio/start", "/api/studio/stop"):
+                return self._studio(route, raw)
             if route == "/api/rescan":
                 if not self._from_this_page():
                     return self._error(403, "only from the player's page")
@@ -1214,6 +1269,7 @@ def serve(
     network: NetworkAccess | None = None,
     accounts: account_rules.Accounts | None = None,
     maker: maker_rules.PartySongs | None = None,
+    launcher: StudioLauncher | None = None,
 ) -> ThreadingHTTPServer:
     """The player's server; on the loopback address only for requests addressed to it. ``comfyui``: the
     ComfyUI that started it (where *Open in ComfyUI* goes); ``guests``: the guests' access; ``network``: the
@@ -1241,6 +1297,7 @@ def serve(
                     network=network,
                     accounts=accounts,
                     maker=maker,
+                    launcher=launcher,
                 )
 
     return Server(
@@ -1254,5 +1311,6 @@ def serve(
             network=network,
             accounts=accounts,
             maker=maker,
+            launcher=launcher,
         ),
     )

@@ -16,6 +16,10 @@ a song that has moved on is simply not done.
 When the host lets guests make songs (``plenio.player.maker``, owner's request 2026-10-25), the guests' page has
 *Make your own song*: a page of its own below the token (``make/``, built into ``guest_static``), and the party
 songs' routes for guests (``api/make...``) - a guest is known by a cookie of their own.
+
+Guests react to the song that plays (owner's request 2026-10-26, the player as a party machine): a tap on
+🔥 ❤️ 🎉 👏 💃 😂 on their page (``api/react``) floats over the player's screen and is counted for the song.
+Only these six, a few a minute per guest, and only when the host lets guests react.
 """
 
 from __future__ import annotations
@@ -52,6 +56,13 @@ STALE_AFTER = 20.0
 WISHES_KEPT = 200
 WISHES_PER_MINUTE = 40
 """Wishes one guest (address) may send in a minute."""
+REACTIONS = ("fire", "heart", "party", "clap", "dance", "laugh")
+"""What a guest may send to the screen (the pages show them as 🔥 ❤️ 🎉 👏 💃 😂)."""
+REACTIONS_PER_MINUTE = 60
+"""Reactions one guest (address) may send in a minute."""
+REACTIONS_KEPT = 300
+CHEERED_SONGS = 50
+"""Songs whose reactions are counted for the guests' page (the latest ones)."""
 LIST_LIMIT = 200
 BODY_LIMIT = 64 * 1024
 ASSET_TYPES = {
@@ -60,7 +71,14 @@ ASSET_TYPES = {
     ".svg": "image/svg+xml",
     ".woff2": "font/woff2",
 }
-DEFAULTS: dict[str, Any] = {"on": False, "mode": "view", "show": "both", "token": "", "port": 0}
+DEFAULTS: dict[str, Any] = {
+    "on": False,
+    "mode": "view",
+    "show": "both",
+    "token": "",
+    "port": 0,
+    "reactions": True,
+}
 ALL_NETWORKS = ("0.0.0.0", "")  # noqa: S104 - the guests' access is meant for the network
 
 
@@ -114,6 +132,11 @@ class GuestHub:
         self.maker: maker_rules.PartySongs | None = None
         """The party songs, when the player makes them (guests may when the host lets them)."""
         self.uploads: dict[str, deque[float]] = {}
+        self.reactions: deque[dict[str, Any]] = deque(maxlen=REACTIONS_KEPT)
+        self.last_reaction = 0
+        self.reacted: dict[str, deque[float]] = {}
+        self.cheers: dict[str, dict[str, int]] = {}
+        """The reactions per song (the latest songs), for the guests' page."""
 
     # --- settings and the server -------------------------------------------------------------------
     def _load(self) -> dict[str, Any]:
@@ -129,6 +152,8 @@ class GuestHub:
             settings["mode"] = "view"
         if settings["show"] not in SHOWS:
             settings["show"] = "both"
+        if not isinstance(settings["reactions"], bool):
+            settings["reactions"] = True
         if not isinstance(settings["token"], str) or len(settings["token"]) < 12:
             settings["token"] = new_token()
         return settings
@@ -152,10 +177,13 @@ class GuestHub:
                 self.settings["mode"] = changes["mode"]
             if changes.get("show") in SHOWS:
                 self.settings["show"] = changes["show"]
+            if isinstance(changes.get("reactions"), bool):
+                self.settings["reactions"] = changes["reactions"]
             if changes.get("regenerate"):
                 self.settings["token"] = new_token()
                 self.wishes.clear()
                 self.seen.clear()
+                self.reacted.clear()
             if "on" in changes:
                 self.settings["on"] = bool(changes["on"])
             self._save()
@@ -207,6 +235,7 @@ class GuestHub:
             "on": bool(self.settings["on"]) and running,
             "mode": self.settings["mode"],
             "show": self.settings["show"],
+            "reactions": bool(self.settings["reactions"]),
             "port": port,
             "url": urls[0] if urls else "",
             "urls": urls,
@@ -263,10 +292,16 @@ class GuestHub:
             self.snapshot = snapshot
             self.snapshot_at = time.monotonic()
 
-    def take(self, after: int) -> dict[str, Any]:
-        """The guests' wishes after ``after`` (the last one the page carried out)."""
+    def take(self, after: int, reacted: int | None = None) -> dict[str, Any]:
+        """The guests' wishes after ``after`` (the last one the page carried out), and their reactions after
+        ``reacted`` (the last one the page showed; ``None``: only the count, for a page that just opened)."""
         with self.lock:
-            return {"wishes": [w for w in self.wishes if w["n"] > after], "last": self.last_wish}
+            return {
+                "wishes": [w for w in self.wishes if w["n"] > after],
+                "last": self.last_wish,
+                "reactions": [r for r in self.reactions if r["n"] > reacted] if reacted is not None else [],
+                "last_reaction": self.last_reaction,
+            }
 
     # --- the guests ----------------------------------------------------------------------------------
     def view(self, guest: str) -> dict[str, Any]:
@@ -276,12 +311,21 @@ class GuestHub:
             fresh = self.snapshot and time.monotonic() - self.snapshot_at < STALE_AFTER
             snapshot = dict(self.snapshot) if fresh else {}
             age = time.monotonic() - self.snapshot_at if fresh else None
-        if snapshot.get("now") and snapshot.get("playing") and age is not None:
+        if snapshot.get("now"):
             now = dict(snapshot["now"])
-            now["position"] = round(min(now["seconds"] or 1e9, now["position"] + age), 2)
+            if snapshot.get("playing") and age is not None:
+                now["position"] = round(min(now["seconds"] or 1e9, now["position"] + age), 2)
+            with self.lock:
+                now["cheers"] = dict(self.cheers.get(now["id"], {}))
             snapshot["now"] = now
         make = bool(self.maker is not None and self.maker.guests_may())
-        return {"open": bool(fresh), "mode": self.settings["mode"], "make": make, **snapshot}
+        return {
+            "open": bool(fresh),
+            "mode": self.settings["mode"],
+            "make": make,
+            "react": bool(self.settings["reactions"]),
+            **snapshot,
+        }
 
     def wish(self, guest: str, data: Any) -> tuple[int, dict[str, Any]]:
         """A guest's wish (change mode only): a song up, down, next, out - or a song of the library added
@@ -319,6 +363,36 @@ class GuestHub:
             wish["n"] = self.last_wish
             self.wishes.append(wish)
         return 200, {"ok": True, "n": wish["n"]}
+
+    def react(self, guest: str, data: Any) -> tuple[int, dict[str, Any]]:
+        """A guest's reaction to the song that plays: on its way to the player's screen, and counted for the
+        song. Only one of ``REACTIONS``, only while the page shows a song, a few a minute per guest."""
+        if not self.settings["reactions"]:
+            return 403, {"error": "the host has switched reactions off"}
+        kind = data.get("kind") if isinstance(data, dict) else None
+        if kind not in REACTIONS:
+            return 400, {"error": f"kind: one of {', '.join(REACTIONS)}"}
+        now = time.monotonic()
+        with self.lock:
+            fresh = bool(self.snapshot) and now - self.snapshot_at < STALE_AFTER
+            song = (self.snapshot.get("now") or {}).get("id") if fresh else None
+            if not song:
+                return 409, {"error": "nothing plays at the moment"}
+            sent = self.reacted.setdefault(guest, deque())
+            while sent and now - sent[0] > 60:
+                sent.popleft()
+            if len(sent) >= REACTIONS_PER_MINUTE:
+                return 429, {"error": "slow down a little"}
+            sent.append(now)
+            self.last_reaction += 1
+            self.reactions.append({"n": self.last_reaction, "kind": kind, "id": song})
+            # the song's count, moved to the end: the latest songs are kept
+            tally = self.cheers.pop(song, {})
+            tally[kind] = tally.get(kind, 0) + 1
+            self.cheers[song] = tally
+            while len(self.cheers) > CHEERED_SONGS:
+                self.cheers.pop(next(iter(self.cheers)))
+            return 200, {"ok": True, "cheers": dict(tally)}
 
     def search(self, query: str) -> list[dict[str, Any]]:
         """Songs of the library for a guest to add: every word in the title, artist, genre or mood."""
@@ -578,7 +652,7 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
                 return self._json({"error": "too large"}, 413)
             if found is not None and found[0].startswith("/api/make/"):
                 return self._make("POST", found[0], found[1], raw)
-            if found is None or found[0] != "/api/wish":
+            if found is None or found[0] not in ("/api/wish", "/api/react"):
                 return self._nothing()
             # JSON only: another site's page in a guest's browser cannot send it without asking first
             if not (self.headers.get("Content-Type") or "").startswith("application/json"):
@@ -587,7 +661,8 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
                 data = json.loads(raw.decode("utf-8"))
             except ValueError:
                 return self._json({"error": "not JSON"}, 400)
-            status, answer = hub.wish(self.client_address[0], data)
+            act = hub.wish if found[0] == "/api/wish" else hub.react
+            status, answer = act(self.client_address[0], data)
             return self._json(answer, status)
 
         def do_PUT(self) -> None:  # noqa: N802

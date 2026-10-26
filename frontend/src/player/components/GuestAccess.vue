@@ -71,6 +71,11 @@ onBeforeUnmount(() => window.clearInterval(timer))
           <label><input type="radio" :checked="status.mode === 'change'" @change="change({ mode: 'change' })" /> change it: move, take out, add songs</label>
         </div>
         <div class="choice">
+          <span>Reactions</span>
+          <label><input type="checkbox" :checked="status.reactions" @change="change({ reactions: !status.reactions })" /> guests may send 🔥 ❤️ 🎉 👏 💃 😂</label>
+          <small>they float up the edges of this screen</small>
+        </div>
+        <div class="choice">
           <span>On the screen</span>
           <select :value="status.show" @change="change({ show: ($event.target as HTMLSelectElement).value as 'both' })">
             <option value="both">the QR code and the address</option>

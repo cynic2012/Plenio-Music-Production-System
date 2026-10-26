@@ -899,3 +899,79 @@ def test_the_guests_server_lets_party_guests_make_songs_when_the_host_allows(ser
     for wrong in ("/make/assets/../index.html", "/make/assets/.hidden.js", "/make/other"):
         assert call(guest_port, "GET", f"/{token}{wrong}")[0] == 404
     assert call(guest_port, "GET", "/make/")[0] == 404  # without the token: nothing
+
+
+# --- several takes, several songs (owner's request 2026-10-26) ------------------------------------------------
+
+
+def test_the_whole_studio_orders_several_takes_and_they_follow_the_song(again: Any, tmp_path: Path) -> None:
+    songs, studio, clock, library, _ids = again
+    first = songs.create(ADMIN, {"fields": SONG, "takes": 3})
+    assert first["takes_left"] == 2 and first["group"] and first["of"] == 3 and first["number"] == 1
+    assert len(songs.jobs) == 1  # the takes come when the song is made: they need its words and notes
+    songs.tick()
+    folder = library.folders[0]
+    made_song(folder, "Comet")
+    clock.now += 300
+    studio.views["comfy-1"] = {
+        "id": "comfy-1",
+        "status": "succeeded",
+        "started_at": clock.now - 300,
+        "finished_at": clock.now,
+        "result": {"title": "Comet", "record": str(folder / "Comet.plenio.json")},
+    }
+    songs.tick()
+    done, *takes = songs.listing(ADMIN)
+    assert done["status"] == "done" and done["takes_left"] == 0
+    assert [t["again"] for t in takes] == ["take", "take"] and [t["number"] for t in takes] == [2, 3]
+    assert {t["group"] for t in takes} == {done["group"]} and all(t["of"] == 3 for t in takes)
+    assert all(t["from"]["song"] == done["result"]["song"] and t["status"] == "waiting" for t in takes)
+    # each take is sent as a new take of the song made: its documents, a new take seed
+    songs.tick()
+    assert studio.records[-1]["title"] == "Comet" and "take" not in studio.sent[-1]["seeds"]
+
+
+def test_several_takes_or_songs_at_once_are_for_the_whole_studio(
+    again: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    songs, _studio, _clock, _library, ids = again
+    takes = songs.create(ADMIN, {"from": {"song": ids["Neon"], "as": "take"}, "takes": 2})
+    assert takes["again"] == "take" and takes["of"] == 2
+    assert [j["number"] for j in songs.jobs] == [1, 2] and len({j["group"] for j in songs.jobs}) == 1
+    many = songs.create(ADMIN, {"fields": SONG, "copies": 3})
+    assert many["of"] == 3 and len(songs.jobs) == 5 and not many["takes_left"]
+    for wrong, status in (
+        ({"takes": 2}, 403),
+        ({"copies": 2}, 403),
+    ):
+        with pytest.raises(MakerError) as refused:
+            songs.create(ANNA, {"fields": SONG, **wrong})
+        assert refused.value.status == status
+    for wrong in ({"takes": 5}, {"copies": 6}, {"takes": 2, "copies": 2}, {"takes": "2"}, {"takes": 1.5}):
+        with pytest.raises(MakerError):
+            songs.create(ADMIN, {"fields": SONG, **wrong})
+    # every song ordered counts against the line, not only the first
+    monkeypatch.setattr(maker_module, "LINE_LIMIT", 6)
+    with pytest.raises(MakerError) as full:
+        songs.create(ADMIN, {"fields": SONG, "copies": 2})
+    assert full.value.status == 429 and len(songs.jobs) == 5
+    songs.create(ADMIN, {"fields": SONG})
+    assert len(songs.jobs) == 6
+
+
+def test_a_waiting_song_starts_the_studio_when_the_admin_wants_it(party: Any) -> None:
+    songs, _studio, clock, _library = party
+
+    class Launcher:
+        def __init__(self) -> None:
+            self.calls: list[bool] = []
+
+        def tick(self, waiting: bool) -> None:
+            self.calls.append(waiting)
+
+    launcher = Launcher()
+    songs.launcher = launcher
+    songs.tick()
+    songs.create(ANNA, {"fields": SONG})
+    songs.tick()
+    assert launcher.calls == [False, True]

@@ -9,6 +9,7 @@ import { computed, ref } from 'vue'
 
 import type { SongSummary } from '../api'
 import { addLive, isNew, liveLog, startLive, stopLive } from '../live'
+import { cheerLine, cheers } from '../reactions'
 import { parseQuery, score } from '../search'
 import { byId, current, duration, go, index, library, liveWaiting, newPlaylist, nowPlayingOpen, playAt, playing, queue, say, settings, state, time } from '../store'
 import { formatTime } from '../timing'
@@ -32,6 +33,8 @@ const items = computed(() =>
 const upcoming = computed(() => items.value.filter((x) => x.i > index.value))
 const played = computed(() => items.value.filter((x) => x.i < index.value).slice(-8).reverse())
 const left = computed(() => upcoming.value.reduce((t, x) => t + x.song.seconds, 0) + Math.max(0, duration.value - time.value))
+/** The guests' reactions to the song that plays (while this page is open). */
+const cheered = computed(() => (current.value ? cheerLine(cheers[current.value.id]) : ''))
 const found = computed(() => {
   const q = find.value.trim()
   if (!q) return []
@@ -157,11 +160,12 @@ const ago = (at: number): string => {
     <section v-if="live.on || queue.length" class="now">
       <div v-if="liveWaiting" class="waiting"><Icon name="live" :size="22" /> Waiting for the next new song …</div>
       <div v-else-if="current" class="playing">
-        <CoverArt :song="current" :live="playing" rounded />
+        <CoverArt :song="current" :live="playing" rounded :size="200" />
         <div>
           <small>{{ playing ? 'Playing' : 'Paused' }}</small>
           <h2>{{ current.title }} <span v-if="isNew(current.id)" class="new">new</span></h2>
           <p>{{ current.other ? current.artist : current.genre }} · {{ formatTime(time) }} / {{ formatTime(duration) }}</p>
+          <p v-if="cheered" :key="cheered" class="cheers" title="The guests’ reactions to this song">{{ cheered }}</p>
         </div>
       </div>
       <p class="sum">{{ upcoming.length }} to come · {{ formatTime(left) }} left <button class="ghost small" :disabled="!queue.length" @click="save"><Icon name="playlist" :size="14" /> Save as a playlist</button></p>
@@ -183,7 +187,7 @@ const ago = (at: number): string => {
       >
         <Icon class="grip" name="grip" :size="16" />
         <span class="n">{{ i - index }}</span>
-        <CoverArt :song="song" rounded />
+        <CoverArt :song="song" rounded :size="56" />
         <span class="t"><span>{{ song.title }} <span v-if="isNew(song.id)" class="new">new</span></span><small>{{ song.other ? song.artist || 'other music' : song.genre }}</small></span>
         <span class="len">{{ formatTime(song.seconds) }}</span>
         <button class="icon-btn" title="Play now" @click="playAt(i)"><Icon name="play" :size="16" /></button>
@@ -198,7 +202,7 @@ const ago = (at: number): string => {
       <h3>Add songs</h3>
       <input v-model="find" class="find" placeholder="Search the library: title, genre, mood, artist …" />
       <div v-for="song in found" :key="song.id" class="row">
-        <CoverArt :song="song" rounded />
+        <CoverArt :song="song" rounded :size="56" />
         <span class="t">{{ song.title }}<small>{{ song.other ? song.artist || 'other music' : song.genre }} · {{ formatTime(song.seconds) }}</small></span>
         <button class="ghost small" @click="add(song, 'next')">Next</button>
         <button class="ghost small" @click="add(song, 'end')">At the end</button>
@@ -213,7 +217,7 @@ const ago = (at: number): string => {
     <section v-if="played.length" class="list past">
       <h3>Played</h3>
       <div v-for="{ i, song } in played" :key="`p${i}-${song.id}`" class="row">
-        <CoverArt :song="song" rounded />
+        <CoverArt :song="song" rounded :size="56" />
         <span class="t">{{ song.title }}<small>{{ song.genre }}</small></span>
         <button v-if="makeShown && !isPortable" class="icon-btn again" title="A new version… - a new take of it, a new song like it, or a cover of it" @click="go(`/make/${song.id}`)"><Icon name="wand" :size="16" /></button>
         <button class="ghost small" title="Play it again after this one" @click="playNext(i)">Again</button>
@@ -372,6 +376,19 @@ input[type='checkbox'] {
 .playing small {
   color: var(--muted);
   margin: 0;
+}
+.playing .cheers {
+  margin-top: 8px;
+  color: #fff;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  animation: cheer 0.35s ease-out;
+}
+@keyframes cheer {
+  from {
+    transform: scale(1.12);
+    opacity: 0.4;
+  }
 }
 .waiting {
   display: flex;

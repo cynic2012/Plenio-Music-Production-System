@@ -8,7 +8,8 @@
 <title>Plenio Live</title>
 <style>
   /* The guests' page of the Plenio Player's Live Play (plenio/player/guest.py): the song that plays, what
-     comes next, and - when the host allows it - moving, taking out and adding songs. Phone first. */
+     comes next, reactions that float over the host's screen, and - when the host allows it - moving, taking
+     out and adding songs. Phone first. */
   :root {
     --bg: #0d0b17;
     --panel: rgba(255, 255, 255, 0.05);
@@ -82,6 +83,16 @@
                  transform: translateX(-120%); animation: shine 3.2s ease-in-out infinite; pointer-events: none; }
   @keyframes drift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
   @keyframes shine { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+  /* reactions (owner's request 2026-10-26): a tap floats over the host's screen */
+  .react { display: grid; gap: 8px; }
+  .react .row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .react button { height: 56px; font-size: 27px; border-radius: 16px; padding: 0; background: var(--panel); transition: transform 0.12s, background 0.2s; }
+  .react button:active { transform: scale(0.88); background: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .react .tally { min-height: 18px; text-align: center; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .fly { position: fixed; z-index: 5; pointer-events: none; font-size: 32px; animation: fly 1.1s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+  @keyframes fly { from { transform: translate(-50%, -50%) scale(0.7); opacity: 1; }
+                   to { transform: translate(calc(-50% + var(--dx)), calc(-50% - 170px)) scale(1.6) rotate(var(--rot)); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .fly { display: none; } }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -107,6 +118,10 @@
       <div class="bar"><span id="nowBar"></span></div>
       <div class="times"><span id="nowAt">0:00</span><span id="nowLen">0:00</span></div>
     </div>
+  </section>
+  <section id="reactBox" class="react" hidden>
+    <div id="reactions" class="row"></div>
+    <div id="tally" class="tally"></div>
   </section>
   <section id="nextBox" hidden>
     <h2><span>Up next</span><span id="left"></span></h2>
@@ -183,7 +198,7 @@
     $("makeBox").hidden = !(view && view.make);
     $("note").hidden = false;
     $("note").textContent = text;
-    for (const id of ["now", "nextBox", "addBox", "playedBox"]) $(id).hidden = true;
+    for (const id of ["now", "reactBox", "nextBox", "addBox", "playedBox"]) $(id).hidden = true;
     $("pill").className = "pill off";
     $("pill").textContent = "OFF";
   }
@@ -212,6 +227,9 @@
       $("nowLen").textContent = time(v.now.seconds);
       tick();
     }
+    // reactions to the song that plays
+    $("reactBox").hidden = !(v.react && v.now);
+    if (v.now) tally(v.now.cheers || {});
     // up next
     const next = v.next || [];
     $("nextBox").hidden = !v.live;
@@ -283,6 +301,40 @@
       busy = false;
     }
   }
+
+  const REACTIONS = [["fire", "🔥"], ["heart", "❤️"], ["party", "🎉"], ["clap", "👏"], ["dance", "💃"], ["laugh", "😂"]];
+  let reactedAt = -1e9;
+  function tally(cheers) {
+    const parts = REACTIONS.filter(([kind]) => cheers[kind]).map(([kind, emoji]) => `${emoji} ${cheers[kind]}`);
+    $("tally").textContent = parts.length ? `${parts.join("  ")}  - from everyone here` : "Tap to cheer - it floats over the big screen";
+  }
+  async function react(kind, emoji, from) {
+    const now = performance.now();
+    if (now - reactedAt < 250) return;
+    reactedAt = now;
+    if (navigator.vibrate) navigator.vibrate(8);
+    const box = from.getBoundingClientRect();
+    const fly = el("span", "fly", emoji);
+    fly.style.left = `${box.left + box.width / 2}px`;
+    fly.style.top = `${box.top + box.height / 2}px`;
+    fly.style.setProperty("--dx", `${Math.round(Math.random() * 80 - 40)}px`);
+    fly.style.setProperty("--rot", `${Math.round(Math.random() * 50 - 25)}deg`);
+    document.body.append(fly);
+    setTimeout(() => fly.remove(), 1200);
+    try {
+      const answer = await fetch("api/react", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind }) });
+      const data = await answer.json().catch(() => ({}));
+      if (answer.ok) tally(data.cheers || {});
+      else if (answer.status === 403) { $("reactBox").hidden = true; say(data.error || "Reactions are off"); }
+      else say(data.error || "That did not work");
+    } catch {
+      say("The player cannot be reached");
+    }
+  }
+  $("reactions").replaceChildren(...REACTIONS.map(([kind, emoji]) => {
+    const b = button(emoji, `Send ${emoji} to the big screen`, false, () => react(kind, emoji, b));
+    return b;
+  }));
 
   let findTimer = 0;
   $("find").addEventListener("input", () => {

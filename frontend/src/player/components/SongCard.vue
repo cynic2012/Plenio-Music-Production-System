@@ -4,13 +4,26 @@
  * so does a double click in the list). */
 import type { SongSummary } from '../api'
 import { isNew } from '../live'
-import { current, go, isFavorite, playing, songTags } from '../store'
+import { isPhone } from '../layout'
+import { current, go, isFavorite, openSong, playing, songTags } from '../store'
 import { formatTime } from '../timing'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 
-defineProps<{ song: SongSummary; snippet?: string | null; list?: boolean; index?: number }>()
+const props = defineProps<{ song: SongSummary; snippet?: string | null; list?: boolean; index?: number }>()
 const emit = defineEmits<{ play: []; menu: [event: MouseEvent]; tag: [tag: string] }>()
+
+/** The title opens the song's page - in a phone's rows a tap anywhere plays the song (the page is in its menu). */
+function titleClick(event: MouseEvent): void {
+  if (props.list && isPhone.value) return
+  event.stopPropagation()
+  open(event)
+}
+/** The song's page, its cover gliding there from this card. */
+function open(event: Event): void {
+  const card = (event.currentTarget as HTMLElement | null)?.closest('.card')
+  openSong(props.song.id, card?.querySelector('.cover'))
+}
 </script>
 
 <template>
@@ -19,18 +32,18 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent]; tag: [tag: strin
     :class="{ list, now: current?.id === song.id, playing: current?.id === song.id && playing }"
     tabindex="0"
     :title="list ? undefined : `${song.title} - open its page`"
-    @click="!list && go(`/song/${song.id}`)"
-    @dblclick="list && emit('play')"
-    @keydown.enter="go(`/song/${song.id}`)"
+    @click="list ? isPhone && emit('play') : open($event)"
+    @dblclick="list && !isPhone && emit('play')"
+    @keydown.enter="open($event)"
     @contextmenu.prevent="emit('menu', $event)"
   >
     <div class="art">
-      <CoverArt :song="song" :live="current?.id === song.id && playing" rounded />
+      <CoverArt :song="song" :live="current?.id === song.id && playing" rounded :size="list ? 56 : 240" />
       <button class="play" title="Play" @click.stop="emit('play')"><Icon :name="current?.id === song.id && playing ? 'pause' : 'play'" :size="22" /></button>
       <span v-if="current?.id === song.id && playing" class="eq"><i /><i /><i /><i /></span>
     </div>
     <div class="text">
-      <a class="title" @click.stop="go(`/song/${song.id}`)">{{ song.title }}</a>
+      <a class="title" @click="titleClick">{{ song.title }}</a>
       <p class="sub">
         <span>{{ song.other ? song.artist || song.genre || '—' : song.genre || song.style.split(',')[0] || '—' }}</span>
         <span class="dot">·</span>
@@ -274,6 +287,65 @@ const emit = defineEmits<{ play: []; menu: [event: MouseEvent]; tag: [tag: strin
   color: var(--muted);
   width: 90px;
   text-align: right;
+}
+/* a touch screen has no hover: the play and the more buttons show always */
+@media (hover: none) {
+  .card .play,
+  .card .more {
+    opacity: 1;
+    transform: none;
+  }
+  .card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+/* a phone's rows: the cover, the title and its genre and length, the heart and the menu - no columns of facts */
+@media (max-width: 700px) {
+  .card.list {
+    gap: 12px;
+    padding: 6px 4px 6px 6px;
+    min-height: 60px;
+  }
+  .card.list .text {
+    display: block;
+  }
+  .card.list .tags,
+  .card.list .len,
+  .card.list .info {
+    display: none;
+  }
+  .card.list .title {
+    font-size: 15px;
+  }
+  .card.list .more {
+    background: none;
+    color: var(--muted);
+  }
+  .card.list .play {
+    opacity: 0;
+  }
+  .card.list.now .play {
+    opacity: 1;
+  }
+  .card:not(.list) {
+    padding: 8px;
+    gap: 8px;
+    border-radius: 16px;
+  }
+  .card:not(.list) .play {
+    width: 40px;
+    height: 40px;
+    right: 8px;
+    bottom: 8px;
+  }
+  .card:not(.list) .tags {
+    display: none;
+  }
+  .card:not(.list) .more {
+    top: 12px;
+    right: 12px;
+  }
 }
 @keyframes eq {
   0%,

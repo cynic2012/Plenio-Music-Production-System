@@ -34,6 +34,7 @@ import { songFacts } from '../songFacts'
 import { formatTime, sectionName } from '../timing'
 import { similarSongs, takesOf } from '../similar'
 import { makeShown } from '../make/state'
+import { isPhone } from '../layout'
 import CoverArt from './CoverArt.vue'
 import Icon from './Icon.vue'
 import Karaoke from './Karaoke.vue'
@@ -58,6 +59,8 @@ const detail = ref<SongDetail | null>(null)
 const error = ref('')
 const menu = ref<{ x: number; y: number } | null>(null)
 const copied = ref('')
+/** A long style shows two lines on a phone; a tap shows all of it. */
+const styleOpen = ref(false)
 
 const song = computed(() => byId.value.get(props.id) ?? null)
 const isCurrent = computed(() => current.value?.id === props.id)
@@ -191,17 +194,23 @@ function timingSourceText(source: string, note?: string): string {
 </script>
 
 <template>
-  <div v-if="song" class="song-page">
+  <div v-if="song" class="song-page" :class="{ phone: isPhone }">
     <section class="head">
-      <div class="art" :class="{ playing: isCurrent && playing }"><CoverArt :song="song" :live="isCurrent && playing" rounded /></div>
+      <div class="art" :class="{ playing: isCurrent && playing }"><CoverArt :song="song" :live="isCurrent && playing" rounded :size="280" /></div>
       <div class="text">
         <button class="back" @click="back"><Icon name="back" :size="16" /> Back</button>
         <small v-if="song.other"><span class="other-mark">Other music</span> {{ [song.artist, song.album, song.year].filter(Boolean).join(' · ') }}</small>
         <small v-else>{{ song.kind === 'cover' ? 'Cover song' : song.model ? 'Song' : 'Recording' }} · {{ song.created.slice(0, 10) }}</small>
         <h1>{{ song.title }}</h1>
-        <p class="style">{{ song.style }}</p>
+        <p class="style" :class="{ open: styleOpen }" @click="styleOpen = !styleOpen">{{ song.style }}</p>
         <p v-if="song.other" class="other-note">Not made with Plenio: it plays with what its file has - its tags, cover and lyrics (timed from an <code>.lrc</code> file beside it). No notation, measured lyrics, brief or <i>Open in ComfyUI</i>.</p>
-        <div class="actions">
+        <div v-if="isPhone" class="actions">
+          <button class="primary" @click="play"><Icon :name="isCurrent && playing ? 'pause' : 'play'" /> {{ isCurrent && playing ? 'Pause' : 'Play' }}</button>
+          <button class="ghost round" :class="{ on: isFavorite(song.id) }" :title="isFavorite(song.id) ? 'A favourite' : 'Add to favourites'" @click="toggleFavorite(song.id)"><Icon name="heart" :filled="isFavorite(song.id)" /></button>
+          <button v-if="makeShown && !isPortable" class="ghost round" title="A new version: a new take, a new song like it, a cover" @click="go(`/make/${song.id}`)"><Icon name="wand" /></button>
+          <button class="ghost round" title="More: playlist, queue, video, ComfyUI, remove" @click="menu = { x: 0, y: 0 }"><Icon name="more" /></button>
+        </div>
+        <div v-else class="actions">
           <button class="primary" @click="play"><Icon :name="isCurrent && playing ? 'pause' : 'play'" /> {{ isCurrent && playing ? 'Pause' : 'Play' }}</button>
           <button class="ghost" :class="{ on: isFavorite(song.id) }" @click="toggleFavorite(song.id)"><Icon name="heart" :filled="isFavorite(song.id)" /> {{ isFavorite(song.id) ? 'Favourite' : 'Add to favourites' }}</button>
           <button class="ghost" @click="menu = { x: $event.clientX, y: $event.clientY }"><Icon name="plus" /> Playlist, queue …</button>
@@ -354,6 +363,8 @@ function timingSourceText(source: string, note?: string): string {
   border-radius: 18px;
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
   transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* the cover a card opened glides here (openSong) */
+  view-transition-name: song-cover;
 }
 .art.playing {
   transform: scale(1.02);
@@ -621,12 +632,122 @@ em {
     transform: translateY(6px);
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 1100px) {
+  .song-page {
+    padding: 22px 22px 40px;
+  }
   .head {
-    grid-template-columns: 1fr;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
   }
-  .art {
-    max-width: 260px;
-  }
+}
+/* a phone: the cover beside the title, the style in two lines (a tap: all of it), four buttons - the rest in ⋯ -, the
+   tabs staying at the top while the lyrics scroll */
+.song-page.phone {
+  padding: 12px 16px 30px;
+}
+.phone .head {
+  grid-template-columns: 112px minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 0;
+  align-items: center;
+  margin-bottom: 14px;
+}
+/* the text's parts become the head's own: the title beside the cover, the rest under both, the whole width */
+.phone .text {
+  display: contents;
+}
+.phone .art {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  align-self: start;
+  border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+}
+.phone .back,
+.phone .text > small,
+.phone h1 {
+  grid-column: 2;
+}
+.phone .style,
+.phone .other-note,
+.phone .actions,
+.phone .meta,
+.phone .tags-row {
+  grid-column: 1 / -1;
+}
+.phone .style {
+  margin-top: 12px;
+}
+.phone .back {
+  margin-bottom: 8px;
+}
+.phone h1 {
+  font-size: 24px;
+  margin: 4px 0 6px;
+  overflow-wrap: anywhere;
+}
+.phone .style {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  cursor: pointer;
+}
+.phone .style.open {
+  -webkit-line-clamp: unset;
+}
+.phone .actions {
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.phone .actions .primary {
+  flex: 1;
+  justify-content: center;
+}
+.phone .round {
+  width: 44px;
+  padding: 0;
+  justify-content: center;
+  flex: none;
+}
+.phone .meta {
+  margin-top: 12px;
+}
+.phone .tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: 0 -16px 14px;
+  padding: 0 10px;
+  background: color-mix(in srgb, var(--deep) 94%, transparent);
+  backdrop-filter: blur(14px);
+  scrollbar-width: none;
+}
+.phone .sections {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0 -16px 12px;
+  padding: 0 16px;
+  scrollbar-width: none;
+}
+.phone .timed {
+  columns: 1;
+}
+.phone .karaoke-box {
+  height: min(52vh, 480px);
+}
+.phone .notation-box {
+  height: min(60vh, 600px);
+}
+.phone .details {
+  grid-template-columns: minmax(0, 1fr);
+}
+.phone .grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 </style>

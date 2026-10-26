@@ -57,6 +57,17 @@ const PATHS: Record<string, string> = {
   tag: 'M3.5 12.5V4h8.5l9 9-8.5 8.5zM8 8h.01',
   filter: 'M4 5h16l-6 7.5V19l-4 1.5v-8z',
   thumbdown: 'M10 15v4a3 3 0 003 3l4-9V2H5.7a2 2 0 00-2 1.7l-1.4 9a2 2 0 002 2.3zM17 2h2.7A2.3 2.3 0 0122 4v7a2.3 2.3 0 01-2.3 2H17',
+  help: 'M12 21a9 9 0 100-18 9 9 0 000 18zM9.1 9.2a3 3 0 015.8.8c0 2-3 2.6-3 4.5M12 17.2h.01',
+  home: 'M3.5 11L12 3.5l8.5 7.5M5.5 9.5V20h4.5v-5.5h4V20h4.5V9.5',
+  video: 'M3 6.5h18v11H3zM10 9.5v5l4.5-2.5z',
+  chevron: 'M6 9l6 6 6-6',
+  sliders: 'M4 6h9M17 6h3M15 4v4M4 12h3M11 12h9M9 10v4M4 18h11M19 18h1M17 16v4',
+  power: 'M12 3v8M6.3 6.3a8 8 0 1011.4 0',
+  book: 'M5 4.5A1.5 1.5 0 016.5 3H19v15H6.5A1.5 1.5 0 005 19.5zM5 19.5A1.5 1.5 0 006.5 21H19',
+  smile: 'M12 21a9 9 0 100-18 9 9 0 000 18zM8.5 14.5s1.3 2 3.5 2 3.5-2 3.5-2M9 9.5h.01M15 9.5h.01',
+  studio: 'M5 4h14v6H5zM5 14h14v6H5zM8 7h.01M8 17h.01M12 7h4M12 17h4',
+  bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
+  save: 'M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6',
 }
 const SOLID = new Set(['play', 'pause', 'next', 'prev'])
 </script>

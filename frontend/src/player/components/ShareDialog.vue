@@ -118,7 +118,7 @@ const sizeText = (bytes: number): string => (bytes > 2 ** 30 ? `${(bytes / 2 ** 
           <div class="list">
             <label v-for="s in shown" :key="s.id" class="row" :class="{ on: chosen.has(s.id) }">
               <input type="checkbox" :checked="chosen.has(s.id)" @change="toggle(s.id)" />
-              <CoverArt :song="s" rounded />
+              <CoverArt :song="s" rounded :size="48" />
               <span class="t">{{ s.title }}<small>{{ s.other ? s.artist || 'other music' : s.genre }} · {{ formatTime(s.seconds) }}</small></span>
             </label>
           </div>

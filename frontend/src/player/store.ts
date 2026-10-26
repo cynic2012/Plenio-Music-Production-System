@@ -4,7 +4,7 @@
  */
 import { computed, nextTick, reactive, ref, shallowRef, watch } from 'vue'
 
-import { api, media, mediaReady, type Playlist, type PlayerInfo, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary, type StateAnswer } from './api'
+import { api, coverUrl, media, mediaReady, type Playlist, type PlayerInfo, type PlayerState, type RemoveAnswer, type SongDetail, type SongSummary, type StateAnswer } from './api'
 import { isPortable, loading as portableLoading, mediaArrived } from './portable'
 import { mergeState } from './stateMerge'
 import { engine } from './engine'
@@ -12,6 +12,8 @@ import { type LiveSettings, liveWithDefaults } from './liveSettings'
 import { type LyricsStyle, lyricsWithDefaults } from './lyricsStyle'
 import { choiceOf, choicesOf, type LyricsChoice, type LyricsVersion } from './lyricsVersion'
 import { type VisualSettings, withDefaults } from './visuals/chooser'
+import { type MakePreset, presetsOf } from './make/presets'
+import { withTransition } from './layout'
 
 export interface Settings {
   volume: number
@@ -51,6 +53,12 @@ export interface Settings {
   savedFilters: SavedFilter[]
   /** The filter rows past the first few are open. */
   moreFilters: boolean
+  /** The welcome card of the songs' page was closed (it shows on a player's first days). */
+  welcomed: boolean
+  /** The songs as cards or as rows on a phone (a phone has its own: rows show more songs at once). */
+  phoneView: 'grid' | 'list'
+  /** Presets of one's own for making a song (make/presets.ts). */
+  makePresets: MakePreset[]
 }
 
 export interface LibraryFilter {
@@ -87,6 +95,9 @@ const DEFAULT_SETTINGS: Settings = {
   notationShift: {},
   savedFilters: [],
   moreFilters: false,
+  welcomed: false,
+  phoneView: 'list',
+  makePresets: [],
 }
 
 /** Saved notation shifts, checked: numbers of at most a minute. */
@@ -147,6 +158,8 @@ const details = new Map<string, SongDetail>()
 export const folders = ref<string[]>([])
 export const loading = ref(true)
 export const loadError = ref('')
+/** The player reads its folders the first time: how far (the splash shows it). */
+export const scanning = ref<{ done: number; total: number } | null>(null)
 
 export const state = reactive<PlayerState>({ playlists: [], favorites: [], plays: {}, last_played: {}, tags: {}, settings: {} })
 export const settings = reactive<Settings>({ ...DEFAULT_SETTINGS })
@@ -166,6 +179,22 @@ export function go(path: string, replace = false): void {
     history.replaceState(null, '', `#${path}`)
     route.value = path
   } else location.hash = path
+}
+
+/** Open a song's page; from a card its cover (``cover``) glides to the page's - a view transition, where the
+ * browser has them. The route changes at once inside it, so the new page is there for the transition. */
+export function openSong(id: string, cover?: Element | null): void {
+  const path = `/song/${id}`
+  if (route.value === path) return
+  // from a song's page (its takes, songs alike) its own cover has the name already: the page only fades
+  const el = cover instanceof HTMLElement && !route.value.startsWith('/song/') ? cover : null
+  if (el) el.style.viewTransitionName = 'song-cover'
+  withTransition(async () => {
+    if (el) el.style.viewTransitionName = ''
+    go(path)
+    route.value = path
+    await nextTick()
+  })
 }
 
 // --- loading and saving -------------------------------------------------------------------------------
@@ -261,7 +290,7 @@ window.addEventListener('pagehide', () => {
 
 /** The settings as saved, checked and filled with the defaults. */
 function applySettings(stored: Partial<Settings>): void {
-  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), lyricsChoice: choiceOf(stored.lyricsChoice), lyricsFor: choicesOf(stored.lyricsFor), mp3: !!stored.mp3, notationShift: shiftsOf(stored.notationShift), savedFilters: savedFiltersOf(stored.savedFilters), moreFilters: !!stored.moreFilters })
+  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), lyricsChoice: choiceOf(stored.lyricsChoice), lyricsFor: choicesOf(stored.lyricsFor), mp3: !!stored.mp3, notationShift: shiftsOf(stored.notationShift), savedFilters: savedFiltersOf(stored.savedFilters), moreFilters: !!stored.moreFilters, welcomed: !!stored.welcomed, phoneView: stored.phoneView === 'grid' ? 'grid' : 'list', makePresets: presetsOf(stored.makePresets) })
 }
 
 /** Replace everything the player keeps (a backup read back, or ``null``: start afresh). */
@@ -281,7 +310,14 @@ export async function replaceState(data: Partial<PlayerState> | null): Promise<v
 export async function load(): Promise<void> {
   loading.value = true
   try {
-    const [answer, saved, about] = await Promise.all([api.library(), api.state(), api.info().catch(() => null)])
+    const [first, saved, about] = await Promise.all([api.library(), api.state(), api.info().catch(() => null)])
+    let answer = first
+    while (answer.scanning) {
+      scanning.value = answer.scanning
+      await new Promise((resolve) => window.setTimeout(resolve, 900))
+      answer = await api.library()
+    }
+    scanning.value = null
     library.value = answer.songs
     folders.value = answer.folders
     info.value = about
@@ -755,6 +791,21 @@ export async function next(auto = false): Promise<void> {
   await playAt(i, { crossfade: auto ? settings.crossfade : 0 })
 }
 
+/** The song ``next`` plays after the one at ``at`` when this one ends (``null``: none - the end of the list
+ * without repeat, a song repeated, Live Play waiting for a new song). */
+export function nextIdOf(list: string[], at: number, repeat: Settings['repeat'], live: { on: boolean; atEnd: string }): string | null {
+  if (at < 0 || !list.length || repeat === 'one') return null
+  if (at + 1 < list.length) return list[at + 1]
+  if (live.on) return live.atEnd === 'wait' ? null : list[0]
+  return repeat === 'all' ? list[0] : null
+}
+
+/** The song that comes next, for *Up next* on the big screen. */
+export const upNext = computed<SongSummary | null>(() => {
+  const id = nextIdOf(queue.value, index.value, settings.repeat, settings.live)
+  return id && id !== queue.value[index.value] ? (byId.value.get(id) ?? null) : null
+})
+
 export async function previous(): Promise<void> {
   if (engine.time > 3 || index.value <= 0) {
     engine.seek(0)
@@ -769,7 +820,7 @@ function mediaSession(song: SongSummary): void {
     title: song.title,
     artist: song.tags.artist || song.model || 'Plenio',
     album: song.tags.album || song.genre,
-    artwork: song.has.cover ? [{ src: media(song.id, 'cover'), sizes: '512x512', type: 'image/jpeg' }] : [],
+    artwork: song.has.cover ? [{ src: coverUrl(song.id, 256), sizes: '512x512', type: 'image/jpeg' }] : [],
   })
   navigator.mediaSession.setActionHandler('play', () => void engine.play())
   navigator.mediaSession.setActionHandler('pause', () => engine.pause())

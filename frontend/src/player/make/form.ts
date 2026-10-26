@@ -139,6 +139,12 @@ export interface MakeJob {
   from?: { song: string; title: string; seconds: number } | null
   documents?: Partial<SongDocuments>
   studio?: StudioValues | null
+  /** Several takes or songs ordered at once: their group, this one's number, how many. */
+  group?: string
+  number?: number | null
+  of?: number | null
+  /** Takes that follow when this song is made. */
+  takes_left?: number
 }
 
 /** Who made a party song, while it plays: not shown, large at its moments with a badge between, or floating
@@ -315,6 +321,10 @@ export interface MakeRequest {
   from?: { song: string; as: Again }
   documents?: Partial<SongDocuments>
   studio?: StudioValues
+  /** Takes of the song (the whole studio: 1-4). */
+  takes?: number
+  /** Songs of this form (the whole studio: 1-5). */
+  copies?: number
 }
 
 /** The request for the server: the fields that apply, the recording for a cover; made again from a song, the song

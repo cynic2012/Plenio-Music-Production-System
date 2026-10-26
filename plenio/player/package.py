@@ -224,7 +224,13 @@ def _page(static: Path) -> tuple[str, str, str]:
         raise RuntimeError("the player's page is not built (npm run build:player)")
     js = (static / script.group(1)).read_text(encoding="utf-8").replace("</script", "<\\/script")
     css = (static / style.group(1)).read_text(encoding="utf-8").replace("</style", "<\\/style")
-    return icon.group(0) if icon else "", js, css
+    head = icon.group(0) if icon else ""
+    linked = re.search(r'href="\./([^"]+)"', head)
+    if linked and (static / linked.group(1)).is_file():
+        # one file: the page's icon goes in as a data address (the shared player has no folder beside it)
+        picture = base64.b64encode((static / linked.group(1)).read_bytes()).decode("ascii")
+        head = head.replace(linked.group(0), f'href="data:image/png;base64,{picture}"')
+    return head, js, css
 
 
 def tags_of(raw: Any, packed: set[str]) -> dict[str, list[str]]:
@@ -476,7 +482,7 @@ def _write_part(
         with partial.open("w", encoding="utf-8", newline="\n") as out:
             out.write(
                 '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8" />\n'
-                '<meta name="viewport" content="width=device-width, initial-scale=1" />\n'
+                '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />\n'
                 '<meta name="color-scheme" content="dark" />\n'
                 f'<meta name="generator" content="Plenio Player {__version__}" />\n'
                 f"<title>{html_escape(heading)} - Plenio Player</title>\n{icon}\n<style>{css}</style>\n</head>\n<body>\n"

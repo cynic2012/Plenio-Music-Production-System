@@ -20,7 +20,9 @@ export default defineConfig({
     target: 'es2022',
     minify: true,
     sourcemap: false,
-    chunkSizeWarningLimit: 900,
+    // one script on purpose: a shared (portable) player inlines it into a single HTML file, so no lazy chunks;
+    // abcjs (the notation) is half of it - about 360 kB gzipped in all, cached a day
+    chunkSizeWarningLimit: 1300,
     rollupOptions: {
       output: {
         entryFileNames: 'assets/player-[hash].js',

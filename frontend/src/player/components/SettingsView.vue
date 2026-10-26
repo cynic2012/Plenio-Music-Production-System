@@ -6,7 +6,7 @@
  * without other music - owner's request 2026-10-16); and stopping a player that runs without a window (one
  * started from ComfyUI).
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 
 import { api, type ComfyFound, type FoldersAnswer } from '../api'
 import { version as pageVersion } from '../../../package.json'
@@ -21,8 +21,14 @@ import { guest, me, session } from '../account'
 import { DEPARTS_EXTRA, DEPARTS_HEARD } from '../lyricsVersion'
 import NetworkAccess from './NetworkAccess.vue'
 import MakeSettings from './MakeSettings.vue'
+import StudioSettings from './StudioSettings.vue'
 import { isPortable, portable } from '../portable'
 
+const props = defineProps<{ section?: string }>()
+// #/settings/<section> opens at that section (the Make page's *Switch it on*, the studio's *How to start it*)
+onMounted(() => {
+  if (props.section) void nextTick(() => window.setTimeout(() => document.getElementById(props.section ?? '')?.scrollIntoView({ block: 'start' }), 120))
+})
 const shelf = ref<FoldersAnswer | null>(null)
 const browsing = ref(false)
 const savingFolders = ref(false)
@@ -160,6 +166,31 @@ async function stop(): Promise<void> {
   await api.quit().catch(() => {})
   stopped.value = true
 }
+
+/** The page's sections, to jump to (owner's request 2026-10-26: no long scrolling). */
+const studioShown = computed(() => !isPortable && !remote.value && (!session.value?.login || !!me.value?.admin))
+const index = computed(() =>
+  (
+    [
+      ['accounts', 'Accounts', !isPortable && !!session.value?.login],
+      ['kept', 'Kept', true],
+      ['network', 'In your network', !isPortable],
+      ['party', 'Party songs', !isPortable],
+      ['studio', 'The studio', studioShown.value],
+      ['comfyui', 'ComfyUI', !isPortable && !remote.value],
+      ['songs', 'Songs', !isPortable],
+      ['sound', 'Sound', !isPortable],
+      ['tags', 'Tags', true],
+      ['lyrics', 'Lyrics', true],
+      ['shared', 'Shared players', !isPortable],
+      ['videos', 'Videos', !isPortable],
+      ['player', 'The player', !isPortable && !remote.value],
+    ] as [string, string, boolean][]
+  ).filter(([, , shown]) => shown)
+)
+function jumpTo(id: string): void {
+  document.getElementById(id)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+}
 </script>
 
 <template>
@@ -173,6 +204,11 @@ async function stop(): Promise<void> {
       <span v-if="!isPortable && info && info.version !== pageVersion" class="stale">· this page is {{ pageVersion }} - reload it (Ctrl+F5)</span>
     </p>
 
+    <nav class="index" aria-label="Sections">
+      <button v-for="[id, label] in index" :key="id" class="chip" @click="jumpTo(id)">{{ label }}</button>
+      <button class="chip help" @click="go('/help')"><Icon name="help" :size="13" /> Help</button>
+    </nav>
+
     <div v-if="stopped" class="block stopped">
       <h3>The player has stopped</h3>
       <p>Start it again with the <b>Plenio Player</b> button in ComfyUI, with <code>Plenio Player.bat</code> in the Plenio folder, or with <code>python plenio_player.py</code>.</p>
@@ -184,12 +220,12 @@ async function stop(): Promise<void> {
       <p class="hint">Making songs, opening them in ComfyUI, Live Play's new songs from ComfyUI and saving videos are the Plenio Player's: <a href="https://github.com/jplenio/Plenio-Music-Production-System" target="_blank" rel="noopener">Plenio</a>.</p>
     </section>
 
-    <section v-if="!isPortable && session?.login" class="block">
+    <section v-if="!isPortable && session?.login" id="accounts" class="block">
       <h3><Icon name="user" /> Accounts</h3>
       <AccountsPanel />
     </section>
 
-    <section class="block">
+    <section id="kept" class="block">
       <h3><Icon name="check" /> {{ isPortable || guest ? 'Kept in this browser' : me && !me.admin ? `Kept for ${me.name}` : 'Kept on this computer' }}</h3>
       <p v-if="guest" class="lead">
         As a guest, everything you set here - and everything below - is saved in this browser, half a second after each change and when the page closes. Another
@@ -218,11 +254,13 @@ async function stop(): Promise<void> {
       <p class="hint">The songs themselves are not in the backup: they stay in their folders.</p>
     </section>
 
-    <NetworkAccess v-if="!isPortable" />
+    <div v-if="!isPortable" id="network"><NetworkAccess /></div>
 
-    <MakeSettings v-if="!isPortable" />
+    <div v-if="!isPortable" id="party"><MakeSettings /></div>
 
-    <section v-if="!isPortable && !remote" class="block">
+    <StudioSettings v-if="studioShown" />
+
+    <section v-if="!isPortable && !remote" id="comfyui" class="block">
       <h3><Icon name="external" /> ComfyUI</h3>
       <p class="lead">A song's page opens the song's workflow in ComfyUI, with its lyrics, score and settings, to work on it - and ComfyUI itself opens here, in the browser, when it runs.</p>
       <p class="status" :class="{ ok: found }">
@@ -237,7 +275,7 @@ async function stop(): Promise<void> {
       </div>
     </section>
 
-    <section v-if="!isPortable" class="block">
+    <section v-if="!isPortable" id="songs" class="block">
       <h3><Icon name="folder" /> Songs</h3>
       <p class="lead">The player reads every release record (<code>.plenio.json</code>) below these folders: {{ countOf(library.length, 'song') }}.</p>
       <p v-if="remote" class="hint">The folders are chosen on the computer the player runs on.</p>
@@ -266,7 +304,7 @@ async function stop(): Promise<void> {
       <FolderBrowser v-if="browsing" @choose="addFolder" @close="browsing = false" />
     </section>
 
-    <section v-if="!isPortable" class="block">
+    <section v-if="!isPortable" id="sound" class="block">
       <h3><Icon name="volume" /> Sound</h3>
       <label class="check" title="A song exported as FLAC (or WAV) and MP3 plays its MP3: about a sixth of the data - for a phone or another computer in the network">
         <input v-model="settings.mp3" type="checkbox" /> Play the MP3 where a song has one (less data over the network)
@@ -274,7 +312,7 @@ async function stop(): Promise<void> {
       <p class="hint">{{ countOf(withMp3, 'song') }} of {{ library.length }} have an MP3 besides their FLAC or WAV (Export Release: <i>mp3</i>). A/B plays the unmastered take as it was saved.</p>
     </section>
 
-    <section class="block">
+    <section id="tags" class="block">
       <h3><Icon name="tag" /> Tags</h3>
       <p class="lead">Tags of your own: give them on a song's page, in a song's ⋯ menu, or to every song a filter shows (<b>Tag…</b> on the songs' page); find them with <code>#tag</code> or the filter row <i>Tags</i>. {{ allTags.length ? '' : 'None yet.' }}</p>
       <ul v-if="allTags.length" class="tag-list">
@@ -289,7 +327,7 @@ async function stop(): Promise<void> {
       </ul>
     </section>
 
-    <section class="block">
+    <section id="lyrics" class="block">
       <h3><Icon name="mic" /> Lyrics</h3>
       <p class="lead">How the lyrics look while a song plays: the font, the size, the colour - and how each syllable comes in as it is sung.</p>
       <p class="lead">Which lyrics to follow: <b>as written</b> - the song's lyrics - or <b>as sung</b> - what the take really sings, as heard when it was exported (a music model may repeat a line, make one up or leave one out). <b>Auto</b> shows a song as sung when its take departs far from its lyrics (less than {{ Math.round(DEPARTS_HEARD * 100) }} % of their words sung as written, or more than {{ Math.round(DEPARTS_EXTRA * 100) }} % words of its own), else as written. Switch a song either way on its page or in the player bar (W) - like master and original; the choice is kept for that song. Songs exported before Plenio kept what was sung show their written lyrics.</p>
@@ -297,7 +335,7 @@ async function stop(): Promise<void> {
       <LyricsPanel />
     </section>
 
-    <section v-if="!isPortable" class="block">
+    <section v-if="!isPortable" id="shared" class="block">
       <h3><Icon name="download" /> Shared players</h3>
       <p class="lead">Songs to give away: one HTML file with the player and the songs, which plays by itself - <b>Share…</b> in a view or a playlist, or <b>Share as a player…</b> at the bottom of the sidebar. {{ shared?.files.length ? countOf(shared.files.length, 'player') + ' so far:' : 'None yet.' }}</p>
       <ul v-if="shared?.files.length" class="videos">
@@ -310,7 +348,7 @@ async function stop(): Promise<void> {
       <button v-if="!remote" class="ghost small" @click="api.openPackages().catch((e) => say(e.message, 5000))"><Icon name="folder" :size="14" /> Open the folder</button>
     </section>
 
-    <section v-if="!isPortable" class="block">
+    <section v-if="!isPortable" id="videos" class="block">
       <h3><Icon name="layers" /> Videos</h3>
       <p class="lead">A song as an MP4 video - its visual, lyrics and notation: <b>Video…</b> on a song's page. {{ videos?.files.length ? countOf(videos.files.length, 'video') + ' so far:' : 'None yet.' }}</p>
       <ul v-if="videos?.files.length" class="videos">
@@ -324,7 +362,7 @@ async function stop(): Promise<void> {
       <p v-if="videos" class="hint"><code>{{ videos.folder }}</code></p>
     </section>
 
-    <section v-if="!isPortable && !remote" class="block">
+    <section v-if="!isPortable && !remote" id="player" class="block">
       <h3><Icon name="info" /> The player</h3>
       <p class="lead">Plenio Player {{ info?.version }} - a program of its own, which runs without ComfyUI. Started from ComfyUI it has no window: stop it here.</p>
       <button class="ghost danger" @click="stop">Stop the player</button>
@@ -351,6 +389,41 @@ async function stop(): Promise<void> {
 .settings {
   padding: 26px 34px 40px;
   max-width: 980px;
+}
+/* the sections to jump to: one row that stays at the top while the page scrolls */
+.index {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 0 -10px 16px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--deep) 94%, transparent);
+  backdrop-filter: blur(12px);
+  scrollbar-width: none;
+}
+.index .chip {
+  flex: none;
+}
+.index .help {
+  margin-left: auto;
+}
+.settings :deep(section),
+.settings > div[id] {
+  scroll-margin-top: 64px;
+}
+@media (max-width: 700px) {
+  .settings {
+    padding: 14px 16px 30px;
+  }
+  .index {
+    margin: 0 -16px 14px;
+    padding: 8px 16px;
+    border-radius: 0;
+  }
 }
 h1 {
   font: 800 34px var(--font);
