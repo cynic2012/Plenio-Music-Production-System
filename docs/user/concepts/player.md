@@ -658,9 +658,9 @@ old. **A new version…** (the wand) opens it: on a song's page, in its ⋯ menu
 
 - **A new take** - *the same song, sung and played anew*: title, style and lyrics stay as they are, and the studio
   sings and plays the very same notes once more. You may change the title, the style or the lyrics first; **new words
-  get new notes**, the rest stays of the song. Nothing is written and nothing is planned, so a take is quicker than a
-  new song (on an RTX 5060 Ti about 2:45 for a song of 1:09, where a new song of about 1:00 takes 5-6 minutes). A take
-  of a cover reads its original's melody and words once more, so it takes about as long as the cover did.
+  get new notes**, the rest stays of the song. Nothing is written and nothing is planned anew - the take keeps the
+  song's words and notes; its singing, mastering and saving take as long as a new song's of its length (on an RTX 5060
+  Ti about 2:45 for a take of a 1:30 song). A take of a cover also reads its original's melody and words once more.
 - **A new song like it** - its style and brief fill the form (genre, mood, tempo, length, vocals, language, voice,
   theme), and the words and the music are new. Change what you like and *Generate Song*.
 - **A cover of it** - its own audio file is the original: its melody, form and tempo stay, in the style you choose.

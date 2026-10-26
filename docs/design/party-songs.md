@@ -121,8 +121,11 @@ their template and length. The player estimates a song as a fixed part and a par
 (half the old factor, half the new). Measured on 2026-10-25 on an RTX 5060 Ti (GPU 1, the owner's ComfyUI busy on
 GPU 0): four songs of about 1:00 through the API took 416 s (the models loaded for the first time), 357 s, 300 s and
 155 s (an instrumental). Measured on 2026-10-26 (GPU 1, the player's line, the real models): a new take of a song 192 s
-for 1:29 (the models loaded first) and 164 s for 1:09; a cover of a library song of 1:33 262 s; a new take of a cover
-225 s for 1:42; a new song of 1:06 from the network with a GGUF writer and no cover art 84 s (YuE2 still loaded). Hence
+for 1:29 (the models loaded first), 164 s for 1:30 and 164 s for 1:09 (its brief's lyrics fidelity *high*: two
+takes); a new song of 1:10 109 s, of 1:06 from the network with a GGUF writer and no cover art 84 s; a cover of a
+library song of 1:33 262 s (its transcription models loaded first), of 1:10 145 s; a new take of a cover 225 s for
+1:42. A song through the API: writing 20 s, cover art 16 s, planning 6 s, singing 20 s, mastering and saving 105 s
+(Export's hearing on the vocal stem). Hence
 the priors: song 120 s + 3.0 s/s, cover 120 s + 1.5 s/s of the recording, a song's take 60 s + 1.5 s/s - a cover's
 take counts as a cover, since it reads its original's melody and words again (the cover template's transcription
 feeds the sheets' display inputs, which are not lazy).
@@ -189,8 +192,8 @@ time, without the party's limits.
 ### 5.1 A new take
 
 A take is the same song rendered again: the Song Sheets keep the documents the song was made with (title, style,
-lyrics, score, artwork prompt) as *manual*, and only the take seed is new - no writer, no plan, so it takes less than
-a new song. The Song API grew the piece that makes this possible:
+lyrics, score, artwork prompt) as *manual*, and only the take seed is new - no writer, no plan (some 25 s of a song's
+time on an RTX 5060 Ti; the render and the export, the most of it, are the same). The Song API grew the piece that makes this possible:
 
 - **`documents` in a job request**: a document goes into the sheet that keeps it as `{"state": "manual", "text": …}`
   (`song_api.prepare`, `_documents`; a document the template does not keep is refused by name), so the run keeps it.

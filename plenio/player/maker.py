@@ -103,9 +103,10 @@ POLL_S = 2.0
 STUDIO_EVERY_S = 5.0
 PRIOR = {"song": (120.0, 3.0), "cover": (120.0, 1.5), "take": (60.0, 1.5)}
 """Seconds of work before the first song is measured: a fixed part and so many per second of music (measured on an
-RTX 5060 Ti: 2026-10-25 a song of about 1:00 took 300-360 s once the models were loaded; 2026-10-26 a new take of a
-song - nothing written, nothing planned - 164 s for 1:09 and 192 s for 1:29 with the models loaded first, a cover of
-a 1:33 recording 262 s, a new take of a cover 225 s for 1:42: it reads its original again, so it counts as a cover)."""
+RTX 5060 Ti: 2026-10-25 a song of about 1:00 took 300-360 s once the models were loaded; 2026-10-26 a new song of 1:10
+109 s, a new take of a song - nothing written, nothing planned - 164 s for 1:30 and 192 s for 1:29 with the models
+loaded first, a cover of a 1:33 recording 262 s, a new take of a cover 225 s for 1:42: it reads its original again, so
+it counts as a cover; the factors learned from every song made correct these)."""
 ACTIVE = ("sending", "queued", "running")
 FINISHED = ("done", "failed", "cancelled")
 LOOPBACK = re.compile(r"https?://(127\.0\.0\.1|localhost|\[::1\]):\d{2,5}/?")
