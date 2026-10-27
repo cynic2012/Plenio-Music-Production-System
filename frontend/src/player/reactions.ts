@@ -43,7 +43,8 @@ export function flight(kind: string, random: () => number = Math.random): Floati
     side: random() < 0.5 ? 'left' : 'right',
     x: 1 + random() * 11,
     drift: Math.round((random() - 0.5) * 60),
-    size: Math.round(34 + random() * 26),
+    // large enough to see from across the room on a party's big screen
+    size: Math.round(46 + random() * 34),
     duration: 3.6 + random() * 1.6,
   }
 }
