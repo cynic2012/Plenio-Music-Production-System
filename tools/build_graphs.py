@@ -3417,7 +3417,7 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
 
 ABOUT_ENHANCE = """# 4 · Enhance & Master
 
-**Load Audio -> Stems (optional) -> Audio HQ 1-3 -> EQ -> Loudness & Dynamics -> Export**
+**Load Audio -> Stems (optional) -> Audio HQ 1-3 -> EQ -> Loudness & Dynamics -> Export**, the lyrics to correct in *Lyrics (optional)*
 
 Finishes an existing recording (for example a take you rendered earlier) without any music model - with every
 stage of the song templates' *Plenio · Master* block, as plain nodes you can reach directly.
@@ -3427,12 +3427,17 @@ stage of the song templates' *Plenio · Master* block, as plain nodes you can re
 3. To rebalance a finished mix, select *Stems (optional)* (under Load Audio) and press **Ctrl+B**: *Separate Stems* splits the file into vocals, drums, bass and other, the *Stem Mixer* balances them (the residual *rest* keeps a neutral mix exact; the user guide *Stems* covers it). It is bypassed by default.
 4. **EQ** starts with a gentle warm tone match (*match preset*). Choose *manual* to draw your own curve, *flat* for no EQ, or connect a **reference** recording and pick a reference recipe.
 5. **Loudness & Dynamics** brings the song to -14 LUFS with a true peak of at most -1 dBTP (streaming); pick another target or compression style if you like.
-6. Press **Run**. Export writes FLAC 24-bit and MP3 V0 to `output/plenio/enhanced`, copies the source file's tags and cover, keeps the unmastered source as `(original).flac`, and writes a release record with the measured loudness.
+6. **The lyrics** of a sung recording go into the subtitles, the lyrics tag and the release record as the ASR hears them - misheard words included. To correct them, select the two nodes of *Lyrics (optional)* (under the source) and press **Ctrl+B**: *Transcribe Lyrics* hears the words and the *Song Sheet* stops the run - open its editor, fix the words, **Approve** and **Run** again. Export then times your words to the singing. You can also type the lyrics into the Song Sheet yourself; then nothing is transcribed. Bypassed by default.
+7. Press **Run**. Export writes FLAC 24-bit and MP3 V0 to `output/plenio/enhanced`, copies the source file's tags and cover, keeps the unmastered source as `(original).flac`, and writes a release record with the measured loudness.
 
 The preview plays the result; compare it with the source in Load Audio. After a run, a badge above each Plenio node shows its result (✓ done, ⚠ warning, ✖ error).
 
 **App mode:** switch *Graph / App* at the top left for a simple form (file, HQ presets, EQ, target, compression).
 """
+
+
+LYRICS_Y = 1160
+"""Enhance & Master: the optional lyrics under the source and Audio HQ, below their row."""
 
 
 def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
@@ -3487,9 +3492,9 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         "PlenioExportRelease",
         (2490, 180),
         # 1.0.0: the brief socket and lyrics subtitles (SRT); 2026-10-21: two more report slots (Audio HQ);
-        # 1.2.1: what the lyrics are heard on
-        size=(380, 514 + SUMMARY_ROOM + 2 * SLOT_HEIGHT),
-        autogrow={"reports": 7},
+        # 1.2.1: what the lyrics are heard on; 1.3.2: the lyrics' Song Sheet
+        size=(380, 514 + SUMMARY_ROOM + 3 * SLOT_HEIGHT),
+        autogrow={"reports": 8},
         widgets={
             "folder": "plenio/enhanced",
             "naming": "{title}",
@@ -3506,6 +3511,28 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.link(loudness, "audio", preview, "audio")
     g.link(loudness, "audio", export, "audio")
     g.link(source, "AUDIO", export, "original")
+    # the lyrics as the ASR heard them, corrected before the release (GitHub issue, 1.3.1: misheard words went
+    # into the subtitles and the record with no way to fix them) - bypassed like the stems: an instrumental
+    # recording has no words, and a sung one runs through without a stop until it is switched on
+    hear = g.add(
+        "PlenioTranscribeLyrics",
+        (0, LYRICS_Y),
+        size=(340, 200 + SUMMARY_ROOM),
+        title="Transcribe Lyrics (optional)",
+        mode=4,
+    )
+    lyrics_sheet = g.add(
+        "PlenioSongSheet",
+        (420, LYRICS_Y),
+        size=SHEET_SIZE,
+        title="Song Sheet · Lyrics (optional)",
+        widgets={"review": "stop for review"},
+        labels={"sheet_state": "Song Sheet · Lyrics"},
+        mode=4,
+    )
+    lyrics_sheet.color, lyrics_sheet.bgcolor = SHEET_LOOKS["text"]
+    g.link(source, "AUDIO", hear, "audio")
+    g.link(hear, "lyrics", lyrics_sheet, "lyrics")
     reports = [
         (stems_node, "report"),
         (stems_node, "separation_report"),
@@ -3514,6 +3541,7 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         (dereverb, "report"),
         (eq, "report"),
         (loudness, "report"),
+        (lyrics_sheet, "report"),
     ]
     for index, (node, output) in enumerate(reports):
         g.link(node, output, export, f"reports.report_{index}")
@@ -3523,6 +3551,7 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     g.group("3 · MASTER", [eq, loudness])
     g.group("4 · FINISH", [preview, export])
     g.align()
+    g.group("Lyrics (optional)", [hear, lyrics_sheet], color=SHEET_LOOKS["text"][0])
     app = App(
         [
             (source, "audio"),

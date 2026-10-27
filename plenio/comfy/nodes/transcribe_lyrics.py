@@ -147,6 +147,18 @@ class PlenioTranscribeLyrics(io.ComfyNode):
         vocals: Any = None,
     ) -> io.NodeOutput:
         checking = expected_lyrics is not None
+        if not checking and isinstance(brief, CoverBrief) and brief.instrumental:
+            # an instrumental cover sings no words: nothing to hear (since Fix Misheard Words reads this node's
+            # lyrics, it runs for every cover - an instrumental source must not stop the run)
+            summary = "an instrumental cover: no words to hear, the transcription was skipped"
+            report = Report("transcribe_lyrics", Status.SKIPPED, summary, (), {"skipped": "instrumental"})
+            return io.NodeOutput(
+                "",
+                "",
+                "" if language.strip().lower() == "auto" else language.strip(),
+                report,
+                ui={"plenio_summary": [{"status": Status.SKIPPED.value, "markdown": f"**{summary}**"}]},
+            )
         language = asr_language(language, brief)
         source = host.audio_sha256(audio)
         own_timeline = timeline if timeline is not None and timeline.source_sha256 == source else None

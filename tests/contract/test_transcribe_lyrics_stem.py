@@ -51,3 +51,24 @@ def test_the_more_confident_hearing_is_kept(comfy_path: Path, monkeypatch: pytes
     lyrics, _transcript, _language, report = out.result
     assert "doun" in lyrics and report.data["heard_from"] == "the recording"
     assert set(report.data["confidence"]) == {"recording", "vocal stem"}
+
+
+def test_an_instrumental_cover_hears_nothing_and_does_not_stop(
+    comfy_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GitHub issue (1.3.0): an instrumental source with an instrumental Cover Brief stopped the run - "no vocal
+    melody" - since Fix Misheard Words reads this node's lyrics for every cover. An instrumental cover skips it."""
+    from plenio.comfy.nodes import transcribe_lyrics as node
+    from plenio.core.brief import CoverBrief
+    from plenio.core.reports import Status
+
+    def no_asr(*_: Any) -> Any:
+        raise AssertionError("an instrumental cover runs no ASR")
+
+    monkeypatch.setattr(node, "_run_asr", no_asr)
+    out = node.PlenioTranscribeLyrics.execute(
+        audio=audio(0.1), engine="qwen3-asr-1.7b", language="auto", brief=CoverBrief(vocals="instrumental")
+    )
+    lyrics, transcript, language, report = out.result
+    assert (lyrics, transcript, language) == ("", "", "")
+    assert report.status is Status.SKIPPED and "instrumental" in report.summary

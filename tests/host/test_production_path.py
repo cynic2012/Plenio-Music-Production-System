@@ -348,10 +348,14 @@ def test_enhance_template_contains_the_chain(server: ComfyServer, log: Log) -> N
             "PlenioEQ",
             "PlenioExportRelease",
             "PlenioLoudness",
+            "PlenioSongSheet",  # Lyrics (optional): the heard words corrected before the release
+            "PlenioTranscribeLyrics",
             "PreviewAudio",
             wrappers["Plenio · Stems"],
         ]
     )
+    lyrics = [n for n in template["nodes"] if n["type"] in ("PlenioTranscribeLyrics", "PlenioSongSheet")]
+    assert all(n["mode"] == 4 for n in lyrics)  # bypassed until switched on: instrumentals run through
     stems = next(sub for sub in template["definitions"]["subgraphs"] if sub["name"].endswith("Stems"))
     assert [n["type"] for n in stems["nodes"]] == [
         "PlenioAudioModelLoader",

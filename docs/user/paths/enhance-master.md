@@ -29,6 +29,22 @@ Load Audio -> Audio HQ 1-3 -> EQ -> Loudness & Dynamics -> Preview
 
 **Export Release** ([help](../../../web/docs/PlenioExportRelease.md)) - FLAC 24-bit, MP3 VBR V0 and/or WAV 32-bit float; tags *title only*, typed *tags*, or *copy from loaded file* (the file in the one Load Audio node of the workflow; the *title* input, when connected, wins). A connected *cover* image replaces the copied cover.
 
+## Correcting the lyrics
+
+Export writes a sung recording's lyrics - the subtitles, the lyrics tag and the release record - from what the
+lyrics ASR (Qwen3-ASR, or Whisper) hears, misheard words included. To correct them, select the two nodes of
+**Lyrics (optional)** under the source and press **Ctrl+B**:
+
+1. **Run**: *Transcribe Lyrics* hears the words and the **Song Sheet · Lyrics** stops the run (*stop for review*);
+   nothing is exported yet.
+2. Open the Song Sheet's editor, fix the words (and the section tags, if you like) and **Approve**.
+3. **Run** again: Export times your words to the singing. They go into the subtitles `(lines).srt`, the release
+   record and the lyrics tag - also over the lyrics tag copied from the loaded file. `(sung).srt` keeps what was
+   heard, as the player's *as sung* view shows it.
+
+You can also type the lyrics into the Song Sheet yourself: a manual document is never replaced, and nothing is
+transcribed then. The block is bypassed by default, so an instrumental recording runs through without a stop.
+
 ## Using it after a song path
 
 The song templates 1-3 and 5 finish with the same stages as the **Plenio · Master** block (node library, *Plenio/Mastering*): it sits between the render and **Export Release**, and Export keeps the unmastered take as `(original).flac`. Use this template to master a take again with other settings.

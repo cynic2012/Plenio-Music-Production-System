@@ -987,7 +987,8 @@ def _metadata(
     values: dict[str, str] | None = None,
 ) -> tuple[dict[str, str], bytes | None, list[str]]:
     """Tags, the cover JPEG and notes. Precedence: the title input > copied or typed tags; the cover input > copied
-    cover. Typed or connected tags take the variables ``values`` (``{title}`` is the title input's)."""
+    cover; a Song Sheet's lyrics > the copied lyrics tag. Typed or connected tags take the variables ``values``
+    (``{title}`` is the title input's)."""
     mode = str(tags.get("tags", "title only"))
     if mode not in TAG_MODES:
         raise PlenioUserError(f"Unknown tag mode {mode!r}; use one of {list(TAG_MODES)}.")
@@ -1002,6 +1003,11 @@ def _metadata(
         metadata, picture = read_tags(source)
         metadata.setdefault("title", source.stem)
         notes.append(f"tags copied from {source.name}")
+        # the lyrics of a Song Sheet (heard and corrected in Enhance & Master) win over the file's own tag
+        lyrics = str((values or {}).get("lyrics") or "").strip()
+        if lyrics:
+            metadata["lyrics"] = lyrics
+            notes.append("lyrics tag: the Song Sheet's lyrics")
     if title and title.strip():
         metadata["title"] = title.strip()
     if cover is not None:

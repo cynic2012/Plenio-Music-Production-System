@@ -264,18 +264,22 @@ class PlenioSongSheet(io.ComfyNode):
         derived: list[Any] = [evaluation.planning_mode, evaluation.score_seconds]
         final_lyrics = evaluation.text("lyrics") if "lyrics" in evaluation.owned else ""
         plan_lyrics: Any = writing.plan_lyrics(final_lyrics or "", brief)
+        report_out: Any = report
         if evaluation.waiting_for_approval:
             documents = [host.execution_blocker(None)] * len(DOCUMENT_KINDS)
             derived = [host.execution_blocker(None)] * 2
             tags = host.execution_blocker(None)
             plan_lyrics = host.execution_blocker(None)
+            # the report too: an Export Release that reads only this report (Enhance & Master's lyrics) waits for
+            # the approval instead of releasing the unreviewed words
+            report_out = host.execution_blocker(None)
         ui = {
             "plenio_sheet": [payload],
             "plenio_summary": [
                 {"status": report.status.value, "markdown": _markdown(evaluation, arrangement)}
             ],
         }
-        return io.NodeOutput(*documents, *derived, report, tags, plan_lyrics, ui=ui)
+        return io.NodeOutput(*documents, *derived, report_out, tags, plan_lyrics, ui=ui)
 
 
 def _follow_series(brief: Any, waiting: bool) -> None:

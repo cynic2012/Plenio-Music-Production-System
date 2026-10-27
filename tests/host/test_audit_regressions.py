@@ -176,6 +176,56 @@ def test_tag_copy_accepts_an_annotated_load_audio_value(server: ComfyServer) -> 
     assert tags["artist"] == "Plenio"
 
 
+def test_corrected_lyrics_of_a_song_sheet_win_over_the_copied_lyrics_tag(server: ComfyServer) -> None:
+    """GitHub issue (1.3.1): Enhance & Master released the lyrics as heard, with no way to correct them. Its
+    Lyrics block ends in a Song Sheet; corrected there, its words go into the record and - over the copied
+    file's own lyrics tag - into the tags."""
+    import json
+    import uuid
+
+    import numpy as np
+
+    from plenio.core.release import read_tags, write_audio
+
+    name = f"sung-{uuid.uuid4().hex[:8]}.flac"
+    (server.base / "input").mkdir(exist_ok=True)
+    t = np.arange(44100 * 2) / 44100
+    write_audio(
+        server.base / "input" / name,
+        0.1 * np.vstack([np.sin(2 * np.pi * 220 * t)] * 2),
+        44100,
+        "flac",
+        {"title": "Streetlights", "artist": "Plenio", "lyrics": "the streetlights bleed"},
+    )
+    corrected = "[Verse]\nThe streetlamps bleed across the wet ground"
+    state = {"schema": "plenio.sheet_state/1", "docs": {"lyrics": {"state": "manual", "text": corrected}}}
+    folder = f"plenio-audit/{uuid.uuid4().hex[:8]}"
+    prompt = {
+        "1": {"class_type": "LoadAudio", "inputs": {"audio": name}},
+        "2": {
+            "class_type": "PlenioSongSheet",
+            "inputs": {"review": "continue", "sheet_state": json.dumps(state)},
+        },
+        "3": {
+            "class_type": "PlenioExportRelease",
+            "inputs": {
+                "audio": ["1", 0],
+                "reports.report_0": ["2", 7],
+                "folder": folder,
+                "naming": "{title}",
+                "collision": "number",
+                "tags": "copy from loaded file",
+                "lyrics_srt": False,
+            },
+        },
+    }
+    server.run(prompt)
+    tags, _cover = read_tags(server.output_dir / folder / "Streetlights.flac")
+    assert tags["lyrics"] == "The streetlamps bleed across the wet ground" and tags["artist"] == "Plenio"
+    record = json.loads((server.output_dir / folder / "Streetlights.plenio.json").read_text(encoding="utf-8"))
+    assert record["documents"]["lyrics"]["text"] == corrected
+
+
 def test_a_loud_unmastered_take_is_a_note_not_a_warning(server: ComfyServer) -> None:
     """A YuE2 render peaks above full scale, so its (original).flac clips; the export warned about it
     on every run ('a limiter before the export avoids this'), though the mastered files were fine."""

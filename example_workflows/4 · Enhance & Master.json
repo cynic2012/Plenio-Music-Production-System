@@ -1,8 +1,8 @@
 {
  "id": "9d23be52-230b-5f08-8aad-bd5416d3dbd0",
  "revision": 0,
- "last_node_id": 13,
- "last_link_id": 18,
+ "last_node_id": 15,
+ "last_link_id": 21,
  "nodes": [
   {
    "id": 1,
@@ -25,7 +25,7 @@
     "Node name for S&R": "MarkdownNote"
    },
    "widgets_values": [
-    "# 4 · Enhance & Master\n\n**Load Audio -> Stems (optional) -> Audio HQ 1-3 -> EQ -> Loudness & Dynamics -> Export**\n\nFinishes an existing recording (for example a take you rendered earlier) without any music model - with every\nstage of the song templates' *Plenio · Master* block, as plain nodes you can reach directly.\n\n1. Upload the file in **Load Audio**.\n2. **Audio HQ** runs before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the highs; with **HQ mastering** on (the switch at the top, **on** by default) *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 1.5 s per second of music on an RTX 5060 Ti) - it can clearly reduce AI shimmer and artifacts, and it is the cure for a **band-limited** source such as an old MP3; switched off, UniverSR does not run and is not needed. *HQ 3 · De-Reverb* is bypassed (select it, **Ctrl+B**). There is no brief here, so the presets are *standard*; pick *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) for your music (the user guide *Audio HQ* covers them).\n3. To rebalance a finished mix, select *Stems (optional)* (under Load Audio) and press **Ctrl+B**: *Separate Stems* splits the file into vocals, drums, bass and other, the *Stem Mixer* balances them (the residual *rest* keeps a neutral mix exact; the user guide *Stems* covers it). It is bypassed by default.\n4. **EQ** starts with a gentle warm tone match (*match preset*). Choose *manual* to draw your own curve, *flat* for no EQ, or connect a **reference** recording and pick a reference recipe.\n5. **Loudness & Dynamics** brings the song to -14 LUFS with a true peak of at most -1 dBTP (streaming); pick another target or compression style if you like.\n6. Press **Run**. Export writes FLAC 24-bit and MP3 V0 to `output/plenio/enhanced`, copies the source file's tags and cover, keeps the unmastered source as `(original).flac`, and writes a release record with the measured loudness.\n\nThe preview plays the result; compare it with the source in Load Audio. After a run, a badge above each Plenio node shows its result (✓ done, ⚠ warning, ✖ error).\n\n**App mode:** switch *Graph / App* at the top left for a simple form (file, HQ presets, EQ, target, compression).\n"
+    "# 4 · Enhance & Master\n\n**Load Audio -> Stems (optional) -> Audio HQ 1-3 -> EQ -> Loudness & Dynamics -> Export**, the lyrics to correct in *Lyrics (optional)*\n\nFinishes an existing recording (for example a take you rendered earlier) without any music model - with every\nstage of the song templates' *Plenio · Master* block, as plain nodes you can reach directly.\n\n1. Upload the file in **Load Audio**.\n2. **Audio HQ** runs before the EQ: *HQ 1 · Stereo Cleanup* calms the unsteady stereo shimmer in the highs; with **HQ mastering** on (the switch at the top, **on** by default) *HQ 2 · Regenerate Highs* generates new highs above 8.2 kHz with the UniverSR model (229 MB; about 1.5 s per second of music on an RTX 5060 Ti) - it can clearly reduce AI shimmer and artifacts, and it is the cure for a **band-limited** source such as an old MP3; switched off, UniverSR does not run and is not needed. *HQ 3 · De-Reverb* is bypassed (select it, **Ctrl+B**). There is no brief here, so the presets are *standard*; pick *gentle* (classical, jazz, folk), *strong* (rock, metal, punk) or *wide* (electronic, dance, ambient) for your music (the user guide *Audio HQ* covers them).\n3. To rebalance a finished mix, select *Stems (optional)* (under Load Audio) and press **Ctrl+B**: *Separate Stems* splits the file into vocals, drums, bass and other, the *Stem Mixer* balances them (the residual *rest* keeps a neutral mix exact; the user guide *Stems* covers it). It is bypassed by default.\n4. **EQ** starts with a gentle warm tone match (*match preset*). Choose *manual* to draw your own curve, *flat* for no EQ, or connect a **reference** recording and pick a reference recipe.\n5. **Loudness & Dynamics** brings the song to -14 LUFS with a true peak of at most -1 dBTP (streaming); pick another target or compression style if you like.\n6. **The lyrics** of a sung recording go into the subtitles, the lyrics tag and the release record as the ASR hears them - misheard words included. To correct them, select the two nodes of *Lyrics (optional)* (under the source) and press **Ctrl+B**: *Transcribe Lyrics* hears the words and the *Song Sheet* stops the run - open its editor, fix the words, **Approve** and **Run** again. Export then times your words to the singing. You can also type the lyrics into the Song Sheet yourself; then nothing is transcribed. Bypassed by default.\n7. Press **Run**. Export writes FLAC 24-bit and MP3 V0 to `output/plenio/enhanced`, copies the source file's tags and cover, keeps the unmastered source as `(original).flac`, and writes a release record with the measured loudness.\n\nThe preview plays the result; compare it with the source in Load Audio. After a run, a badge above each Plenio node shows its result (✓ done, ⚠ warning, ✖ error).\n\n**App mode:** switch *Graph / App* at the top left for a simple form (file, HQ presets, EQ, target, compression).\n"
    ]
   },
   {
@@ -60,7 +60,8 @@
      "type": "AUDIO",
      "links": [
       1,
-      10
+      10,
+      11
      ]
     }
    ],
@@ -110,7 +111,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      11
+      13
      ]
     },
     {
@@ -118,7 +119,7 @@
      "name": "separation_report",
      "type": "PLENIO_REPORT",
      "links": [
-      12
+      14
      ]
     }
    ],
@@ -178,7 +179,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      13
+      15
      ]
     }
    ],
@@ -301,7 +302,7 @@
      "widget": {
       "name": "hq_mastering"
      },
-     "link": 18
+     "link": 21
     },
     {
      "localized_name": "seed",
@@ -336,7 +337,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      14
+      16
      ]
     }
    ],
@@ -403,7 +404,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      15
+      17
      ]
     }
    ],
@@ -477,7 +478,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      16
+      18
      ]
     }
    ],
@@ -554,7 +555,7 @@
      "name": "report",
      "type": "PLENIO_REPORT",
      "links": [
-      17
+      19
      ]
     }
    ],
@@ -612,7 +613,7 @@
    ],
    "size": [
     380,
-    654
+    674
    ],
    "flags": {},
    "order": 10,
@@ -658,7 +659,7 @@
      "label": "report_0",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 11
+     "link": 13
     },
     {
      "localized_name": "reports.report_1",
@@ -666,7 +667,7 @@
      "label": "report_1",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 12
+     "link": 14
     },
     {
      "localized_name": "reports.report_2",
@@ -674,7 +675,7 @@
      "label": "report_2",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 13
+     "link": 15
     },
     {
      "localized_name": "reports.report_3",
@@ -682,7 +683,7 @@
      "label": "report_3",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 14
+     "link": 16
     },
     {
      "localized_name": "reports.report_4",
@@ -690,7 +691,7 @@
      "label": "report_4",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 15
+     "link": 17
     },
     {
      "localized_name": "reports.report_5",
@@ -698,7 +699,7 @@
      "label": "report_5",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 16
+     "link": 18
     },
     {
      "localized_name": "reports.report_6",
@@ -706,12 +707,20 @@
      "label": "report_6",
      "shape": 7,
      "type": "PLENIO_REPORT",
-     "link": 17
+     "link": 19
     },
     {
      "localized_name": "reports.report_7",
      "name": "reports.report_7",
      "label": "report_7",
+     "shape": 7,
+     "type": "PLENIO_REPORT",
+     "link": 20
+    },
+    {
+     "localized_name": "reports.report_8",
+     "name": "reports.report_8",
+     "label": "report_8",
      "shape": 7,
      "type": "PLENIO_REPORT",
      "link": null
@@ -859,6 +868,343 @@
   },
   {
    "id": 12,
+   "type": "PlenioTranscribeLyrics",
+   "pos": [
+    0,
+    1160
+   ],
+   "size": [
+    340,
+    300
+   ],
+   "flags": {},
+   "order": 11,
+   "mode": 4,
+   "inputs": [
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "type": "AUDIO",
+     "link": 11
+    },
+    {
+     "localized_name": "vocals",
+     "name": "vocals",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": null
+    },
+    {
+     "localized_name": "score",
+     "name": "score",
+     "shape": 7,
+     "type": "STRING",
+     "link": null
+    },
+    {
+     "localized_name": "timeline",
+     "name": "timeline",
+     "shape": 7,
+     "type": "PLENIO_TIMELINE",
+     "link": null
+    },
+    {
+     "localized_name": "brief",
+     "name": "brief",
+     "shape": 7,
+     "type": "PLENIO_BRIEF",
+     "link": null
+    },
+    {
+     "localized_name": "expected_lyrics",
+     "name": "expected_lyrics",
+     "shape": 7,
+     "type": "STRING",
+     "link": null
+    },
+    {
+     "localized_name": "engine",
+     "name": "engine",
+     "type": "COMBO",
+     "widget": {
+      "name": "engine"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "language",
+     "name": "language",
+     "type": "STRING",
+     "widget": {
+      "name": "language"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "device",
+     "name": "device",
+     "type": "COMBO",
+     "widget": {
+      "name": "device"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "lyrics",
+     "name": "lyrics",
+     "type": "STRING",
+     "links": [
+      12
+     ]
+    },
+    {
+     "localized_name": "transcript",
+     "name": "transcript",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "language",
+     "name": "language",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "report",
+     "name": "report",
+     "type": "PLENIO_REPORT",
+     "links": null
+    }
+   ],
+   "title": "Transcribe Lyrics (optional)",
+   "properties": {
+    "Node name for S&R": "PlenioTranscribeLyrics"
+   },
+   "widgets_values": [
+    "Qwen3-ASR 1.7B",
+    "auto",
+    "auto"
+   ]
+  },
+  {
+   "id": 13,
+   "type": "PlenioSongSheet",
+   "pos": [
+    420,
+    1160
+   ],
+   "size": [
+    420,
+    520
+   ],
+   "flags": {},
+   "order": 12,
+   "mode": 4,
+   "inputs": [
+    {
+     "localized_name": "title",
+     "name": "title",
+     "shape": 7,
+     "type": "STRING",
+     "link": null
+    },
+    {
+     "localized_name": "style",
+     "name": "style",
+     "shape": 7,
+     "type": "STRING",
+     "link": null
+    },
+    {
+     "localized_name": "lyrics",
+     "name": "lyrics",
+     "shape": 7,
+     "type": "STRING",
+     "link": 12
+    },
+    {
+     "localized_name": "score",
+     "name": "score",
+     "shape": 7,
+     "type": "STRING",
+     "link": null
+    },
+    {
+     "localized_name": "artwork_prompt",
+     "name": "artwork_prompt",
+     "shape": 7,
+     "type": "STRING",
+     "link": null
+    },
+    {
+     "localized_name": "context_style",
+     "name": "context_style",
+     "shape": 7,
+     "type": "STRING",
+     "link": null
+    },
+    {
+     "localized_name": "context_lyrics",
+     "name": "context_lyrics",
+     "shape": 7,
+     "type": "STRING",
+     "link": null
+    },
+    {
+     "localized_name": "context_score",
+     "name": "context_score",
+     "shape": 7,
+     "type": "STRING",
+     "link": null
+    },
+    {
+     "localized_name": "timeline",
+     "name": "timeline",
+     "shape": 7,
+     "type": "PLENIO_TIMELINE",
+     "link": null
+    },
+    {
+     "localized_name": "reference_audio",
+     "name": "reference_audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": null
+    },
+    {
+     "localized_name": "sung_pitch",
+     "name": "sung_pitch",
+     "shape": 7,
+     "type": "PLENIO_PITCH",
+     "link": null
+    },
+    {
+     "localized_name": "brief",
+     "name": "brief",
+     "shape": 7,
+     "type": "PLENIO_BRIEF",
+     "link": null
+    },
+    {
+     "localized_name": "engine",
+     "name": "engine",
+     "shape": 7,
+     "type": "PLENIO_ENGINE",
+     "link": null
+    },
+    {
+     "localized_name": "arrangement",
+     "name": "arrangement",
+     "shape": 7,
+     "type": "PLENIO_REPORT",
+     "link": null
+    },
+    {
+     "localized_name": "song_form",
+     "name": "song_form",
+     "shape": 7,
+     "type": "PLENIO_REPORT",
+     "link": null
+    },
+    {
+     "localized_name": "review",
+     "name": "review",
+     "type": "COMBO",
+     "widget": {
+      "name": "review"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "sheet_state",
+     "name": "sheet_state",
+     "label": "Song Sheet · Lyrics",
+     "type": "PLENIO_SHEET_STATE",
+     "widget": {
+      "name": "sheet_state"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "title",
+     "name": "title",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "style",
+     "name": "style",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "lyrics",
+     "name": "lyrics",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "score",
+     "name": "score",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "artwork_prompt",
+     "name": "artwork_prompt",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "planning_mode",
+     "name": "planning_mode",
+     "type": "COMBO",
+     "links": null
+    },
+    {
+     "localized_name": "score_seconds",
+     "name": "score_seconds",
+     "type": "FLOAT",
+     "links": null
+    },
+    {
+     "localized_name": "report",
+     "name": "report",
+     "type": "PLENIO_REPORT",
+     "links": [
+      20
+     ]
+    },
+    {
+     "localized_name": "section_tags",
+     "name": "section_tags",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "plan_lyrics",
+     "name": "plan_lyrics",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "Song Sheet · Lyrics (optional)",
+   "color": "#25695f",
+   "bgcolor": "#163d38",
+   "properties": {
+    "Node name for S&R": "PlenioSongSheet"
+   },
+   "widgets_values": [
+    "stop for review",
+    ""
+   ]
+  },
+  {
+   "id": 14,
    "type": "PlenioHQMastering",
    "pos": [
     0,
@@ -869,7 +1215,7 @@
     160
    ],
    "flags": {},
-   "order": 11,
+   "order": 13,
    "mode": 0,
    "inputs": [
     {
@@ -888,7 +1234,7 @@
      "name": "hq_mastering",
      "type": "BOOLEAN",
      "links": [
-      18
+      21
      ]
     }
    ],
@@ -901,7 +1247,7 @@
    ]
   },
   {
-   "id": 13,
+   "id": 15,
    "type": "MarkdownNote",
    "pos": [
     -1120,
@@ -912,7 +1258,7 @@
     1169
    ],
    "flags": {},
-   "order": 12,
+   "order": 14,
    "mode": 0,
    "inputs": [],
    "outputs": [],
@@ -1008,6 +1354,22 @@
   ],
   [
    11,
+   2,
+   0,
+   12,
+   0,
+   "AUDIO"
+  ],
+  [
+   12,
+   12,
+   0,
+   13,
+   2,
+   "STRING"
+  ],
+  [
+   13,
    3,
    1,
    11,
@@ -1015,7 +1377,7 @@
    "PLENIO_REPORT"
   ],
   [
-   12,
+   14,
    3,
    2,
    11,
@@ -1023,7 +1385,7 @@
    "PLENIO_REPORT"
   ],
   [
-   13,
+   15,
    4,
    1,
    11,
@@ -1031,7 +1393,7 @@
    "PLENIO_REPORT"
   ],
   [
-   14,
+   16,
    6,
    1,
    11,
@@ -1039,7 +1401,7 @@
    "PLENIO_REPORT"
   ],
   [
-   15,
+   17,
    7,
    1,
    11,
@@ -1047,7 +1409,7 @@
    "PLENIO_REPORT"
   ],
   [
-   16,
+   18,
    8,
    1,
    11,
@@ -1055,7 +1417,7 @@
    "PLENIO_REPORT"
   ],
   [
-   17,
+   19,
    9,
    1,
    11,
@@ -1063,8 +1425,16 @@
    "PLENIO_REPORT"
   ],
   [
-   18,
+   20,
+   13,
+   7,
+   11,
    12,
+   "PLENIO_REPORT"
+  ],
+  [
+   21,
+   14,
    0,
    6,
    4,
@@ -1121,6 +1491,19 @@
     1114.0
    ],
    "color": "#6e4f9e",
+   "font_size": 32,
+   "flags": {}
+  },
+  {
+   "id": 5,
+   "title": "Lyrics (optional)",
+   "bounding": [
+    -30,
+    1050,
+    900,
+    660
+   ],
+   "color": "#25695f",
    "font_size": 32,
    "flags": {}
   }
@@ -1455,7 +1838,7 @@
      "audio"
     ],
     [
-     12,
+     14,
      "hq_mastering"
     ],
     [
