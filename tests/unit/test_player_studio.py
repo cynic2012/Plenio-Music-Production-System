@@ -106,6 +106,19 @@ def test_a_comfyui_that_answers_already_is_not_started_again(tmp_path: Path) -> 
     assert status["running"] and not status["own"] and launcher.process is None
 
 
+def test_another_comfyui_that_answers_counts_and_none_is_started(tmp_path: Path) -> None:
+    # ComfyUI Desktop on 8000, or the ComfyUI that started the player: running, not the player's own
+    root = comfyui(tmp_path)
+    launcher = StudioLauncher(tmp_path / "state", clock=Clock())
+    launcher.configure({"root": str(root), "auto": True})
+    launcher.elsewhere = lambda: "http://127.0.0.1:8000/"
+    status = launcher.status()
+    assert status["running"] and not status["own"] and status["url"] == "http://127.0.0.1:8000"
+    launcher.tick(waiting=True)
+    assert launcher.process is None
+    assert launcher.start()["running"] and launcher.process is None
+
+
 def test_a_waiting_song_starts_it_and_it_stops_when_idle(tmp_path: Path) -> None:
     root = comfyui(tmp_path)
     clock = Clock()

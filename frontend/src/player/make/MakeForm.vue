@@ -15,7 +15,7 @@ import Icon from '../components/Icon.vue'
 import ComboField from './ComboField.vue'
 import StudioPanel from './StudioPanel.vue'
 import type { MakeClient } from './client'
-import { applyPreset, BUILT_IN_PRESETS, presetMatters, presetOf, type MakePreset } from './presets'
+import { applyPreset, BUILT_IN_PRESETS, formatOf, presetMatters, presetOf, type MakePreset } from './presets'
 import { AGAIN_TEXT, LABELS, LIST_FIELDS, VOCALS_TEXT, againStudio, applies, clock, fieldsOf, fromTemplate, grouped, missing, optionsFor, ownAllowed, requestOf, studioStart, summary, surprise, timeOfDay, untilText } from './form'
 import type { Again, Draft, FormData, Kind, MakeJob, MakeStatus, Remake, SongDocuments, StudioSpec, StudioValues, StyleTemplate } from './form'
 
@@ -114,6 +114,10 @@ function useTemplate(template: StyleTemplate | null): void {
   }
   const filled = fromTemplate(template, draft.kind, props.form, draft.fields)
   Object.assign(draft.fields, filled)
+  // a preset chosen before keeps how long the song is and how it is sung (Party - fast stays about 1:30)
+  const preset = presets.value.find((p) => p.id === chosenPreset.value)
+  const format = preset ? formatOf(preset) : null
+  if (format) applyPreset(format, draft, props.form, null)
   epoch.value += 1
   light(Object.keys(filled).filter((k) => filled[k]))
 }

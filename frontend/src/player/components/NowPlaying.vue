@@ -710,6 +710,9 @@ h1 {
   grid-template-rows: auto minmax(0, 1fr) auto;
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   transition: transform 0.08s, opacity 0.08s;
+  /* a swipe down is the page's (it closes Now playing), not the browser's - no pull-to-refresh, no pointercancel;
+     the lyrics and the panels scroll in themselves, sideways the chips */
+  touch-action: pan-x;
 }
 .phone .top {
   padding: 10px 10px 6px;

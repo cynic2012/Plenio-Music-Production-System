@@ -113,6 +113,9 @@ class StudioLauncher:
         self.lock = threading.Lock()
         self.clock = clock
         self.reachable = reachable or (lambda url: False)
+        self.elsewhere: Callable[[], str | None] = lambda: None
+        """A ComfyUI on this computer the player did not start - the one that started the player, ComfyUI Desktop
+        on 8000 ...: its address, or ``None``. While one answers, the player starts none of its own."""
         self.settings = self._load()
         self.process: subprocess.Popen[bytes] | None = None
         self.started_at = 0.0
@@ -181,6 +184,13 @@ class StudioLauncher:
     def url(self) -> str:
         return f"http://127.0.0.1:{int(self.settings.get('port') or 8188)}"
 
+    def answering(self) -> str | None:
+        """The ComfyUI that answers on this computer: on the player's port, or another one found."""
+        if self.reachable(self.url()):
+            return self.url()
+        other = self.elsewhere()
+        return other.rstrip("/") if other else None
+
     def command(self) -> tuple[list[str], Path]:
         """The argument list that starts ComfyUI, and the folder it runs in."""
         root = self.root()
@@ -208,7 +218,7 @@ class StudioLauncher:
     def start(self) -> dict[str, Any]:
         """Start ComfyUI in the background - unless one answers already, or the player's own is on its way up."""
         with self.lock:
-            if self.reachable(self.url()):
+            if self.answering():
                 return self.status()
             if self.started():
                 return self.status()
@@ -283,7 +293,7 @@ class StudioLauncher:
                 self.settings.get("auto")
                 and not self.started()
                 and self.clock() - self.started_at > RESTART_AFTER_S
-                and not self.reachable(self.url())
+                and not self.answering()
             ):
                 try:
                     self.start()
@@ -311,7 +321,8 @@ class StudioLauncher:
     def status(self, *, admin: bool = True) -> dict[str, Any]:
         """What the page shows: whether ComfyUI runs, whether the player started it (and when), whether it can,
         and for the admin the folder, the Python, the arguments and the end of the log."""
-        running = self.reachable(self.url())
+        found = self.answering()
+        running = found is not None
         own = self.started()
         starting = own and not running and self.clock() - self.started_at < STARTING_S
         try:
@@ -326,7 +337,7 @@ class StudioLauncher:
             "since": self.started_at if own else None,
             "can_start": can,
             "why": why,
-            "url": self.url(),
+            "url": found or self.url(),
             "auto": bool(self.settings.get("auto")),
             "idle_stop_min": int(self.settings.get("idle_stop_min") or 0),
             "error": self.error,

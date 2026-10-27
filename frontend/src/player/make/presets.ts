@@ -159,6 +159,14 @@ export function applyPreset(preset: MakePreset, draft: Draft, form: FormData, sp
   return { set, takes: spec ? Math.max(1, Math.min(4, preset.takes ?? 1)) : 1 }
 }
 
+/** What of a preset stays when a style is chosen after it: how long the song is and how it is sung - the style fills
+ * the rest (its genre, mood, tempo …). ``null`` when the preset sets neither. */
+export const FORMAT_FIELDS = ['length', 'vocals']
+export function formatOf(preset: MakePreset): MakePreset | null {
+  const fields = Object.fromEntries(Object.entries(preset.fields).filter(([name]) => FORMAT_FIELDS.includes(name)))
+  return Object.keys(fields).length ? { ...preset, fields, studio: undefined, takes: undefined } : null
+}
+
 /** Whether a preset does anything for this form: a field it may set, or the whole studio's values and takes. */
 export function presetMatters(preset: MakePreset, draft: Draft, form: FormData, full: boolean): boolean {
   if (full && (preset.takes || Object.keys(preset.studio?.fields ?? {}).length || Object.keys(preset.studio?.release ?? {}).length)) return true

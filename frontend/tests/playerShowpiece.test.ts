@@ -7,7 +7,7 @@ import { embedUrl, searchHelp, searchTutorials, TOPICS, TUTORIALS } from '../src
 import { layoutOf, PHONE_MAX, TABLET_MAX } from '../src/player/layout'
 import { indexMarks } from '../src/player/listIndex'
 import type { Draft, FormData, StudioSpec } from '../src/player/make/form'
-import { applyPreset, BUILT_IN_PRESETS, presetMatters, presetOf, presetsOf } from '../src/player/make/presets'
+import { applyPreset, BUILT_IN_PRESETS, formatOf, presetMatters, presetOf, presetsOf } from '../src/player/make/presets'
 import { cheerLine, cheers, flight, floating, MAX_FLOATING, receive, REACTION_EMOJI, spread } from '../src/player/reactions'
 import { nextIdOf } from '../src/player/store'
 
@@ -111,6 +111,19 @@ describe('presets for making a song', () => {
     const instrumental = BUILT_IN_PRESETS.find((p) => p.id === 'instrumental')!
     expect(presetMatters(instrumental, cover, FORM, false)).toBe(true) // a cover may be instrumental too
     expect(presetMatters(BUILT_IN_PRESETS.find((p) => p.id === 'best')!, cover, FORM, false)).toBe(false)
+  })
+
+  it('keep their length and vocals when a style is chosen after them - the style fills the rest', () => {
+    const party = BUILT_IN_PRESETS.find((p) => p.id === 'party')!
+    expect(formatOf(party)?.fields).toEqual({ length: 'short (about 1:30)' })
+    expect(formatOf(party)?.studio).toBeUndefined()
+    expect(formatOf(BUILT_IN_PRESETS.find((p) => p.id === 'instrumental')!)?.fields).toEqual({ vocals: 'instrumental' })
+    expect(formatOf(BUILT_IN_PRESETS.find((p) => p.id === 'best')!)).toBeNull()
+    // a style's template set a long song: the preset's length comes back
+    const d = draft()
+    d.fields.length = 'about 4:00'
+    applyPreset(formatOf(party)!, d, FORM, null)
+    expect(d.fields.length).toBe('short (about 1:30)')
   })
 
   it('of your own keep the form and the studio values under a name, and come back checked', () => {

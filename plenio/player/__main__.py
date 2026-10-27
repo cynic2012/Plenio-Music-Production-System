@@ -77,8 +77,11 @@ def main(argv: list[str] | None = None) -> int:
     guests = GuestHub(library, directory, host=args.guests_host)
     # the studio - ComfyUI - the player can start itself (Settings > The studio), and where it then answers
     launcher = StudioLauncher(directory, reachable=lambda url: comfyui_at(url, timeout=0.6) is not None)
-    # party songs: made through the Song API of the ComfyUI on this computer (found again every few seconds)
-    maker = PartySongs(library, directory, Studio(studio_finder(args.comfyui, also=launcher.url)))
+    # the ComfyUI on this computer, found again every few seconds: the party songs are made through its Song API, and
+    # while one answers (the one that started the player, ComfyUI Desktop ...) the player starts none of its own
+    comfy = studio_finder(args.comfyui, also=launcher.url)
+    launcher.elsewhere = comfy
+    maker = PartySongs(library, directory, Studio(comfy))
     maker.launcher = launcher
     guests.maker = maker
     ports: list[int] = []

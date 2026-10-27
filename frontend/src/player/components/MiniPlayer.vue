@@ -117,7 +117,8 @@ function open(): void {
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  touch-action: pan-y;
+  /* both swipes are the page's: sideways the next song, up Now playing (with pan-y the browser took the swipe up) */
+  touch-action: none;
   transition: transform 0.18s;
 }
 .song.from-left {

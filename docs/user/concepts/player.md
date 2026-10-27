@@ -698,7 +698,8 @@ many takes:
 **Save as preset…** keeps the form as it is under a name - the style, genre, mood, tempo, length, vocals,
 language, voice, theme, key and meter (not the description: that is the song), the studio's settings and the
 takes; your presets come after the built-in ones, × forgets one. A preset sets only what applies: the party's
-guests get its length and vocals, a cover keeps its own length.
+guests get its length and vocals, a cover keeps its own length. A style chosen after a preset fills the style's
+fields and keeps the preset's length and vocals (*Party - fast* stays about 1:30).
 
 **How many** (the whole studio): 1 to 4 - **takes of one song** (the song is made, then its takes follow at the
 head of the line: the same words and notes, sung and played anew; keep the one you like best) or **different
@@ -794,8 +795,9 @@ The player runs on its own; ComfyUI is needed only to **make** songs, and nobody
   `--models-directory D:/AI/models --cuda-device 1`) and the port (8188); the command it runs, and the end of its
   log (`comfyui.log` in the player's state folder)
 
-The Python is that ComfyUI's own - the portable build's `python_embeded`, a `.venv` or `venv` - or else the
-player's. ComfyUI starts in the background, without a window, and stays on this computer: `--listen`,
+While a ComfyUI already answers on this computer - ComfyUI Desktop on port 8000, the ComfyUI that started the player
+- the player counts it as running and starts none of its own. The Python is that ComfyUI's own - the portable build's
+`python_embeded`, a `.venv` or `venv` - or else the player's. ComfyUI starts in the background, without a window, and stays on this computer: `--listen`,
 `--enable-cors-header`, `--port` and the TLS arguments are refused (the network comes in through *In your
 network*). ComfyUI Desktop is an app: start it there.
 
