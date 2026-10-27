@@ -16,6 +16,36 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 
 **Free, open source - now 1.3.** Plenio costs nothing: no subscription, no credits, no account, Apache 2.0 code. After fourteen releases in three weeks, 1.0.0 was the milestone where the whole way holds together - from the first idea to the song people listen to - and the version to build on: saved workflows and release records keep working in every 1.x version. What changed in each version is in the [changelog](CHANGELOG.md).
 
+## New in 1.3.1: the player on every screen, and the studio started from it
+
+- **The Plenio Player on a phone and a tablet**: on a phone a tab bar and a slim player you swipe - next, previous, up for Now playing -, the filters and the menus as sheets from the bottom, Now playing that fits the screen; on a tablet the slim player and a drawer. *Add to Home screen* opens it like an app. A rail beside long lists jumps by letter or month, and a library of thousands of songs stays quick: read in the background, small covers, a search that keeps up with the typing. [Details](docs/user/concepts/player.md#on-a-phone-a-tablet-and-a-large-screen)
+- **Songs from the player alone**: presets set the whole form in one click - *Best quality* with HQ mastering and cover art, *Party - fast*, *Quick sketch*, *Three takes* … - or keep yours under a name; *How many* makes up to four takes of a song or four songs at once. ComfyUI is needed only for making them: **Start the studio** runs it in the background, without a window and without a workflow to open - or the player starts it when a song is ordered and stops it after idle minutes. [Details](docs/user/concepts/player.md#the-studio-comfyui-started-by-the-player)
+- **The party reacts**: the guests tap 🔥 ❤️ 🎉 👏 💃 😂 on their phones, the reactions float up the edges of the big screen, and Live Play counts them per song. In a song's last seconds *Up next* names the song that follows. [Details](docs/user/concepts/player.md#guests-in-your-network)
+- **Help and the tutorials in the player** (**H**): guides by topic with a search, and the video tutorials playing in the page. [Details](docs/user/concepts/player.md#help-and-tutorials)
+- **For other programs**: Song API 1.1 downloads a finished song's files, waits for a change instead of being asked every second and filters its list - with a [guide](docs/api/README.md) from the first request to the files, every field, examples in Python, JavaScript and curl, and an OpenAPI reference.
+- **Every template says which model goes where**: a *Models · what goes where* note with the files, the folders as a tree and what to choose for each graphics card.
+
+<p align="center">
+  <img src="assets/branding/1.3.1/player-phone.jpg" alt="The Plenio Player on a phone: the songs with the featured song, the collections as chips, Filters and the rows, the slim player and the tab bar; Now playing with the cover, the line sung now, the sections and the waveform; Make a song with the presets Best quality, Party - fast and Quick sketch" width="98%" />
+</p>
+<p align="center">
+  <img src="assets/branding/1.3.1/player-reactions.jpg" alt="The guests' reactions: fire, hearts, party poppers, clapping hands and laughing faces float up the edges of the big screen over a Plenio Drop visual with the guests' QR code; beside it a guest's phone with the song playing, the six reaction buttons, the room's count and what comes next" width="98%" />
+</p>
+<p align="center">
+  <img src="assets/branding/1.3.1/player-presets.jpg" alt="Make a song with the preset Best quality chosen - HQ mastering, cover art, the best of three takes for the words, FLAC and MP3 - beside Party - fast, Quick sketch, Full song, Three takes, Instrumental and Save as preset, then the style Latin with the template Son cubano and what the song is about" width="49%" />
+  <img src="assets/branding/1.3.1/player-how-many.jpg" alt="The end of the form: the details filled from the style, Every setting of the studio folded with its summary line, How many with 2 takes of one song chosen, and Generate · 2 takes" width="49%" />
+</p>
+<p align="center">
+  <img src="assets/branding/1.3.1/player-studio.jpg" alt="Settings, The studio: ComfyUI is running - started by the player, Stop it and Open ComfyUI, Start it by itself when a song is ordered, Stop the ComfyUI the player started after a time without a song; the section chips at the top jump to every part of the settings" width="49%" />
+  <img src="assets/branding/1.3.1/player-up-next.jpg" alt="Now playing in a song's last seconds: the cover, the lyrics as they are sung, and the card Up next with the cover and the title of the song that follows" width="49%" />
+</p>
+<p align="center">
+  <img src="assets/branding/1.3.1/player-help.jpg" alt="Help and tutorials in the player: the search, the video tutorials as shelves - the Plenio Player and making songs in ComfyUI - and the guides by topic" width="49%" />
+  <img src="assets/branding/1.3.1/player-phone-help.jpg" alt="On a phone: Help and tutorials with a tutorial to play, and the filters as a sheet from the bottom with genres, vocals and languages and Show 366 songs" width="49%" />
+</p>
+
+*The player on a phone · the guests' reactions on the big screen and a guest's phone · a preset for the whole form · several takes at once · ComfyUI started from the player · Up next · help and tutorials, and the filters as a sheet on a phone.*
+
 ## New in 1.3: party songs, a Song API, and videos that change with the song
 
 - **Party songs**: the listeners of the Plenio Player make songs of their own - *Make a song* in the player, *Make your own song* on the party guests' phones. A new song or a cover of an uploaded recording; a vibe (*Pop*, *Latin*, *Rock* …), any style template or *Surprise me* fills every field, the rest is a few lists and *Generate Song*. *Your songs* shows each song's place in line, a rough time it will be ready and what the studio does now; when it is ready, it plays in Live Play. Off by default: the admin decides who may, how many songs each and how long - and whether the name of the one who made it shows while the song plays, large at its beginning, its sections and its end, or floating across the visual. [Details](docs/user/concepts/player.md#party-songs-guests-make-songs)

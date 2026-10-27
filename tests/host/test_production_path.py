@@ -338,7 +338,8 @@ def test_enhance_template_contains_the_chain(server: ComfyServer, log: Log) -> N
     assert types == sorted(
         [
             "LoadAudio",
-            "MarkdownNote",
+            "MarkdownNote",  # About this template
+            "MarkdownNote",  # Models · what goes where
             "PlenioAudioModelLoader",
             "PlenioHQStereoCleanup",
             "PlenioHQRegenerateHighs",

@@ -258,7 +258,7 @@ function jumpTo(id: string): void {
 
     <div v-if="!isPortable" id="party"><MakeSettings /></div>
 
-    <StudioSettings v-if="studioShown" />
+    <StudioSettings v-if="studioShown" @running="look" />
 
     <section v-if="!isPortable && !remote" id="comfyui" class="block">
       <h3><Icon name="external" /> ComfyUI</h3>

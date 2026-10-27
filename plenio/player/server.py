@@ -612,7 +612,8 @@ def make_handler(
                     }
                 )
             if route == "/api/comfyui":
-                found = find_comfyui(query.get("url", "") or comfyui)
+                # also the one the player starts itself (Settings > The studio), on the port set there
+                found = find_comfyui(query.get("url", "") or comfyui, launcher.url if launcher else None)
                 return self._json({"found": found})
             if route == "/api/find":
                 # the song of a record file (Export Release's button in ComfyUI opens the player at it)

@@ -483,7 +483,9 @@ class PartySongs:
         lists), the choices of length and vocals - from ComfyUI's Song API when it answers, else from the package."""
         now = self.clock()
         cached = self._form
-        if cached is None or now - cached[0] > 60:
+        # ComfyUI's answer is kept a minute; the package's only a moment - ComfyUI may come up any time (the studio
+        # started from the player), and its form has the whole studio's settings
+        if cached is None or now - cached[0] > (60 if cached[1].get("source") == "studio" else 5):
             built = self._form_from_studio() or self._form_from_package()
             self._form = cached = (now, built)
         form: dict[str, Any] = json.loads(json.dumps(cached[1]))

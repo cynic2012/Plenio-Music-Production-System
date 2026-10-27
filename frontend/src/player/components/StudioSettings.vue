@@ -8,8 +8,11 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { api, type StudioStatus } from '../api'
-import { say } from '../store'
+import { lookForComfyUI, say } from '../store'
 import Icon from './Icon.vue'
+
+/** ComfyUI came up or went: the page's other places that say where ComfyUI is look again. */
+const emit = defineEmits<{ running: [running: boolean] }>()
 
 const studio = ref<StudioStatus | null>(null)
 const busy = ref(false)
@@ -28,7 +31,12 @@ async function read(): Promise<void> {
       args.value = answer.args ?? ''
       port.value = answer.port ?? 8188
     }
+    const was = studio.value?.running
     studio.value = answer
+    if (was !== undefined && was !== answer.running) {
+      void lookForComfyUI()
+      emit('running', answer.running)
+    }
   } catch {
     studio.value = null
   }

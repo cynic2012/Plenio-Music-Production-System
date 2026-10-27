@@ -44,7 +44,7 @@ curl http://127.0.0.1:8188/plenio/api/v1
 ```
 
 ```json
-{"api": "plenio-song-api", "version": "1.1", "plenio": "1.4.0", "comfyui": "0.41.0",
+{"api": "plenio-song-api", "version": "1.1", "plenio": "1.3.1", "comfyui": "0.41.0",
  "templates": [{"id": "yue2-song", "title": "YuE2 · Song", "kind": "song", "needs": []},
                {"id": "yue2-cover", "title": "YuE2 · Cover", "kind": "cover", "needs": ["source.audio"]}],
  "paths": {"jobs": "/plenio/api/v1/jobs", "...": "..."}}
@@ -368,7 +368,7 @@ own, the release folder cannot leave ComfyUI's output folder, a job's files are 
 
 | API | Plenio | What changed |
 |---|---|---|
-| 1.1 | 1.4.0 | `GET /jobs/{id}/files/{name}` and a `url` per result file; `GET /jobs/{id}?wait=<s>`; `GET /jobs` filters (`status`, `client`, `template`, `limit`); one job per `Idempotency-Key` also for requests at the same time; an `operationId` per call and answer schemas in the OpenAPI document |
+| 1.1 | 1.3.1 | `GET /jobs/{id}/files/{name}` and a `url` per result file; `GET /jobs/{id}?wait=<s>`; `GET /jobs` filters (`status`, `client`, `template`, `limit`); one job per `Idempotency-Key` also for requests at the same time; an `operationId` per call and answer schemas in the OpenAPI document |
 | 1.0 | 1.3.0 | the first version: templates, briefs, uploads, jobs, from-record, queue |
 
 ## OpenAPI and client generators

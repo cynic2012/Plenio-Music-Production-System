@@ -1038,8 +1038,10 @@ select {
 .phone .search input {
   font-size: 16px; /* iOS zooms into a field below 16 px */
 }
+/* one row on a phone: the sort list gives way (its longest choice would push ⋯ onto a row of its own) */
 .phone .tools select {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   height: 40px;
 }
 .phone .tools .ghost {

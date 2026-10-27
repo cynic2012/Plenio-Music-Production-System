@@ -102,6 +102,13 @@ onBeforeUnmount(() => {
   pollMake(false)
 })
 watch(everybody, () => void loadMake())
+// ComfyUI came up while the form came from the package: the form again, from ComfyUI (the whole studio's settings)
+watch(
+  () => status.value?.studio.reachable,
+  (reachable, was) => {
+    if (reachable && was === false && makeForm.value?.source === 'package') void loadForm(true).catch(() => {})
+  }
+)
 
 /** What the form starts from to make the song at ``#/make/<song id>`` again. */
 async function readAgain(songId: string): Promise<void> {
