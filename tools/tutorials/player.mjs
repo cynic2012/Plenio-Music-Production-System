@@ -5,8 +5,10 @@
 // playing in its four views, the visuals and their modes, Plenio Drop and the lyrics' look, the lyrics as
 // written and as sung, playlists, the queue with the sleep timer, Live Play with a song that arrives from
 // ComfyUI, guests in the network (the QR code, the guests' page, a wish carried out), a song as a video, the
-// songs shared as a player, A/B and speed, the keys, the settings (the version, the accounts, the folders, the
-// MP3, the lyrics' rule) and Open in ComfyUI. Native drop-down lists are shown open (studio's openSelect).
+// songs shared as a player, A/B and speed, the keys, help and the tutorials, the settings (in sections: the version,
+// the accounts, the studio, the folders, the MP3, the lyrics' rule) and Open in ComfyUI. 1.3.1 adds the rail beside
+// a long list, Up next in a song's last seconds and the guests' reactions. Native drop-down lists are shown open
+// (studio's openSelect).
 //
 // Recorded against a ComfyUI dev server whose output folder holds the songs, with PLENIO_PLAYER_STATE set to
 // a fresh folder (with a user or two in its users.json) and PLENIO_GUESTS_HOST=127.0.0.1 (the player ComfyUI
@@ -188,6 +190,19 @@ export default async function player(s) {
   await talk(s, 'A grid or a list, sorted by date, title, length, tempo or loudness.', 3000)
   await s.click(page.locator('.views .icon-btn').nth(0))
   await s.wait(600)
+  // sorted by title: a rail of letters beside the list
+  const sort = page.locator('.tools select').first()
+  show(s, 'Sorted by title, the letters at the side jump anywhere - by date, the months.')
+  await s.openSelect(sort, { choose: 'title', browse: 3, read: 700 })
+  const rail = page.locator('.rail')
+  if (await rail.count()) {
+    await s.hover(rail)
+    await s.click(rail.locator('button').nth(Math.min(12, (await rail.locator('button').count()) - 1)))
+    await s.wait(600)
+  }
+  await talk(s, 'Sorted by title, the letters at the side jump anywhere - by date, the months.', 1600)
+  await s.openSelect(sort, { choose: 'newest', browse: 1, read: 500 })
+  await s.wait(600)
 
   s.chapter('Play')
   // the song is further down the songs: the search brings it up
@@ -322,6 +337,13 @@ export default async function player(s) {
     await s.wait(2600)
   }
   await setVolume(s, BED)
+  // a song's last seconds: Up next names the one that follows
+  const npWave = page.locator('.np .dock canvas, .np .dock .waveform').first()
+  await s.click(npWave, { fx: 0.93 })
+  await s.rest(400)
+  await page.waitForSelector('.up-next', { timeout: 20000 }).catch(() => {})
+  await s.wait(900)
+  await talk(s, 'In a song’s last seconds, Up next names the one that follows - for the big screen at a party.')
 
   s.chapter('As written, as sung')
   const sung = await pickSung(s)
@@ -469,7 +491,23 @@ export default async function player(s) {
   const earlier = phone.locator('#next li').nth(2).locator('button[title="Earlier"]')
   if (await earlier.count()) await s.click(earlier)
   await talk(s, '… and if you allow it, guests move songs, take them out and add their favourites. The music plays on your computer.')
-  await s.switchTo(page)
+  // reactions: a tap on the phone floats over the host's screen
+  const reactions = phone.locator('#reactBox')
+  if (await reactions.isVisible().catch(() => false)) {
+    await s.hover(reactions)
+    await talk(s, 'And they react to the song that plays …', 2400)
+    for (const emoji of ['🔥', '❤️', '🎉', '🔥', '👏', '❤️', '💃', '🔥', '😂', '🎉']) {
+      await s.click(phone.getByRole('button', { name: `Send ${emoji} to the big screen` }), { pause: 90 })
+    }
+    await s.switchTo(page)
+    await s.rest(400)
+    await s.wait(900)
+    const cheers = page.locator('.playing .cheers')
+    if (await cheers.count()) await s.hover(cheers)
+    await talk(s, '… it floats up the big screen, and Live Play counts it for the song.', 4000)
+  } else {
+    await s.switchTo(page)
+  }
   await s.wait(1500)
   const log = page.locator('.log p').first()
   if (await log.count()) {
@@ -543,11 +581,35 @@ export default async function player(s) {
   await talk(s, 'Every key is listed under the question mark.', 3600)
   await s.keys('Escape')
 
+  s.chapter('Help and tutorials')
+  await s.click(page.locator('.side a.link', { hasText: 'Help & tutorials' }))
+  await page.waitForSelector('.help-page', { timeout: 15000 })
+  await s.wait(1000)
+  await talk(s, 'Help and tutorials: short guides by topic, and every tutorial as a video - press H anywhere.')
+  const video = page.locator('.help-page .video').first()
+  await s.hover(video)
+  await talk(s, 'A click plays a tutorial right here. Nothing is loaded from YouTube before.')
+  await s.click(page.locator('.help-page .search input'))
+  await s.type('guests')
+  await s.wait(900)
+  await talk(s, 'The search finds the lines of every guide that answer it.')
+  await page.fill('.help-page .search input', '')
+  await s.wait(500)
+
   s.chapter('Settings')
   await s.click(page.locator('.side a.link', { hasText: 'Settings' }))
   await s.wait(1200)
   await s.hover(page.locator('.settings p.version'))
   await talk(s, 'Settings starts with the version of the player that runs.')
+  await s.spotlight(page.locator('.settings .index'), { ms: 2600, pad: 6 })
+  await talk(s, 'Its sections are chips: one click jumps there.')
+  const studioChip = page.locator('.settings .index .chip', { hasText: 'The studio' })
+  if (await studioChip.count()) {
+    await s.click(studioChip)
+    await s.wait(900)
+    await s.hover(page.locator('#studio .status'))
+    await talk(s, 'The studio: when ComfyUI does not run, the player starts it - tutorial nine shows how.')
+  }
   const accounts = page.locator('.settings section', { has: page.locator('h3', { hasText: 'Accounts' }) }).first()
   if (await accounts.count()) {
     await accounts.scrollIntoViewIfNeeded()

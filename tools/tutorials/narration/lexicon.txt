@@ -23,3 +23,7 @@ UniverSR => Univer S R
 HQ => H Q
 Qwen3 => Qwen three
 ASR => A S R
+OpenAPI => Open A P I
+API => A P I
+HTTP => H T T P
+JSON => Jason

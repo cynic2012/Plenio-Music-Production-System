@@ -45,6 +45,9 @@ The chips filter by your most common genres, moods, models and creative modes.
 @ A grid or a list
 A grid or a list, sorted by date, title, length, tempo or loudness.
 
+@ Sorted by title, the letters at the side
+Sorted by title, the letters at the side jump anywhere in the list. Sorted by date, they're the months.
+
 @ Press play on a cover
 Press play on a cover. A click on the card itself opens the song's page.
 
@@ -129,6 +132,9 @@ And how the lyrics look is up to you: a font, a colour, and an effect, like neon
 @ N shows the next one
 Press N for the next one.
 
+@ In a song’s last seconds, Up next
+In a song's last seconds, Up next names the one that follows. Made for the big screen at a party.
+
 @ A music model does not always sing | optional
 A music model doesn't always sing what it was given. It repeats a line, makes one up, or leaves one out.
 
@@ -186,6 +192,12 @@ On the phone: the song that plays, and what comes next.
 @ … and if you allow it, guests move songs
 And if you allow it, guests move songs, take them out, and add their favourites. The music keeps playing on your computer.
 
+@ And they react to the song that plays | optional
+And they react to the song that plays...
+
+@ … it floats up the big screen | optional
+...it floats up the big screen, and Live Play counts it for the song.
+
 @ The playlist follows
 The playlist follows, and tells you what the guests did.
 
@@ -210,8 +222,23 @@ Speed goes from three quarters to one and a quarter, and the pitch stays the sam
 @ Every key is listed
 Every keyboard shortcut is listed under the question mark.
 
+@ Help and tutorials: short guides
+Help and tutorials: short guides by topic, and every tutorial as a video. Press H, anywhere.
+
+@ A click plays a tutorial right here
+A click plays a tutorial right here. Nothing is loaded from YouTube before you click.
+
+@ The search finds the lines
+The search finds the lines of every guide that answer it.
+
 @ Settings starts with the version
 Settings starts with the version of the player that's running.
+
+@ Its sections are chips
+Its sections are chips: one click jumps right there.
+
+@ The studio: when ComfyUI does not run | optional
+The studio: when ComfyUI isn't running, the player starts it for you. Tutorial nine shows how.
 
 @ Accounts: who logged in | optional
 Accounts: who's logged in, and the users the admin has set up.
