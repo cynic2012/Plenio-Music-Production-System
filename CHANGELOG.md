@@ -41,6 +41,7 @@ All notable changes of the current version and the one before. Versions follow s
 - **The player's page could be shown inside another site's frame**, where a click meant for that site could land on the player's *Remove…*: it now refuses every frame but its own (`X-Frame-Options`, `Content-Security-Policy: frame-ancestors`), and every answer says `nosniff`.
 - **A form of another site could make the player read every record again** (*Look for new songs*, `POST /api/rescan`): only the player's own page can now.
 - **A request that failed inside the player closed the connection without an answer** - the page saw a network error; it now answers `500` with the reason, and the player's log keeps the details. A request with a wrong `Content-Length` is refused instead of failing.
+- **The day's first party song did not join Live Play** when the studio saved it outside the player's folders (a player reading other folders than ComfyUI's output): it came into the library, but its file was older than Live Play's last look. It now joins like every new song.
 - **Two requests with one Idempotency-Key at the same time could make two songs** in the Song API; they now make one.
 - The Song API's field `source.audio` (a cover's recording) described itself with nothing; it now says how to upload a recording and give its name.
 - Now playing on a phone was wider than the screen: the lyrics were cut off at the right and the section names ran over.
