@@ -18,7 +18,8 @@ export interface Tutorial {
 export const PLAYLIST = 'https://www.youtube.com/playlist?list=PLAFqTtP59fgE'
 
 export const TUTORIALS: Tutorial[] = [
-  { id: 'a0ZWxOuTGeQ', number: '8', title: 'The Plenio Player', text: 'Live lyrics, the notation following the music, visuals, playlists, Live Play, lyric videos and a player in one file to share.', topic: 'start', where: 'player' },
+  { id: '29W5kwvYgSU', number: '8', title: 'The Plenio Player', text: 'Live lyrics, the notation following the music, visuals, playlists, Live Play with the guests’ reactions, lyric videos and a player in one file to share.', topic: 'start', where: 'player' },
+  { id: 'nUF0EufjZyQ', number: '9', title: 'Party songs', text: 'Make songs from the player: presets, takes, ComfyUI started for you - and your guests ordering songs on their phones.', topic: 'make', where: 'player' },
   { id: 'XpNpks9ZCgE', number: '★', title: 'Your idea. Your song. Your control.', text: 'Plenio in 54 seconds.', topic: 'start', where: 'intro' },
   { id: 'q_dMH834E1o', number: '★', title: 'Plenio in 75 seconds', text: 'What Plenio does, from the first idea to the mastered song.', topic: 'start', where: 'intro' },
   { id: 'lEHF3W37e8c', number: '0', title: 'System Check', text: 'Is your ComfyUI ready? Versions, the GPU, which model files each template needs.', topic: 'make', where: 'comfyui' },
@@ -29,6 +30,7 @@ export const TUTORIALS: Tutorial[] = [
   { id: 'Ki2wbk9sGWQ', number: '5', title: 'YuE2 · DAW', text: 'Compose it yourself - draw the notes, import MIDI or play it in - and YuE2 sings your melody.', topic: 'make', where: 'comfyui' },
   { id: 'gB-mpQkk-z4', number: '6', title: 'YuE2 · Song · Creative modes', text: 'The writer model plans the arrangement, Plenio writes the notes.', topic: 'make', where: 'comfyui' },
   { id: 'jiF_e5CSjKM', number: '7', title: 'YuE2 · Cover · Creative modes', text: 'A recording re-arranged with new chords and lyrics that keep its story.', topic: 'make', where: 'comfyui' },
+  { id: 'MBfM8vOynT4', number: '10', title: 'Song API', text: 'Songs from your own programs: one POST, the job followed with ?wait, the files, examples in Python, JavaScript and the shell.', topic: 'make', where: 'comfyui' },
 ]
 
 export interface HelpTopic {

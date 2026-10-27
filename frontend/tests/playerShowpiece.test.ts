@@ -153,7 +153,7 @@ describe("the player's help", () => {
   })
 
   it('plays tutorials from youtube-nocookie only, each one once', () => {
-    expect(embedUrl('a0ZWxOuTGeQ')).toMatch(/^https:\/\/www\.youtube-nocookie\.com\/embed\/a0ZWxOuTGeQ\?/)
+    expect(embedUrl('29W5kwvYgSU')).toMatch(/^https:\/\/www\.youtube-nocookie\.com\/embed\/29W5kwvYgSU\?/)
     expect(new Set(TUTORIALS.map((t) => t.id)).size).toBe(TUTORIALS.length)
     expect(TUTORIALS.every((t) => /^[\w-]{11}$/.test(t.id))).toBe(true)
   })
