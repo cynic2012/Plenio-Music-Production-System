@@ -158,7 +158,7 @@ export default async function songApi(s) {
   s.caption(null)
   if (state.status !== 'succeeded') throw new Error(`the song ${state.status}: ${JSON.stringify(state.error).slice(0, 300)}`)
   await s.wait(600)
-  await talk(s, 'Succeeded - a song of a minute and a half takes a few minutes on this graphics card.')
+  await talk(s, 'Succeeded - a short song takes a few minutes on this graphics card.')
 
   // --- the files ---
   s.chapter('The files')

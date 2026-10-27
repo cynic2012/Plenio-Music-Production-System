@@ -42,8 +42,8 @@ The cover is painted.
 @ Mastered and saved | optional
 Mastered, and saved.
 
-@ Succeeded - a song of a minute and a half
-Succeeded. On this graphics card, a song of a minute and a half takes a few minutes.
+@ Succeeded - a short song
+Succeeded. On this graphics card, a short song takes a few minutes.
 
 @ Its files: the audio
 Its files: the audio, the unmastered take, the cover, the subtitles, the sheet music, and the record of how it was made.

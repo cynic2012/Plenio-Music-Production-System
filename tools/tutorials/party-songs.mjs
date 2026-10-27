@@ -293,12 +293,23 @@ export default async function partySongs(s) {
   await phone.waitForSelector('#reactBox:not([hidden])', { timeout: 20000 })
   await s.wait(800)
   await talk(s, 'And the guests react: one tap on their phone …', 2600)
-  for (const emoji of ['🔥', '❤️', '🎉', '🔥', '👏', '💃', '🔥', '❤️', '😂', '🎉', '🔥', '❤️']) {
-    await s.click(phone.getByRole('button', { name: `Send ${emoji} to the big screen` }), { pause: 90 })
+  for (const emoji of ['🔥', '❤️', '🎉', '👏']) {
+    await s.click(phone.getByRole('button', { name: `Send ${emoji} to the big screen` }), { pause: 120 })
   }
   await s.switchTo(page)
+  // the room goes on tapping while the big screen is in view: the same buttons of the guests' page, clicked in it
+  // (its own pause between two taps is 250 ms; the player takes 60 a minute from a phone)
+  const tapping = (async () => {
+    for (const emoji of ['🔥', '❤️', '🎉', '🔥', '💃', '👏', '🔥', '😂', '❤️', '🎉', '🔥', '❤️', '💃', '🔥']) {
+      await phone
+        .evaluate((label) => document.querySelector(`button[aria-label="${label}"]`)?.click(), `Send ${emoji} to the big screen`)
+        .catch(() => {})
+      await new Promise((resolve) => setTimeout(resolve, 450))
+    }
+  })()
   await s.rest(400)
   await talk(s, '… and it floats up the big screen. Live Play counts how the room liked each song.', 6000)
+  await tapping
   await phone.close()
   await s.keys('Escape')
   await s.wait(800)
