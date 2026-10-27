@@ -1610,6 +1610,7 @@ class PartySongs:
         record = Path(str((job.get("result") or {}).get("record") or ""))
         if not record.name:
             return
+        self.library.expect(record)
         found = self._song_of(record)
         if found is None and record.parent.is_dir():
             folder = str(record.parent.resolve())

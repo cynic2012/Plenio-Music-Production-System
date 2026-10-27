@@ -294,6 +294,48 @@ def test_a_finished_song_comes_into_the_library_also_from_outside_its_folders(
     assert songs.estimate(songs.jobs[0]) == pytest.approx(400, rel=0.01)
 
 
+def test_a_song_from_outside_the_folders_is_new_for_live_play_when_it_comes_in(
+    party: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tutorial recording 2026-10-27: the day's first party song was written into a folder the player did not
+    read yet. Once the folder was added its record was older than Live Play's last "now", so Live Play never
+    took the song in (the later ones of the folder came in)."""
+    from plenio.player import library as library_module
+
+    songs, studio, clock, library = party
+    songs.create(ANNA, {"fields": SONG})
+    songs.tick()
+    party_folder = tmp_path / "comfy-output" / "plenio" / "Party-Songs-2026-10-27"
+    party_folder.mkdir(parents=True)
+    path = party_folder / "Neon.plenio.json"
+    path.write_text(json.dumps(record("Neon")), encoding="utf-8")
+    (party_folder / "Neon.flac").write_bytes(b"f" * 64)
+    # Live Play asks again half a minute after the record was written (a clock that moves on with every look)
+    ahead = [library_module.time.time() + 30]
+
+    def later() -> float:
+        ahead[0] += 0.25
+        return ahead[0]
+
+    monkeypatch.setattr(library_module.time, "time", later)
+    library.scan(force=True)
+    since = library.scan_started
+    assert library.newer(since) == []
+    studio.views["comfy-1"] = {
+        "id": "comfy-1",
+        "status": "succeeded",
+        "started_at": clock.now - 300,
+        "finished_at": clock.now,
+        "result": {"title": "Neon", "record": str(path)},
+    }
+    songs.tick()
+    assert songs.folders == [str(party_folder.resolve())]
+    library.scan(force=True)  # read once more before Live Play asks: still new for it
+    assert [s["title"] for s in library.newer(since)] == ["Neon"]
+    # once only: from the answer's "now" on it is not new again
+    assert library.newer(library.scan_started) == []
+
+
 def test_a_song_comfyui_forgot_is_made_again_once(party: Any) -> None:
     songs, studio, _clock, _library = party
     songs.create(ANNA, {"fields": SONG})

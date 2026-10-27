@@ -39,6 +39,8 @@ CLOCK_SLACK = 1.0
 """Seconds a file's time may run ahead of the clock read at a scan's start: on Windows a file written just
 before can carry a time a little after a coarse ``time.time()``. A file further ahead (a wrong clock, a copy from
 another time zone) is not taken for "now" - it would hide every song made until the clock caught up."""
+EXPECTED_FOR_S = 3600.0
+"""How long a record the player's studio made is waited for (:meth:`Library.expect`)."""
 """Where removed songs go, below the library folder they were in; the library does not read it."""
 SKIP_DIRS = {".plenio-player", "__pycache__", ".git", RETIRED_DIR}
 AUDIO_KINDS = ("flac", "mp3", "wav")
@@ -831,6 +833,9 @@ class Library:
         # when each song appeared (its record's or file's time), and the wall clock at the last scan's start
         self._appeared: dict[str, float] = {}
         self.scan_started = 0.0
+        # the records the player's studio made, until a reading finds them (when it was told), and when it did
+        self._expected: dict[str, float] = {}
+        self._arrived: dict[str, float] = {}
         self.errors: list[str] = []
         self.version = 0
         """Counts the changes of the songs: the page's copy of the library is current while it has this one."""
@@ -991,7 +996,7 @@ class Library:
                     song = summarize(record, path, root)
                     read_anew += 1
                 songs[song.id] = song
-                appeared[song.id] = _appeared(stat)
+                appeared[song.id] = max(_appeared(stat), self._arrival(key, path, started))
                 cache[key] = {
                     "stamp": stamp,
                     "summary": song.summary,
@@ -1072,6 +1077,30 @@ class Library:
     def song(self, song_id: str) -> Song | None:
         self._refresh()
         return self._songs.get(song_id)
+
+    def expect(self, record: Path) -> None:
+        """A release record the player's studio just made (``maker``): the reading that first finds it counts it as
+        new from then on. Its file can be older than Live Play's last question - written before its folder was read
+        (a party songs' folder outside the library's, added once its first song is made) - and Live Play would
+        never take it in."""
+        try:
+            key = os.path.normcase(str(Path(record).resolve()))
+        except OSError:
+            return
+        now = time.time()
+        with self._lock:
+            self._expected = {k: at for k, at in self._expected.items() if now - at < EXPECTED_FOR_S}
+            self._expected[key] = now
+
+    def _arrival(self, key: str, path: Path, started: float) -> float:
+        """When a record the studio made was first read here (the reading's start; 0.0 for any other record).
+        Only a record no reading found before: one that came the usual way is new by its own time."""
+        at = self._arrived.get(key)
+        if at is None and self._expected and key not in self._cache:
+            norm = os.path.normcase(str(path))
+            if self._expected.pop(norm, None) is not None:
+                at = self._arrived[key] = started
+        return at or 0.0
 
     def find_record(self, record: Path) -> Song | None:
         """The song of a release record file (``None``: not in the library)."""
