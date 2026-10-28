@@ -444,14 +444,16 @@ class GuestHub:
             tally = self.cheers.setdefault(song, {})
             if self.settings["reactions_per_song"] == "one":
                 given = self.votes.setdefault(song, {})
-                before = given.get(voter or guest)
+                # without the guest's cookie id, the address - hashed, as it is written to reactions.json
+                who = voter or maker_rules.guest_id(guest)
+                before = given.get(who)
                 if before == kind:
                     return 200, {"ok": True, "cheers": dict(tally), "mine": kind, "same": True}
                 if before:
                     tally[before] = tally.get(before, 0) - 1
                     if tally[before] <= 0:
                         del tally[before]
-                given[voter or guest] = kind
+                given[who] = kind
             tally[kind] = tally.get(kind, 0) + 1
             self.last_reaction += 1
             self.reactions.append({"n": self.last_reaction, "kind": kind, "id": song})

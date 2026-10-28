@@ -206,7 +206,7 @@ function timingSourceText(source: string, note?: string): string {
         <small v-else>{{ song.kind === 'cover' ? 'Cover song' : song.model ? 'Song' : 'Recording' }} · {{ song.created.slice(0, 10) }}</small>
         <h1>{{ song.title }}</h1>
         <p class="style" :class="{ open: styleOpen }" @click="styleOpen = !styleOpen">{{ song.style }}</p>
-        <p v-if="partyCheers" class="cheers" title="The guests' reactions while it played at a party - apart from your favourite heart">{{ partyCheers }} <small>from the guests</small></p>
+        <p v-if="partyCheers" class="cheers" title="The guests' reactions while it played at a party - apart from your favourite heart">{{ partyCheers }} <span class="from">from the guests</span></p>
         <p v-if="song.other" class="other-note">Not made with Plenio: it plays with what its file has - its tags, cover and lyrics (timed from an <code>.lrc</code> file beside it). No notation, measured lyrics, brief or <i>Open in ComfyUI</i>.</p>
         <div v-if="isPhone" class="actions">
           <button class="primary" @click="play"><Icon :name="isCurrent && playing ? 'pause' : 'play'" /> {{ isCurrent && playing ? 'Pause' : 'Play' }}</button>
@@ -531,10 +531,11 @@ h1 {
   font-size: 15px;
   letter-spacing: 0.02em;
 }
-.cheers small {
+.cheers .from {
   color: var(--muted);
   font-size: 12px;
-  margin-left: 4px;
+  margin-left: 6px;
+  white-space: nowrap;
 }
 .details {
   display: grid;

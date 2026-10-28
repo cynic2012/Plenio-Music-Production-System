@@ -75,6 +75,9 @@ The notation follows the music. The notes that sound light up, and a click on a 
 @ The details: every field of the brief
 The details list every field of the brief. One you left empty shows its default. Then the model, the writer, the loudness, and the seeds, to make the same take again.
 
+@ How it was made | optional
+How it was made: when. And for a song made since one point four, how long it took, on what, and with which lyrics fidelity.
+
 @ Every file to download
 And every file to download: the audio, the sheet music, the subtitles, the cover, and the record.
 
@@ -196,7 +199,7 @@ And if you allow it, guests move songs, take them out, and add their favourites.
 And they react to the song that plays...
 
 @ … it floats up the big screen | optional
-...it floats up the big screen, and Live Play counts it for the song.
+...it floats up the big screen, and every song keeps its reactions, apart from your hearts.
 
 @ The playlist follows
 The playlist follows, and tells you what the guests did.
@@ -238,7 +241,7 @@ Settings starts with the version of the player that's running.
 Its sections are chips: one click jumps right there.
 
 @ The studio: when ComfyUI does not run | optional
-The studio: when ComfyUI isn't running, the player starts it for you. Tutorial nine shows how.
+The studio: when ComfyUI isn't running, the player starts it for you, the way you last started it, with your models folder. Tutorial nine shows more.
 
 @ Accounts: who logged in | optional
 Accounts: who's logged in, and the users the admin has set up.

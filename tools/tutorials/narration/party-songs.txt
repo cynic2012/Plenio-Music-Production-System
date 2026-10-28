@@ -27,6 +27,9 @@ You decide how many songs each person may have in the making, and how long they 
 @ And whether the party sees who made a song
 And whether the party sees who made a song, while it plays.
 
+@ Only a guest’s song is a party song
+Only a guest's song is a party song. Yours, and the users', are saved like songs made in ComfyUI.
+
 @ Live Play runs the party
 Live Play runs the party. Every song made from now on joins it: next, at the end, or anywhere.
 
@@ -87,6 +90,9 @@ It joined Live Play, marked new, and it plays next.
 @ Guests in your network
 Guests in your network: everyone on the party's Wi-Fi scans the QR code.
 
+@ Reactions: as many per song | optional
+Reactions: as many per song as they like, or one per song and guest. A tap on another one changes it.
+
 @ On the phone: what plays
 On the phone: what plays, what comes next, and Make your own song.
 
@@ -103,13 +109,16 @@ Everybody's songs: the second take first, then the guest's song. You may move an
 Both are ready, and the guest's song plays next.
 
 @ While it plays, the party sees
-While it plays, the party sees whose song it is. Large as it begins, at every new section, and as it ends.
+While it plays, the party sees whose song it is, and from which party. Large as it begins, at every new section, and as it ends.
 
 @ And the guests react
 And the guests react: one tap on their phone...
 
 @ … and it floats up the big screen
 ...and it floats up the big screen. Live Play counts how the room liked each song.
+
+@ Every song keeps its reactions | optional
+Every song keeps its reactions. Its page shows them, apart from your favourite heart.
 
 @ Any finished song can be made again | optional
 Any finished song can be made again: a new take, a new song like it, or a cover of it.

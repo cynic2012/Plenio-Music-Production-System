@@ -99,6 +99,18 @@ def test_comfyui_starts_the_way_it_was_last_started(tmp_path: Path, monkeypatch:
     monkeypatch.setattr(studio_module, "installed_root", lambda: None)
     launcher.configure({"root": "", "args": ""})
     assert launcher.root() == root
+    # a start file edited by hand still keeps ComfyUI on this computer
+    file = state / studio_module.START_FILE
+    known = json.loads(file.read_text(encoding="utf-8"))
+    known[str((root / "main.py").resolve())]["args"] = [
+        "--listen",
+        "0.0.0.0",
+        "--enable-cors-header",
+        "*",
+        "--fast",
+    ]
+    file.write_text(json.dumps(known), encoding="utf-8")
+    assert launcher.command()[0][-1:] == ["--fast"] and "--listen" not in launcher.command()[0]
 
 
 def test_the_command_runs_the_folders_comfyui(tmp_path: Path) -> None:

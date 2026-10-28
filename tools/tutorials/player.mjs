@@ -250,6 +250,11 @@ export default async function player(s) {
   await s.wait(800)
   await s.hover(page.locator('.details .block').first())
   await talk(s, 'The details: every field of the brief - one you left empty shows its default - the model, the writer, the loudness, and the seeds to make the take again.')
+  const made = page.locator('.details .block', { has: page.locator('h3', { hasText: 'How it was made' }) }).first()
+  if (await made.count()) {
+    await s.spotlight(made, { ms: 3000, pad: 6 })
+    await talk(s, 'How it was made: when - and for a song made since 1.4, how long it took, on what, and with which lyrics fidelity.')
+  }
   await page.locator('.downloads').scrollIntoViewIfNeeded()
   await s.hover(page.locator('.downloads .file').first())
   await talk(s, 'Every file to download: the audio, the sheet music, the subtitles, the cover and the record.')
@@ -496,15 +501,25 @@ export default async function player(s) {
   if (await reactions.isVisible().catch(() => false)) {
     await s.hover(reactions)
     await talk(s, 'And they react to the song that plays …', 2400)
-    for (const emoji of ['🔥', '❤️', '🎉', '🔥', '👏', '❤️', '💃', '🔥', '😂', '🎉']) {
-      await s.click(phone.getByRole('button', { name: `Send ${emoji} to the big screen` }), { pause: 90 })
+    for (const emoji of ['🔥', '❤️', '🎉', '👏']) {
+      await s.click(phone.getByRole('button', { name: `Send ${emoji} to the big screen` }), { pause: 120 })
     }
     await s.switchTo(page)
+    // the room goes on tapping while this screen is in view: the same buttons of the guests' page, clicked in it
+    const tapping = (async () => {
+      for (const emoji of ['🔥', '❤️', '💃', '🔥', '😂', '🎉', '❤️', '🔥']) {
+        await phone
+          .evaluate((label) => document.querySelector(`button[aria-label="${label}"]`)?.click(), `Send ${emoji} to the big screen`)
+          .catch(() => {})
+        await new Promise((resolve) => setTimeout(resolve, 450))
+      }
+    })()
     await s.rest(400)
     await s.wait(900)
     const cheers = page.locator('.playing .cheers')
     if (await cheers.count()) await s.hover(cheers)
-    await talk(s, '… it floats up the big screen, and Live Play counts it for the song.', 4000)
+    await talk(s, '… it floats up the big screen, and every song keeps its reactions - apart from your hearts.', 4000)
+    await tapping
   } else {
     await s.switchTo(page)
   }
@@ -608,7 +623,7 @@ export default async function player(s) {
     await s.click(studioChip)
     await s.wait(900)
     await s.hover(page.locator('#studio .status'))
-    await talk(s, 'The studio: when ComfyUI does not run, the player starts it - tutorial nine shows how.')
+    await talk(s, 'The studio: when ComfyUI does not run, the player starts it - the way you last started it, with your models folder. Tutorial nine shows more.')
   }
   const accounts = page.locator('.settings section', { has: page.locator('h3', { hasText: 'Accounts' }) }).first()
   if (await accounts.count()) {

@@ -152,6 +152,12 @@ export default async function partySongs(s) {
   await talk(s, 'You decide how many songs each may have in the making, and how long they may be.', 1600)
   await s.openSelect(party.locator('label.credit select'), { choose: 'spotlight', browse: 2, read: 900 })
   await talk(s, 'And whether the party sees who made a song, while it plays.')
+  const kept = party.locator('p.hint').last()
+  if (await kept.count()) {
+    await kept.scrollIntoViewIfNeeded()
+    await s.spotlight(kept, { ms: 3200, pad: 4 })
+  }
+  await talk(s, 'Only a guest’s song is a party song: yours and the users’ are saved like songs made in ComfyUI.')
 
   // --- Live Play: the party's playlist, where new songs join ---
   s.chapter('Live Play')
@@ -230,6 +236,11 @@ export default async function partySongs(s) {
   await page.waitForSelector('.guests .url code', { timeout: 15000 })
   await s.wait(700)
   await talk(s, 'Guests in your network: everyone on the party’s Wi-Fi scans the QR code.')
+  const perSong = access.locator('.choice', { hasText: 'Reactions' }).locator('select')
+  if (await perSong.count()) {
+    await s.openSelect(perSong, { choose: 'any', browse: 2, read: 1200 })
+    await talk(s, 'Reactions: as many per song as they like, or one per song and guest - a tap on another changes it.')
+  }
   const guestUrl = (await page.textContent('.guests .url code')).trim()
   const phone = await s.context.newPage()
   await phone.goto(guestUrl)
@@ -284,7 +295,7 @@ export default async function partySongs(s) {
   await s.keys('4')
   await s.rest(600)
   await s.wait(1500)
-  await talk(s, 'While it plays, the party sees whose song it is - large as it begins, at every new section, and as it ends.', 7000)
+  await talk(s, 'While it plays, the party sees whose song it is and from which party - large as it begins, at every new section, and as it ends.', 7000)
 
   // --- the guests react ---
   s.chapter('Reactions')
@@ -313,6 +324,17 @@ export default async function partySongs(s) {
   await phone.close()
   await s.keys('Escape')
   await s.wait(800)
+  // the song keeps them: its page shows the guests' reactions, apart from the favourite heart
+  const guestSongId = String(guestJob?.result?.song ?? '')
+  if (guestSongId) {
+    await page.evaluate((id) => (location.hash = `#/song/${id}`), guestSongId)
+    await s.wait(1600)
+    const cheers = page.locator('.song-page .cheers').first()
+    if (await cheers.count()) {
+      await s.spotlight(cheers, { ms: 3000, pad: 6 })
+      await talk(s, 'Every song keeps its reactions: its page shows them, apart from your favourite heart.')
+    }
+  }
 
   // --- again, from a song ---
   s.chapter('Again')

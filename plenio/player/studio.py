@@ -282,7 +282,8 @@ class StudioLauncher:
         last = remembered_start(self.directory, root)
         if last is None:
             return [], "", None
-        return list(last[1]["args"]), "last start", last[1]
+        # filtered again: the file is the player's, but a hand-edited --listen must not open ComfyUI to the network
+        return repeatable(list(last[1]["args"])), "last start", last[1]
 
     def url(self) -> str:
         return f"http://127.0.0.1:{int(self.settings.get('port') or 8188)}"

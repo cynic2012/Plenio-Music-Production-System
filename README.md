@@ -2,7 +2,7 @@
   <img src="assets/branding/banner.png" alt="Plenio Music Production System for ComfyUI - YuE2, YuE2 Cover and MiniMax Music 3" width="100%" />
 </p>
 
-# Plenio Music Production System 1.3 for ComfyUI
+# Plenio Music Production System 1.4 for ComfyUI
 
 <p align="center">
   <a href="https://youtu.be/XpNpks9ZCgE"><img src="assets/branding/0.5.0/spot.jpg" alt="Plenio - Your idea. Your song. Your control. Watch the spot on YouTube" width="80%" /></a>
@@ -14,7 +14,22 @@
 
 Everything runs on your own machine, inside ComfyUI's own nodes: no cloud service, no API key, no extra Python packages. Before a single note is rendered, the **Song Sheet** shows you the title, style, lyrics and score that the model will receive. You can edit all of them, and your edits are never silently overwritten.
 
-**Free, open source - now 1.3.** Plenio costs nothing: no subscription, no credits, no account, Apache 2.0 code. After fourteen releases in three weeks, 1.0.0 was the milestone where the whole way holds together - from the first idea to the song people listen to - and the version to build on: saved workflows and release records keep working in every 1.x version. What changed in each version is in the [changelog](CHANGELOG.md).
+**Free, open source - now 1.4.** Plenio costs nothing: no subscription, no credits, no account, Apache 2.0 code. After fourteen releases in three weeks, 1.0.0 was the milestone where the whole way holds together - from the first idea to the song people listen to - and the version to build on: saved workflows and release records keep working in every 1.x version. What changed in each version is in the [changelog](CHANGELOG.md).
+
+## New in 1.4: ComfyUI started as you start it, and how each song was made
+
+- **The player starts ComfyUI the way you do**: every time ComfyUI loads Plenio, Plenio keeps its Python and its arguments - your `--models-directory`, your options -, and *Start the studio* uses them. A model file ComfyUI does not find is named, with what to do, instead of *Value not in list*. [Details](docs/user/concepts/player.md#the-studio-comfyui-started-by-the-player)
+- **How a song was made, on its page**: the date and time, how long making it took, the graphics card or the processor alone, the RAM, and the lyrics fidelity. [Details](docs/user/concepts/player.md#a-songs-page)
+- **The party's reactions kept for every song**, apart from your hearts - as many per song as the guests like, or one each. Only a guest's song is a party song, and the big screen says which party it is from. [Details](docs/user/concepts/player.md#guests-in-your-network)
+- **Videos that finish**: each preview and each video gives its graphics memory back at once, and a video that fails is tried once more by itself.
+- **Six example songs as videos** made by the player: [*Listen first*](#listen-first).
+
+<p align="center">
+  <img src="assets/branding/1.4.0/player-how-made.jpg" alt="A song's page in the Plenio Player: Growing Through Water with the guests' reactions under its title - fire, hearts, party poppers and clapping hands, from the guests - and the Details with How it was made: the date and time, Making took 4 min 19 s, the graphics card NVIDIA GeForce RTX 5060 Ti with 15.9 GB and the processor" width="49%" />
+  <img src="assets/branding/1.4.0/player-studio-start.jpg" alt="Settings, The studio: ComfyUI is not running, Start the studio, and How it starts ComfyUI opened - the arguments empty, so the player starts ComfyUI the way it was last started, with --models-directory and the other options shown" width="49%" />
+</p>
+
+*How a song was made, with the guests' reactions · the studio started the way ComfyUI was last started.*
 
 ## New in 1.3.1: the player on every screen, and the studio started from it
 
@@ -226,7 +241,7 @@ Eleven narrated video tutorials walk through it, all made with the real models.
 
 ## Listen first
 
-**▶ [Songs made with Plenio, as videos](https://www.youtube.com/playlist?list=PLBZzzh1IMZzk)** - six songs, each made in ComfyUI with Plenio and YuE2 and turned into a music video by the Plenio Player (its visuals, the lyrics as they are sung):
+**▶ [Songs made with Plenio, as videos](https://www.youtube.com/playlist?list=PLBZzzh1IMZzk)** - six songs, each made in ComfyUI with Plenio and turned into a music video by the Plenio Player (its visuals, the lyrics as they are sung):
 
 <table>
 <tr><td align="center" width="33%"><a href="https://youtu.be/hPq9tUjTzr0"><img src="https://i.ytimg.com/vi/hPq9tUjTzr0/mqdefault.jpg" alt="Restrained Driving Atmosphere - Progressive Trance, a song made with Plenio, as a Plenio Player video" width="100%" /></a><br /><b>Restrained Driving Atmosphere</b><br /><sub>Progressive Trance</sub></td><td align="center" width="33%"><a href="https://youtu.be/hAaLnEOe6-g"><img src="https://i.ytimg.com/vi/hAaLnEOe6-g/mqdefault.jpg" alt="Hypnotic Rolling Progression - Progressive Trance, a song made with Plenio, as a Plenio Player video" width="100%" /></a><br /><b>Hypnotic Rolling Progression</b><br /><sub>Progressive Trance</sub></td><td align="center" width="33%"><a href="https://youtu.be/VcDpDqVAz3g"><img src="https://i.ytimg.com/vi/VcDpDqVAz3g/mqdefault.jpg" alt="Window Open Low - Smooth Jazz, a song made with Plenio, as a Plenio Player video" width="100%" /></a><br /><b>Window Open Low</b><br /><sub>Smooth Jazz</sub></td></tr>

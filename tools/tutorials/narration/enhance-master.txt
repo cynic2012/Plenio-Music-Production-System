@@ -129,5 +129,38 @@ Minus sixteen, measured. If a target needs too much limiting, the node stops sho
 @ The new master | +4
 Here's the new master, with the original right next to it for comparison.
 
+@ card The lyrics, corrected
+Part three: the lyrics of a sung recording, corrected before the release.
+
+@ The lyrics: Export writes them
+Export writes the lyrics as subtitles, into the lyrics tag and into the record. As the speech recognition hears them, misheard words included.
+
+@ Select the two nodes of Lyrics
+Select the two nodes of the Lyrics block, a click and a shift-click, and press control B. Now they take part.
+
+@ The run stops at the Song Sheet
+The run stops at the Song Sheet, and waits for your approval. Nothing is exported yet.
+
+@ Open it: “Edit lyrics & text”
+Open it.
+
+@ Lyrics: the words as the ASR heard them
+The lyrics tab shows the words as they were heard, section by section.
+
+@ It heard | optional
+Here it heard a few words differently than the song sings them. Type them as they are sung.
+
+@ Every line was heard right | optional
+This time every line was heard right. A word you change here is what Export writes.
+
+@ Approve: these words go into the release
+Approve. These words go into the release.
+
+@ Run again: Export times your words
+Run again. Export times your words to the singing.
+
+@ Your words: in the subtitles
+Your words are in the subtitles, in the lyrics tag and in the record. The sung subtitles keep what was heard.
+
 @ card Next: 5 · YuE2 · DAW
 Next up: template five, YuE2 DAW, where you write the music yourself.

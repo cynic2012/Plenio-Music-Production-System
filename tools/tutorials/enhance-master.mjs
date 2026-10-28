@@ -2,11 +2,15 @@
 // row (the HQ Mastering card on here, the Stems block under Load Audio), part 1 masters an unmastered take
 // with the template's defaults (Audio HQ with UniverSR, a warm tone match, -14 LUFS) and reads HQ 2's report,
 // the curve, the measured loudness and the files; part 2 edits the match's bands by hand, picks another
-// loudness target and runs again. The source is $PLENIO_TUTORIAL_AUDIO (an unmastered take shows the most),
-// else the repository's sample song.
+// loudness target and runs again; part 3 switches on the Lyrics block: the words as heard stop at a Song Sheet, a
+// line heard otherwise than the song sings it is corrected (found against $PLENIO_TUTORIAL_LYRICS, the take's own
+// lyrics), approved and released. The source is $PLENIO_TUTORIAL_AUDIO (an unmastered take shows the most), else
+// the repository's sample song.
 
+import fs from 'node:fs'
 import path from 'node:path'
 import { afterRun, openTemplate, sectionTour, switchCards } from './lib/scenes.mjs'
+import { DIALOG, approve, openSheet, tab } from './lib/sheet.mjs'
 import { FOOT } from './lib/studio.mjs'
 
 export const meta = {
@@ -29,6 +33,54 @@ const STAGES = {
 
 // the screen box of a node's summary (the report under it after a run)
 const summaryBox = (s, node) => s.widgetBox(node, 'plenio_summary')
+
+const HEAR = 'Transcribe Lyrics (optional)', LYRICS = 'Song Sheet · Lyrics (optional)', LYRICS_GROUP = 'Lyrics (optional)'
+
+/** In the page, on the Song Sheet's lyrics: the first place where the words as heard part from the song's own lyrics
+ * by one or two words (a word heard otherwise, left out or added) - not where only the lines break otherwise. Its
+ * range in the text, what to type there, and a few words around it as heard and as sung; ``null``: none. */
+function misheard(ta, written) {
+  const plain = (text) => text.replace(/\[[^\]]*\]/g, (tag) => ' '.repeat(tag.length))
+  const words = (text) => {
+    const out = []
+    const re = /[A-Za-z0-9’']+/g
+    let m
+    while ((m = re.exec(plain(text)))) out.push({ w: m[0].toLowerCase().replace(/’/g, "'"), i: m.index, j: m.index + m[0].length })
+    return out
+  }
+  const heard = words(ta.value)
+  const sung = words(written)
+  const n = heard.length, k = sung.length
+  const lcs = Array.from({ length: n + 1 }, () => new Int32Array(k + 1))
+  for (let a = n - 1; a >= 0; a--)
+    for (let b = k - 1; b >= 0; b--) lcs[a][b] = heard[a].w === sung[b].w ? lcs[a + 1][b + 1] + 1 : Math.max(lcs[a + 1][b], lcs[a][b + 1])
+  let a = 0, b = 0
+  while (a < n && b < k) {
+    if (heard[a].w === sung[b].w) { a++; b++; continue }
+    // a block that differs: the words up to where they meet again
+    let a2 = a, b2 = b
+    while (a2 < n && b2 < k && heard[a2].w !== sung[b2].w) {
+      if (lcs[a2 + 1][b2] >= lcs[a2][b2 + 1]) a2++
+      else b2++
+    }
+    const gotHeard = a2 - a, gotSung = b2 - b
+    const before = a > 0 && b > 0 && a2 < n && b2 < k
+    if (before && gotSung >= 1 && gotSung <= 2 && gotHeard <= 2) {
+      const span = (list, from, to, text) => text.slice(list[from].i, list[to].j)
+      const next = heard[a2]
+      const start = gotHeard ? heard[a].i : next.i
+      const end = gotHeard ? heard[a2 - 1].j : next.j
+      const replace = gotHeard ? span(sung, b, b2 - 1, written) : `${span(sung, b, b2 - 1, written)} ${ta.value.slice(next.i, next.j)}`
+      // what it heard and what is sung: the words that differ - a left-out word with the word after it
+      const ctxHeard = gotHeard ? span(heard, a, a2 - 1, ta.value) : span(heard, a2, Math.min(n - 1, a2 + 1), ta.value)
+      const ctxSung = gotHeard ? span(sung, b, b2 - 1, written) : span(sung, b, Math.min(k - 1, b2 + 1), written)
+      return { start, end, replace, heard: ctxHeard.replace(/\s+/g, ' '), sung: ctxSung.replace(/\s+/g, ' ') }
+    }
+    a = a2
+    b = b2
+  }
+  return null
+}
 
 export default async function enhance(s, { project }) {
   const page = s.page
@@ -183,6 +235,73 @@ export default async function enhance(s, { project }) {
   if (report2) await s.spotlight(report2, { ms: 3000, pad: 4 })
   await s.wait(6400)
   await afterRun(s, 'The new master - and the original stays next to it for comparison.', { group: '4 · FINISH', preview: PREVIEW })
+
+  // --- part 3: the lyrics, corrected -------------------------------------------------------------
+  s.card('chapter', {
+    kicker: 'Part', part: '3', title: 'The lyrics, corrected',
+    subtitle: 'What the ASR misheard - fixed before the release',
+    steps: ['Switch on', 'Run', 'Correct', 'Approve', 'Run'],
+  }, 4)
+  s.chapter('Part 3 · The lyrics')
+  await s.flyNodes([HEAR, LYRICS], 1100, 0.85)
+  await s.say('The lyrics: Export writes them as subtitles, into the lyrics tag and the record - as the ASR hears them, misheard words included.', 6400)
+  // the two nodes: a click on the first's title, a Shift-click on the second's, Ctrl+B
+  const titleOf = (key) => page.evaluate((k) => {
+    const b = window.__tut.nodeBox(k)
+    const z = window.app.canvas.ds.scale
+    return { x: b.x + 14 * z, y: b.y + 6 * z, width: Math.min(b.width * 0.5, 160 * z), height: 16 * z }
+  }, key)
+  const on = 'Select the two nodes of Lyrics (optional) - a click, a Shift-click - and press Ctrl+B: they take part now.'
+  s.caption(on)
+  await s.click(await titleOf(HEAR), { pause: 300 })
+  await page.keyboard.down('Shift')
+  await s.click(await titleOf(LYRICS), { pause: 300 })
+  await page.keyboard.up('Shift')
+  await s.keys('Control+b', { labels: ['Ctrl', 'B'] })
+  await s.read(on, 5200)
+  await page.mouse.click(40, 500)  // nothing selected any more
+  s.caption('Run.')
+  await s.resetRunState()
+  await s.run()
+  await s.follow({ stages: { [HEAR]: 'Transcribe Lyrics hears the words of the song.' }, groups: { [HEAR]: LYRICS_GROUP, [LYRICS]: LYRICS_GROUP } })
+  const stop = 'The run stops at the Song Sheet: ⏸ waiting for your approval - nothing is exported yet.'
+  s.caption(stop)
+  await s.flyNodes([LYRICS], 1000, 0.9)
+  await s.read(stop, 4800)
+  await openSheet(s, LYRICS, 'Open it: “Edit lyrics & text”.')
+  await tab(s, 'Lyrics', 'Lyrics: the words as the ASR heard them, section by section.', { min: 5200 })
+  // a few words heard otherwise than the song sings them (against its own lyrics): typed as they are sung
+  const written = process.env.PLENIO_TUTORIAL_LYRICS ? fs.readFileSync(process.env.PLENIO_TUTORIAL_LYRICS, 'utf8') : ''
+  const box = page.locator(DIALOG).locator('textarea').first()
+  const fix = written ? await box.evaluate(misheard, written) : null
+  if (fix) {
+    const said = `It heard “${fix.heard}” - the song sings “${fix.sung}”. Type it as it is sung.`
+    s.caption(said)
+    await box.evaluate((ta, at) => {
+      ta.focus()
+      ta.setSelectionRange(at.start, at.end)
+      ta.scrollTop = Math.max(0, ta.scrollHeight * (at.start / Math.max(1, ta.value.length)) - 60)
+    }, fix)
+    await s.spotlight(box, { ms: 2400, pad: 2 })
+    await s.wait(900)
+    await s.type(fix.replace, { delay: 85 })
+    await s.read(said, 6400)
+  } else {
+    const right = 'Every line was heard right this time - a word you change here is what Export writes.'
+    s.caption(right)
+    await s.read(right, 5200)
+  }
+  await approve(s, 'Approve: these words go into the release.')
+  s.caption('Run again: Export times your words to the singing.')
+  await s.resetRunState()
+  await s.run()
+  await s.follow({ stages: { [EXPORT]: STAGES[EXPORT] }, groups: GROUPS })
+  const done = 'Your words: in the subtitles, the lyrics tag and the record. The sung subtitles keep what was heard.'
+  s.caption(done)
+  await s.flyNodes([EXPORT], 1000, 0.9)
+  const written2 = await summaryBox(s, EXPORT).catch(() => null)
+  if (written2) await s.spotlight(written2, { ms: 3000, pad: 4 })
+  await s.read(done, 6200)
 
   s.card('end', {
     title: 'Next: 5 · YuE2 · DAW',
