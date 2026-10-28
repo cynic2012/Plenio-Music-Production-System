@@ -24,6 +24,7 @@ All notable changes of the current version and the one before. Versions follow s
 
 - **A song ordered from the player stopped with "Load checkpoint: Value not in list"**, and *Every setting of the studio* listed only LM Studio's models, when the player had started ComfyUI without the models folder it is usually started with. Besides the start above, a missing model file is now named, with what to do (*ComfyUI does not find the model file …*), and a model field set to a file ComfyUI does not list says so.
 - **Videos stopped now and then with "out of memory"**: every preview - one at each change in the video dialog - and every video kept the graphics memory of its Plenio Drop renderer until the browser collected it. They give it back at once now; a lost graphics context is made anew, the video's pieces on their way to the player are bounded, and a video that fails is tried once more by itself.
+- **A console window popped up on Windows** - in Windows Terminal an error tab (*0x800700e8*) - when the player started ComfyUI, or ComfyUI started the player, with a venv's Python: its `python.exe` starts the real interpreter, which got a console of its own. Both start without a window now, and so do the programs they start in turn.
 - **Links to a section of the settings** (*Switch it on in Settings*, *How to start it*) opened the settings at the top when they were already open, or before the section had loaded.
 
 ## 1.3.2 - 2026-10-27

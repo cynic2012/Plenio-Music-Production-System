@@ -26,6 +26,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from .launch import windowless
+
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 FILE = "studio.json"
 LOG = "comfyui.log"
@@ -336,11 +338,7 @@ class StudioLauncher:
             self.directory.mkdir(parents=True, exist_ok=True)
             flags: dict[str, Any] = {}
             if sys.platform == "win32":
-                flags["creationflags"] = (
-                    subprocess.DETACHED_PROCESS
-                    | subprocess.CREATE_NEW_PROCESS_GROUP
-                    | getattr(subprocess, "CREATE_NO_WINDOW", 0)
-                )
+                flags["creationflags"] = windowless()
             else:
                 flags["start_new_session"] = True
             log = (self.directory / LOG).open("ab")

@@ -29,6 +29,16 @@ _started: dict[tuple[Path, int], tuple[subprocess.Popen[bytes], float]] = {}
 it."""
 
 
+def windowless() -> int:
+    """Windows' flags for a Python started in the background: a console of its own without a window, in a process
+    group of its own. Not ``DETACHED_PROCESS``: a venv's ``python.exe`` is a launcher that starts the real
+    interpreter as its child, which - finding no console to inherit - got a new one, a window that popped up (with
+    Windows Terminal as the default terminal an error tab, 0x800700e8, when the process ended)."""
+    if sys.platform != "win32":
+        return 0
+    return subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
+
+
 def player_at(port: int, timeout: float = 2.0) -> dict[str, Any] | None:
     """The Plenio Player answering on ``127.0.0.1:port`` (its ``/api/info``), else ``None``."""
     try:
@@ -72,7 +82,7 @@ def start_player(folder: Path, comfyui: str, port: int, state: Path) -> subproce
     log = (state / "player.log").open("ab")
     flags: dict[str, Any] = {}
     if sys.platform == "win32":
-        flags["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        flags["creationflags"] = windowless()
     else:
         flags["start_new_session"] = True
     # the launcher script; a copy of the package without it (some installs copy only the folders) runs the

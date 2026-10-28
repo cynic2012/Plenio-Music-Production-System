@@ -113,6 +113,21 @@ def test_comfyui_starts_the_way_it_was_last_started(tmp_path: Path, monkeypatch:
     assert launcher.command()[0][-1:] == ["--fast"] and "--listen" not in launcher.command()[0]
 
 
+def test_comfyui_and_the_player_start_without_a_window() -> None:
+    """Issue 2026-10-28: with DETACHED_PROCESS a venv's python.exe (a launcher) started the real interpreter in a
+    console of its own - a window popped up, in Windows Terminal an error tab when it ended (0x800700e8)."""
+    from plenio.player.launch import windowless
+
+    flags = windowless()
+    if sys.platform != "win32":
+        assert flags == 0
+        return
+    import subprocess
+
+    assert flags & subprocess.CREATE_NO_WINDOW and flags & subprocess.CREATE_NEW_PROCESS_GROUP
+    assert not flags & subprocess.DETACHED_PROCESS
+
+
 def test_the_command_runs_the_folders_comfyui(tmp_path: Path) -> None:
     root = comfyui(tmp_path)
     launcher = StudioLauncher(tmp_path / "state")
