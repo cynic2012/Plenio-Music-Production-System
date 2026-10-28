@@ -110,9 +110,17 @@ onBeforeUnmount(() => window.clearInterval(timer))
         <input v-model="root" :placeholder="studio.installed_root || 'the folder with ComfyUI’s main.py'" />
       </label>
       <label class="field">
-        More arguments
-        <input v-model="args" placeholder="e.g. --models-directory D:/AI/models --cuda-device 1" />
+        Arguments for ComfyUI
+        <input v-model="args" :placeholder="studio.args_from === 'last start' ? 'empty: as ComfyUI was last started' : 'e.g. --models-directory D:/AI/models'" />
       </label>
+      <p v-if="!args.trim() && studio.args_from === 'last start'" class="hint ok-hint">
+        <Icon name="check" :size="14" /> Empty, so the player starts ComfyUI the way it was last started<span v-if="studio.last_start_at"> ({{ new Date(studio.last_start_at * 1000).toLocaleString() }})</span>:
+        <code>{{ studio.args_used || 'no arguments' }}</code> - with your models folder and options.
+      </p>
+      <p v-else-if="!args.trim()" class="hint">
+        Empty, and ComfyUI has not been started with Plenio here yet: start it once the way you usually do (its models folder included), and the player
+        starts it the same way from then on. Or enter the arguments here.
+      </p>
       <label class="field short">
         Port
         <input v-model.number="port" type="number" min="1024" max="65535" />
@@ -120,9 +128,9 @@ onBeforeUnmount(() => window.clearInterval(timer))
       <div class="row-buttons"><button class="ghost small" :disabled="busy" @click="save"><Icon name="check" :size="14" /> Keep these settings</button></div>
       <p v-if="studio.command" class="hint"><code>{{ studio.command }}</code></p>
       <p class="hint">
-        Empty folder: the ComfyUI Plenio is installed in. The Python is that ComfyUI's own (the portable build's <code>python_embeded</code>, a <code>.venv</code>) or the
-        player's. ComfyUI stays on this computer: <code>--listen</code> is not passed - the network comes in by <i>In your network</i>. ComfyUI Desktop starts as an app: start it
-        there. Its messages go to <code>comfyui.log</code> in the player's state folder.
+        Empty folder: the ComfyUI Plenio is installed in, else the one last started with Plenio. The Python is the one it last ran on, or that ComfyUI's own
+        (the portable build's <code>python_embeded</code>, a <code>.venv</code>). ComfyUI stays on this computer: <code>--listen</code> is not passed - the network comes in
+        by <i>In your network</i>. Its messages go to <code>comfyui.log</code> in the player's state folder.
       </p>
       <button v-if="studio.log?.length" class="link" @click="showLog = !showLog">{{ showLog ? 'Hide' : 'Show' }} the end of its log</button>
       <pre v-if="showLog && studio.log?.length" class="log">{{ studio.log.join('\n') }}</pre>
@@ -213,6 +221,9 @@ onBeforeUnmount(() => window.clearInterval(timer))
 }
 .hint.warn {
   color: #ffcf8a;
+}
+.hint.ok-hint code {
+  word-break: break-all;
 }
 .error {
   color: #ff9a9a;

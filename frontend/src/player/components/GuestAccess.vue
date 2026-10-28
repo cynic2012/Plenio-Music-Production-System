@@ -73,7 +73,11 @@ onBeforeUnmount(() => window.clearInterval(timer))
         <div class="choice">
           <span>Reactions</span>
           <label><input type="checkbox" :checked="status.reactions" @change="change({ reactions: !status.reactions })" /> guests may send 🔥 ❤️ 🎉 👏 💃 😂</label>
-          <small>they float up the edges of this screen</small>
+          <select v-if="status.reactions" :value="status.reactions_per_song ?? 'any'" @change="change({ reactions_per_song: ($event.target as HTMLSelectElement).value as 'any' | 'one' })">
+            <option value="any">as many per song as they like</option>
+            <option value="one">one per song and guest - a tap on another changes it</option>
+          </select>
+          <small>they float up the edges of this screen and are counted for each song (the song's page shows them - apart from your hearts)</small>
         </div>
         <div class="choice">
           <span>On the screen</span>

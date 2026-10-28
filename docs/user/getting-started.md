@@ -1,6 +1,6 @@
 # Getting started
 
-▶ **Videos:** [Your idea. Your song. Your control.](https://youtu.be/XpNpks9ZCgE) (the spot, 54 seconds), [Plenio in 75 seconds](https://youtu.be/q_dMH834E1o) - and one tutorial for every template, starting with *Tutorial 0 · System Check*, plus two on the experimental creative modes (*Tutorials 6 and 7*), in the [tutorial playlist](https://www.youtube.com/playlist?list=PLAFqTtP59fgE).
+▶ **Videos:** [Your idea. Your song. Your control.](https://youtu.be/XpNpks9ZCgE) (the spot, 54 seconds), [Plenio in 75 seconds](https://youtu.be/q_dMH834E1o) - and one tutorial for every template, starting with *Tutorial 0 · System Check*, plus two on the experimental creative modes (*Tutorials 6 and 7*) and three on the Plenio Player - listening, party songs, the Song API (*Tutorials 8 to 10*), in the [tutorial playlist](https://www.youtube.com/playlist?list=PLAFqTtP59fgE). **Songs made with Plenio**, as videos made by the Plenio Player: [the example playlist](https://www.youtube.com/playlist?list=PLBZzzh1IMZzk).
 
 ## Requirements
 

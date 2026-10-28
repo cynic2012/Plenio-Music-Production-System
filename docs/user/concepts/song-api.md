@@ -62,7 +62,7 @@ node it came from.
 {
   "template": "yue2-song",
   "fields": {"template": "pop/art-pop-vocal", "genre": "art pop", "vocals": "sung", "theme": "dreams"},
-  "release": {"folder": "plenio/Party-Songs-2026-10-25", "album": "Party-Song 2026-10-25", "artist": "Anna"},
+  "release": {"folder": "plenio/My-Songs", "album": "Dreams", "artist": "Anna"},
   "seeds": {"take": 1234},
   "client": {"name": "My script"},
   "strict": true

@@ -41,6 +41,11 @@ function number(group: StudioGroup, field: ApiField, text: string): void {
   if (text.trim() === '' || Number.isNaN(value)) return
   set(group, field, field.type === 'integer' ? Math.round(value) : value)
 }
+/** A model file the field is set to that ComfyUI does not list - mostly a ComfyUI started without its models folder. */
+function missingFile(field: ApiField, value: unknown): boolean {
+  const text = String(value ?? '')
+  return field.type === 'choice' && /\.(safetensors|gguf|ckpt|pt|pth|bin|onnx)$/i.test(text) && !(field.choices ?? []).includes(text)
+}
 /** The start of the field's tooltip: whole sentences (an ellipsis or "e.g." ends none), some fifty characters. */
 function hint(field: ApiField): string {
   if (PLAIN[field.id]) return PLAIN[field.id].hint
@@ -85,7 +90,10 @@ function hint(field: ApiField): string {
               <input v-else-if="field.type === 'integer' || field.type === 'number'" type="number" :step="step(field)" :value="Number(studioValue(field, values[group.part]) ?? 0)" @change="number(group, field, ($event.target as HTMLInputElement).value)" />
               <textarea v-else-if="field.type === 'text'" rows="3" :value="String(studioValue(field, values[group.part]) ?? '')" @input="set(group, field, ($event.target as HTMLTextAreaElement).value)" />
               <input v-else type="text" :value="String(studioValue(field, values[group.part]) ?? '')" :placeholder="field.id === 'folder' ? 'plenio/My-Songs' : ''" @input="set(group, field, ($event.target as HTMLInputElement).value)" />
-              <small v-if="field.id === 'folder'">A folder in ComfyUI’s output folder - it is made when it is not there.</small>
+              <small v-if="missingFile(field, studioValue(field, values[group.part]))" class="missing">
+                <Icon name="info" :size="12" /> ComfyUI does not find this model file. Was it started without your models folder? Settings › The studio shows how it starts.
+              </small>
+              <small v-else-if="field.id === 'folder'">A folder in ComfyUI’s output folder - it is made when it is not there.</small>
               <small v-else-if="hint(field)">{{ hint(field) }}</small>
             </label>
           </template>
@@ -183,6 +191,9 @@ h4 {
 .name {
   font: 600 12.5px var(--font);
   color: rgba(255, 255, 255, 0.88);
+}
+.field small.missing {
+  color: #ffcf8a;
 }
 .field small {
   color: var(--muted);

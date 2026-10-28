@@ -36,7 +36,7 @@ async function change(key: string, value: unknown): Promise<void> {
     <h3><Icon name="wand" /> Party songs</h3>
     <p class="lead">
       Guests and users make songs of their own from the player - a style, a few words, the Generate Song button - and the studio (YuE2 in ComfyUI on this computer) makes them one after the other.
-      When a song is ready it joins Live Play as every new song does.
+      When a song is ready it joins your songs, and Live Play while it runs. Only a song ordered on the party's page (the guests' phones) is a <b>party song</b>.
     </p>
     <label class="check big"><input type="checkbox" :checked="settings.on" :disabled="saving" @change="change('on', ($event.target as HTMLInputElement).checked)" /> Let people make songs</label>
     <div class="who" :class="{ off: !settings.on }">
@@ -66,8 +66,9 @@ async function change(key: string, value: unknown): Promise<void> {
       {{ status.studio.reachable ? 'The studio answers: ComfyUI with Plenio’s Song API is running.' : `The studio does not answer - songs wait until ComfyUI runs.${status.studio.error ? ` (${status.studio.error})` : ''}` }}
     </p>
     <p class="hint">
-      Every party song: YuE2, <b>HQ mastering off</b> (twice as fast), <b>cover art on</b>, saved in <code>plenio/Party-Songs-&lt;date&gt;</code> of ComfyUI’s output folder, album <i>Party-Song &lt;date&gt;</i>,
-      artist the user’s name or <i>Guest</i>. You as the admin may make longer songs and as many as you like. The line, everybody’s songs: <a @click="go('/make')">Make a song</a>.
+      Every song from the player: YuE2, <b>HQ mastering off</b> (twice as fast), <b>cover art on</b>. A <b>party song</b> (a guest's) is saved in <code>plenio/Party-Songs-&lt;date&gt;</code> of ComfyUI’s output folder,
+      album <i>Party-Song &lt;date&gt;</i> - the big screen names who made it and on which day. Yours and the users' are saved like a song made in ComfyUI (the template's folder and tags).
+      You as the admin may make longer songs and as many as you like. The line, everybody’s songs: <a @click="go('/make')">Make a song</a>.
     </p>
   </section>
 </template>

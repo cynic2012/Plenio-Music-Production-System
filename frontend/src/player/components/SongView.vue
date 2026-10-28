@@ -30,7 +30,8 @@ import {
   videoFor,
 } from '../store'
 import { linesFor, sungOf, versionFor } from '../lyricsVersion'
-import { songFacts } from '../songFacts'
+import { madeFacts, songFacts } from '../songFacts'
+import { cheerLine, cheers } from '../reactions'
 import { formatTime, sectionName } from '../timing'
 import { similarSongs, takesOf } from '../similar'
 import { makeShown } from '../make/state'
@@ -108,6 +109,8 @@ const tabs = computed(() =>
 )
 
 const facts = computed(() => (song.value ? songFacts(song.value) : []))
+const made = computed(() => (song.value && !song.value.other ? madeFacts(song.value) : []))
+const partyCheers = computed(() => (song.value ? cheerLine(cheers[song.value.id]) : ''))
 const loudness = computed(() => {
   const l = song.value?.loudness
   if (!l) return []
@@ -203,6 +206,7 @@ function timingSourceText(source: string, note?: string): string {
         <small v-else>{{ song.kind === 'cover' ? 'Cover song' : song.model ? 'Song' : 'Recording' }} · {{ song.created.slice(0, 10) }}</small>
         <h1>{{ song.title }}</h1>
         <p class="style" :class="{ open: styleOpen }" @click="styleOpen = !styleOpen">{{ song.style }}</p>
+        <p v-if="partyCheers" class="cheers" title="The guests' reactions while it played at a party - apart from your favourite heart">{{ partyCheers }} <small>from the guests</small></p>
         <p v-if="song.other" class="other-note">Not made with Plenio: it plays with what its file has - its tags, cover and lyrics (timed from an <code>.lrc</code> file beside it). No notation, measured lyrics, brief or <i>Open in ComfyUI</i>.</p>
         <div v-if="isPhone" class="actions">
           <button class="primary" @click="play"><Icon :name="isCurrent && playing ? 'pause' : 'play'" /> {{ isCurrent && playing ? 'Pause' : 'Play' }}</button>
@@ -276,6 +280,10 @@ function timingSourceText(source: string, note?: string): string {
       <div class="block">
         <h3>The song</h3>
         <dl><template v-for="f in facts" :key="f.label"><dt>{{ f.label }}</dt><dd :class="{ fallback: f.note?.startsWith('default') }">{{ f.value }}<small v-if="f.note" class="note"> ({{ f.note }})</small></dd></template></dl>
+      </div>
+      <div v-if="made.length" class="block">
+        <h3>How it was made</h3>
+        <dl><template v-for="f in made" :key="f.label"><dt>{{ f.label }}</dt><dd>{{ f.value }}<small v-if="f.note" class="note"> ({{ f.note }})</small></dd></template></dl>
       </div>
       <div class="block">
         <h3>The sound</h3>
@@ -517,6 +525,16 @@ h1 {
 }
 .sheet a {
   display: inline-flex;
+}
+.cheers {
+  margin: 2px 0 0;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+.cheers small {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 4px;
 }
 .details {
   display: grid;

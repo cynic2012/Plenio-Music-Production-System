@@ -246,9 +246,8 @@ def test_the_worker_sends_one_song_at_a_time_with_the_party_settings(party: Any)
     songs.tick()
     assert len(studio.sent) == 2
     second = studio.sent[1]
-    assert (
-        second["release"]["artist"] == "Anna" and "voice" not in second["fields"]
-    )  # an instrumental has no voice
+    # a user's song is not a party song (owner's request 2026-10-28): the template's folder and tags, as in ComfyUI
+    assert second["release"] == {} and "voice" not in second["fields"]  # an instrumental has no voice
 
 
 def test_a_finished_song_comes_into_the_library_also_from_outside_its_folders(
@@ -586,14 +585,14 @@ def test_a_new_take_keeps_the_songs_documents_and_draws_a_new_take_seed(again: A
     assert body["template"] == "yue2-song" and studio.records[0]["title"] == "Neon"
     assert body["documents"] == {**DOCUMENTS, "title": "Neon (live)"}  # the notes too: the same song
     assert body["seeds"] == {"draft": 11, "plan": 12, "cover": 14}  # the take seed drawn anew
-    # the party's rules: HQ mastering off, cover art on, the party's folder - the song's own settings else
+    # the player's rules: HQ mastering off, cover art on - the song's own settings else; a user's take is no party song
     assert body["fields"] == {
         "genre": "synthwave",
         "creativity": 60,
         "finish.hq_mastering": False,
         "finish.cover_art": True,
     }
-    assert body["release"]["album"] == f"Party-Song {maker_module._today(clock.now)}"
+    assert body["release"] == {}
 
 
 def test_new_words_for_a_take_get_new_notes(again: Any) -> None:
@@ -672,7 +671,6 @@ def test_the_whole_studio_from_the_network(again: Any) -> None:
     assert body["release"] == {
         "folder": "plenio/Cleo",
         "album": "Home",
-        "artist": "Cleo",
         "mp3": True,
         "wav": False,
     }

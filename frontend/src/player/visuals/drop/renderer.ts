@@ -473,11 +473,15 @@ export class DropRenderer {
   private sources = new Map<string, { texture: WebGLTexture; aspect: number; key: string }>()
   private uniforms = new Map<WebGLProgram, Map<string, WebGLUniformLocation | null>>()
 
+  /** The graphics card took the context back (too many at once, a driver reset): this renderer draws nothing more. */
+  lost = false
+
   constructor() {
     this.canvas = document.createElement('canvas')
     const gl = this.canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, preserveDrawingBuffer: true, premultipliedAlpha: false })
     if (!gl) throw new Error('WebGL2 is not available')
     this.gl = gl
+    this.canvas.addEventListener('webglcontextlost', () => (this.lost = true))
     this.half = !!gl.getExtension('EXT_color_buffer_float')
     this.warp = this.program(QUAD_VS, WARP_FS)
     this.comp = this.program(QUAD_VS, COMP_FS)
@@ -529,6 +533,17 @@ export class DropRenderer {
 
   /** A picture the presets may draw (``cover``, ``title``, ``line``, ``word``): uploaded again only when
    * ``key`` changes; ``null`` takes it away. */
+  /** Give the graphics memory back now (a video's or a preview's renderer when it is done): the context is let go
+   * on purpose, not left to the garbage collector - a browser keeps only so many, and each holds frames of the video's
+   * size. */
+  dispose(): void {
+    this.sources.clear()
+    this.gl.getExtension('WEBGL_lose_context')?.loseContext()
+    this.lost = true
+    this.canvas.width = 0
+    this.canvas.height = 0
+  }
+
   setSource(name: string, image: TexImageSource | null, key: string, aspect: number): void {
     const gl = this.gl
     const known = this.sources.get(name)
@@ -966,6 +981,8 @@ export class DropRenderer {
 let shared: DropRenderer | null | undefined
 /** The one renderer every Drop visual shares (``null``: this browser has no WebGL2). */
 export function dropRenderer(): DropRenderer | null {
+  // a context the graphics card took back (a driver reset, too many at once): made anew
+  if (shared?.lost) shared = undefined
   if (shared === undefined) {
     try {
       shared = new DropRenderer()

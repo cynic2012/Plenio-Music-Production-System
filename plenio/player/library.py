@@ -31,7 +31,7 @@ from ..core.errors import PlenioError
 from ..core.release import RECORD_SUFFIX, base_title, numbered_title_in
 from . import other as other_music
 
-CACHE_VERSION = 9
+CACHE_VERSION = 10
 REFRESH_S = 15.0
 """A reader's songs are read again (in the background) when they are older than this."""
 RETIRED_DIR = "_retired"
@@ -411,6 +411,31 @@ def _files(record: Mapping[str, Any], path: Path) -> dict[str, Path]:
     return files
 
 
+def made_facts(record: Mapping[str, Any]) -> dict[str, Any]:
+    """How the song was made (the record's ``made``, since 1.4.0): when its run began and ended, how long it took,
+    on what, the lyrics fidelity - for an older record the fidelity from its prompt or its Best Take."""
+    made = record.get("made")
+    made = made if isinstance(made, Mapping) else {}
+    out: dict[str, Any] = {
+        key: made[key]
+        for key in ("started", "finished", "seconds", "on", "lyrics_fidelity")
+        if made.get(key) is not None
+    }
+    if "lyrics_fidelity" not in out:
+        prompt = record.get("prompt")
+        for node in (prompt or {}).values() if isinstance(prompt, Mapping) else ():
+            inputs = node.get("inputs") if isinstance(node, Mapping) else None
+            for name, value in (inputs or {}).items() if isinstance(inputs, Mapping) else ():
+                if str(name).split(".")[-1] == "fidelity" and isinstance(value, str) and value:
+                    out["lyrics_fidelity"] = value.split(" ", 1)[0].lower()  # 'high - best of 2 takes': high
+        if "lyrics_fidelity" not in out:
+            for report in record.get("reports") or []:
+                data = report.get("data") if isinstance(report, Mapping) else None
+                if report.get("kind") == "best_take" and isinstance(data, Mapping) and data.get("level"):
+                    out["lyrics_fidelity"] = str(data["level"])
+    return out
+
+
 def summarize(record: Mapping[str, Any], path: Path, root: Path) -> Song:
     """A song of the library from its record: what the list shows, sorts and searches."""
     documents = record.get("documents") or {}
@@ -442,6 +467,7 @@ def summarize(record: Mapping[str, Any], path: Path, root: Path) -> Song:
     summary: dict[str, Any] = {
         "title": title,
         "created": created,
+        "made": made_facts(record),
         "year": created[:4],
         "seconds": float(audio.get("seconds") or 0.0),
         "model": model,

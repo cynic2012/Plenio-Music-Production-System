@@ -679,6 +679,9 @@ def make_handler(
                 return self._json({**mine.read(), "rev": mine.rev})
             if route == "/api/guests":
                 return self._json(guests.status()) if guests else self._error(404, "no guests' access")
+            if route == "/api/reactions":
+                # the guests' reactions per song, kept for good (apart from the favourites)
+                return self._json({"songs": guests.tallies() if guests else {}})
             if route == "/api/guests/wishes":
                 if guests is None:
                     return self._error(404, "no guests' access")
@@ -860,7 +863,8 @@ def make_handler(
                     changes = None
                 if guests is None or not isinstance(changes, dict):
                     return self._error(
-                        400 if guests else 404, "the guests' access: on, mode, show, reactions, regenerate"
+                        400 if guests else 404,
+                        "the guests' access: on, mode, show, reactions, reactions_per_song, regenerate",
                     )
                 return self._json(guests.configure(changes))
             if body is None:

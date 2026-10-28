@@ -163,6 +163,15 @@ export function partyMaker(tags: Record<string, string> | undefined): string | n
   return (tags?.artist ?? '').trim() || 'Guest'
 }
 
+/** When a party song's party was: its date, always (owner's request 2026-10-28: not "this party" - a song of
+ * another night says which) - ``''`` for another song. */
+export function partyWhen(tags: Record<string, string> | undefined): string {
+  const found = /^Party-Song (\d{4})-(\d{2})-(\d{2})$/.exec((tags?.album ?? '').trim())
+  if (!found) return ''
+  const day = new Date(Number(found[1]), Number(found[2]) - 1, Number(found[3]))
+  return `on ${day.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}`
+}
+
 export type CreditMoment = { kind: 'intro' | 'section' | 'outro'; label: string } | null
 
 /** What the credit shows at ``time`` of a song of ``duration`` seconds: the opening (its first 7 s), a new

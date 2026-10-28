@@ -188,7 +188,7 @@ const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.g
     <header class="hero">
       <div>
         <h1><Icon name="wand" :size="30" /> Make a song</h1>
-        <p class="lead">Pick a style, say what it is about - the studio writes the lyrics, composes, sings and paints the cover. A few minutes later it plays{{ settings.live.on ? ' at the party' : '' }}.</p>
+        <p class="lead">Pick a style, say what it is about - the studio writes the lyrics, composes, sings and paints the cover. A few minutes later it is in your songs{{ settings.live.on ? ' - and plays in Live Play' : '' }}.</p>
       </div>
       <div class="chips">
         <span class="pill" :class="studio.tone"><i /> {{ studio.text }}</span>
@@ -260,8 +260,9 @@ const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.g
           <Icon name="music" :size="34" />
           <p>No songs yet. The ones you order show here - in line, being made, ready - and you can move, change or take them out while they wait.</p>
         </div>
-        <p v-if="status?.me.full" class="foot">Made by YuE2 in this computer’s ComfyUI · you have the whole studio: the writer model, HQ mastering, cover art, the folder, the formats and the tags under <i>Every setting of the studio</i> - it starts from the party’s settings (album “Party-Song {{ new Date().toISOString().slice(0, 10) }}” in plenio/Party-Songs-…) · a song ready joins Live Play like every new song.</p>
-        <p v-else class="foot">Made by YuE2 in this computer’s ComfyUI · HQ mastering off, cover art on · album “Party-Song {{ new Date().toISOString().slice(0, 10) }}” · saved in plenio/Party-Songs-… · a song ready joins Live Play like every new song.</p>
+        <p v-if="status?.me.full" class="foot">Made by YuE2 in this computer’s ComfyUI · you have the whole studio: the writer model, HQ mastering, cover art, the folder, the formats and the tags under <i>Every setting of the studio</i> · saved like a song made in ComfyUI (the template’s folder and tags) · a song ready joins your songs, and Live Play while it runs.</p>
+        <p v-else-if="status?.me.kind === 'guest'" class="foot">Made by YuE2 in this computer’s ComfyUI · HQ mastering off, cover art on · a party song: album “Party-Song {{ new Date().toISOString().slice(0, 10) }}”, saved in plenio/Party-Songs-… · a song ready joins the party’s playlist.</p>
+        <p v-else class="foot">Made by YuE2 in this computer’s ComfyUI · HQ mastering off, cover art on · saved like a song made in ComfyUI · a song ready joins your songs, and Live Play while it runs.</p>
       </section>
     </div>
   </div>
@@ -482,9 +483,11 @@ h2 small {
   .lead {
     display: none;
   }
+  /* the title on a line of its own, the studio's state under it (side by side they squeezed each other) */
   .hero {
-    flex-wrap: nowrap;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
   }
   .hero .chips .who {
     display: none;

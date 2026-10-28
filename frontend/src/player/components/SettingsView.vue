@@ -6,7 +6,7 @@
  * without other music - owner's request 2026-10-16); and stopping a player that runs without a window (one
  * started from ComfyUI).
  */
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 
 import { api, type ComfyFound, type FoldersAnswer } from '../api'
 import { version as pageVersion } from '../../../package.json'
@@ -26,9 +26,22 @@ import { isPortable, portable } from '../portable'
 
 const props = defineProps<{ section?: string }>()
 // #/settings/<section> opens at that section (the Make page's *Switch it on*, the studio's *How to start it*)
-onMounted(() => {
-  if (props.section) void nextTick(() => window.setTimeout(() => document.getElementById(props.section ?? '')?.scrollIntoView({ block: 'start' }), 120))
-})
+// - also from one section's link to another (the page stays), and for a section that shows once its answer came
+// (The studio waits for the player's word on ComfyUI): looked for a few times, up to two seconds
+let seeking = 0
+function seek(section: string | undefined): void {
+  window.clearTimeout(seeking)
+  if (!section) return
+  let tries = 0
+  const look = (): void => {
+    const target = document.getElementById(section)
+    if (target) target.scrollIntoView({ block: 'start', behavior: tries ? 'smooth' : 'auto' })
+    else if (tries++ < 20) seeking = window.setTimeout(look, 100)
+  }
+  void nextTick(look)
+}
+onMounted(() => seek(props.section))
+watch(() => props.section, seek)
 const shelf = ref<FoldersAnswer | null>(null)
 const browsing = ref(false)
 const savingFolders = ref(false)

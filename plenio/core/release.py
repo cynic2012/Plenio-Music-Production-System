@@ -802,12 +802,16 @@ class RecordInput:
     subtitles: Mapping[str, Any] | None = field(default=None)
     """Whether lyrics subtitles were asked for (``wanted``), for how many takes they were made (``takes``) and
     why not for the others (``why``) - the Plenio Player tells a song without times by it (since 1.1.0)."""
+    made: Mapping[str, Any] | None = field(default=None)
+    """How the song was made (since 1.4.0): when its run began and ended (``started``, ``finished``), how long it
+    took (``seconds``), on what (``on``: the graphics card and its memory or the processor, the RAM) and the lyrics
+    fidelity (``lyrics_fidelity``). Like ``created``, not part of the fingerprint."""
 
 
 def record_fingerprint(record: Mapping[str, Any]) -> str:
-    """The record's content hash: everything but the creation time (and the fingerprint itself)."""
+    """The record's content hash: everything but when and on what it was made (and the fingerprint itself)."""
     return sha256_text(
-        canonical_json({k: v for k, v in record.items() if k not in ("created", "fingerprint")})
+        canonical_json({k: v for k, v in record.items() if k not in ("created", "made", "fingerprint")})
     )
 
 
@@ -847,5 +851,7 @@ def build_record(data: RecordInput) -> dict[str, Any]:
         record["timing"] = [dict(t) for t in data.timing]
     if data.subtitles is not None:
         record["subtitles"] = dict(data.subtitles)
+    if data.made is not None:
+        record["made"] = dict(data.made)
     record["fingerprint"] = record_fingerprint(record)
     return record

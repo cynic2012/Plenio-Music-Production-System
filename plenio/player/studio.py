@@ -41,6 +41,19 @@ RESTART_AFTER_S = 120.0
 """A ComfyUI started by itself that ended (a port taken, a broken install) is started by itself again only after
 so many seconds - not every few seconds while a song waits."""
 ARGS_LIMIT = 1000
+START_FILE = "comfyui-start.json"
+"""How each ComfyUI with Plenio was last started (its ``main.py``, Python and arguments), kept in the player's state
+folder when ComfyUI loads Plenio: the player starts it the same way - with the models folder and the options its
+owner gives it - when Settings has no arguments of its own."""
+NOT_REPEATED = {
+    "--listen": "?",
+    "--port": 1,
+    "--enable-cors-header": "?",
+    "--tls-keyfile": 1,
+    "--tls-certfile": 1,
+}
+"""Arguments of the remembered start the player leaves out (and how many values follow): it keeps ComfyUI on this
+computer, on its own port. ``?``: a value only when the next word is not an option."""
 
 
 class StudioLaunchError(ValueError):
@@ -96,6 +109,78 @@ def parse_args(text: str) -> list[str]:
     if parts and not parts[0].startswith("-"):
         raise StudioLaunchError("The arguments start with an option, such as --models-directory.")
     return parts
+
+
+def repeatable(argv: list[str]) -> list[str]:
+    """A start's arguments without those the player sets itself or refuses (the address, the port, TLS, CORS, the
+    portable build's flag - added again when its Python is the embedded one)."""
+    out: list[str] = []
+    skip = 0
+    for index, part in enumerate(argv):
+        if skip:
+            skip -= 1
+            continue
+        name = part.split("=", 1)[0].lower()
+        if name == "--windows-standalone-build":
+            continue
+        values = NOT_REPEATED.get(name)
+        if values is None:
+            if any(ch in part for ch in "\r\n\0"):
+                return []
+            out.append(part)
+            continue
+        if "=" in part:
+            continue
+        following = argv[index + 1] if index + 1 < len(argv) else ""
+        skip = 1 if values == 1 or (following and not following.startswith("-")) else 0
+    return out
+
+
+def remember_start(
+    directory: Path, argv: list[str], python: str, clock: Callable[[], float] = time.time
+) -> None:
+    """Keep how this ComfyUI was started (called when ComfyUI loads Plenio): ``argv`` begins with its ``main.py``."""
+    if not argv or Path(argv[0]).name != "main.py":
+        return
+    main = str(Path(argv[0]).resolve())
+    file = directory / START_FILE
+    try:
+        known = json.loads(file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        known = {}
+    if not isinstance(known, dict):
+        known = {}
+    known[main] = {"python": python, "args": repeatable(list(argv[1:])), "at": clock()}
+    directory.mkdir(parents=True, exist_ok=True)
+    temp = file.with_suffix(".tmp")
+    temp.write_text(json.dumps(known, indent=1), encoding="utf-8")
+    temp.replace(file)
+
+
+def remembered_start(directory: Path, root: Path | None = None) -> tuple[Path, dict[str, Any]] | None:
+    """The last start of the ComfyUI in ``root`` (``None``: of any whose ``main.py`` still exists, the newest):
+    its ``main.py`` and ``{python, args, at}``."""
+    try:
+        known = json.loads((directory / START_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(known, dict):
+        return None
+    found: list[tuple[float, Path, dict[str, Any]]] = []
+    for main, entry in known.items():
+        path = Path(main)
+        if not isinstance(entry, dict) or not path.is_file():
+            continue
+        if root is not None and path.resolve() != (root / "main.py").resolve():
+            continue
+        args = entry.get("args")
+        if not isinstance(args, list) or not all(isinstance(a, str) for a in args):
+            continue
+        found.append((float(entry.get("at") or 0), path, entry))
+    if not found:
+        return None
+    _at, path, entry = max(found, key=lambda item: item[0])
+    return path, entry
 
 
 class StudioLauncher:
@@ -175,11 +260,29 @@ class StudioLauncher:
 
     # --- where and how ----------------------------------------------------------------------------------------
     def root(self) -> Path | None:
+        """The folder chosen in Settings, else the ComfyUI Plenio is installed in, else the one last started with
+        Plenio (ComfyUI Desktop keeps Plenio outside its own folder)."""
         chosen = str(self.settings.get("root") or "").strip()
         if chosen:
             path = Path(chosen)
             return path if (path / "main.py").is_file() else None
-        return installed_root()
+        installed = installed_root()
+        if installed is not None:
+            return installed
+        last = remembered_start(self.directory)
+        return last[0].parent if last else None
+
+    def arguments(self, root: Path) -> tuple[list[str], str, dict[str, Any] | None]:
+        """The arguments for ``main.py``: the ones set in Settings, else those of the last start of this ComfyUI
+        (its models folder, its options), else none - and where they come from (``settings``, ``last start`` or
+        ``""``), with that last start."""
+        own = str(self.settings.get("args") or "").strip()
+        if own:
+            return parse_args(own), "settings", None
+        last = remembered_start(self.directory, root)
+        if last is None:
+            return [], "", None
+        return list(last[1]["args"]), "last start", last[1]
 
     def url(self) -> str:
         return f"http://127.0.0.1:{int(self.settings.get('port') or 8188)}"
@@ -196,18 +299,24 @@ class StudioLauncher:
         root = self.root()
         if root is None:
             raise StudioLaunchError(
-                "No ComfyUI folder: Plenio is not inside ComfyUI's custom_nodes here (ComfyUI Desktop starts as an "
-                "app) - choose ComfyUI's folder in Settings > The studio.",
+                "The player does not know yet how to start ComfyUI: Plenio is not inside a ComfyUI folder here, and "
+                "ComfyUI has not run with Plenio since. Start ComfyUI once the way you usually do - from then on the "
+                "player starts it the same way - or choose its folder under How it starts ComfyUI.",
                 409,
             )
+        extra, _source, last = self.arguments(root)
         python, embedded = python_of(root)
+        if last is not None and Path(str(last.get("python") or "")).is_file():
+            # the Python it last ran on (ComfyUI Desktop's own environment, a conda one ...)
+            python = Path(str(last["python"]))
+            embedded = python.parent.name == "python_embeded"
         command = [str(python)]
         if embedded:
             command.append("-s")
         command += [str(root / "main.py"), "--port", str(int(self.settings.get("port") or 8188))]
         if embedded:
             command.append("--windows-standalone-build")
-        command += parse_args(str(self.settings.get("args") or ""))
+        command += extra
         return command, root
 
     # --- start, stop ------------------------------------------------------------------------------------------
@@ -345,7 +454,18 @@ class StudioLauncher:
         if own and not running and not starting and not self.error:
             out["error"] = "ComfyUI did not answer in time - its log says why."
         if admin:
+            source, used, last_at = "", "", None
+            if root is not None:
+                try:
+                    extra, source, last = self.arguments(root)
+                    used = " ".join(extra)
+                    last_at = (float(last.get("at") or 0) or None) if last else None
+                except StudioLaunchError:
+                    source = ""
             out.update(
+                args_from=source,
+                args_used=used,
+                last_start_at=last_at,
                 root=str(root or self.settings.get("root") or ""),
                 chosen_root=str(self.settings.get("root") or ""),
                 installed_root=str(installed_root() or ""),

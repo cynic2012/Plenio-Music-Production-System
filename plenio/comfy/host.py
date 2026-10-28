@@ -12,6 +12,7 @@ import logging
 import os
 import platform
 import sys
+import time
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -653,6 +654,90 @@ class Progress:
     def update(self, fraction: float | None) -> None:
         if fraction is not None:
             self._bar.update_absolute(int(max(0.0, min(1.0, fraction)) * self._total), self._total)
+
+
+# --- the run: when it began, on what ---------------------------------------------------------------
+
+_RUNS: dict[str, float] = {}
+"""When ComfyUI's worker took each of the last runs from its queue (prompt id -> wall clock)."""
+
+
+def watch_runs() -> None:
+    """Note when ComfyUI's worker takes a run from its queue (``run_started``): Export Release writes how long the
+    song took. Its queue's ``get`` is wrapped once; a ComfyUI without one only leaves the time out."""
+    queue = getattr(prompt_server(), "prompt_queue", None)
+    original = getattr(queue, "get", None)
+    if queue is None or original is None or getattr(original, "plenio_runs", False):
+        return
+
+    def get(*args: Any, **kwargs: Any) -> Any:
+        taken = original(*args, **kwargs)
+        try:
+            if taken:
+                _RUNS[str(taken[0][1])] = time.time()
+                for old in list(_RUNS)[:-20]:
+                    _RUNS.pop(old, None)
+        except (TypeError, IndexError, KeyError):
+            pass
+        return taken
+
+    get.plenio_runs = True  # type: ignore[attr-defined]
+    queue.get = get
+
+
+def run_started() -> float | None:
+    """When the run that executes now was taken from the queue (``None``: not known)."""
+    prompt_id = getattr(prompt_server(), "last_prompt_id", None)
+    return _RUNS.get(str(prompt_id)) if prompt_id else None
+
+
+def _cpu_name() -> str:
+    """The processor's name as people know it (Windows' registry, Linux's cpuinfo), else Python's word for it."""
+    if sys.platform == "win32":
+        try:
+            import winreg
+
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0"
+            ) as key:
+                return str(winreg.QueryValueEx(key, "ProcessorNameString")[0]).strip()
+        except OSError:
+            pass
+    else:
+        try:
+            for line in Path("/proc/cpuinfo").read_text(encoding="utf-8", errors="replace").splitlines():
+                if line.lower().startswith("model name"):
+                    return line.split(":", 1)[1].strip()
+        except OSError:
+            pass
+    return platform.processor() or platform.machine() or "CPU"
+
+
+def machine() -> dict[str, Any]:
+    """What this run is made on: the graphics card ComfyUI uses (name, memory) or the processor alone, the
+    processor's name and cores, the computer's RAM."""
+    out: dict[str, Any] = {"cpu": _cpu_name(), "cores": os.cpu_count()}
+    try:
+        import psutil
+
+        out["ram_gb"] = round(psutil.virtual_memory().total / 2**30, 1)
+    except (ImportError, OSError):
+        pass
+    try:
+        import comfy.model_management as management
+        import torch
+
+        device = management.get_torch_device()
+        if getattr(device, "type", "") == "cuda":
+            properties = torch.cuda.get_device_properties(device)
+            out["device"] = "gpu"
+            out["gpu"] = str(properties.name)
+            out["vram_gb"] = round(properties.total_memory / 2**30, 1)
+        else:
+            out["device"] = str(getattr(device, "type", "cpu") or "cpu")
+    except Exception:  # noqa: BLE001 - the facts of the record never stop an export
+        out.setdefault("device", "unknown")
+    return out
 
 
 def package_root() -> Path:

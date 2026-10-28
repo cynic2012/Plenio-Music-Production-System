@@ -726,3 +726,22 @@ def test_live_play_hears_of_the_songs_made_while_it_plays(
     assert [s["title"] for s in later["songs"]] == ["Fresh"] and later["now"] >= start["now"]
     # asked again from the new "now": nothing new
     assert json.loads(request(server, "GET", f"/api/new?since={later['now']}")[2])["songs"] == []
+
+
+def test_a_song_says_how_it_was_made_also_an_older_one() -> None:
+    """Owner's request 2026-10-28: the details show when, how long, on what and with which lyrics fidelity; a record
+    of 1.3 has no ``made`` - its fidelity comes from its prompt (the brief's label) or its Best Take."""
+    from plenio.player.library import made_facts
+
+    made = {
+        "started": "2026-10-28T14:00:36+0100",
+        "seconds": 273.2,
+        "on": {"device": "gpu"},
+        "lyrics_fidelity": "high",
+    }
+    assert made_facts({"made": made}) == made
+    older = {"prompt": {"7": {"inputs": {"vocals.fidelity": "highest - best of 3 takes"}}}}
+    assert made_facts(older) == {"lyrics_fidelity": "highest"}
+    best = {"reports": [{"kind": "best_take", "data": {"level": "high"}}]}
+    assert made_facts(best) == {"lyrics_fidelity": "high"}
+    assert made_facts({}) == {}

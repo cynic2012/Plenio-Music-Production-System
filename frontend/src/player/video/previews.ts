@@ -66,6 +66,9 @@ export class PreviewMaker {
   }
 
   private renderer(): DropRenderer | null {
+    if (this.stopped) return null
+    // a context the graphics card took back is made anew
+    if (this.drop?.lost) this.drop = undefined
     if (this.drop === undefined) {
       try {
         this.drop = new DropRenderer()
@@ -109,10 +112,15 @@ export class PreviewMaker {
     for (const wanted of this.queue.splice(0)) for (const done of [wanted.resolve, ...wanted.promises]) done(null)
   }
 
+  /** No more previews (the dialog closed, or another size or colour wants new ones): the strips and the Drop
+   * renderer's graphics memory go back at once (owner's report 2026-10-28: "out of memory" now and then). */
   stop(): void {
     this.stopped = true
     this.forget()
+    for (const preview of this.kept.values()) preview.strip.width = preview.strip.height = 0
     this.kept.clear()
+    this.drop?.dispose()
+    this.drop = null
   }
 
   private async work(): Promise<void> {

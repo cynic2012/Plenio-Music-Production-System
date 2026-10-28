@@ -28,6 +28,7 @@ import MiniPlayer from './components/MiniPlayer.vue'
 import BottomNav from './components/BottomNav.vue'
 import HelpView from './components/HelpView.vue'
 import Reactions from './components/Reactions.vue'
+import { loadCheers } from './reactions'
 import { layout, slimBar } from './layout'
 import { loginShown } from './account'
 import { guestBig, loadGuests } from './guests'
@@ -283,6 +284,8 @@ onMounted(() => {
   void loadMyPresets()
   // the guests' access as it was left: on, the page tells the guests what plays again
   void loadGuests()
+  // the guests' reactions per song, as the player keeps them (the song's page shows them)
+  if (!isPortable) void loadCheers(api.reactions)
   // party songs: the sidebar's entry and count, and a word when a song of one's own is ready
   pollMake(false, (job) => say(`Your song “${job.result?.title || job.label}” is ready${settings.live.on ? ' - it joins the party' : ''}`, 6000))
   if (!isPortable) presetTimer = window.setInterval(() => {

@@ -259,8 +259,10 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
   creative mode's), YuE2's plan and take with temperature, top-p and top-k, *(the reference)* where they are
   the values of 50. A field you left empty shows the brief's default with *(default)*, or - for a
   text field, which has none - *open - the writer chose*; a value the template filled says *(from the
-  template)*. Then the model and the writer, loudness and true peak, the seeds (with a copy button, so you can make the take
-  again), the tags in the file, the cover's prompt, and every file to download: FLAC, MP3, WAV, the
+  template)*. **How it was made**: the date and time, how long making it took, the graphics card (with its memory) or the
+  processor alone, the processor and the RAM, and the lyrics fidelity - for songs exported before 1.4.0 the date and
+  time it was saved and, where its record says it, the fidelity. Then the model and the writer, loudness and true peak,
+  the seeds (with a copy button, so you can make the take again), the tags in the file, the cover's prompt, and every file to download: FLAC, MP3, WAV, the
   unmastered take, the PDF, both subtitle files, the cover and the release record. The record's path is
   shown with a copy button, ready for *File > Continue a Plenio song…* in ComfyUI.
 - **Takes**: the song's other takes (same title - its number left out -, lyrics and score, rendered again). Play them one after the
@@ -593,7 +595,9 @@ download it, watch it, or open the folder - also later, under *Videos* in Settin
 kept for the next one.
 
 It needs a browser that can encode video (WebCodecs with H.264): current Chrome and Edge can, on Windows,
-macOS and Linux.
+macOS and Linux. Each preview and each video gives its graphics memory back as soon as it is done, and a video that
+fails is tried once more by itself; when the browser runs out of memory all the same, the message says so - close
+other tabs, or choose a smaller size or 30 frames a second.
 
 ## Live Play: make songs at a party, and they play
 
@@ -646,9 +650,12 @@ what played. The music keeps playing on your computer; the phones get no sound a
   corner, and how large - *large* for a room to scan from afar. Also in the visuals' settings (✦), as *The
   guests' way in over the visual*.
 - **Reactions**: the guests' page has 🔥 ❤️ 🎉 👏 💃 😂 under the song that plays. A tap floats up an edge
-  of your screen - over the library, Live Play, Now playing and the visual on the whole screen - and Live Play
-  shows how the guests reacted to the song (*🔥 12 · ❤️ 4*); their phones show it too. One phone sends at most
-  60 a minute, and at most 40 float at once. **Reactions** switches them off.
+  of your screen - over the library, Live Play, Now playing and the visual on the whole screen - and every song's
+  reactions are **counted and kept** (`reactions.json` in the player's state folder): Live Play and the song's page
+  show them (*🔥 12 · ❤️ 4 from the guests*), apart from your favourite heart; the guests' phones show them too.
+  Choose **as many per song as they like** or **one per song and guest** - then a tap on another emoji changes the
+  guest's reaction, and the same one again counts once. One phone sends at most 60 a minute, and at most 40 float
+  at once. **Reactions** switches them off.
 - *n guests are looking now* counts the phones that asked in the last half minute.
 
 The access is a small server of its own on port 8770 (8771-8779 when it is taken), apart from the player,
@@ -762,9 +769,10 @@ songs > From the network (In your network): the whole studio, at any time*.
 shows the name of the one who made it - the user's name or *Guest* - all the way through, in Now playing and over the
 visual:
 
-- **Spotlight**: large as the song begins (*a party song by …*, letter by letter), with every new section (*Chorus by
-  …*) and as it ends (*made at this party by … - thank you*); between, a small badge in the corner the guests' way in
-  leaves free.
+- **Spotlight**: large as the song begins (*a party song on 27 October 2026 by …*, letter by letter), with every new
+  section (*Chorus by …*) and as it ends (*made at the party on 27 October 2026 by … - thank you*); between, a small
+  badge in the corner the guests' way in leaves free. The date is always the party's own - a song of an earlier party
+  says when that was.
 - **Drift**: the same moments, and between them the name floats slowly across the picture.
 
 The name glows with the beat. The party's phones show *made by …* under the song that plays and in *Up next*. The
@@ -774,10 +782,12 @@ The times are estimates: from the song's length and how long the songs before to
 estimate is rough, then they get better. Songs wait in the player's own line until the studio takes them, one at a
 time; your own runs in ComfyUI come first. When ComfyUI does not run, songs wait until it does.
 
-Every party song: YuE2, **HQ mastering off** (twice as fast), **cover art on**, saved in `plenio/Party-Songs-<date>` of
-ComfyUI's output folder, album **Party-Song <date>**, artist the user's name or **Guest**. The player reads that
-folder by itself, also when it is not one of its folders. A shared player has none of this: making songs needs this
-computer.
+Every song from the player: YuE2, **HQ mastering off** (twice as fast), **cover art on**. Only a song ordered on the
+**party's page** - a guest's, from the phone - is a **party song**: saved in `plenio/Party-Songs-<date>` of ComfyUI's
+output folder, album **Party-Song <date>**, artist **Guest**, named on the big screen while it plays. A song you or a
+user makes in the player is saved like a song made in ComfyUI - the template's folder and tags - and joins your songs
+(and Live Play while it runs) like every new song. The player reads the folder a song was saved in by itself, also
+when it is not one of its folders. A shared player has none of this: making songs needs this computer.
 
 It is made through Plenio's **[Song API](song-api.md)** - which other programs can use too.
 
@@ -793,15 +803,24 @@ The player runs on its own; ComfyUI is needed only to **make** songs, and nobody
   is tried again after two minutes; its log says why)
 - **Stop the ComfyUI the player started after** 15 minutes, 30 minutes, an hour or three hours without a song
   (*never* by default) - the graphics card is free again
-- **How it starts ComfyUI**: its folder (empty: the ComfyUI Plenio is installed in), more arguments (such as
-  `--models-directory D:/AI/models --cuda-device 1`) and the port (8188); the command it runs, and the end of its
-  log (`comfyui.log` in the player's state folder)
+- **How it starts ComfyUI**: its folder (empty: the ComfyUI Plenio is installed in, else the one last started with
+  Plenio), the arguments and the port (8188); the command it runs, and the end of its log (`comfyui.log` in the
+  player's state folder). **With no arguments of your own, the player starts ComfyUI the way it was last started** -
+  with its Python, your models folder (`--models-directory`) and your other options: every time ComfyUI loads Plenio,
+  Plenio keeps how it was started (`comfyui-start.json` in the player's state folder). So start ComfyUI once the way
+  you usually do (your `.bat`, the portable build, ComfyUI Desktop), and the player starts it the same way. Arguments
+  you enter here win.
 
 While a ComfyUI already answers on this computer - ComfyUI Desktop on port 8000, the ComfyUI that started the player
 - the player counts it as running and starts none of its own. The Python is that ComfyUI's own - the portable build's
 `python_embeded`, a `.venv` or `venv` - or else the player's. ComfyUI starts in the background, without a window, and stays on this computer: `--listen`,
 `--enable-cors-header`, `--port` and the TLS arguments are refused (the network comes in through *In your
-network*). ComfyUI Desktop is an app: start it there.
+network*).
+
+**When a song stops with "ComfyUI does not find the model file …"**: that ComfyUI does not see your models - mostly one
+started without your models folder. *Settings › The studio* shows how it starts it; start ComfyUI once the way you
+usually do, or enter `--models-directory <your folder>`. A model field of *Every setting of the studio* says so too,
+when ComfyUI does not list the file it is set to.
 
 ## The player in your network
 

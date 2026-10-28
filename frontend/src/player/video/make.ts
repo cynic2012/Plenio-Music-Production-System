@@ -277,7 +277,22 @@ export class Composer {
     return Math.max(1, Math.ceil(this.length * this.options.fps))
   }
 
+  private disposed = false
+
+  /** Give back what the frames needed - the Drop renderer's graphics memory, the mixer's pictures, the canvas -
+   * when the video or the preview is done (owner's report 2026-10-28: "out of memory" now and then). */
+  dispose(): void {
+    this.disposed = true
+    this.drop?.dispose()
+    this.drop = null
+    this.mixer.dispose()
+    this.canvas.width = 0
+    this.canvas.height = 0
+  }
+
   private dropRenderer(): DropRenderer | null {
+    // a context the graphics card took back is made anew (the next frames draw again)
+    if (this.drop?.lost && !this.disposed) this.drop = undefined
     if (this.drop === undefined) {
       try {
         this.drop = new DropRenderer()
@@ -451,9 +466,18 @@ export function planOf(song: SongSummary, options: VideoOptions, sections: Timed
 export async function preview(song: SongSummary, detail: SongDetail, options: VideoOptions, at: number, width = 640): Promise<HTMLCanvasElement> {
   const sound = await soundOf(song, options.take)
   const composer = await Composer.create(song, detail, sound, options, width / options.width)
-  const target = Math.max(0, Math.round((at - options.start) * options.fps))
-  for (let k = Math.max(0, target - options.fps * 3); k <= target; k++) composer.draw(k)
-  return composer.canvas
+  try {
+    const target = Math.max(0, Math.round((at - options.start) * options.fps))
+    for (let k = Math.max(0, target - options.fps * 3); k <= target; k++) composer.draw(k)
+    // a copy: the composer's graphics memory goes back at once (a preview is made at every change of a setting)
+    const still = document.createElement('canvas')
+    still.width = composer.canvas.width
+    still.height = composer.canvas.height
+    still.getContext('2d')?.drawImage(composer.canvas, 0, 0)
+    return still
+  } finally {
+    composer.dispose()
+  }
 }
 
 // --- the encoder -----------------------------------------------------------------------------------------
@@ -562,6 +586,9 @@ export async function makeVideo(
   let pending: Uint8Array[] = []
   let pendingBytes = 0
   let uploading: Promise<unknown> = Promise.resolve()
+  /** Bytes handed to the player and not yet taken: the drawing waits while there are many (a slow disk, a busy
+   * computer) instead of piling the video up in the page. */
+  let inFlight = 0
   const send = (): void => {
     if (!pendingBytes) return
     const data = new Uint8Array(pendingBytes)
@@ -572,7 +599,11 @@ export async function makeVideo(
     }
     pending = []
     pendingBytes = 0
-    uploading = uploading.then(() => api.videoData(job, data)).catch((error) => (failure = failure ?? error))
+    inFlight += data.length
+    uploading = uploading
+      .then(() => api.videoData(job, data))
+      .catch((error) => (failure = failure ?? error))
+      .finally(() => (inFlight -= data.length))
   }
   const encoder = new VideoEncoder({
     output: (chunk) => {
@@ -595,6 +626,7 @@ export async function makeVideo(
       encoder.encode(frame, { keyFrame: k % (options.fps * 2) === 0 })
       frame.close()
       while (encoder.encodeQueueSize > 6) await dequeued(encoder)
+      if (inFlight > MAX_IN_FLIGHT) await uploading
       if (k % 15 === 0 || k === total - 1) {
         const seconds = (performance.now() - began) / 1000
         const rate = (k + 1) / Math.max(seconds, 0.001)
@@ -614,5 +646,9 @@ export async function makeVideo(
     throw error
   } finally {
     if (encoder.state !== 'closed') encoder.close()
+    composer.dispose()
   }
 }
+
+/** At most so many bytes of video on their way to the player before the drawing waits. */
+const MAX_IN_FLIGHT = 24 * 2 ** 20

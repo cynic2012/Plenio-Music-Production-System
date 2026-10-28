@@ -89,6 +89,13 @@ h3 {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 18px;
 }
+/* a phone: two playlists side by side (one each filled the whole screen) */
+@media (max-width: 520px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
 .tile {
   position: relative;
   display: flex;

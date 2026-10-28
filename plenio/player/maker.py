@@ -181,7 +181,10 @@ class Studio:
                     404, "not_installed", "This ComfyUI has no Song API (Plenio older than 1.3?)."
                 ) from error
             message = str(problem.get("message") or error.reason)
-            if problem.get("details"):
+            if message.startswith("ComfyUI does not find") and problem.get("hint"):
+                # a model file ComfyUI does not see: what to do, not its validation's words
+                message += " " + str(problem["hint"])
+            elif problem.get("details"):
                 first = (
                     problem["details"][0]
                     if isinstance(problem["details"], list) and problem["details"]
@@ -227,6 +230,12 @@ class Studio:
 
     def queue(self) -> dict[str, Any]:
         return dict(self._call("GET", "/queue", timeout=5.0))
+
+
+def party_date(tags: Mapping[str, Any]) -> str:
+    """The day of a party song's party (``YYYY-MM-DD``, from its album *Party-Song <date>*); ``''`` for another."""
+    album = str(tags.get("album") or "").strip()
+    return album.removeprefix("Party-Song ") if PARTY_ALBUM.fullmatch(album) else ""
 
 
 def party_maker(tags: Mapping[str, Any]) -> str | None:
@@ -510,10 +519,14 @@ class PartySongs:
         return form
 
     def _studio_defaults(self, who: Mapping[str, Any]) -> dict[str, Any]:
-        """What the whole studio starts from: the party's release and switches (HQ mastering off, Cover Art on)."""
+        """What the whole studio starts from: HQ mastering off, Cover Art on - and for a guest of the party the
+        party's release (the host and the users keep the template's folder and tags, as in ComfyUI)."""
+        party = bool(who.get("party") or who.get("kind") == "guest")
         return {
             "fields": {"finish.hq_mastering": False, "finish.cover_art": True},
-            "release": self._party_release({"kind": who.get("kind"), "name": who.get("name")}, self.clock()),
+            "release": self._party_release({"kind": who.get("kind"), "name": who.get("name")}, self.clock())
+            if party
+            else {},
         }
 
     def _form_from_studio(self) -> dict[str, Any] | None:
@@ -725,6 +738,8 @@ class PartySongs:
                 "kind": who.get("kind"),
                 "id": who.get("id"),
                 "name": who.get("name") or GUEST_NAME,
+                # ordered on the party's page: a party song (the host and the users make songs as in ComfyUI)
+                "party": bool(who.get("party") or who.get("kind") == "guest"),
             },
             "kind": kind,
             "again": again,
@@ -1421,8 +1436,12 @@ class PartySongs:
         album and artist - for a new take the song's own request (``base``: the Song API's ``/from-record``) with its
         documents as changed and a new take seed; with the whole studio every value as chosen."""
         owner = job.get("owner") or {}
+        # a party song (ordered on the party's page): the day's party folder and album; every other song keeps the
+        # template's folder and tags, as if made in ComfyUI (owner's request 2026-10-28). A job of 1.3 without the
+        # mark: a guest's is a party song.
+        party = owner.get("party", owner.get("kind") == "guest")
         request: dict[str, Any] = {
-            "release": self._party_release(owner, float(job.get("sent") or self.clock())),
+            "release": self._party_release(owner, float(job.get("sent") or self.clock())) if party else {},
             "client": {
                 "name": "Plenio Player",
                 "job": str(job.get("id")),

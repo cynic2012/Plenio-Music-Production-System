@@ -241,6 +241,50 @@ def test_guests_react_to_the_song_that_plays_and_the_host_can_switch_it_off(
     assert json.loads(hub.path.read_text(encoding="utf-8"))["reactions"] is False
 
 
+def test_one_reaction_per_song_changes_with_a_tap_and_the_counts_are_kept(
+    party: tuple[Library, GuestHub, int],
+) -> None:
+    """Owner's request 2026-10-28: the host chooses one reaction per song or as many as a guest likes; the counts
+    are kept for good (reactions.json), apart from the favourites' hearts, and read by the player's pages."""
+    library, hub, player = party
+    call(player, "PUT", "/api/guests", {"on": True, "reactions_per_song": "one"})
+    port, token = hub.settings["port"], hub.settings["token"]
+    song = ids(library)["River"]
+    shown = {
+        "live": True,
+        "playing": True,
+        "position": 3.0,
+        "now": {"id": song, "at": 0},
+        "next": [],
+        "played": [],
+    }
+    call(player, "POST", "/api/guests/live", shown)
+
+    def react(kind: str, cookie: str) -> dict[str, object]:
+        status, headers, body = call(port, "POST", f"/{token}/api/react", {"kind": kind}, Cookie=cookie)
+        assert status == 200
+        return dict(json.loads(body), set_cookie=headers.get("Set-Cookie", ""))
+
+    first = react("fire", "")
+    phone = first["set_cookie"].split(";", 1)[0]  # the guest's own cookie: their phone from now on
+    assert first["cheers"] == {"fire": 1} and first["mine"] == "fire"
+    assert react("fire", phone)["same"] is True  # the same again: not twice
+    assert react("heart", phone)["cheers"] == {"heart": 1}  # another: theirs changes
+    other = react("fire", "")  # another phone
+    assert other["cheers"] == {"heart": 1, "fire": 1}
+    live = json.loads(call(port, "GET", f"/{token}/api/live", Cookie=phone)[2])
+    assert live["per_song"] == "one" and live["now"]["mine"] == "heart"
+    # the player's pages read the counts; a new hub (the player started again) has them
+    assert json.loads(call(player, "GET", "/api/reactions")[2])["songs"][song] == {"heart": 1, "fire": 1}
+    again = GuestHub(library, hub.path.parent, host="127.0.0.1")
+    assert again.tallies()[song] == {"heart": 1, "fire": 1}
+    # as many as a guest likes again
+    call(player, "PUT", "/api/guests", {"reactions_per_song": "any"})
+    assert react("heart", phone)["cheers"] == {"heart": 2, "fire": 1}
+    taken = json.loads(call(player, "GET", "/api/guests/wishes?after=0&reacted=0")[2])
+    assert taken["cheers"][song] == {"heart": 2, "fire": 1}
+
+
 def test_the_guests_address_is_on_this_computers_network() -> None:
     for address in guest_module.lan_addresses():
         assert not address.startswith(("127.", "169.254.")) and address.count(".") == 3

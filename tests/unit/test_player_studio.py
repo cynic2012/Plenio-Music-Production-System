@@ -54,6 +54,53 @@ def test_the_arguments_keep_comfyui_on_this_computer() -> None:
         parse_args("--x " + "y" * 2000)
 
 
+def test_comfyui_starts_the_way_it_was_last_started(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Issue 2026-10-28: the player started ComfyUI without the owner's --models-directory, so every song stopped
+    at "Load checkpoint: Value not in list". Plenio keeps each start when ComfyUI loads it; with no arguments in
+    Settings the player repeats it - without the address, the port and TLS, which it sets itself."""
+    from plenio.player.studio import remember_start, remembered_start, repeatable
+
+    assert repeatable(
+        [
+            "--models-directory",
+            "F:/models",
+            "--listen",
+            "--port",
+            "8188",
+            "--enable-manager",
+            "--listen=0.0.0.0",
+        ]
+    ) == ["--models-directory", "F:/models", "--enable-manager"]
+    assert repeatable(["--listen", "0.0.0.0", "--cuda-device", "all", "--windows-standalone-build"]) == [
+        "--cuda-device",
+        "all",
+    ]
+    root = comfyui(tmp_path)
+    state = tmp_path / "state"
+    venv = tmp_path / "venv-python.exe"
+    venv.write_bytes(b"")
+    remember_start(
+        state, [str(root / "main.py"), "--models-directory", "F:/models", "--port", "8000"], str(venv)
+    )
+    remember_start(state, ["serve.py", "--x"], "python")  # not a ComfyUI: not kept
+    entry = remembered_start(state, root)
+    assert entry is not None and entry[1]["args"] == ["--models-directory", "F:/models"]
+    launcher = StudioLauncher(state)
+    launcher.configure({"root": str(root), "port": 8191})
+    command, _ = launcher.command()
+    assert command == [str(venv), str(root / "main.py"), "--port", "8191", "--models-directory", "F:/models"]
+    status = launcher.status()
+    assert status["args_from"] == "last start" and status["args_used"] == "--models-directory F:/models"
+    # arguments of its own in Settings win
+    launcher.configure({"args": "--cuda-device 1"})
+    assert launcher.command()[0][-2:] == ["--cuda-device", "1"]
+    assert launcher.status()["args_from"] == "settings"
+    # no Plenio in custom_nodes (ComfyUI Desktop): the ComfyUI last started with Plenio
+    monkeypatch.setattr(studio_module, "installed_root", lambda: None)
+    launcher.configure({"root": "", "args": ""})
+    assert launcher.root() == root
+
+
 def test_the_command_runs_the_folders_comfyui(tmp_path: Path) -> None:
     root = comfyui(tmp_path)
     launcher = StudioLauncher(tmp_path / "state")
@@ -167,7 +214,8 @@ def test_without_a_comfyui_folder_it_says_why(tmp_path: Path, monkeypatch: pytes
     monkeypatch.setattr(studio_module, "installed_root", lambda: None)
     launcher = StudioLauncher(tmp_path / "state")
     status = launcher.status()
-    assert not status["can_start"] and "ComfyUI Desktop" in status["why"]
+    # what to do: start ComfyUI once the usual way (it is remembered), or choose its folder
+    assert not status["can_start"] and "Start ComfyUI once" in status["why"]
     with pytest.raises(StudioLaunchError):
         launcher.start()
 

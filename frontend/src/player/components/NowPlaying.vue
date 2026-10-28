@@ -13,7 +13,7 @@ import { lineIndex, lines, paletteStyle, playlistVisual, section, sections, writ
 import { current, detail, duration, go, isFavorite, next, nowPlayingOpen, openCurrentPage, playing, previous, settings, time, toggleFavorite, upNext } from '../store'
 import { WAY_IN_SIDES } from '../liveSettings'
 import { formatTime, sectionName } from '../timing'
-import { partyMaker } from '../make/form'
+import { partyMaker, partyWhen } from '../make/form'
 import { isPhone } from '../layout'
 import BottomSheet from './BottomSheet.vue'
 import { makeStatus } from '../make/state'
@@ -68,7 +68,7 @@ let idleTimer: number | undefined
 const credit = computed(() => {
   const mode = makeStatus.value?.settings.credit ?? 'off'
   const name = mode !== 'off' && current.value ? partyMaker(current.value.tags) : null
-  return name && mode !== 'off' ? { name, mode } : null
+  return name && mode !== 'off' ? { name, mode, when: partyWhen(current.value?.tags) } : null
 })
 
 /** *Up next* shows in a song's last seconds - not on a phone (the lyrics need the room), not for a short song -
@@ -82,7 +82,7 @@ const upNextBy = computed(() => {
   const song = upNext.value
   if (!song) return ''
   const maker = (makeStatus.value?.settings.credit ?? 'off') !== 'off' ? partyMaker(song.tags) : null
-  return maker ? `a party song by ${maker}` : [song.other ? song.artist : song.genre, formatTime(song.seconds)].filter(Boolean).join(' · ')
+  return maker ? `a party song by ${maker} · ${partyWhen(song.tags).replace(/^on /, '')}` : [song.other ? song.artist : song.genre, formatTime(song.seconds)].filter(Boolean).join(' · ')
 })
 // over the visual the corner the guests' QR code leaves free
 const upNextLeft = computed(() => view.value === 'visual' && settings.live.on && settings.live.overVisual && settings.live.wayInCorner === 'bottom-right')
@@ -216,6 +216,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
     <MakerCredit
       v-if="credit && !panel && !lyricsPanel"
       :name="credit.name"
+      :when="credit.when"
       :mode="credit.mode"
       :time="time"
       :duration="duration"

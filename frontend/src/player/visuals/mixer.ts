@@ -197,6 +197,17 @@ export class SceneMixer {
     return this.now?.preset ?? null
   }
 
+  /** Let the pictures go (a video's or a preview's mixer when it is done). */
+  dispose(): void {
+    for (const canvas of [...this.mixes, this.scratch, this.mask]) {
+      if (canvas) canvas.width = canvas.height = 0
+    }
+    this.mixes = [null, null]
+    this.scratch = this.mask = null
+    this.cloud = null
+    this.now = this.old = null
+  }
+
   /** Whether a change is under way. */
   get changing(): boolean {
     return this.old !== null

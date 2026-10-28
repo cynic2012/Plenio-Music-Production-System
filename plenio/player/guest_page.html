@@ -88,6 +88,7 @@
   .react .row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
   .react button { height: 56px; font-size: 27px; border-radius: 16px; padding: 0; background: var(--panel); transition: transform 0.12s, background 0.2s; }
   .react button:active { transform: scale(0.88); background: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .react button.mine { outline: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--panel)); }
   .react .tally { min-height: 18px; text-align: center; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .fly { position: fixed; z-index: 5; pointer-events: none; font-size: 32px; animation: fly 1.1s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
   @keyframes fly { from { transform: translate(-50%, -50%) scale(0.7); opacity: 1; }
@@ -223,13 +224,17 @@
       $("nowTitle").textContent = v.now.title;
       $("nowBy").textContent = v.now.by;
       $("nowMade").hidden = !v.now.made_by;
-      $("nowMade").textContent = v.now.made_by ? `✨ made by ${v.now.made_by} at this party` : "";
+      $("nowMade").textContent = v.now.made_by ? `✨ made by ${v.now.made_by} at the party ${partyDay(v.now.made_on)}` : "";
       $("nowLen").textContent = time(v.now.seconds);
       tick();
     }
     // reactions to the song that plays
     $("reactBox").hidden = !(v.react && v.now);
-    if (v.now) tally(v.now.cheers || {});
+    onePerSong = v.per_song === "one";
+    if (v.now) {
+      tally(v.now.cheers || {});
+      markMine(onePerSong ? v.now.mine || "" : "");
+    }
     // up next
     const next = v.next || [];
     $("nextBox").hidden = !v.live;
@@ -302,11 +307,23 @@
     }
   }
 
+  /** The day of a party (``YYYY-MM-DD``) as its date - always the date, also for tonight's party. */
+  function partyDay(day) {
+    if (!day) return "";
+    const [y, m, d] = day.split("-").map(Number);
+    return "on " + new Date(y, m - 1, d).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+  }
   const REACTIONS = [["fire", "🔥"], ["heart", "❤️"], ["party", "🎉"], ["clap", "👏"], ["dance", "💃"], ["laugh", "😂"]];
   let reactedAt = -1e9;
+  let onePerSong = false;
   function tally(cheers) {
     const parts = REACTIONS.filter(([kind]) => cheers[kind]).map(([kind, emoji]) => `${emoji} ${cheers[kind]}`);
-    $("tally").textContent = parts.length ? `${parts.join("  ")}  - from everyone here` : "Tap to cheer - it floats over the big screen";
+    const how = onePerSong ? "One per song - tap another to change yours" : "Tap to cheer - it floats over the big screen";
+    $("tally").textContent = parts.length ? `${parts.join("  ")}  - from everyone here${onePerSong ? " · one per song" : ""}` : how;
+  }
+  /** One reaction per song: the guest's own is marked. */
+  function markMine(kind) {
+    for (const b of $("reactions").children) b.classList.toggle("mine", !!kind && b.dataset.kind === kind);
   }
   async function react(kind, emoji, from) {
     const now = performance.now();
@@ -324,7 +341,11 @@
     try {
       const answer = await fetch("api/react", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind }) });
       const data = await answer.json().catch(() => ({}));
-      if (answer.ok) tally(data.cheers || {});
+      if (answer.ok) {
+        tally(data.cheers || {});
+        if (data.mine) markMine(data.mine);
+        if (data.same) say("Already sent - one reaction per song (tap another to change it)");
+      }
       else if (answer.status === 403) { $("reactBox").hidden = true; say(data.error || "Reactions are off"); }
       else say(data.error || "That did not work");
     } catch {
@@ -333,6 +354,7 @@
   }
   $("reactions").replaceChildren(...REACTIONS.map(([kind, emoji]) => {
     const b = button(emoji, `Send ${emoji} to the big screen`, false, () => react(kind, emoji, b));
+    b.dataset.kind = kind;
     return b;
   }));
 

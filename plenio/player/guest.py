@@ -61,8 +61,11 @@ REACTIONS = ("fire", "heart", "party", "clap", "dance", "laugh")
 REACTIONS_PER_MINUTE = 60
 """Reactions one guest (address) may send in a minute."""
 REACTIONS_KEPT = 300
-CHEERED_SONGS = 50
-"""Songs whose reactions are counted for the guests' page (the latest ones)."""
+PER_SONG = ("any", "one")
+"""How many reactions a guest may give a song: as many as they like, or one (a tap on another changes it)."""
+TALLY_FILE = "reactions.json"
+"""The reactions per song, kept in the player's state folder: ``{"songs": {id: {kind: n}}, "votes": {id: {guest:
+kind}}}`` (the votes: who gave which, for one per song)."""
 LIST_LIMIT = 200
 BODY_LIMIT = 64 * 1024
 ASSET_TYPES = {
@@ -78,6 +81,7 @@ DEFAULTS: dict[str, Any] = {
     "token": "",
     "port": 0,
     "reactions": True,
+    "reactions_per_song": "any",
 }
 ALL_NETWORKS = ("0.0.0.0", "")  # noqa: S104 - the guests' access is meant for the network
 
@@ -135,8 +139,12 @@ class GuestHub:
         self.reactions: deque[dict[str, Any]] = deque(maxlen=REACTIONS_KEPT)
         self.last_reaction = 0
         self.reacted: dict[str, deque[float]] = {}
+        self.tally_path = directory / TALLY_FILE
         self.cheers: dict[str, dict[str, int]] = {}
-        """The reactions per song (the latest songs), for the guests' page."""
+        """The reactions per song, kept for good (``reactions.json``)."""
+        self.votes: dict[str, dict[str, str]] = {}
+        """Per song, the reaction each guest gave (only one per song counts)."""
+        self._load_tally()
 
     # --- settings and the server -------------------------------------------------------------------
     def _load(self) -> dict[str, Any]:
@@ -154,9 +162,44 @@ class GuestHub:
             settings["show"] = "both"
         if not isinstance(settings["reactions"], bool):
             settings["reactions"] = True
+        if settings["reactions_per_song"] not in PER_SONG:
+            settings["reactions_per_song"] = "any"
         if not isinstance(settings["token"], str) or len(settings["token"]) < 12:
             settings["token"] = new_token()
         return settings
+
+    def _load_tally(self) -> None:
+        try:
+            data = json.loads(self.tally_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        songs = data.get("songs") if isinstance(data, dict) else None
+        votes = data.get("votes") if isinstance(data, dict) else None
+        for song, tally in (songs or {}).items() if isinstance(songs, dict) else ():
+            if isinstance(tally, dict):
+                kept = {
+                    k: int(n) for k, n in tally.items() if k in REACTIONS and isinstance(n, int) and n > 0
+                }
+                if kept:
+                    self.cheers[str(song)] = kept
+        for song, given in (votes or {}).items() if isinstance(votes, dict) else ():
+            if isinstance(given, dict):
+                self.votes[str(song)] = {str(g): str(k) for g, k in given.items() if k in REACTIONS}
+
+    def _save_tally(self) -> None:
+        """Write the reactions (under the lock); a full disk keeps them in memory until the next one."""
+        try:
+            self.tally_path.parent.mkdir(parents=True, exist_ok=True)
+            temp = self.tally_path.with_suffix(".tmp")
+            temp.write_text(json.dumps({"songs": self.cheers, "votes": self.votes}), encoding="utf-8")
+            temp.replace(self.tally_path)
+        except OSError:
+            pass
+
+    def tallies(self) -> dict[str, dict[str, int]]:
+        """Every song's reactions, for the player's pages."""
+        with self.lock:
+            return {song: dict(tally) for song, tally in self.cheers.items()}
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -179,6 +222,8 @@ class GuestHub:
                 self.settings["show"] = changes["show"]
             if isinstance(changes.get("reactions"), bool):
                 self.settings["reactions"] = changes["reactions"]
+            if changes.get("reactions_per_song") in PER_SONG:
+                self.settings["reactions_per_song"] = changes["reactions_per_song"]
             if changes.get("regenerate"):
                 self.settings["token"] = new_token()
                 self.wishes.clear()
@@ -236,6 +281,7 @@ class GuestHub:
             "mode": self.settings["mode"],
             "show": self.settings["show"],
             "reactions": bool(self.settings["reactions"]),
+            "reactions_per_song": self.settings["reactions_per_song"],
             "port": port,
             "url": urls[0] if urls else "",
             "urls": urls,
@@ -264,12 +310,14 @@ class GuestHub:
             by = summary.get("artist") or summary.get("genre") or ""
             # a party song: who made it, when the host shows it
             made = maker_rules.party_maker(summary.get("tags") or {}) if credit else None
+            day = maker_rules.party_date(summary.get("tags") or {}) if made else ""
             return {
                 "id": song.id,
                 "at": at if isinstance(at, int) and not isinstance(at, bool) else -1,
                 "title": summary.get("title") or "",
                 "by": by,
                 "made_by": made or "",
+                "made_on": day,
                 "seconds": round(float(summary.get("seconds") or 0.0), 1),
                 "cover": bool((summary.get("has") or {}).get("cover")),
                 "new": bool(item.get("new")),
@@ -296,16 +344,20 @@ class GuestHub:
         """The guests' wishes after ``after`` (the last one the page carried out), and their reactions after
         ``reacted`` (the last one the page showed; ``None``: only the count, for a page that just opened)."""
         with self.lock:
+            reactions = [r for r in self.reactions if r["n"] > reacted] if reacted is not None else []
             return {
                 "wishes": [w for w in self.wishes if w["n"] > after],
                 "last": self.last_wish,
-                "reactions": [r for r in self.reactions if r["n"] > reacted] if reacted is not None else [],
+                "reactions": reactions,
                 "last_reaction": self.last_reaction,
+                # the counts of the songs reacted to, as kept (a changed reaction moves from one kind to another)
+                "cheers": {r["id"]: dict(self.cheers.get(r["id"], {})) for r in reactions},
             }
 
     # --- the guests ----------------------------------------------------------------------------------
-    def view(self, guest: str) -> dict[str, Any]:
-        """What a guest sees: the live playlist as the page last showed it, and what they may do."""
+    def view(self, guest: str, voter: str = "") -> dict[str, Any]:
+        """What a guest sees: the live playlist as the page last showed it, and what they may do (``voter``: the
+        guest's own id - their reaction to the song that plays, when only one counts)."""
         with self.lock:
             self.seen[guest] = time.monotonic()
             fresh = self.snapshot and time.monotonic() - self.snapshot_at < STALE_AFTER
@@ -317,6 +369,8 @@ class GuestHub:
                 now["position"] = round(min(now["seconds"] or 1e9, now["position"] + age), 2)
             with self.lock:
                 now["cheers"] = dict(self.cheers.get(now["id"], {}))
+                if voter and self.settings["reactions_per_song"] == "one":
+                    now["mine"] = self.votes.get(now["id"], {}).get(voter, "")
             snapshot["now"] = now
         make = bool(self.maker is not None and self.maker.guests_may())
         return {
@@ -324,6 +378,7 @@ class GuestHub:
             "mode": self.settings["mode"],
             "make": make,
             "react": bool(self.settings["reactions"]),
+            "per_song": self.settings["reactions_per_song"],
             **snapshot,
         }
 
@@ -364,9 +419,11 @@ class GuestHub:
             self.wishes.append(wish)
         return 200, {"ok": True, "n": wish["n"]}
 
-    def react(self, guest: str, data: Any) -> tuple[int, dict[str, Any]]:
+    def react(self, guest: str, data: Any, voter: str = "") -> tuple[int, dict[str, Any]]:
         """A guest's reaction to the song that plays: on its way to the player's screen, and counted for the
-        song. Only one of ``REACTIONS``, only while the page shows a song, a few a minute per guest."""
+        song (kept for good). Only one of ``REACTIONS``, only while the page shows a song, a few a minute per guest;
+        with one per song (``voter``: the guest's own id) a tap on another kind changes theirs, the same kind
+        again is not counted twice."""
         if not self.settings["reactions"]:
             return 403, {"error": "the host has switched reactions off"}
         kind = data.get("kind") if isinstance(data, dict) else None
@@ -384,15 +441,25 @@ class GuestHub:
             if len(sent) >= REACTIONS_PER_MINUTE:
                 return 429, {"error": "slow down a little"}
             sent.append(now)
+            tally = self.cheers.setdefault(song, {})
+            if self.settings["reactions_per_song"] == "one":
+                given = self.votes.setdefault(song, {})
+                before = given.get(voter or guest)
+                if before == kind:
+                    return 200, {"ok": True, "cheers": dict(tally), "mine": kind, "same": True}
+                if before:
+                    tally[before] = tally.get(before, 0) - 1
+                    if tally[before] <= 0:
+                        del tally[before]
+                given[voter or guest] = kind
+            tally[kind] = tally.get(kind, 0) + 1
             self.last_reaction += 1
             self.reactions.append({"n": self.last_reaction, "kind": kind, "id": song})
-            # the song's count, moved to the end: the latest songs are kept
-            tally = self.cheers.pop(song, {})
-            tally[kind] = tally.get(kind, 0) + 1
-            self.cheers[song] = tally
-            while len(self.cheers) > CHEERED_SONGS:
-                self.cheers.pop(next(iter(self.cheers)))
-            return 200, {"ok": True, "cheers": dict(tally)}
+            self._save_tally()
+            answer: dict[str, Any] = {"ok": True, "cheers": dict(tally)}
+            if self.settings["reactions_per_song"] == "one":
+                answer["mine"] = kind
+            return 200, answer
 
     def search(self, query: str) -> list[dict[str, Any]]:
         """Songs of the library for a guest to add: every word in the title, artist, genre or mood."""
@@ -616,7 +683,8 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
                 except OSError:
                     return self._nothing()
             if route == "/api/live":
-                return self._json(hub.view(guest))
+                who, cookie = self._guest()
+                return self._json(hub.view(guest, who["id"]), cookie=cookie)
             if route == "/make":
                 # without its last slash the page's own links would miss
                 self.send_response(301)
@@ -661,9 +729,13 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
                 data = json.loads(raw.decode("utf-8"))
             except ValueError:
                 return self._json({"error": "not JSON"}, 400)
-            act = hub.wish if found[0] == "/api/wish" else hub.react
-            status, answer = act(self.client_address[0], data)
-            return self._json(answer, status)
+            if found[0] == "/api/wish":
+                status, answer = hub.wish(self.client_address[0], data)
+                return self._json(answer, status)
+            # a reaction: the guest's own cookie tells their one reaction per song from another phone's
+            who, cookie = self._guest()
+            status, answer = hub.react(self.client_address[0], data, who["id"])
+            return self._json(answer, status, cookie=cookie)
 
         def do_PUT(self) -> None:  # noqa: N802
             raw = self._read(BODY_LIMIT)

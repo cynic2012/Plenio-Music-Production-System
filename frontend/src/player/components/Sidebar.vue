@@ -52,6 +52,11 @@ async function scan(): Promise<void> {
     scanning.value = false
   }
 }
+/** A folder as its last two names (``player-video-base › output``): the whole path is in its tooltip. */
+function shortFolder(path: string): string {
+  const parts = path.split(/[\\/]+/).filter(Boolean)
+  return parts.slice(-2).join(' › ') || path
+}
 </script>
 
 <template>
@@ -108,7 +113,9 @@ async function scan(): Promise<void> {
         </div>
       </template>
       <p v-if="remote" class="remote-mark" title="This page came from the network: the player runs on another computer"><Icon name="external" :size="13" /> from the network</p>
-      <p v-for="f in folders" :key="f" class="folder" :title="f"><Icon name="folder" :size="14" /> {{ f }}</p>
+      <button v-for="f in folders" :key="f" class="folder" :title="`The songs are read from ${f} - a click: the folders in Settings`" @click="go('/settings/songs')">
+        <Icon name="folder" :size="14" /> <span>{{ shortFolder(f) }}</span>
+      </button>
       <a v-if="comfyLink" class="link small-link comfy" :href="comfyLink" target="_blank" rel="noopener" title="ComfyUI, in a tab of its own"><Icon name="external" :size="16" /> ComfyUI <small>↗</small></a>
       <button v-if="!isPortable" class="ghost small" :class="{ wide: true }" @click="shareFor = { songs: [], title: '' }"><Icon name="download" :size="14" /> Share as a player…</button>
       <button v-if="!isPortable" class="ghost small" :disabled="scanning" @click="scan"><Icon name="refresh" :size="14" :class="{ spin: scanning }" /> {{ scanning ? 'Looking …' : 'Look for new songs' }}</button>
@@ -341,6 +348,11 @@ h4 {
 }
 .folder {
   margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -348,9 +360,13 @@ h4 {
   color: var(--muted);
   overflow: hidden;
   white-space: nowrap;
+}
+.folder span {
+  overflow: hidden;
   text-overflow: ellipsis;
-  direction: rtl;
-  text-align: left;
+}
+.folder:hover {
+  color: #ebe8f5;
 }
 .small {
   font-size: 12px;

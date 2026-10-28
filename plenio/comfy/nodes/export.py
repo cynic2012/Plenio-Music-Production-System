@@ -162,6 +162,26 @@ def _tag_inputs() -> list[Any]:
     ]
 
 
+def made_facts(brief: Any, reports: list[dict[str, Any]], now: float | None = None) -> dict[str, Any]:
+    """How the song was made, for its record: when its run began (``None``: not known) and ended, how long it took,
+    on what, and with which lyrics fidelity (the brief's, else the Best Take's level)."""
+    finished = time.time() if now is None else now
+    started = host.run_started()
+    out: dict[str, Any] = {
+        "started": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(started)) if started else None,
+        "finished": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(finished)),
+        "seconds": round(finished - started, 1) if started and finished >= started else None,
+        "on": host.machine(),
+    }
+    fidelity = getattr(brief, "fidelity", None)
+    if not fidelity:
+        best = next((r for r in reports if r.get("kind") == "best_take"), None)
+        fidelity = ((best or {}).get("data") or {}).get("level")
+    if fidelity:
+        out["lyrics_fidelity"] = str(fidelity)
+    return out
+
+
 def _plain(value: Any) -> str:
     if isinstance(value, bool):
         return "on" if value else "off"
@@ -668,6 +688,7 @@ class PlenioExportRelease(io.ComfyNode):
             },
             title=song_title,
             licences=licences,
+            made=made_facts(brief, report_dicts),
             sheet_music=(
                 {
                     "file": file(SHEET_SUFFIX).name,

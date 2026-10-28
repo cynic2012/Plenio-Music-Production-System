@@ -82,6 +82,20 @@ export function queueVideo(song: SongSummary, options: VideoOptions): Job {
 }
 
 let drawing = false
+/** Whether a video that failed may succeed when tried again (not: a browser without WebCodecs or the size). */
+export function retryable(error: unknown): boolean {
+  const text = error instanceof Error ? error.message : String(error)
+  return !/cannot encode|WebCodecs|AbortError/i.test(text)
+}
+
+/** A video's failure in words a person can act on. */
+export function videoError(error: unknown): string {
+  const text = error instanceof Error ? error.message : String(error)
+  if (/memory|allocation|context lost|Encoding error|EncodingError/i.test(text))
+    return `The browser ran out of memory for this video (${text}). Close other tabs, or choose a smaller size or fewer frames a second, and try again.`
+  return text
+}
+
 /** The videos, one after the other, the oldest first. */
 async function runVideos(): Promise<void> {
   if (drawing) return
@@ -98,18 +112,31 @@ async function runVideos(): Promise<void> {
       }
       job.state = 'working'
       try {
-        const result = await makeVideo(
-          run.song,
-          run.options,
-          (p) => Object.assign(job, { stage: p.stage, done: p.frame, total: p.total, speed: p.speed, left: p.left }),
-          run.stop.signal,
-          (canvas) => frameWatchers.get(job.id)?.(canvas)
-        )
+        const attempt = () =>
+          makeVideo(
+            run.song,
+            run.options,
+            (p) => Object.assign(job, { stage: p.stage, done: p.frame, total: p.total, speed: p.speed, left: p.left }),
+            run.stop.signal,
+            (canvas) => frameWatchers.get(job.id)?.(canvas)
+          )
+        let result
+        try {
+          result = await attempt()
+        } catch (error) {
+          // once more after a pause (owner's report 2026-10-28: "out of memory" now and then): the first try's
+          // memory is given back by then; what this browser cannot do at all fails again at once
+          if (run.stop.signal.aborted || !retryable(error)) throw error
+          Object.assign(job, { stage: 'Trying again', done: 0 })
+          await new Promise((resolve) => setTimeout(resolve, 2500))
+          if (run.stop.signal.aborted) throw error
+          result = await attempt()
+        }
         Object.assign(job, { state: 'done', stage: '', file: result.file, size: result.size, folder: result.folder })
         say(`Video saved: ${result.file}`, 5000)
       } catch (error) {
         if (run.stop.signal.aborted) job.state = 'stopped'
-        else Object.assign(job, { state: 'error', error: error instanceof Error ? error.message : String(error) })
+        else Object.assign(job, { state: 'error', error: videoError(error) })
       } finally {
         videoRuns.delete(job.id)
       }

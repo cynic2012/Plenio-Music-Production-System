@@ -226,6 +226,45 @@ def test_corrected_lyrics_of_a_song_sheet_win_over_the_copied_lyrics_tag(server:
     assert record["documents"]["lyrics"]["text"] == corrected
 
 
+def test_the_record_says_when_how_long_and_on_what_the_song_was_made(server: ComfyServer) -> None:
+    """Owner's request 2026-10-28: the song's details show when it was made (date and time), how long it took and
+    on what (the graphics card or the processor, the RAM)."""
+    import json
+    import uuid
+
+    import numpy as np
+
+    from plenio.core.release import record_fingerprint, write_audio
+
+    name = f"made-{uuid.uuid4().hex[:8]}.flac"
+    (server.base / "input").mkdir(exist_ok=True)
+    t = np.arange(44100) / 44100
+    write_audio(
+        server.base / "input" / name, 0.1 * np.vstack([np.sin(2 * np.pi * 220 * t)] * 2), 44100, "flac", {}
+    )
+    folder = f"plenio-audit/{uuid.uuid4().hex[:8]}"
+    prompt = {
+        "1": {"class_type": "LoadAudio", "inputs": {"audio": name}},
+        "2": {
+            "class_type": "PlenioExportRelease",
+            "inputs": {
+                "audio": ["1", 0],
+                "folder": folder,
+                "naming": "made",
+                "collision": "number",
+                "lyrics_srt": False,
+            },
+        },
+    }
+    server.run(prompt)
+    record = json.loads((server.output_dir / folder / "made.plenio.json").read_text(encoding="utf-8"))
+    made = record["made"]
+    assert made["started"] and made["finished"] and made["seconds"] is not None and made["seconds"] >= 0
+    assert made["on"]["device"] in ("gpu", "cpu") and made["on"]["cpu"] and made["on"]["cores"]
+    # when and on what it was made is not the song: the fingerprint leaves it out
+    assert record["fingerprint"] == record_fingerprint({**record, "made": {"seconds": 1}})
+
+
 def test_a_loud_unmastered_take_is_a_note_not_a_warning(server: ComfyServer) -> None:
     """A YuE2 render peaks above full scale, so its (original).flac clips; the export warned about it
     on every run ('a limiter before the export avoids this'), though the mastered files were fine."""

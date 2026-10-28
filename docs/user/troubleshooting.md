@@ -82,6 +82,16 @@ Start with **0 · System Check**: it shows versions, GPUs, which model files of 
 | *... answer was cut off after N tokens* | *max tokens* (or the app's context) too small, often with *thinking* on | Raise *max tokens* and *context*, or turn *thinking* off; in LM Studio set the model's context length to 8192 or more |
 | *LM Studio is not reachable* | LM Studio runs, but not its local server | Developer tab > *Start server*, or `lms server start` |
 
+## Plenio Player
+
+| What you see | Why | What to do |
+|---|---|---|
+| A song from *Make a song* stops: *ComfyUI does not find the model file …* (in 1.3: *Load checkpoint: Value not in list*) | that ComfyUI does not see your models - mostly one the player started without your models folder | Start ComfyUI once the way you usually do (your `.bat`, the portable build, ComfyUI Desktop): the player then starts it the same way. Or enter `--models-directory <your folder>` in *Settings › The studio › How it starts ComfyUI* |
+| *Every setting of the studio* lists only LM Studio's models, not ComfyUI's | the same: ComfyUI runs without your models folder | as above; a model field also says *ComfyUI does not find this model file* |
+| *The player does not know yet how to start ComfyUI* | Plenio is not inside a ComfyUI folder (ComfyUI Desktop) and ComfyUI has not run with Plenio since 1.4.0 | Start ComfyUI once; or choose its folder in *Settings › The studio* |
+| A video stops: *The browser ran out of memory for this video* | the page has no room for one more frame at this size (other tabs, a 4K video at 60 frames a second) | Close other tabs; choose a smaller size or 30 frames a second. A failed video is tried once more by itself |
+| A song made in the player is not in the party's folder | since 1.4.0 only songs ordered on the party's page (the guests' phones) are party songs | Nothing to do: yours are saved like songs made in ComfyUI |
+
 ## Reporting a problem
 
 Run **0 · System Check** with *detail* = `full`, and include its output, the ComfyUI console lines around the error, and - for a run - the release record (`<song>.plenio.json` next to the audio; it holds the documents, seeds and settings, with secrets removed).

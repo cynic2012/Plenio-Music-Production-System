@@ -416,7 +416,7 @@ onBeforeUnmount(() => {
         />
       </div>
       <p v-if="draft.kind === 'cover'" class="note">A cover keeps the original’s melody, tempo, length and key{{ draft.fields.vocals === 'original lyrics' ? ' - and its lyrics, sung anew' : '' }}.</p>
-      <p v-else-if="form.limits.max_length" class="note">Songs up to {{ form.limits.max_length.replace(/^.*\(about (.*)\).*$/, '$1') }} at this party.</p>
+      <p v-else-if="form.limits.max_length" class="note">Songs up to {{ form.limits.max_length.replace(/^.*\(about (.*)\).*$/, '$1') }} here.</p>
     </section>
 
     <StudioPanel v-if="spec && draft.studio" :key="`${draft.kind}-${draft.again}-${draft.base?.id ?? ''}`" :spec="spec" :values="draft.studio" :draft="draft" :warnings="remake?.studio?.warnings" />
@@ -446,7 +446,7 @@ onBeforeUnmount(() => {
       <p v-else-if="!editingNow" class="hint">
         <template v-if="ahead">{{ ahead }} {{ ahead === 1 ? 'song is' : 'songs are' }} in line before yours - the studio is free {{ untilText(free, now) }} ({{ timeOfDay(free, true, now) }}).</template>
         <template v-else>The studio is free - yours is next.</template>
-        A song takes a few minutes; when it is ready it plays at the party.
+        A song takes a few minutes; when it is ready {{ status?.me.kind === 'guest' ? 'it plays at the party' : 'it is in your songs' }}.
       </p>
       <p v-if="error" class="error">{{ error }}</p>
     </footer>

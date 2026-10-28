@@ -10,7 +10,7 @@ import { ref, watch } from 'vue'
 import { api, type GuestStatus, type GuestWish } from './api'
 import { addLive, isNew, liveLog } from './live'
 import { isPortable } from './portable'
-import { receive } from './reactions'
+import { loadCheers, receive } from './reactions'
 import { byId, current, index, liveWaiting, playing, queue, say, settings, time } from './store'
 
 export const guestStatus = ref<GuestStatus | null>(null)
@@ -108,10 +108,10 @@ function publish(soon = 250): void {
 
 async function pollWishes(): Promise<void> {
   try {
-    const { wishes, last, reactions, last_reaction } = await api.guestWishes(lastWish, lastReaction)
+    const { wishes, last, reactions, last_reaction, cheers } = await api.guestWishes(lastWish, lastReaction)
     lastWish = last
     if (last_reaction !== undefined) lastReaction = last_reaction
-    if (reactions?.length) receive(reactions)
+    if (reactions?.length) receive(reactions, cheers)
     let done = 0
     for (const wish of wishes) {
       const title = byId.value.get(wish.id)?.title ?? 'a song'
@@ -130,7 +130,8 @@ async function pollWishes(): Promise<void> {
 async function start(): Promise<void> {
   if (heartbeat !== undefined) return
   try {
-    // the wishes from before this page opened are not done again (nor shown, the reactions)
+    // the wishes from before this page opened are not done again (nor shown, the reactions) - their counts are
+    void loadCheers(api.reactions)
     const first = await api.guestWishes(0)
     lastWish = first.last
     lastReaction = first.last_reaction

@@ -27,7 +27,7 @@ export const MAX_FLOATING = 40
 export const SPREAD_MS = 1400
 
 export const floating = ref<Floating[]>([])
-/** The reactions per song while this page is open (song id -> kind -> count). */
+/** The guests' reactions per song (song id -> kind -> count), as the player keeps them - apart from the hearts. */
 export const cheers = reactive<Record<string, Record<string, number>>>({})
 
 let key = 0
@@ -71,11 +71,24 @@ function launch(kind: string): void {
   window.setTimeout(() => (floating.value = floating.value.filter((f) => f.key !== one.key)), one.duration * 1000 + 100)
 }
 
-/** Reactions that arrived: counted for their songs, then sent floating, spread out. */
-export function receive(list: GuestReaction[]): void {
+/** Reactions that arrived: counted for their songs - the counts as the player keeps them, when it sends them
+ * (``kept``: a guest's changed reaction moves from one kind to another) - then sent floating, spread out. */
+export function receive(list: GuestReaction[], kept?: Record<string, Record<string, number>>): void {
   for (const reaction of list) {
+    if (kept?.[reaction.id]) continue
     const tally = (cheers[reaction.id] ??= {})
     tally[reaction.kind] = (tally[reaction.kind] ?? 0) + 1
   }
+  for (const [id, tally] of Object.entries(kept ?? {})) cheers[id] = { ...tally }
   spread(list.length).forEach((delay, i) => window.setTimeout(() => launch(list[i].kind), delay))
+}
+
+/** The counts the player keeps (its reactions.json), at the page's start. */
+export async function loadCheers(read: () => Promise<{ songs: Record<string, Record<string, number>> }>): Promise<void> {
+  try {
+    const { songs } = await read()
+    for (const [id, tally] of Object.entries(songs ?? {})) cheers[id] = { ...tally }
+  } catch {
+    // a player without them (a shared player): the page counts what arrives
+  }
 }

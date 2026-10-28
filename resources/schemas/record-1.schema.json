@@ -127,6 +127,29 @@
         "why": { "type": "array", "items": { "type": "string" } }
       }
     },
+    "made": {
+      "description": "Since 1.4.0: how the song was made - when its run began and ended, how long it took, on what (the graphics card and its memory or the processor, the RAM), the lyrics fidelity. Not part of the fingerprint.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "started": { "type": ["string", "null"] },
+        "finished": { "type": "string" },
+        "seconds": { "type": ["number", "null"], "minimum": 0 },
+        "on": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "device": { "type": "string" },
+            "gpu": { "type": "string" },
+            "vram_gb": { "type": "number" },
+            "cpu": { "type": "string" },
+            "cores": { "type": ["integer", "null"] },
+            "ram_gb": { "type": "number" }
+          }
+        },
+        "lyrics_fidelity": { "type": "string" }
+      }
+    },
     "sheet_music": {
       "type": "object",
       "required": ["file", "status"],

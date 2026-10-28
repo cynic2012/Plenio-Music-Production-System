@@ -13,6 +13,8 @@ import { sectionName } from '../timing'
 
 const props = defineProps<{
   name: string
+  /** When its party was: ``on 27 October 2026`` (``''``: not known). */
+  when?: string
   mode: Exclude<Credit, 'off'>
   time: number
   duration: number
@@ -48,14 +50,14 @@ const glow = computed(() => ({ '--glow': String(0.35 + pulse.value * 0.65) }))
   <div class="credit" :style="glow" aria-live="off">
     <Transition name="moment" mode="out-in">
       <div v-if="moment?.kind === 'intro'" key="intro" class="moment intro">
-        <small>a party song by</small>
+        <small>a party song{{ when ? ` ${when}` : '' }} by</small>
         <b class="letters"><span v-for="(c, i) in letters" :key="i" class="name" :style="{ animationDelay: `${0.25 + i * 0.06}s, 0s` }">{{ c === ' ' ? ' ' : c }}</span></b>
       </div>
       <div v-else-if="moment?.kind === 'section'" :key="`section-${moment.label}-${Math.floor(time)}`" class="moment section">
         <i>✨</i> <span>{{ sectionName(moment.label) }}</span> <small>by</small> <b class="name">{{ name }}</b>
       </div>
       <div v-else-if="moment?.kind === 'outro'" key="outro" class="moment outro">
-        <small>made at this party by</small>
+        <small>made at the party {{ when || '' }} by</small>
         <b class="name">{{ name }}</b>
         <em>thank you ♥</em>
       </div>

@@ -167,6 +167,8 @@ class ComfyServer:
             {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8", "PLENIO_LLM_OTHER_APPS": "0"},
             **self.extra_env,
         )
+        # a test server's own player state: Plenio keeps how ComfyUI was started there, never in the user's
+        env.setdefault("PLENIO_PLAYER_STATE", str(self.base / "player-state"))
         self.base.mkdir(parents=True, exist_ok=True)
         log = self.log_path.open("wb")
         self.process = subprocess.Popen(command, cwd=self.root, stdout=log, stderr=subprocess.STDOUT, env=env)  # noqa: S603

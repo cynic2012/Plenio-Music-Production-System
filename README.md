@@ -198,7 +198,7 @@ Nothing else to buy, sign up for or glue together - every step is in the box, an
 | **Go on** | Drop a song's FLAC onto ComfyUI and you are back in its workflow - new takes, a changed score, new lyrics |
 | **Listen & share** | The Plenio Player: visuals, Live Play, videos and a player in one file to send |
 
-Nine narrated video tutorials walk through it, all made with the real models.
+Eleven narrated video tutorials walk through it, all made with the real models.
 
 ## Watch the tutorials
 
@@ -208,7 +208,7 @@ Nine narrated video tutorials walk through it, all made with the real models.
   <a href="https://youtu.be/q_dMH834E1o"><img src="assets/branding/0.4.5/promo.jpg" alt="Plenio - Music production in ComfyUI: the promo video on YouTube" width="70%" /></a>
 </p>
 
-**▶ [All tutorials as a YouTube playlist](https://www.youtube.com/playlist?list=PLAFqTtP59fgE)** - one narrated video for every template, two for the creative modes and one for the Plenio Player (English, 2 to 15 minutes, with chapters), recorded in ComfyUI with the real models: every song you hear in them was made right there. Watch them in order, or jump to the template you need.
+**▶ [All tutorials as a YouTube playlist](https://www.youtube.com/playlist?list=PLAFqTtP59fgE)** - one narrated video for every template, two for the creative modes and three for the Plenio Player - listening, party songs and the Song API (English, 2 to 17 minutes, with chapters), recorded in ComfyUI with the real models: every song you hear in them was made right there. Watch them in order, or jump to the template you need.
 
 | | Tutorial | What you will see |
 |:---:|---|---|
@@ -220,9 +220,18 @@ Nine narrated video tutorials walk through it, all made with the real models.
 | <img src="assets/branding/0.4.5/tutorial-5-yue2-daw.jpg" alt="Tutorial 5 · YuE2 · DAW" width="180" /> | **5 · YuE2 · DAW** | Compose it yourself: the words first, then the music - draw the notes, import a MIDI sketch or play it in with a MIDI keyboard - and YuE2 sings your melody. |
 | <img src="assets/branding/0.4.5/tutorial-6-yue2-song-creative.jpg" alt="Tutorial 6 · YuE2 · Song · Creative modes" width="180" /> | **6 · YuE2 · Song · Creative modes** *(experimental)* | The writer model plans the arrangement, Plenio writes the notes: a *dramatic* song, its arranged score in the Song Sheet, the rendered song - and another arrangement from the arrangement seed. |
 | <img src="assets/branding/0.4.5/tutorial-7-yue2-cover-creative.jpg" alt="Tutorial 7 · YuE2 · Cover · Creative modes" width="180" /> | **7 · YuE2 · Cover · Creative modes** *(experimental)* | A recording re-arranged for a full ensemble, with new lyrics that keep its story - *song flow closeness* and *lyrics closeness*, A/B against the original, the cover and its sheet music. |
-| <img src="assets/branding/1.0.0/tutorial-8-player.jpg" alt="Tutorial 8 · Plenio Player" width="180" /> | **8 · Plenio Player** | Your songs in the browser, one click from ComfyUI: search, a page per song, the lyrics lit up as they are sung and the sheet music following the music, playlists, Winamp-style visuals that move with the music, settings that last - and *Open in ComfyUI* back to the song's workflow. |
+| <img src="assets/branding/1.4.0/tutorial-8-player.jpg" alt="Tutorial 8 · Plenio Player" width="180" /> | **8 · Plenio Player** | Your songs in the browser, on the phone and on the party's big screen: search, a page per song, the lyrics lit up as they are sung and the sheet music following the music, playlists, visuals that move with the music, Live Play with the guests' reactions, videos, help - and *Open in ComfyUI* back to the song's workflow. |
+| <img src="assets/branding/1.4.0/tutorial-9-party-songs.jpg" alt="Tutorial 9 · Party songs" width="180" /> | **9 · Party songs** | Songs made from the player, no workflow to open: presets, takes, ComfyUI started for you - and the guests ordering songs on their phones, who made it on the big screen, their reactions. |
+| <img src="assets/branding/1.4.0/tutorial-10-song-api.jpg" alt="Tutorial 10 · Song API" width="180" /> | **10 · Song API** | Songs from your own programs: one POST, the job followed with `?wait`, the files, the song played - and the examples in Python, JavaScript and the shell. |
 
 ## Listen first
+
+**▶ [Songs made with Plenio, as videos](https://www.youtube.com/playlist?list=PLBZzzh1IMZzk)** - six songs, each made in ComfyUI with Plenio and YuE2 and turned into a music video by the Plenio Player (its visuals, the lyrics as they are sung):
+
+<table>
+<tr><td align="center" width="33%"><a href="https://youtu.be/hPq9tUjTzr0"><img src="https://i.ytimg.com/vi/hPq9tUjTzr0/mqdefault.jpg" alt="Restrained Driving Atmosphere - Progressive Trance, a song made with Plenio, as a Plenio Player video" width="100%" /></a><br /><b>Restrained Driving Atmosphere</b><br /><sub>Progressive Trance</sub></td><td align="center" width="33%"><a href="https://youtu.be/hAaLnEOe6-g"><img src="https://i.ytimg.com/vi/hAaLnEOe6-g/mqdefault.jpg" alt="Hypnotic Rolling Progression - Progressive Trance, a song made with Plenio, as a Plenio Player video" width="100%" /></a><br /><b>Hypnotic Rolling Progression</b><br /><sub>Progressive Trance</sub></td><td align="center" width="33%"><a href="https://youtu.be/VcDpDqVAz3g"><img src="https://i.ytimg.com/vi/VcDpDqVAz3g/mqdefault.jpg" alt="Window Open Low - Smooth Jazz, a song made with Plenio, as a Plenio Player video" width="100%" /></a><br /><b>Window Open Low</b><br /><sub>Smooth Jazz</sub></td></tr>
+<tr><td align="center" width="33%"><a href="https://youtu.be/UoQnC7ceOl8"><img src="https://i.ytimg.com/vi/UoQnC7ceOl8/mqdefault.jpg" alt="Chrome Heartbeat City Glow - Synth-Pop, a song made with Plenio, as a Plenio Player video" width="100%" /></a><br /><b>Chrome Heartbeat City Glow</b><br /><sub>Synth-Pop</sub></td><td align="center" width="33%"><a href="https://youtu.be/r-X1GWI-BR0"><img src="https://i.ytimg.com/vi/r-X1GWI-BR0/mqdefault.jpg" alt="The Brass Floor - Swing / Big Band, a song made with Plenio, as a Plenio Player video" width="100%" /></a><br /><b>The Brass Floor</b><br /><sub>Swing / Big Band</sub></td><td align="center" width="33%"><a href="https://youtu.be/4A_jQsZj8B4"><img src="https://i.ytimg.com/vi/4A_jQsZj8B4/mqdefault.jpg" alt="Lonely Quiet Ascent - Solo Piano, a song made with Plenio, as a Plenio Player video" width="100%" /></a><br /><b>Lonely Quiet Ascent</b><br /><sub>Solo Piano</sub></td></tr>
+</table>
 
 **🎧 [Open the demo gallery](https://jplenio.github.io/Plenio-Music-Production-System/)** - 30 songs made with Plenio 0.2.2 and YuE2 (one per genre, straight out of the templates), 35 MiniMax Music 3 songs and 8 cover versions, with search, filters and everything the model received for each track.
 

@@ -201,13 +201,42 @@ async def _post_prompt(
         raise SongApiError("not_ready", f"ComfyUI's queue did not answer: {error}", status=503) from error
     if status != 200 or not isinstance(body, dict) or not body.get("prompt_id"):
         message = ((body or {}).get("error") or {}).get("message") if isinstance(body, dict) else ""
+        details = _node_errors(body.get("node_errors") if isinstance(body, dict) else None, prompt)
+        missing = _missing_files(details)
+        if missing:
+            raise SongApiError(
+                "comfyui_rejected",
+                f"ComfyUI does not find {'the model file' if len(missing) == 1 else 'the model files'} "
+                + ", ".join(missing)
+                + ".",
+                hint="Put the file into ComfyUI's models folder, or start ComfyUI with the folder that holds it "
+                "(--models-directory). The template 0 · System Check lists every model file and its folder.",
+                details=details,
+            )
         raise SongApiError(
             "comfyui_rejected",
             f"ComfyUI refused the run: {message or status}.",
             hint="The details name the nodes and why (a model file missing is the usual reason).",
-            details=_node_errors(body.get("node_errors") if isinstance(body, dict) else None, prompt),
+            details=details,
         )
     return body
+
+
+_NOT_IN_LIST = re.compile(r"'([^']+)' not in")
+
+
+def _missing_files(details: list[dict[str, Any]]) -> list[str]:
+    """The files ComfyUI's validation did not find in a loader's list (``Value not in list``): ``name (node)``."""
+    found: list[str] = []
+    for detail in details:
+        if "not in list" not in detail["message"].lower():
+            continue
+        match = _NOT_IN_LIST.search(detail["details"])
+        if match:
+            entry = f"{match.group(1)} ({detail['title'] or detail['type']})"
+            if entry not in found:
+                found.append(entry)
+    return found
 
 
 def _node_errors(errors: Any, prompt: dict[str, Any]) -> list[dict[str, Any]]:

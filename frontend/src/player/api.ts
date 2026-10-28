@@ -49,10 +49,31 @@ export interface SamplingValues {
   fixed?: boolean
 }
 
+/** What a song was made on (the record's ``made.on``, since 1.4.0). */
+export interface MadeOn {
+  device?: string
+  gpu?: string
+  vram_gb?: number
+  cpu?: string
+  cores?: number
+  ram_gb?: number
+}
+
+/** How a song was made: when its run began and ended, how long it took, on what, the lyrics fidelity. */
+export interface Made {
+  started?: string | null
+  finished?: string
+  seconds?: number | null
+  on?: MadeOn
+  lyrics_fidelity?: string
+}
+
 export interface SongSummary {
   id: string
   title: string
   created: string
+  /** Since 1.4.0 (older songs: the lyrics fidelity at most). */
+  made?: Made
   year: string
   seconds: number
   model: string
@@ -280,6 +301,10 @@ export interface StudioStatus {
   installed_root?: string
   python?: string
   args?: string
+  /** Where the arguments come from: Settings, the last start of this ComfyUI with Plenio, or none. */
+  args_from?: 'settings' | 'last start' | ''
+  args_used?: string
+  last_start_at?: number | null
   port?: number
   command?: string
   log?: string[]
@@ -320,6 +345,8 @@ export interface GuestStatus {
   show: 'both' | 'qr' | 'address' | 'none'
   /** Guests may send reactions to the screen (🔥 ❤️ 🎉 ...). */
   reactions: boolean
+  /** As many reactions per song as a guest likes, or one (a tap on another changes it). */
+  reactions_per_song: 'any' | 'one'
   port: number
   url: string
   urls: string[]
@@ -475,15 +502,17 @@ const serverApi = {
   guests: () => json<GuestStatus>('/api/guests'),
   /** Switch the guests' access on or off, choose what they may do and what the screen shows, or make a new
    * address (``regenerate``). */
-  setGuests: (changes: Partial<Pick<GuestStatus, 'on' | 'mode' | 'show' | 'reactions'>> & { regenerate?: boolean }) =>
+  setGuests: (changes: Partial<Pick<GuestStatus, 'on' | 'mode' | 'show' | 'reactions' | 'reactions_per_song'>> & { regenerate?: boolean }) =>
     json<GuestStatus>('/api/guests', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) }),
   /** What the page shows of the live playlist, for the guests. */
   showGuests: (shown: unknown) => post<{ ok: boolean }>('/api/guests/live', shown),
   /** The guests' wishes after ``after``, and their reactions after ``reacted`` (left out: only the counts). */
   guestWishes: (after: number, reacted?: number) =>
-    json<{ wishes: GuestWish[]; last: number; reactions?: GuestReaction[]; last_reaction?: number }>(
+    json<{ wishes: GuestWish[]; last: number; reactions?: GuestReaction[]; last_reaction?: number; cheers?: Record<string, Record<string, number>> }>(
       `/api/guests/wishes?after=${after}${reacted === undefined ? '' : `&reacted=${reacted}`}`
     ),
+  /** The guests' reactions per song, as the player keeps them (apart from the favourites). */
+  reactions: () => json<{ songs: Record<string, Record<string, number>> }>('/api/reactions'),
 }
 
 /** In a shared player: the songs inside the page, the listener's state in their browser; the rest is the
@@ -543,6 +572,7 @@ function sharedApi(): typeof serverApi {
     setGuests: none,
     showGuests: none,
     guestWishes: none,
+    reactions: async () => ({ songs: {} }),
   }
 }
 

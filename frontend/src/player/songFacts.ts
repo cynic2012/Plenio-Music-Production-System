@@ -19,6 +19,48 @@ export interface Fact {
 /** A text field left empty: no default value, the writer (or the music model) chose. */
 export const OPEN = 'open - the writer chose'
 
+/** A record's time (``2026-10-28T14:05:09+0100``) as the reader's date and time; ``''`` when it cannot be read. */
+export function dateTime(stamp: string | null | undefined): string {
+  if (!stamp) return ''
+  const iso = stamp.replace(/([+-]\d\d)(\d\d)$/, '$1:$2')
+  const when = new Date(iso)
+  if (Number.isNaN(when.getTime())) return stamp.replace('T', ' ').slice(0, 16)
+  return when.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+/** A span of seconds as people say it: ``45 s``, ``4 min 33 s``, ``1 h 05 min``. */
+export function spanOf(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds))
+  if (s < 60) return `${s} s`
+  if (s < 3600) return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`
+  return `${Math.floor(s / 3600)} h ${String(Math.floor((s % 3600) / 60)).padStart(2, '0')} min`
+}
+
+const FIDELITY_WORDS: Record<string, string> = {
+  standard: 'standard - one take',
+  high: 'high - the best of up to two takes for the words',
+  highest: 'highest - the best of up to three takes for the words',
+}
+
+/** The song page's "How it was made": when (date and time), how long it took, on what, the lyrics fidelity
+ * (owner's request 2026-10-28). Songs made before 1.4.0 have the date and, when their record says it, the fidelity. */
+export function madeFacts(s: SongSummary): Fact[] {
+  const made = s.made ?? {}
+  const out: Fact[] = []
+  const when = dateTime(made.started || s.created)
+  if (when) out.push({ label: 'Made', value: when, note: made.started ? '' : 'when it was saved' })
+  if (made.seconds !== null && made.seconds !== undefined) out.push({ label: 'Making took', value: spanOf(made.seconds) })
+  const on = made.on
+  if (on) {
+    if (on.device === 'gpu' && on.gpu) out.push({ label: 'Graphics card', value: on.vram_gb ? `${on.gpu} · ${on.vram_gb} GB` : on.gpu })
+    else out.push({ label: 'Graphics card', value: 'none - made on the processor alone' })
+    if (on.cpu) out.push({ label: 'Processor', value: on.cores ? `${on.cpu} · ${on.cores} threads` : on.cpu })
+    if (on.ram_gb) out.push({ label: 'Memory (RAM)', value: `${on.ram_gb} GB` })
+  }
+  if (made.lyrics_fidelity) out.push({ label: 'Lyrics fidelity', value: FIDELITY_WORDS[made.lyrics_fidelity] ?? made.lyrics_fidelity })
+  return out
+}
+
 export function songFacts(s: SongSummary): Fact[] {
   const b = s.brief
   if (!b.kind) return plainFacts(s)

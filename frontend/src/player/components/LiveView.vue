@@ -248,6 +248,22 @@ const ago = (at: number): string => {
   justify-content: flex-end;
   gap: 8px;
 }
+/* narrow: the title, then the buttons under it (beside it they broke into words on a line each) */
+@media (max-width: 640px) {
+  .head {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .head-right {
+    justify-items: start;
+  }
+  .head-buttons {
+    justify-content: flex-start;
+  }
+  .head-buttons button {
+    white-space: nowrap;
+  }
+}
 h1 {
   display: flex;
   align-items: center;
