@@ -411,6 +411,11 @@ class Graph:
         x, y, width, height = self.groups[self._index(title)]["bounding"]
         return x, y, x + width, y + height
 
+    def join(self, title: str, node: Node) -> None:
+        """Add ``node`` to the group ``title`` (made after the group) and lay the group around its nodes again."""
+        self._members[self._index(title)].append(node)
+        self.refit(title)
+
     def refit(self, title: str) -> None:
         """Lay the group ``title`` around its nodes again (after they moved)."""
         self._fit(self._index(title))

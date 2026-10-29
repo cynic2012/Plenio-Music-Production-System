@@ -43,7 +43,7 @@ def test_every_blueprint_owns_its_node_ids() -> None:
 SUMMARY_TYPES = {
     "PlenioSongBrief", "PlenioCoverBrief", "PlenioEQ", "PlenioExportRelease", "PlenioLoudness", "PlenioRefine",
     "PlenioScoreTools", "PlenioSongSheet", "PlenioStemMixer", "PlenioSystemCheck", "PlenioTranscribeLyrics",
-    "PlenioVocalCheck", "PlenioHQStereoCleanup", "PlenioHQRegenerateHighs", "PlenioHQDeReverb",
+    "PlenioVocalCheck", "PlenioHQStereoCleanup", "PlenioHQRegenerateHighs", "PlenioHQDeReverb", "PlenioLoras",
 }  # fmt: skip
 """Node classes in the templates that show a run summary under their widgets."""
 
@@ -444,10 +444,12 @@ def test_audio_hq_runs_in_the_master_block_before_the_eq() -> None:
         switch_slot = next(slot for slot in wrapper["inputs"] if slot["name"] == "hq_mastering")
         switch_link = next(link for link in template["links"] if link[0] == switch_slot["link"])
         switch = next(n for n in template["nodes"] if n["id"] == switch_link[1])
-        # off, the first node of group 1, and made last (only the Models note after it): the template's other node
-        # ids stay as they were
+        # off, the first node of group 1, and made last (only the Models note and, since 1.4, the YuE2 LoRAs after
+        # it): the template's other node ids stay as they were
         assert switch["type"] == "PlenioHQMastering" and switch["widgets_values"] == [False], name
-        real = [n["id"] for n in template["nodes"] if n["type"] not in ("MarkdownNote", "Note")]
+        real = [
+            n["id"] for n in template["nodes"] if n["type"] not in ("MarkdownNote", "Note", "PlenioLoras")
+        ]
         assert switch["pos"] == [0, 0] and switch["id"] == max(real), name
         assert [link[3] for link in template["links"] if link[1] == switch["id"]] == [wrapper["id"]], name
         loader = next(n for n in nodes if n["type"] == "PlenioAudioModelLoader")
@@ -776,8 +778,9 @@ def test_export_takes_the_brief_and_writes_tags_with_variables(name: str) -> Non
         "",
         "{lyrics}",
     ]
-    assert values[-2] is True  # lyrics subtitles (SRT): on
-    assert values[-1] == "vocal stem"  # the lyrics heard on the take's vocal stem (1.2.1)
+    assert values[-3] is True  # lyrics subtitles (SRT): on
+    assert values[-2] == "vocal stem"  # the lyrics heard on the take's vocal stem (1.2.1)
+    assert values[-1] is True  # the song's page (HTML), GitHub issue 2026-10-28
     note = next(n for n in nodes.values() if n.get("title") == "Tags & variables")
     for word in ("{genre}", "{mood}", "{lyrics}", "{take_seed}", "(notes).srt"):
         assert word in note["widgets_values"][0], word

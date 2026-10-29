@@ -1,8 +1,8 @@
 {
  "id": "9636130e-6f72-5b33-a1b9-97c929135bfd",
  "revision": 0,
- "last_node_id": 25,
- "last_link_id": 71,
+ "last_node_id": 26,
+ "last_link_id": 73,
  "nodes": [
   {
    "id": 1,
@@ -402,7 +402,7 @@
      "name": "MODEL",
      "type": "MODEL",
      "links": [
-      35
+      72
      ]
     },
     {
@@ -410,8 +410,7 @@
      "name": "CLIP",
      "type": "CLIP",
      "links": [
-      13,
-      36
+      73
      ]
     },
     {
@@ -2010,7 +2009,7 @@
    ],
    "size": [
     440,
-    934
+    958
    ],
    "flags": {},
    "order": 18,
@@ -2326,6 +2325,15 @@
       "name": "lyrics_timing"
      },
      "link": null
+    },
+    {
+     "localized_name": "song_page",
+     "name": "song_page",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "song_page"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -2366,7 +2374,8 @@
     "standard",
     true,
     true,
-    "vocal stem"
+    "vocal stem",
+    true
    ]
   },
   {
@@ -2600,6 +2609,139 @@
   },
   {
    "id": 25,
+   "type": "PlenioLoras",
+   "pos": [
+    0.0,
+    1916.0
+   ],
+   "size": [
+    380,
+    430
+   ],
+   "flags": {},
+   "order": 24,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 72
+    },
+    {
+     "localized_name": "clip",
+     "name": "clip",
+     "type": "CLIP",
+     "link": 73
+    },
+    {
+     "localized_name": "lora_1",
+     "name": "lora_1",
+     "type": "COMBO",
+     "widget": {
+      "name": "lora_1"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength_1",
+     "name": "strength_1",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength_1"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "lora_2",
+     "name": "lora_2",
+     "type": "COMBO",
+     "widget": {
+      "name": "lora_2"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength_2",
+     "name": "strength_2",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength_2"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "lora_3",
+     "name": "lora_3",
+     "type": "COMBO",
+     "widget": {
+      "name": "lora_3"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength_3",
+     "name": "strength_3",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength_3"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "lora_4",
+     "name": "lora_4",
+     "type": "COMBO",
+     "widget": {
+      "name": "lora_4"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength_4",
+     "name": "strength_4",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength_4"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      35
+     ]
+    },
+    {
+     "localized_name": "CLIP",
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      13,
+      36
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "PlenioLoras"
+   },
+   "widgets_values": [
+    "none",
+    1.0,
+    "none",
+    1.0,
+    "none",
+    1.0,
+    "none",
+    1.0
+   ]
+  },
+  {
+   "id": 26,
    "type": "MarkdownNote",
    "pos": [
     -1120,
@@ -2610,7 +2752,7 @@
     1500
    ],
    "flags": {},
-   "order": 24,
+   "order": 25,
    "mode": 0,
    "inputs": [],
    "outputs": [],
@@ -2722,7 +2864,7 @@
   ],
   [
    13,
-   3,
+   25,
    1,
    8,
    0,
@@ -2898,7 +3040,7 @@
   ],
   [
    35,
-   3,
+   25,
    0,
    15,
    0,
@@ -2906,7 +3048,7 @@
   ],
   [
    36,
-   3,
+   25,
    1,
    15,
    1,
@@ -3191,6 +3333,22 @@
    17,
    3,
    "BOOLEAN"
+  ],
+  [
+   72,
+   3,
+   0,
+   25,
+   0,
+   "MODEL"
+  ],
+  [
+   73,
+   3,
+   1,
+   25,
+   1,
+   "CLIP"
   ]
  ],
  "groups": [
@@ -3291,8 +3449,8 @@
    "bounding": [
     -30.0,
     1750.0,
-    320.0,
-    116.0
+    440.0,
+    626.0
    ],
    "color": "#444",
    "font_size": 32,

@@ -31,7 +31,7 @@ from ..core.errors import PlenioError
 from ..core.release import RECORD_SUFFIX, base_title, numbered_title_in
 from . import other as other_music
 
-CACHE_VERSION = 10
+CACHE_VERSION = 11
 REFRESH_S = 15.0
 """A reader's songs are read again (in the background) when they are older than this."""
 RETIRED_DIR = "_retired"
@@ -390,6 +390,8 @@ def _files(record: Mapping[str, Any], path: Path) -> dict[str, Path]:
         "lines": f"{stem} (lines).srt",
         "notes": f"{stem} (notes).srt",
         "sung": f"{stem} (sung).srt",
+        # the song's page (``song_page.py``): written after the record, so the record does not list it
+        "page": f"{stem}.html",
     }
     for kind, name in guesses.items():
         if kind not in found or not found[kind].exists():

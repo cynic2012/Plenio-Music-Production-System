@@ -2,7 +2,9 @@
 /**
  * Which lyrics to follow (lyricsVersion.ts). For a song: as written or as sung - kept for that song, like the
  * player bar's switch (W); *As sung* needs a song exported with what its take sings. In Settings: the rule for
- * every song - auto (as sung where the take departs far from its lyrics), as written, as sung.
+ * every song - auto (as sung where the take departs far from its lyrics), as written, as sung. On a song's page
+ * (``full``) a third choice shows the lyrics as their full text, with their sections, to copy (GitHub issue
+ * 2026-10-28) - a view only: the song keeps following the version chosen.
  */
 import { computed } from 'vue'
 
@@ -11,7 +13,7 @@ import { chooseFor, departs, LYRICS_CHOICES, LYRICS_VERSIONS, sectionsNotSung, s
 import { settings } from '../store'
 
 /** ``detail``: the song the switch is for; none (Settings, or nothing plays): the rule for every song. */
-const props = defineProps<{ detail?: SongDetail | null; details?: boolean }>()
+const props = defineProps<{ detail?: SongDetail | null; details?: boolean; full?: boolean }>()
 
 const sung = computed(() => sungOf(props.detail))
 const note = computed(() => (sung.value ? sungNote(sung.value) : ''))
@@ -24,6 +26,11 @@ const why = computed(() => {
   return departs(sung.value) ? 'Auto: as sung - this take departs far from its lyrics.' : 'Auto: as written - this take keeps close to its lyrics.'
 })
 const chosen = computed(() => Object.keys(settings.lyricsFor).length)
+const asText = computed(() => !!props.full && settings.lyricsView === 'text')
+function follow(version: 'written' | 'sung'): void {
+  if (props.full) settings.lyricsView = 'timed'
+  if (props.detail) chooseFor(props.detail, version, settings)
+}
 </script>
 
 <template>
@@ -34,13 +41,24 @@ const chosen = computed(() => Object.keys(settings.lyricsFor).length)
         :key="v.id"
         type="button"
         role="radio"
-        :aria-checked="shown === v.id"
-        :class="{ on: shown === v.id }"
+        :aria-checked="!asText && shown === v.id"
+        :class="{ on: !asText && shown === v.id }"
         :disabled="v.id === 'sung' && !sung"
         :title="v.id === 'sung' && !sung ? 'This song was exported before Plenio kept what its take sings' : `${v.title} - kept for this song (W)`"
-        @click="chooseFor(detail, v.id, settings)"
+        @click="follow(v.id)"
       >
         {{ v.label }}
+      </button>
+      <button
+        v-if="full"
+        type="button"
+        role="radio"
+        :aria-checked="asText"
+        :class="{ on: asText }"
+        title="The whole lyrics as text, with their sections - to read and copy"
+        @click="settings.lyricsView = 'text'"
+      >
+        Full lyrics
       </button>
     </div>
     <div v-else class="switch" role="radiogroup" aria-label="Which lyrics, for every song">
@@ -61,10 +79,10 @@ const chosen = computed(() => Object.keys(settings.lyricsFor).length)
       {{ chosen }} song{{ chosen === 1 ? '' : 's' }} with a choice of their own.
       <button type="button" class="link" @click="settings.lyricsFor = {}">Follow the rule again</button>
     </p>
-    <p v-if="details && (note || why)" class="note">
+    <p v-if="details && !asText && (note || why)" class="note">
       {{ why }} {{ note }}<template v-if="notSung.length"> Not sung as written: {{ notSung.map((t) => `[${t}]`).join(', ') }}.</template>
     </p>
-    <details v-if="details && sung && sung.not_sung.length" class="missing">
+    <details v-if="details && !asText && sung && sung.not_sung.length" class="missing">
       <summary>Lines of the lyrics not heard</summary>
       <p v-for="(line, i) in sung.not_sung" :key="i">{{ line }}</p>
     </details>

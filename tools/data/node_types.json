@@ -2928,6 +2928,14 @@
         "the song"
        ]
       }
+     ],
+     "song_page": [
+      "BOOLEAN",
+      {
+       "display_name": "song page (HTML)",
+       "tooltip": "Also write '<name>.html': the song on one page to open in any browser - the lyrics with their sections and the prompts to copy, every setting, how it was made, the sound, the score and links to the files.",
+       "default": true
+      }
      ]
     },
     "hidden": {
@@ -2960,7 +2968,8 @@
      "sheet_music_size",
      "project_in_flac",
      "lyrics_srt",
-     "lyrics_timing"
+     "lyrics_timing",
+     "song_page"
     ],
     "hidden": [
      "prompt",
@@ -3641,6 +3650,149 @@
    "output_node": false,
    "category": "Plenio/Text",
    "display_name": "Local LLM"
+  },
+  "PlenioLoras": {
+   "input": {
+    "required": {
+     "model": [
+      "MODEL",
+      {
+       "tooltip": "YuE2's MODEL (the acoustic model)."
+      }
+     ],
+     "clip": [
+      "CLIP",
+      {
+       "tooltip": "YuE2's CLIP (the planner)."
+      }
+     ]
+    },
+    "optional": {
+     "lora_1": [
+      "COMBO",
+      {
+       "display_name": "LoRA 1",
+       "tooltip": "A YuE2 LoRA from models/loras - for the plan (AR, the CLIP half) or the sound (NAR, the MODEL half): the node reads which from its weights. ComfyUI's layout and m-a-p's original one.",
+       "default": "none",
+       "multiselect": false,
+       "options": [
+        "none"
+       ]
+      }
+     ],
+     "strength_1": [
+      "FLOAT",
+      {
+       "display_name": "strength 1",
+       "tooltip": "How strongly it acts: 1 as trained, 0 off. A plan LoRA often sounds best near 0.5, a sound LoRA near 1 - its card says. Far above its trained strength it sounds broken.",
+       "default": 1.0,
+       "min": -4.0,
+       "max": 4.0,
+       "step": 0.05
+      }
+     ],
+     "lora_2": [
+      "COMBO",
+      {
+       "display_name": "LoRA 2",
+       "tooltip": "A YuE2 LoRA from models/loras - for the plan (AR, the CLIP half) or the sound (NAR, the MODEL half): the node reads which from its weights. ComfyUI's layout and m-a-p's original one.",
+       "default": "none",
+       "multiselect": false,
+       "options": [
+        "none"
+       ]
+      }
+     ],
+     "strength_2": [
+      "FLOAT",
+      {
+       "display_name": "strength 2",
+       "tooltip": "How strongly it acts: 1 as trained, 0 off. A plan LoRA often sounds best near 0.5, a sound LoRA near 1 - its card says. Far above its trained strength it sounds broken.",
+       "default": 1.0,
+       "min": -4.0,
+       "max": 4.0,
+       "step": 0.05
+      }
+     ],
+     "lora_3": [
+      "COMBO",
+      {
+       "display_name": "LoRA 3",
+       "tooltip": "A YuE2 LoRA from models/loras - for the plan (AR, the CLIP half) or the sound (NAR, the MODEL half): the node reads which from its weights. ComfyUI's layout and m-a-p's original one.",
+       "default": "none",
+       "multiselect": false,
+       "options": [
+        "none"
+       ]
+      }
+     ],
+     "strength_3": [
+      "FLOAT",
+      {
+       "display_name": "strength 3",
+       "tooltip": "How strongly it acts: 1 as trained, 0 off. A plan LoRA often sounds best near 0.5, a sound LoRA near 1 - its card says. Far above its trained strength it sounds broken.",
+       "default": 1.0,
+       "min": -4.0,
+       "max": 4.0,
+       "step": 0.05
+      }
+     ],
+     "lora_4": [
+      "COMBO",
+      {
+       "display_name": "LoRA 4",
+       "tooltip": "A YuE2 LoRA from models/loras - for the plan (AR, the CLIP half) or the sound (NAR, the MODEL half): the node reads which from its weights. ComfyUI's layout and m-a-p's original one.",
+       "default": "none",
+       "multiselect": false,
+       "options": [
+        "none"
+       ]
+      }
+     ],
+     "strength_4": [
+      "FLOAT",
+      {
+       "display_name": "strength 4",
+       "tooltip": "How strongly it acts: 1 as trained, 0 off. A plan LoRA often sounds best near 0.5, a sound LoRA near 1 - its card says. Far above its trained strength it sounds broken.",
+       "default": 1.0,
+       "min": -4.0,
+       "max": 4.0,
+       "step": 0.05
+      }
+     ]
+    }
+   },
+   "input_order": {
+    "required": [
+     "model",
+     "clip"
+    ],
+    "optional": [
+     "lora_1",
+     "strength_1",
+     "lora_2",
+     "strength_2",
+     "lora_3",
+     "strength_3",
+     "lora_4",
+     "strength_4"
+    ]
+   },
+   "output": [
+    "MODEL",
+    "CLIP"
+   ],
+   "output_name": [
+    "MODEL",
+    "CLIP"
+   ],
+   "output_is_list": [
+    false,
+    false
+   ],
+   "output_node": false,
+   "category": "Plenio/Model",
+   "display_name": "YuE2 LoRAs"
   },
   "PlenioLoudness": {
    "input": {

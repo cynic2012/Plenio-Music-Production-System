@@ -581,6 +581,8 @@ export const api: typeof serverApi = isPortable ? sharedApi() : serverApi
 /** A song's file by kind (``audio``, ``cover``, ``pdf`` ...): its URL (in a shared player ``''`` until it is
  * made from the page, then the page shows it by itself). */
 export const media = (id: string, kind: string): string => (isPortable ? portableMedia(id, kind) : `/media/${id}/${kind}`)
+/** A song's page on its own (``plenio.player.song_page``): the lyrics, prompts and settings to read and copy. */
+export const songPage = (id: string): string => `/page/${id}`
 
 /** The sizes of the covers' small pictures the player makes (``plenio.player.server.THUMB_SIZES``). */
 export const COVER_SIZES = [128, 256, 512, 768]

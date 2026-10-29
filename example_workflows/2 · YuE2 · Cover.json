@@ -1,8 +1,8 @@
 {
  "id": "dac7a916-31bb-521d-b75c-0944f452bb94",
  "revision": 0,
- "last_node_id": 36,
- "last_link_id": 105,
+ "last_node_id": 37,
+ "last_link_id": 107,
  "nodes": [
   {
    "id": 1,
@@ -490,8 +490,7 @@
      "name": "MODEL",
      "type": "MODEL",
      "links": [
-      49,
-      54
+      106
      ]
     },
     {
@@ -499,8 +498,7 @@
      "name": "CLIP",
      "type": "CLIP",
      "links": [
-      50,
-      53
+      107
      ]
     },
     {
@@ -534,7 +532,7 @@
    "type": "LoraLoader",
    "pos": [
     0,
-    1780
+    2264
    ],
    "size": [
     380,
@@ -622,7 +620,7 @@
    "type": "ComfySwitchNode",
    "pos": [
     0,
-    1970
+    2448
    ],
    "size": [
     260,
@@ -2694,7 +2692,7 @@
    ],
    "size": [
     440,
-    1024
+    1048
    ],
    "flags": {},
    "order": 28,
@@ -3042,6 +3040,15 @@
       "name": "lyrics_timing"
      },
      "link": null
+    },
+    {
+     "localized_name": "song_page",
+     "name": "song_page",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "song_page"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -3082,7 +3089,8 @@
     "standard",
     true,
     true,
-    "vocal stem"
+    "vocal stem",
+    true
    ]
   },
   {
@@ -3381,6 +3389,140 @@
   },
   {
    "id": 36,
+   "type": "PlenioLoras",
+   "pos": [
+    0,
+    1780
+   ],
+   "size": [
+    380,
+    430
+   ],
+   "flags": {},
+   "order": 35,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 106
+    },
+    {
+     "localized_name": "clip",
+     "name": "clip",
+     "type": "CLIP",
+     "link": 107
+    },
+    {
+     "localized_name": "lora_1",
+     "name": "lora_1",
+     "type": "COMBO",
+     "widget": {
+      "name": "lora_1"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength_1",
+     "name": "strength_1",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength_1"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "lora_2",
+     "name": "lora_2",
+     "type": "COMBO",
+     "widget": {
+      "name": "lora_2"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength_2",
+     "name": "strength_2",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength_2"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "lora_3",
+     "name": "lora_3",
+     "type": "COMBO",
+     "widget": {
+      "name": "lora_3"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength_3",
+     "name": "strength_3",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength_3"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "lora_4",
+     "name": "lora_4",
+     "type": "COMBO",
+     "widget": {
+      "name": "lora_4"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength_4",
+     "name": "strength_4",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength_4"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      49,
+      54
+     ]
+    },
+    {
+     "localized_name": "CLIP",
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      50,
+      53
+     ]
+    }
+   ],
+   "properties": {
+    "Node name for S&R": "PlenioLoras"
+   },
+   "widgets_values": [
+    "none",
+    1.0,
+    "none",
+    1.0,
+    "none",
+    1.0,
+    "none",
+    1.0
+   ]
+  },
+  {
+   "id": 37,
    "type": "MarkdownNote",
    "pos": [
     -1120,
@@ -3391,7 +3533,7 @@
     1500
    ],
    "flags": {},
-   "order": 35,
+   "order": 36,
    "mode": 0,
    "inputs": [],
    "outputs": [],
@@ -3791,7 +3933,7 @@
   ],
   [
    49,
-   5,
+   36,
    0,
    6,
    0,
@@ -3799,7 +3941,7 @@
   ],
   [
    50,
-   5,
+   36,
    1,
    6,
    1,
@@ -3823,7 +3965,7 @@
   ],
   [
    53,
-   5,
+   36,
    1,
    7,
    0,
@@ -3831,7 +3973,7 @@
   ],
   [
    54,
-   5,
+   36,
    0,
    22,
    0,
@@ -4244,6 +4386,22 @@
    27,
    3,
    "BOOLEAN"
+  ],
+  [
+   106,
+   5,
+   0,
+   36,
+   0,
+   "MODEL"
+  ],
+  [
+   107,
+   5,
+   1,
+   36,
+   1,
+   "CLIP"
   ]
  ],
  "groups": [
@@ -4358,7 +4516,7 @@
     -30,
     1614,
     440,
-    476
+    954
    ],
    "color": "#444",
    "font_size": 32,

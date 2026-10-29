@@ -53,6 +53,7 @@ from ...core.release import (
 )
 from ...core.reports import Report, Status
 from ...core.score import canonical, lyric_layout
+from ...player.song_page import PAGE_SUFFIX, page_for
 from .. import audio_models, host
 from ..lyrics_asr import language_code, run_asr
 from ..sheet_music import DEFAULT_SIZE, JOBS, OFF, PAPERS, SHEET_MUSIC_OPTIONS, SIZES, hand_placed
@@ -98,6 +99,10 @@ PROJECT_TOOLTIP = (
 SIZE_TOOLTIP = (
     "How large the sheet music draws: standard about 3 bars a line, smaller 3-4, compact about 4, large 1-2 "
     "(the biggest notes)."
+)
+PAGE_TOOLTIP = (
+    "Also write '<name>.html': the song on one page to open in any browser - the lyrics with their sections and "
+    "the prompts to copy, every setting, how it was made, the sound, the score and links to the files."
 )
 SRT_TOOLTIP = (
     "Write the lyrics as subtitles: '(lines).srt' whole lines, '(notes).srt' note by note, '(sung).srt' what the "
@@ -422,6 +427,13 @@ class PlenioExportRelease(io.ComfyNode):
                     advanced=True,
                     tooltip=TIMING_TOOLTIP,
                 ),
+                io.Boolean.Input(
+                    "song_page",
+                    display_name="song page (HTML)",
+                    optional=True,
+                    default=True,
+                    tooltip=PAGE_TOOLTIP,
+                ),
             ],
             outputs=[
                 io.String.Output(display_name="files", tooltip="Written files, one per line."),
@@ -460,6 +472,7 @@ class PlenioExportRelease(io.ComfyNode):
         brief: Any = None,
         lyrics_srt: bool = True,
         lyrics_timing: str = TIMING_STEM,
+        song_page: bool = True,
     ) -> io.NodeOutput:
         if sheet_music not in SHEET_MUSIC_OPTIONS:
             raise PlenioUserError(
@@ -527,6 +540,7 @@ class PlenioExportRelease(io.ComfyNode):
         suffixes += [ORIGINAL_SUFFIX] * (original is not None) + [".jpg"] * (picture is not None)
         suffixes += [SHEET_SUFFIX] * bool(display)
         suffixes += [STEMS_SUFFIX] * bool(saved_stems)
+        suffixes += [PAGE_SUFFIX] * bool(song_page)
         suffixes += [take + suffix for take in takes for suffix in SUBTITLE_SUFFIXES.values()] * bool(
             lyrics_srt
         )
@@ -713,6 +727,17 @@ class PlenioExportRelease(io.ComfyNode):
             embed_project(path, record)
         record_path = file(RECORD_SUFFIX)
         atomic_write_text(record_path, json.dumps(record, indent=2, ensure_ascii=False))
+        page_path: Path | None = None
+        if song_page:
+            # everything about the song on one readable page, from the record just written (GitHub issue
+            # 2026-10-28: the full lyrics, to copy for a new run)
+            try:
+                page_path = file(PAGE_SUFFIX)
+                atomic_write_text(page_path, page_for(record_path))
+            except Exception as error:  # noqa: BLE001 - the song is exported; the page is a reading aid
+                LOG.warning("Plenio: the song page was not written: %s", error, exc_info=True)
+                notes.append(f"song page: not written ({type(error).__name__}: {error})")
+                page_path = None
         notation: list[dict[str, Any]] = []
         if display:
             # an open page draws the PDF and posts it back (sheet_music.py)
@@ -781,6 +806,11 @@ class PlenioExportRelease(io.ComfyNode):
                 ),
                 f"- record: {record_path.name}"
                 + (" (also inside the FLAC: File > Continue a Plenio song... opens it)" if carriers else ""),
+                *(
+                    [f"- song page: {page_path.name} - the lyrics, prompts and settings to read and copy"]
+                    if page_path
+                    else []
+                ),
                 *(
                     [f"- sheet music: {notation[0]['file']} - an open ComfyUI page draws and saves it"]
                     if notation

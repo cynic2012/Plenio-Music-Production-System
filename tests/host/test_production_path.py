@@ -223,6 +223,18 @@ def test_cover_and_original_are_exported(server: ComfyServer, log: Log) -> None:
     for suffix in ("flac", "mp3"):  # embedded without an extra package (0.2.2)
         _tags, cover = read_tags(base / f"Covered.{suffix}")
         assert cover is not None and cover == (base / "Covered.jpg").read_bytes()
+    # the song's page beside it (GitHub issue 2026-10-28): its files linked by their names beside it
+    page = (base / "Covered.html").read_text(encoding="utf-8")
+    assert "<h1>Covered</h1>" in page and 'src="Covered.jpg"' in page
+    assert 'href="Covered%20%28original%29.flac"' in page and 'href="Covered.plenio.json"' in page
+    assert "http" not in page.split("<footer>")[0].split("<main>")[1]  # nothing from the network
+
+
+def test_the_song_page_can_be_left_out(server: ComfyServer, log: Log) -> None:
+    folder = f"plenio-production/{label()}"
+    entry = server.run(chain(folder=folder, export={"title": "No Page", "song_page": False}))
+    assert not (server.output_dir / folder / "No Page.html").exists()
+    assert "song page" not in entry["outputs"]["4"]["plenio_summary"][0]["markdown"]
 
 
 def test_enhance_graph_copies_tags_from_the_loaded_file(server: ComfyServer, log: Log) -> None:

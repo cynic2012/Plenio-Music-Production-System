@@ -6,7 +6,7 @@
  */
 import { computed, ref, watch } from 'vue'
 
-import { media, type SongDetail } from '../api'
+import { media, songPage, type SongDetail } from '../api'
 import { engine } from '../engine'
 import { lineIndex, sections } from '../now'
 import {
@@ -174,14 +174,39 @@ function playFrom(at: number): void {
   void playSongAt(props.id, Math.max(0, at - 0.2))
 }
 async function copy(text: string, what: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(text)
+  const done = (): void => {
     copied.value = what
     window.setTimeout(() => (copied.value = ''), 1600)
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    done()
+    return
   } catch {
-    /* the clipboard needs a secure context; nothing to do */
+    /* the clipboard API needs a secure context: the player in the network is plain HTTP */
+  }
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.select()
+  try {
+    if (document.execCommand('copy')) done()
+  } finally {
+    area.remove()
   }
 }
+/** The lyrics as their full text, with their sections (GitHub issue 2026-10-28: to copy for a new run). */
+const fullText = computed(() => (detail.value?.lyrics_raw || song.value?.lyrics || '').trim())
+/** The lyrics without their section tags, when they differ. */
+const plainText = computed(() => {
+  const plain = (song.value?.lyrics ?? '').trim()
+  return plain && plain !== fullText.value ? plain : ''
+})
+const sungText = computed(() => (sungOf(detail.value)?.text ?? '').trim())
+const asText = computed(() => settings.lyricsView === 'text' && !!fullText.value)
 /** The lyrics as written, timed: the notation follows their syllables. */
 const writtenLines = computed(() => detail.value?.lines ?? [])
 /** The lines shown: as written, or as the take sings them (the rule, or the listener's choice for the song). */
@@ -246,8 +271,22 @@ function timingSourceText(source: string, note?: string): string {
     <p v-if="error" class="error">{{ error }}</p>
 
     <section v-if="tab === 'lyrics'" class="pane lyrics">
-      <LyricsVersionSwitch v-if="hasSung" :detail="detail" details />
-      <div v-if="isCurrent && lyricsLines.length" class="karaoke-box">
+      <LyricsVersionSwitch v-if="fullText || hasSung" :detail="detail" details full />
+      <div v-if="asText" class="full-lyrics">
+        <div class="copy-row">
+          <button class="ghost small" @click="copy(fullText, 'lyrics')"><Icon name="copy" :size="14" /> {{ copied === 'lyrics' ? 'Copied' : 'Copy the lyrics' }}</button>
+          <button v-if="plainText" class="ghost small" title="The lyrics without [Verse], [Chorus] …" @click="copy(plainText, 'plain')"><Icon name="copy" :size="14" /> {{ copied === 'plain' ? 'Copied' : 'Without the section tags' }}</button>
+          <button v-if="song.style && !song.other" class="ghost small" title="What the music model was given as the style" @click="copy(song.style, 'style')"><Icon name="copy" :size="14" /> {{ copied === 'style' ? 'Copied' : 'Copy the style' }}</button>
+          <a v-if="!song.other && !isPortable" class="ghost small" :href="songPage(song.id)" target="_blank" rel="noopener" title="Everything about the song on one page: the lyrics, the prompts, every setting, the files"><Icon name="external" :size="14" /> The song's page</a>
+        </div>
+        <pre class="full">{{ fullText }}</pre>
+        <details v-if="sungText" class="sung-text">
+          <summary>As the take sings them, heard when the song was exported</summary>
+          <button class="ghost small" @click="copy(sungText, 'sung')"><Icon name="copy" :size="14" /> {{ copied === 'sung' ? 'Copied' : 'Copy' }}</button>
+          <pre class="full">{{ sungText }}</pre>
+        </details>
+      </div>
+      <div v-else-if="isCurrent && lyricsLines.length" class="karaoke-box">
         <Karaoke :lines="lyricsLines" :time="time" :plain="song.lyrics" />
       </div>
       <ol v-else-if="lyricsLines.length" class="timed">
@@ -256,7 +295,8 @@ function timingSourceText(source: string, note?: string): string {
         </li>
       </ol>
       <pre v-else class="plain">{{ song.lyrics || 'An instrumental - no lyrics.' }}</pre>
-      <p v-if="detail?.timing_source" class="hint">
+      <p v-if="asText" class="hint">The lyrics as written, with their sections: copy them into a Song Sheet or <i>A new version…</i> to make the song again.</p>
+      <p v-else-if="detail?.timing_source" class="hint">
         {{ timingSourceText(detail.timing_source, detail.timing_note) }}
         Click a line to hear it.
       </p>
@@ -314,6 +354,7 @@ function timingSourceText(source: string, note?: string): string {
       <div class="block wide">
         <h3>Files</h3>
         <div class="downloads">
+          <a v-if="!song.other && !isPortable" class="file" :href="songPage(song.id)" target="_blank" rel="noopener"><Icon name="external" :size="16" /> The song's page <small>lyrics, prompts and settings on one page</small></a>
           <a v-for="d in downloads" :key="d.kind" class="file" :href="d.url" :download="d.name"><Icon name="download" :size="16" /> {{ d.label }} <small>{{ d.name }}</small></a>
         </div>
         <p class="path">
@@ -509,6 +550,38 @@ h1 {
   font: 16px/1.6 var(--font);
   white-space: pre-wrap;
   color: rgba(255, 255, 255, 0.85);
+}
+.full-lyrics .copy-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 16px;
+}
+.ghost.small {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  gap: 6px;
+}
+.full-lyrics pre.full {
+  margin: 0;
+  font: 16px/1.7 var(--font);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: rgba(255, 255, 255, 0.88);
+  user-select: text;
+}
+.sung-text {
+  margin-top: 22px;
+}
+.sung-text summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.sung-text button {
+  margin-bottom: 10px;
 }
 .hint {
   color: var(--muted);

@@ -16,12 +16,14 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
 
 **Free, open source - now 1.4.** Plenio costs nothing: no subscription, no credits, no account, Apache 2.0 code. After fourteen releases in three weeks, 1.0.0 was the milestone where the whole way holds together - from the first idea to the song people listen to - and the version to build on: saved workflows and release records keep working in every 1.x version. What changed in each version is in the [changelog](CHANGELOG.md).
 
-## New in 1.4: ComfyUI started as you start it, and how each song was made
+## New in 1.4: ComfyUI started as you start it, every song on one page, and LoRAs for YuE2
 
 - **The player starts ComfyUI the way you do**: every time ComfyUI loads Plenio, Plenio keeps its Python and its arguments - your `--models-directory`, your options -, and *Start the studio* uses them. A model file ComfyUI does not find is named, with what to do, instead of *Value not in list*. [Details](docs/user/concepts/player.md#the-studio-comfyui-started-by-the-player)
 - **How a song was made, on its page**: the date and time, how long making it took, the graphics card or the processor alone, the RAM, and the lyrics fidelity. [Details](docs/user/concepts/player.md#a-songs-page)
 - **The party's reactions kept for every song**, apart from your hearts - as many per song as the guests like, or one each. Only a guest's song is a party song, and the big screen says which party it is from. [Details](docs/user/concepts/player.md#guests-in-your-network)
 - **Videos that finish**: each preview and each video gives its graphics memory back at once, and a video that fails is tried once more by itself.
+- **The full lyrics to copy, and a page per song**: *Full lyrics* on a song's page in the player shows the lyrics with their sections, with buttons that copy them and the style. Beside every song, Export Release writes `<name>.html` - the lyrics, the prompts, every setting, how it was made and links to the files on one page that opens in any browser; the player shows it for older songs too. [Details](docs/user/concepts/player.md#the-songs-page-html)
+- **LoRAs for YuE2**: a node under the music model takes up to four LoRAs and reads from each whether it shapes the plan or the sound - also files in m-a-p's original layout. A LoRA that does not fit is left out and named; with every slot empty, YuE2 runs as before. [Details](docs/user/concepts/loras.md)
 - **Six example songs as videos** made by the player: [*Listen first*](#listen-first).
 
 <p align="center">
@@ -29,7 +31,12 @@ Everything runs on your own machine, inside ComfyUI's own nodes: no cloud servic
   <img src="assets/branding/1.4.0/player-studio-start.jpg" alt="Settings, The studio: ComfyUI is not running, Start the studio, and How it starts ComfyUI opened - the arguments empty, so the player starts ComfyUI the way it was last started, with --models-directory and the other options shown" width="49%" />
 </p>
 
-*How a song was made, with the guests' reactions · the studio started the way ComfyUI was last started.*
+<p align="center">
+  <img src="assets/branding/1.4.0/player-full-lyrics.jpg" alt="A song's page in the Plenio Player with Full lyrics chosen beside As written and As sung: the lyrics with their sections Intro, Verse and Chorus, and the buttons Copy the lyrics, Without the section tags, Copy the style and The song's page" width="49%" />
+  <img src="assets/branding/1.4.0/song-page.jpg" alt="The song's page as an HTML file: the cover, the title Growing Through Water with length, tempo, key, genre and model, the song to play, links to every part and the lyrics as written with their sections and a Copy the lyrics button" width="49%" />
+</p>
+
+*How a song was made, with the guests' reactions · the studio started the way ComfyUI was last started · the full lyrics to copy · the song's page beside every song.*
 
 ## New in 1.3.1: the player on every screen, and the studio started from it
 
@@ -531,7 +538,7 @@ Plenio is the successor of the [Music Production Toolkit](https://github.com/jpl
 
 ## Documentation
 
-- Users: [Getting started](docs/user/getting-started.md) · [YuE2 Song](docs/user/paths/yue2-song.md) · [YuE2 Cover](docs/user/paths/yue2-cover.md) · [YuE2 DAW](docs/user/paths/yue2-daw.md) · [MiniMax Song](docs/user/paths/minimax-song.md) · [Enhance & Master](docs/user/paths/enhance-master.md) · [Song Sheet](docs/user/concepts/song-sheet.md) · [Continue a song](docs/user/concepts/continue-a-song.md) · [Brief templates](docs/user/concepts/brief-templates.md) · [Score editor](docs/user/concepts/score-editor.md) · [Stems](docs/user/concepts/stems.md) · [Refine (48 kHz)](docs/user/concepts/refine.md) · [Instrumental](docs/user/concepts/instrumental.md) · [Mastering](docs/user/concepts/mastering.md) · [Plenio Player](docs/user/concepts/player.md) · [Plenio Drop presets](docs/user/concepts/player-visuals.md) · [Tags and subtitles](docs/user/concepts/tags-and-subtitles.md) · [Seeds](docs/user/concepts/seeds.md) · [App mode](docs/user/concepts/app-mode.md) · [Local LLMs](docs/user/concepts/local-llm.md) · [Models](docs/user/models.md) · [Configuration](docs/user/configuration.md) · [Licensing](docs/user/licensing.md) · [Troubleshooting](docs/user/troubleshooting.md)
+- Users: [Getting started](docs/user/getting-started.md) · [YuE2 Song](docs/user/paths/yue2-song.md) · [YuE2 Cover](docs/user/paths/yue2-cover.md) · [YuE2 DAW](docs/user/paths/yue2-daw.md) · [MiniMax Song](docs/user/paths/minimax-song.md) · [Enhance & Master](docs/user/paths/enhance-master.md) · [Song Sheet](docs/user/concepts/song-sheet.md) · [Continue a song](docs/user/concepts/continue-a-song.md) · [Brief templates](docs/user/concepts/brief-templates.md) · [Score editor](docs/user/concepts/score-editor.md) · [Stems](docs/user/concepts/stems.md) · [Refine (48 kHz)](docs/user/concepts/refine.md) · [Instrumental](docs/user/concepts/instrumental.md) · [Mastering](docs/user/concepts/mastering.md) · [Plenio Player](docs/user/concepts/player.md) · [Plenio Drop presets](docs/user/concepts/player-visuals.md) · [Tags and subtitles](docs/user/concepts/tags-and-subtitles.md) · [Seeds](docs/user/concepts/seeds.md) · [App mode](docs/user/concepts/app-mode.md) · [Local LLMs](docs/user/concepts/local-llm.md) · [LoRAs for YuE2](docs/user/concepts/loras.md) · [Models](docs/user/models.md) · [Configuration](docs/user/configuration.md) · [Licensing](docs/user/licensing.md) · [Troubleshooting](docs/user/troubleshooting.md)
 - Contributors: [Architecture](docs/dev/architecture.md) · [Extending Plenio](docs/dev/extending.md) · [Testing](docs/dev/testing.md) · [Design documents](docs/design/README.md) · [Decisions](docs/adr/README.md) · [Acceptance review](docs/audit/2026-09-25-phase-10-acceptance.md)
 - Videos: [the spot](https://youtu.be/XpNpks9ZCgE) · [Plenio in 75 seconds](https://youtu.be/q_dMH834E1o) · [all tutorials (playlist)](https://www.youtube.com/playlist?list=PLAFqTtP59fgE)
 - [Changelog](CHANGELOG.md): what changed in each version · [Security and privacy](SECURITY.md): what Plenio downloads, starts and writes

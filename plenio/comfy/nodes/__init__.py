@@ -14,6 +14,7 @@ from .fit_lyrics import PlenioFitLyrics
 from .heard_check import PlenioApplyHeardCheck, PlenioComposeHeardCheck
 from .hq import PlenioHQDeReverb, PlenioHQMastering, PlenioHQRegenerateHighs, PlenioHQStereoCleanup
 from .local_llm import PlenioLocalLLM
+from .loras import PlenioLoras
 from .loudness import PlenioLoudness
 from .parse import PlenioParseDraft
 from .refine import PlenioRefine
@@ -34,6 +35,7 @@ NODES = (
     PlenioSongBrief,
     PlenioCoverBrief,
     PlenioEngine,
+    PlenioLoras,
     PlenioComposePrompt,
     PlenioParseDraft,
     PlenioFitLyrics,

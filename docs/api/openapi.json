@@ -2,7 +2,7 @@
  "openapi": "3.1.0",
  "info": {
   "title": "Plenio Song API",
-  "version": "1.1",
+  "version": "1.2",
   "summary": "Make songs with Plenio on a running ComfyUI, and follow them to the finished files.",
   "description": "Make songs with the Plenio Music Production System on a running ComfyUI: choose a template, give its fields (the song part of the workflow), queue the job, follow it, download its files. Plenio 1.4.0, ComfyUI 0.41.0. The fields are read from the templates themselves, so this document is as current as the templates of this ComfyUI. Versioning: the path carries the major version (/v1); a minor version (1.1) only adds. Guide: docs/api/README.md.",
   "license": {
@@ -2083,6 +2083,12 @@
         "title": "lyrics heard on",
         "description": "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the take's vocal stem (about half a minute more; fewer words timed in silence) or the song (quicker). Without the separation model the song.",
         "default": "vocal stem"
+       },
+       "song_page": {
+        "type": "boolean",
+        "title": "song page (HTML)",
+        "description": "Also write '<name>.html': the song on one page to open in any browser - the lyrics with their sections and the prompts to copy, every setting, how it was made, the sound, the score and links to the files.",
+        "default": true
        }
       }
      },
@@ -2808,6 +2814,12 @@
         "title": "lyrics heard on",
         "description": "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the take's vocal stem (about half a minute more; fewer words timed in silence) or the song (quicker). Without the separation model the song.",
         "default": "vocal stem"
+       },
+       "song_page": {
+        "type": "boolean",
+        "title": "song page (HTML)",
+        "description": "Also write '<name>.html': the song on one page to open in any browser - the lyrics with their sections and the prompts to copy, every setting, how it was made, the sound, the score and links to the files.",
+        "default": true
        }
       }
      },

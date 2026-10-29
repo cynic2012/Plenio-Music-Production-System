@@ -46,7 +46,7 @@ COVER_FIELDS = [
 RELEASE_FIELDS = [
     "folder", "naming", "collision", "flac", "mp3", "wav", "tags", "artist", "album", "date", "track", "genre",
     "comment", "album_artist", "composer", "lyrics", "sheet_music", "sheet_music_size", "project_in_flac",
-    "lyrics_srt", "lyrics_timing",
+    "lyrics_srt", "lyrics_timing", "song_page",
 ]  # fmt: skip
 """The API's surface for the shipped templates. A change here is a change of API v1: additions are fine (a minor
 version), a field gone or renamed needs an entry in FIELD_ALIASES and a line in the changelog."""

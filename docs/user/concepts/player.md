@@ -245,7 +245,11 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
   plays, the lyrics light up as they are sung, and the line sung now stays in view. A song exported with what
   its take sings has a switch above them: **As written** - the song's lyrics - or **As sung** - what the take
   really sings, as heard when it was exported (see [Written and sung lyrics](#written-and-sung-lyrics)), with
-  a line on how far the take follows its lyrics and the lines it left out.
+  a line on how far the take follows its lyrics and the lines it left out. **Full lyrics**, the third choice
+  of the switch, shows the lyrics as text with their sections (`[Verse]`, `[Chorus]` …) - what goes into a Song
+  Sheet - with **Copy the lyrics**, **Without the section tags**, **Copy the style** and, below, the lyrics as
+  the take sings them; the player keeps the choice for the next song. The song goes on following the version
+  chosen.
 - **Notation**: the score with the lyrics under the notes. While the song plays, the notes light up as they
   sound and the sheet moves on with the music: the line of music sounding now always stays in view, also
   after a jump or when you come back to the tab. The cursor points at the notes sounding (where only rests
@@ -264,10 +268,23 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
   time it was saved and, where its record says it, the fidelity. Then the model and the writer, loudness and true peak,
   the seeds (with a copy button, so you can make the take again), the tags in the file, the cover's prompt, and every file to download: FLAC, MP3, WAV, the
   unmastered take, the PDF, both subtitle files, the cover and the release record. The record's path is
-  shown with a copy button, ready for *File > Continue a Plenio song…* in ComfyUI.
+  shown with a copy button, ready for *File > Continue a Plenio song…* in ComfyUI. **The song's page** opens
+  everything about the song on one page in a new tab - see [The song's page](#the-songs-page-html).
 - **Takes**: the song's other takes (same title - its number left out -, lyrics and score, rendered again). Play them one after the
   other to compare.
 - **Alike**: songs with a similar genre, mood, tempo, key and language.
+
+### The song's page (HTML)
+
+One page with everything about a song, to read, print and copy from: the cover and the song to play, the
+**lyrics as written with their sections** (and as the take sings them), the **style**, what the song is about
+and the cover's prompt - each with a copy button -, every field of the brief, how it was made (with the model
+files and the LoRAs), the sound and its mastering, the score as ABC notation and links to every file.
+
+Export Release writes it next to the song as `<name>.html` (*song page (HTML)*, on by default): a double click
+opens it in any browser, with no internet and no program - its links are the files beside it. The player shows
+the same page for every song of its library, also one exported before (*Full lyrics › The song's page*, or
+*Details › Files*).
 
 ## Now playing
 

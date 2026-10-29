@@ -1378,7 +1378,7 @@
    ],
    "size": [
     440,
-    934
+    958
    ],
    "flags": {},
    "order": 12,
@@ -1686,6 +1686,15 @@
       "name": "lyrics_timing"
      },
      "link": null
+    },
+    {
+     "localized_name": "song_page",
+     "name": "song_page",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "song_page"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -1726,7 +1735,8 @@
     "standard",
     true,
     true,
-    "vocal stem"
+    "vocal stem",
+    true
    ]
   },
   {

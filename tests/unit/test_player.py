@@ -745,3 +745,20 @@ def test_a_song_says_how_it_was_made_also_an_older_one() -> None:
     best = {"reports": [{"kind": "best_take", "data": {"level": "high"}}]}
     assert made_facts(best) == {"lyrics_fidelity": "high"}
     assert made_facts({}) == {}
+
+
+def test_a_songs_page_shows_its_full_lyrics_and_links_the_players_files(
+    server: tuple[str, int, Library],
+) -> None:
+    """GitHub issue 2026-10-28: the full lyrics to copy, on the song's page (``song_page.py``) - for any song of the
+    library, also one exported before Export Release wrote the page."""
+    _host, _port, library = server
+    river = next(s for s in library.songs() if s["title"] == "River")
+    status, headers, body = request(server, "GET", f"/page/{river['id']}")
+    page = body.decode("utf-8")
+    assert status == 200 and headers["Content-Type"].startswith("text/html")
+    assert "<h1>River</h1>" in page and 'id="lyrics"' in page
+    assert "walking down the river side" in page
+    assert f'src="/media/{river["id"]}/audio_flac"' in page  # the player's own files
+    assert "../outside.flac" not in page  # a file outside the record's folder is not the song's
+    assert request(server, "GET", "/page/000000000000")[0] == 404

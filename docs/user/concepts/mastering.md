@@ -67,7 +67,7 @@ Polyphase resampling with a Kaiser low-pass designed from band edges: flat to 20
 
 **Tag copy** (*copy from loaded file*) reads the tags and the embedded cover with PyAV from the file of the workflow's single **Load Audio** node. With two or more Load Audio nodes the export stops and asks you to type the tags.
 
-Export Release also writes the lyrics as subtitles (`<name> (lines).srt`, `<name> (notes).srt`, timed by listening) and fills its tags from the brief with variables - see [Tags, variables and lyrics subtitles](tags-and-subtitles.md).
+Export Release also writes the lyrics as subtitles (`<name> (lines).srt`, `<name> (notes).srt`, timed by listening) and fills its tags from the brief with variables - see [Tags, variables and lyrics subtitles](tags-and-subtitles.md). Next to the song it writes **the song's page** (`<name>.html`): the lyrics with their sections, the prompts and every setting on one page to read and copy - see [the player guide](player.md#the-songs-page-html).
 
 ## What Plenio does not do (yet)
 

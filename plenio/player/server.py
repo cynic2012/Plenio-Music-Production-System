@@ -36,6 +36,7 @@ from .network import REMOTE_HEADER, REMOTE_HOST_HEADER, NetworkAccess
 from .package import MAX_SONGS, PackageJobs, package_file, packages_dir
 from .package import listing as package_listing
 from .peaks import peaks
+from .song_page import render as render_song_page
 from .studio import StudioLauncher, StudioLaunchError
 from .thumbs import thumbnail
 from .video import VideoJobs, videos_dir
@@ -49,6 +50,7 @@ MEDIA_KINDS = {
     "pdf",
     "lines",
     "notes",
+    "sung",
     "record",
     "audio_flac",
     "audio_mp3",
@@ -747,6 +749,18 @@ def make_handler(
                 audio = song.files.get("audio") if song else None
                 levels = peaks(audio, cache or state.path.parent / "peaks") if audio else None
                 return self._json({"peaks": levels}) if levels else self._error(404, "no waveform")
+            if route.startswith("/page/"):
+                # the song's page (song_page.py), for any song of the library - also one exported before it
+                song = library.song(route.removeprefix("/page/"))
+                if song is None or song.other:
+                    return self._error(404, "no such song")
+                detail = song_detail(song)
+                record = json.loads(song.record.read_text(encoding="utf-8"))
+                own = song.id
+                page = render_song_page(
+                    detail, record, lambda kind, _name: f"/media/{own}/{kind}", in_player=True
+                )
+                return self._send(200, page.encode("utf-8"), "text/html; charset=utf-8", cache="no-cache")
             if route.startswith("/media/"):
                 parts = route.split("/")
                 if len(parts) != 4 or parts[3] not in MEDIA_KINDS:

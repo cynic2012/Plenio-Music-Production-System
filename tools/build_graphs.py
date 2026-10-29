@@ -2326,6 +2326,30 @@ SEED_SIZE = (340, 190)
 """A Plenio · Seed: the number, the switch, the 🎲 button and the line that says what the switch means."""
 
 
+LORAS_SIZE = (380, 430)
+"""YuE2 LoRAs: two inputs, four LoRAs with their strengths, the summary."""
+
+
+def yue2_loras(g: Graph, model_node: Node) -> Node:
+    """YuE2 LoRAs under the music model (GitHub issue 2026-10-28), every slot on none - YuE2 runs as loaded. Its
+    MODEL and CLIP go where the model block's went. Made last of all, once the template stands: every other node
+    keeps its id (saved workflows, records and the Song API's prompts name them)."""
+    x, y = model_node.pos
+    loras = g.add("PlenioLoras", (x, y + 80), size=LORAS_SIZE)
+    for name in ("MODEL", "CLIP"):
+        out = model_node.output_index(name)
+        moved = model_node.output_links.pop(out, [])
+        for link in g.links:
+            if link["id"] in moved:
+                link["origin_id"] = loras.id
+                link["origin_slot"] = loras.output_index(name)
+        loras.output_links.setdefault(loras.output_index(name), []).extend(moved)
+    g.link(model_node, "MODEL", loras, "model")
+    g.link(model_node, "CLIP", loras, "clip")
+    g.join("MUSIC MODEL", loras)
+    return loras
+
+
 def seed_node(
     g: Graph, pos: tuple[float, float], title: str, label: str, *, keep: bool, part: str, seed: int = 0
 ) -> Node:
@@ -2517,7 +2541,7 @@ def cover_over(g: Graph, render: str) -> None:
 
 
 EXPORT_WIDER = 60
-EXPORT_TALLER = 9 * 24 + 24 + SLOT_HEIGHT
+EXPORT_TALLER = 10 * 24 + 24 + SLOT_HEIGHT
 """1.0.0: the nine tag fields of *tags* (with *lyrics*), *lyrics subtitles (SRT)* and the *brief* socket."""
 TEMPLATE_COMMENT = "[Genre: {genre} · ][Mood: {mood} · ][Language: {language} · ]Powered by Plenio Music Production System / ComfyUI"
 TEMPLATE_TAGS: dict[str, object] = {
@@ -2823,6 +2847,7 @@ def yue2_song(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
     g.align()
     cover_over(g, "5 · RENDER")
+    yue2_loras(g, model_node)
     return g, song_app(
         brief,
         seed,
@@ -2967,7 +2992,8 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     model_node = g.add_subgraph(bp["yue2_model"], (0, 1700), size=(380, 140), collapsed=True)
     adapter = g.add(
         "LoraLoader",
-        (0, 1780),
+        # YuE2 LoRAs above it (yue2_loras): the instrumental adapter acts on top of them
+        (0, 1780 + LORAS_SIZE[1] + 40),
         size=(380, 130),
         title="Instrumental adapter",
         widgets={"lora_name": LORA, "strength_model": 0.0, "strength_clip": 1.0},
@@ -2976,7 +3002,10 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     # under the adapter, in the first column: right of it, the wider brief's room pushed it across the group's
     # edge (make_room moves what is right of the old brief column, not the group)
     adapter_switch = g.add(
-        "ComfySwitchNode", (0, 1970), size=(260, 90), title="Adapter for instrumental covers"
+        "ComfySwitchNode",
+        (0, 1970 + LORAS_SIZE[1] + 40),
+        size=(260, 90),
+        title="Adapter for instrumental covers",
     )
     # the sections right of the brief: as before, the brief's column wider by COVER_BRIEF_X
     dx = COVER_BRIEF_X
@@ -3150,6 +3179,7 @@ def yue2_cover(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     make_room(g, brief, CREATIVITY_ROW + COVER_FIELD_ROWS * SLOT_HEIGHT)
     g.align()
     cover_over(g, "6 · RENDER")
+    yue2_loras(g, model_node)
     # The options of the default vocals (original lyrics) only, as in song_app; the two review stops use
     # the sheets' editor buttons.
     controls = ["mode", "template", "description", "genre", "mood", "vocals"]
@@ -3410,6 +3440,7 @@ def yue2_daw(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
     make_room(g, brief, CREATIVITY_ROW + SONG_FIELD_ROWS * SLOT_HEIGHT)
     g.align()
     cover_over(g, "5 · RENDER")
+    yue2_loras(g, model_node)
     return g, song_app(
         brief, seed, draft, [text_sheet, score_sheet], preview, export, writer=writer, hq_mastering=switch
     )
@@ -3492,8 +3523,8 @@ def enhance_master(bp: dict[str, Blueprint]) -> tuple[Graph, App]:
         "PlenioExportRelease",
         (2490, 180),
         # 1.0.0: the brief socket and lyrics subtitles (SRT); 2026-10-21: two more report slots (Audio HQ);
-        # 1.2.1: what the lyrics are heard on; 1.3.2: the lyrics' Song Sheet
-        size=(380, 514 + SUMMARY_ROOM + 3 * SLOT_HEIGHT),
+        # 1.2.1: what the lyrics are heard on; 1.3.2: the lyrics' Song Sheet; the song page (HTML)
+        size=(380, 538 + SUMMARY_ROOM + 3 * SLOT_HEIGHT),
         autogrow={"reports": 8},
         widgets={
             "folder": "plenio/enhanced",

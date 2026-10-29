@@ -45,6 +45,8 @@ export interface Settings {
   lyricsChoice: LyricsChoice
   /** The listener's choice for single songs where it differs from ``lyricsChoice`` (song id -> version). */
   lyricsFor: Record<string, LyricsVersion>
+  /** A song's page shows its lyrics timed (as written or as sung) or as the full text to copy. */
+  lyricsView: 'timed' | 'text'
   /** Play a song's MP3 where it has one: less data over the network. */
   mp3: boolean
   /** Seconds the listener moved a song's notation cursor (song id -> seconds of score). */
@@ -91,6 +93,7 @@ const DEFAULT_SETTINGS: Settings = {
   lyrics: lyricsWithDefaults(null),
   lyricsChoice: 'auto',
   lyricsFor: {},
+  lyricsView: 'timed',
   mp3: false,
   notationShift: {},
   savedFilters: [],
@@ -290,7 +293,7 @@ window.addEventListener('pagehide', () => {
 
 /** The settings as saved, checked and filled with the defaults. */
 function applySettings(stored: Partial<Settings>): void {
-  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), lyricsChoice: choiceOf(stored.lyricsChoice), lyricsFor: choicesOf(stored.lyricsFor), mp3: !!stored.mp3, notationShift: shiftsOf(stored.notationShift), savedFilters: savedFiltersOf(stored.savedFilters), moreFilters: !!stored.moreFilters, welcomed: !!stored.welcomed, phoneView: stored.phoneView === 'grid' ? 'grid' : 'list', makePresets: presetsOf(stored.makePresets) })
+  Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), lyricsChoice: choiceOf(stored.lyricsChoice), lyricsFor: choicesOf(stored.lyricsFor), lyricsView: stored.lyricsView === 'text' ? 'text' : 'timed', mp3: !!stored.mp3, notationShift: shiftsOf(stored.notationShift), savedFilters: savedFiltersOf(stored.savedFilters), moreFilters: !!stored.moreFilters, welcomed: !!stored.welcomed, phoneView: stored.phoneView === 'grid' ? 'grid' : 'list', makePresets: presetsOf(stored.makePresets) })
 }
 
 /** Replace everything the player keeps (a backup read back, or ``null``: start afresh). */

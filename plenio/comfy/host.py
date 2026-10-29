@@ -227,6 +227,43 @@ def model_files(folder: str) -> list[str]:
         return []
 
 
+def model_file(folder: str, name: str) -> Path | None:
+    """The full path of a file of a ComfyUI model folder (``None``: not there)."""
+    import folder_paths
+
+    found = folder_paths.get_full_path(folder, name)
+    return Path(found) if found else None
+
+
+def read_weights(path: Path) -> dict[str, Any]:
+    """A weights file (safetensors, or a pickle-free torch file) as ComfyUI reads it."""
+    import comfy.utils
+
+    return dict(comfy.utils.load_torch_file(str(path), safe_load=True))
+
+
+def lora_key_map(model: Any, clip: Any) -> dict[str, Any]:
+    """ComfyUI's names of a LoRA's weights in a model and a CLIP, to the weights they patch."""
+    import comfy.lora
+
+    keys: dict[str, Any] = {}
+    if model is not None:
+        keys.update(comfy.lora.model_lora_keys_unet(model.model, {}))
+    if clip is not None:
+        keys.update(comfy.lora.model_lora_keys_clip(clip.cond_stage_model, {}))
+    return keys
+
+
+def lora_patches(state: dict[str, Any], key_map: dict[str, Any]) -> dict[Any, Any]:
+    """A LoRA's patches, by the weight each one patches (the weights no key names are left out silently)."""
+    import comfy.lora
+
+    try:
+        return dict(comfy.lora.load_lora(state, key_map, log_missing=False))
+    except TypeError:  # a ComfyUI without log_missing
+        return dict(comfy.lora.load_lora(state, key_map))
+
+
 def asset_root(config: PlenioConfig) -> Path:
     if config.asset_dir is not None:
         return config.asset_dir

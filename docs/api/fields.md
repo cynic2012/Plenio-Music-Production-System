@@ -61,6 +61,7 @@ Kind: **song** · seeds: `draft`, `plan`, `arrangement`, `take`, `cover` · docu
 | `project_in_flac` | boolean | true |  |  | Store the release record (workflow, Song Sheets, seeds, settings) inside the song's FLAC: File > Continue a Plenio song... opens the song from the FLAC alone. Off for files you share without their making-of. |
 | `lyrics_srt` | boolean | true |  |  | Write the lyrics as subtitles: '(lines).srt' whole lines, '(notes).srt' note by note, '(sung).srt' what the take really sings. Timed by listening (Qwen3-ASR and its aligner, 5.9 GB, fetched on first use). |
 | `lyrics_timing` | choice | "vocal stem" | `vocal stem`, `the song` |  | What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the take's vocal stem (about half a minute more; fewer words timed in silence) or the song (quicker). Without the separation model the song. |
+| `song_page` | boolean | true |  |  | Also write '<name>.html': the song on one page to open in any browser - the lyrics with their sections and the prompts to copy, every setting, how it was made, the sound, the score and links to the files. |
 
 ## `yue2-cover` - 2 · YuE2 · Cover
 
@@ -123,3 +124,4 @@ Kind: **cover** · seeds: `arrangement`, `draft`, `take`, `cover` · documents: 
 | `project_in_flac` | boolean | true |  |  | Store the release record (workflow, Song Sheets, seeds, settings) inside the song's FLAC: File > Continue a Plenio song... opens the song from the FLAC alone. Off for files you share without their making-of. |
 | `lyrics_srt` | boolean | true |  |  | Write the lyrics as subtitles: '(lines).srt' whole lines, '(notes).srt' note by note, '(sung).srt' what the take really sings. Timed by listening (Qwen3-ASR and its aligner, 5.9 GB, fetched on first use). |
 | `lyrics_timing` | choice | "vocal stem" | `vocal stem`, `the song` |  | What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the take's vocal stem (about half a minute more; fewer words timed in silence) or the song (quicker). Without the separation model the song. |
+| `song_page` | boolean | true |  |  | Also write '<name>.html': the song on one page to open in any browser - the lyrics with their sections and the prompts to copy, every setting, how it was made, the sound, the score and links to the files. |

@@ -195,6 +195,7 @@ def test_with_an_export_the_stems_go_next_to_the_song(server: ComfyServer) -> No
     assert sorted(p.name for p in song.iterdir()) == [
         "Untitled-stems",
         "Untitled.flac",
+        "Untitled.html",  # the song's page (1.4.0)
         "Untitled.plenio.json",
     ]
     stems = song / "Untitled-stems"
