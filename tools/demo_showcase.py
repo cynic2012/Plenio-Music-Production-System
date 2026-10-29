@@ -111,13 +111,23 @@ def read_song(path: Path) -> tuple[dict[str, Any], dict[str, Path]]:
 
 
 def encode_mp3(flac: Path, mp3: Path, title: str) -> None:
-    """The song as an MP3 the way Export Release writes one (LAME VBR V0), for a song exported without it."""
-    import soundfile
+    """The song as an MP3 the way Export Release writes one (LAME VBR V0), for a song exported without it - decoded
+    with PyAV, which comes with ComfyUI."""
+    import av
+    import numpy as np
 
     from plenio.core.release import write_audio
 
-    data, rate = soundfile.read(str(flac), dtype="float32", always_2d=True)
-    write_audio(mp3, data.T, rate, "mp3", {"title": title})
+    chunks = []
+    with av.open(str(flac)) as container:
+        stream = container.streams.audio[0]
+        rate = int(stream.rate)
+        layout = "stereo" if stream.channels > 1 else "mono"
+        resampler = av.AudioResampler(format="fltp", layout=layout, rate=rate)
+        for frame in container.decode(stream):
+            chunks += [out.to_ndarray() for out in resampler.resample(frame)]
+        chunks += [out.to_ndarray() for out in resampler.resample(None)]
+    write_audio(mp3, np.concatenate(chunks, axis=1), rate, "mp3", {"title": title})
 
 
 def made_of(summary: dict[str, Any]) -> dict[str, Any]:

@@ -168,15 +168,14 @@ def test_a_song_without_anything_to_play_is_refused(tmp_path: Path) -> None:
 
 def test_a_song_exported_without_an_mp3_gets_one_from_its_flac(tmp_path: Path) -> None:
     import numpy as np
-    import soundfile
+
+    from plenio.core.release import write_audio
 
     path = song_folder(tmp_path)
     path.with_name("2026-10-29 Neon Test.mp3").unlink()
     t = np.arange(48000) / 48000
-    soundfile.write(
-        str(path.with_name("2026-10-29 Neon Test.flac")),
-        np.stack([np.sin(2 * np.pi * 440 * t)] * 2, axis=1) * 0.3,
-        48000,
+    write_audio(
+        path.with_name("2026-10-29 Neon Test.flac"), np.stack([np.sin(2 * np.pi * 440 * t)] * 2) * 0.3, 48000
     )
     summary, files = tool.read_song(path)
     docs = tmp_path / "docs"
