@@ -2,7 +2,7 @@
  * the live analyser gives them; the H.264 level for the size; the saved settings. */
 import { describe, expect, it } from 'vitest'
 
-import { levels, videoWithDefaults } from '../src/player/video/make'
+import { levels, QUALITIES, SIZES, videoBitrate, videoSize, videoWithDefaults } from '../src/player/video/make'
 import { OfflineAnalysis } from '../src/player/video/offline'
 
 function tone(hz: number, seconds = 2, rate = 48000, amplitude = 0.5): { left: Float32Array; right: Float32Array; rate: number } {
@@ -50,5 +50,34 @@ describe('the video', () => {
     // the lyrics' look: the video's own, else the player's
     expect(videoWithDefaults({}, { effect: 'neon', font: 'poster' }).lyricsStyle).toMatchObject({ effect: 'neon', font: 'poster' })
     expect(videoWithDefaults({ lyricsStyle: { effect: 'wave' } }, { effect: 'neon' }).lyricsStyle.effect).toBe('wave')
+  })
+
+  it('has quality levels from low to best and a bitrate of its own (owner’s request 2026-10-29)', () => {
+    // settings of before: standard and high stay what they were
+    const full = { width: 1920, height: 1080, fps: 30 }
+    expect(videoBitrate({ ...full, quality: 'standard', bitrate: 0 })).toBe(Math.round(1920 * 1080 * 30 * 0.085))
+    expect(videoBitrate({ ...full, quality: 'high', bitrate: 0 })).toBe(Math.round(1920 * 1080 * 30 * 0.15))
+    const steps = QUALITIES.filter((q) => q.id !== 'custom').map((q) => videoBitrate({ ...full, quality: q.id, bitrate: 0 }))
+    expect(steps).toEqual([...steps].sort((a, b) => a - b))
+    expect(steps[0]).toBeLessThan(2.5e6)
+    // a bitrate of one's own, kept within what H.264 at these sizes takes
+    expect(videoBitrate({ ...full, quality: 'custom', bitrate: 8 })).toBe(8e6)
+    expect(videoWithDefaults({ quality: 'custom', bitrate: 9999 }).bitrate).toBe(200)
+    expect(videoWithDefaults({ quality: 'custom', bitrate: 'x' }).bitrate).toBe(12)
+    expect(videoWithDefaults({ keyframes: 3, encoder: 'gpu', audio: 64 })).toMatchObject({ keyframes: 2, encoder: 'auto', audio: 192 })
+    expect(videoWithDefaults({ keyframes: 8, encoder: 'software', audio: 320, constant: true })).toMatchObject({ keyframes: 8, encoder: 'software', audio: 320, constant: true })
+    // the file's size: a constant rate keeps its aim, a variable one stays below it; the sound counts too
+    const minute = (o: object) => videoSize({ ...full, quality: 'custom', bitrate: 8, constant: false, audio: 192, ...o }, 60)
+    expect(minute({ constant: true })).toBe(((8e6 + 192000) * 60) / 8)
+    expect(minute({})).toBeLessThan(minute({ constant: true }))
+    expect(minute({ audio: 320 })).toBeGreaterThan(minute({}))
+  })
+
+  it('offers sizes the H.264 levels take', () => {
+    for (const size of SIZES) {
+      for (const fps of [24, 25, 30, 50, 60]) expect(levels(size.width, size.height, fps).length, `${size.id} at ${fps}`).toBeGreaterThan(0)
+    }
+    expect(videoWithDefaults({ width: 1080, height: 1350 })).toMatchObject({ width: 1080, height: 1350 })
+    expect(videoWithDefaults({ width: 2160, height: 3840, fps: 25 })).toMatchObject({ width: 2160, height: 3840, fps: 25 })
   })
 })

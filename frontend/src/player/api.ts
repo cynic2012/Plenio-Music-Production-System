@@ -465,7 +465,7 @@ const serverApi = {
     }),
   peaks: (id: string) => json<{ peaks: number[] }>(`/api/peaks/${id}`),
   folders: () => json<FoldersAnswer>('/api/folders'),
-  videoStart: (body: { song: string; take: string; start: number; length: number; fps: number; width: number; height: number }) =>
+  videoStart: (body: { song: string; take: string; start: number; length: number; fps: number; width: number; height: number; audio?: number }) =>
     post<{ job: string }>('/api/video', body),
   videoData: async (job: string, data: Uint8Array<ArrayBuffer>): Promise<void> => {
     const response = await fetch(`/api/video/${job}/data`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Plenio-Player': '1' }, body: data })

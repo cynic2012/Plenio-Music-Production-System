@@ -1,18 +1,24 @@
 <script setup lang="ts">
 /**
  * The visuals' settings: the mode (auto, random from a choice, cycle, fixed), when it changes, the colours,
- * the sensitivity - and a visual of its own for this song or for the playlist that plays. Plenio Drop's
+ * the sensitivity - and a visual of its own for this song or for the playlist that plays. Plenio Drop's and Nova's
  * quality, and the listener's own Drop presets: the folder, the files that do not work and why, a copy of a
  * preset to edit.
+ *
+ * The visuals to choose from in a compact overview (owner's request 2026-10-29: many visuals, yet easy to oversee):
+ * a search and the moods they suit, the groups folded with how many are ticked, each visual a small chip (what it
+ * shows on hovering). Only what this device can draw smoothly is offered (owner's request 2026-10-30); what is not,
+ * and why, is said under its group.
  */
 import { computed, ref } from 'vue'
 
 import { guestStatus } from '../guests'
 import { current, queueSource, say, settings, state } from '../store'
-import { CLASSIC, PRESETS, allPresets, presetById, type Preset, type Scheme } from '../visuals/presets'
+import { CLASSIC, PRESETS, presetById, type Preset, type Scheme } from '../visuals/presets'
 import type { SwitchOn, VisualMode } from '../visuals/chooser'
 import { FADE_STYLES } from '../visuals/mixer'
 import { copyToMyPresets, myPresetErrors, myPresetFile, myPresetFolder, myPresets, openMyPresetFolder, playingFile } from '../visuals/drop'
+import { gpuSupport, leftOut, novaSmooth, novaTimings, offered, takeBackLeftOut } from '../visuals/gpu'
 import Icon from './Icon.vue'
 import { isPortable } from '../portable'
 
@@ -25,14 +31,90 @@ const QUALITY: [number, string][] = [
   [0.75, 'Balanced'],
   [1, 'Sharp - every pixel'],
 ]
-const GROUPS = computed<[string, string, Preset[]][]>(() => [
-  ['classic', 'Classic', CLASSIC],
-  ['drop', 'Plenio Drop', PRESETS.filter((p) => p.kind === 'drop')],
-  ['mine', 'My presets', myPresets.value],
-])
-const everything = computed(() => allPresets())
+const support = gpuSupport()
+
+interface Group {
+  id: string
+  label: string
+  /** Every visual of the group, and the ones offered here. */
+  all: Preset[]
+  offered: Preset[]
+  /** What is not offered here, and why. */
+  notes: string[]
+}
+
+function names(list: Preset[]): string {
+  return list.map((p) => shortName(p.name)).join(', ')
+}
+
+const GROUPS = computed<Group[]>(() => {
+  const drop = PRESETS.filter((p) => p.kind === 'drop')
+  const nova = PRESETS.filter((p) => p.kind === 'nova')
+  const groups: Group[] = []
+  const out = (list: Preset[]) => list.filter((p) => leftOut.value.has(p.id))
+  groups.push({ id: 'classic', label: 'Classic', all: CLASSIC, offered: CLASSIC.filter(offered), notes: [] })
+  if (support.webgl) {
+    groups.push({ id: 'drop', label: 'Plenio Drop', all: drop, offered: drop.filter(offered), notes: [] })
+    if (support.float) {
+      const timing = nova.filter((p) => novaTimings.value[p.id] === undefined).length
+      const heavy = nova.filter((p) => novaSmooth(p.id) === false && novaTimings.value[p.id] !== -1)
+      const broken = nova.filter((p) => novaTimings.value[p.id] === -1)
+      const notes: string[] = []
+      if (timing) notes.push(`Timing them on this graphics card … ${nova.length - timing} of ${nova.length} done - offered once they play smoothly here.`)
+      if (heavy.length) notes.push(`Too heavy to play smoothly on this graphics card, so not offered here: ${names(heavy)}.`)
+      if (broken.length) notes.push(`Not working in this browser: ${names(broken)}.`)
+      groups.push({ id: 'nova', label: 'Plenio Nova', all: nova, offered: nova.filter(offered), notes })
+    }
+    if (myPresets.value.length) groups.push({ id: 'mine', label: 'My presets', all: myPresets.value, offered: myPresets.value.filter(offered), notes: [] })
+  }
+  for (const g of groups) {
+    const gone = out(g.all)
+    if (gone.length) g.notes.push(`Left out for now - they did not keep up here: ${names(gone)}.`)
+  }
+  return groups
+})
+const offeredAll = computed(() => GROUPS.value.flatMap((g) => g.offered))
 const activePreset = computed(() => presetById(props.active))
 const copying = ref(false)
+
+/** Why Plenio Drop or Nova are not offered at all here. */
+const gpuNote = computed(() => {
+  if (!support.webgl) return `Plenio Drop and Plenio Nova are not offered here: ${support.why}`
+  if (!support.float) return 'Plenio Nova is not offered here: this graphics card cannot draw its light in WebGL2 (no pictures in half floats).'
+  return ''
+})
+
+// --- finding one ----------------------------------------------------------------------------------------------------
+
+const query = ref('')
+const mood = ref('')
+const MOODS = ['energetic', 'calm', 'electronic', 'acoustic', 'dark']
+const opened = ref(new Set<string>([presetById(props.active)?.kind === 'nova' ? 'nova' : presetById(props.active)?.kind === 'drop' ? 'drop' : 'classic']))
+const filtering = computed(() => !!query.value.trim() || !!mood.value)
+
+function matches(p: Preset): boolean {
+  const words = query.value.toLowerCase().split(/\s+/).filter(Boolean)
+  const text = `${p.name} ${p.blurb} ${p.suits.join(' ')}`.toLowerCase()
+  if (!words.every((w) => text.includes(w))) return false
+  return !mood.value || p.suits.includes(mood.value) || p.suits.includes('any')
+}
+const shown = computed(() => GROUPS.value.map((g) => ({ ...g, shown: g.offered.filter(matches), ticked: g.offered.filter((p) => v.pool.includes(p.id)).length })))
+
+function isOpen(id: string, count: number): boolean {
+  return filtering.value ? count > 0 : opened.value.has(id)
+}
+function toggleOpen(id: string): void {
+  const next = new Set(opened.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  opened.value = next
+}
+/** A visual's name in its group (without "Drop · ", "Nova · ", "My · "). */
+function shortName(name: string): string {
+  return name.replace(/^(Drop|Nova|My) · /, '')
+}
+
+// --- the settings -------------------------------------------------------------------------------------------------
 
 const v = settings.visuals
 const MODES: [VisualMode, string, string][] = [
@@ -57,6 +139,11 @@ const SCHEMES: [Scheme, string][] = [
 
 const playlist = computed(() => state.playlists.find((p) => p.id === queueSource.value) ?? null)
 const songOwn = computed(() => (current.value ? v.songs[current.value.id] ?? '' : ''))
+/** A visual chosen before that this device does not draw (another computer's choice): shown, not offered. */
+const notHere = (id: string | undefined): Preset | null => {
+  const preset = id ? presetById(id) : undefined
+  return preset && !offeredAll.value.includes(preset) ? preset : null
+}
 
 function togglePool(id: string): void {
   const at = v.pool.indexOf(id)
@@ -118,8 +205,9 @@ async function editCopy(): Promise<void> {
     <template v-if="v.mode === 'fixed'">
       <h4>The visual</h4>
       <select v-model="v.fixed">
-        <optgroup v-for="[id, label, list] in GROUPS" :key="id" :label="label">
-          <option v-for="p in list" :key="p.id" :value="p.id">{{ p.name }}</option>
+        <option v-if="notHere(v.fixed)" :value="v.fixed" disabled>{{ notHere(v.fixed)?.name }} - not on this device</option>
+        <optgroup v-for="g in GROUPS" :key="g.id" :label="g.label">
+          <option v-for="p in g.offered" :key="p.id" :value="p.id">{{ shortName(p.name) }}</option>
         </optgroup>
       </select>
     </template>
@@ -144,49 +232,68 @@ async function editCopy(): Promise<void> {
     </label>
     <p class="note tight">{{ FADE_STYLES.find(([id]) => id === v.fade)?.[2] }}. Both visuals play on while it changes; from one Plenio Drop preset to another the picture stays and its motion turns into the new one.</p>
 
-    <h4>{{ v.mode === 'auto' ? 'Choose from' : v.mode === 'fixed' ? 'All visuals' : 'Ticked visuals' }}</h4>
-    <template v-for="[id, label, list] in GROUPS" :key="id">
-      <div v-if="list.length" class="group">
-        <span>{{ label }}</span>
-        <button class="link" @click="tickGroup(list, true)">all</button>
-        <button class="link" @click="tickGroup(list, false)">none</button>
-      </div>
-      <div class="pool">
-        <label v-for="p in list" :key="p.id" class="preset" :class="{ on: v.pool.includes(p.id), now: p.id === active }" :title="p.blurb">
-          <input type="checkbox" :checked="v.pool.includes(p.id)" @change="togglePool(p.id)" />
-          <span class="name">{{ p.name }}</span>
-          <span class="blurb">{{ p.blurb }}</span>
-        </label>
-      </div>
-    </template>
-
-    <h4>Plenio Drop</h4>
-    <label class="row">Quality
-      <select v-model.number="v.dropScale" title="How finely Plenio Drop draws: Fast draws a quarter of the pixels, and every computer keeps up">
-        <option v-for="[scale, label] in QUALITY" :key="scale" :value="scale">{{ label }}</option>
-      </select>
-    </label>
-    <p class="note">MilkDrop-style visuals, drawn by Plenio itself. Write your own: a preset is a short JSON file - <a :href="GUIDE" target="_blank" rel="noopener">the guide</a>.</p>
-    <div v-if="!isPortable" class="drop-tools">
-      <button class="chip" :disabled="!activePreset?.file || copying" :title="activePreset?.file ? `A copy of ${activePreset.name} in your visuals folder, to change` : 'Play a Plenio Drop visual to copy it'" @click="editCopy">
-        <Icon name="edit" :size="14" /> Edit a copy
-      </button>
-      <button class="chip" title="Your visuals folder: every .json file there is a visual of your own" @click="openMyPresetFolder"><Icon name="folder" :size="14" /> Open my folder</button>
+    <h4>{{ v.mode === 'auto' ? 'Choose from' : v.mode === 'fixed' ? 'All visuals' : 'Ticked visuals' }} <small class="count">{{ offeredAll.filter((p) => v.pool.includes(p.id)).length }} of {{ offeredAll.length }}</small></h4>
+    <input v-model="query" class="find" type="search" placeholder="Find a visual …" aria-label="Find a visual" />
+    <div class="moods" role="group" aria-label="The visuals that suit">
+      <button v-for="m in MOODS" :key="m" class="mood" :class="{ on: mood === m }" :title="`Only the visuals that suit ${m} music`" @click="mood = mood === m ? '' : m">{{ m }}</button>
     </div>
-    <p v-if="myPresetFile(active)" class="note">Playing your file <code>{{ myPresetFile(active) }}</code> - save it and it changes here.</p>
-    <p v-if="myPresetFolder" class="note path">{{ myPresetFolder }}</p>
-    <div v-for="e in myPresetErrors" :key="e.file" class="bad"><b>{{ e.file }}</b> {{ e.error }}</div>
+    <p v-if="gpuNote" class="note tight gpu">{{ gpuNote }}</p>
+    <section v-for="g in shown" :key="g.id" class="group" :class="{ open: isOpen(g.id, g.shown.length) }">
+      <div class="head">
+        <button class="fold" :aria-expanded="isOpen(g.id, g.shown.length)" @click="toggleOpen(g.id)">
+          <Icon name="chevron" :size="12" class="arrow" />
+          <span class="label">{{ g.label }}</span>
+          <span class="count">{{ g.ticked }}/{{ g.offered.length }}</span>
+        </button>
+        <button class="link" :title="`Tick every ${g.label} visual`" @click="tickGroup(g.offered, true)">all</button>
+        <button class="link" :title="`Untick every ${g.label} visual`" @click="tickGroup(g.offered, false)">none</button>
+      </div>
+      <div v-if="isOpen(g.id, g.shown.length)" class="chips">
+        <label v-for="p in g.shown" :key="p.id" class="pick" :class="{ on: v.pool.includes(p.id), now: p.id === active }" :title="`${p.name} - ${p.blurb}`">
+          <input type="checkbox" :checked="v.pool.includes(p.id)" @change="togglePool(p.id)" />
+          <span>{{ shortName(p.name) }}</span>
+        </label>
+        <span v-if="!g.shown.length" class="none">none {{ filtering ? 'found' : 'here' }}</span>
+      </div>
+      <p v-for="n in g.notes" :key="n" class="note tight">{{ n }}</p>
+    </section>
+    <button v-if="leftOut.size" class="chip again" title="Offer the visuals left out in this session again" @click="takeBackLeftOut()"><Icon name="dice" :size="14" /> Try again</button>
+
+    <template v-if="support.webgl">
+      <h4>Plenio Drop and Nova</h4>
+      <label class="row">Quality
+        <select v-model.number="v.dropScale" title="How finely Plenio Drop and Nova draw: Fast draws a quarter of the pixels, and every computer keeps up. Nova's visuals also take as many pixels as this graphics card draws smoothly.">
+          <option v-for="[scale, label] in QUALITY" :key="scale" :value="scale">{{ label }}</option>
+        </select>
+      </label>
+      <p class="note">Plenio Drop: MilkDrop-style visuals, drawn by Plenio itself. Write your own: a preset is a short JSON file - <a :href="GUIDE" target="_blank" rel="noopener">the guide</a>. Plenio Nova: scenes the graphics card works out for every pixel - offered where they play smoothly.</p>
+      <div v-if="!isPortable" class="drop-tools">
+        <button class="chip" :disabled="!activePreset?.file || copying" :title="activePreset?.file ? `A copy of ${activePreset.name} in your visuals folder, to change` : 'Play a Plenio Drop visual to copy it'" @click="editCopy">
+          <Icon name="edit" :size="14" /> Edit a copy
+        </button>
+        <button class="chip" title="Your visuals folder: every .json file there is a visual of your own" @click="openMyPresetFolder"><Icon name="folder" :size="14" /> Open my folder</button>
+      </div>
+      <p v-if="myPresetFile(active)" class="note">Playing your file <code>{{ myPresetFile(active) }}</code> - save it and it changes here.</p>
+      <p v-if="myPresetFolder" class="note path">{{ myPresetFolder }}</p>
+      <div v-for="e in myPresetErrors" :key="e.file" class="bad"><b>{{ e.file }}</b> {{ e.error }}</div>
+    </template>
 
     <h4>This song</h4>
     <select :value="songOwn" @change="setSong(($event.target as HTMLSelectElement).value)">
       <option value="">As the mode says</option>
-      <option v-for="p in everything" :key="p.id" :value="p.id">Always {{ p.name }}</option>
+      <option v-if="notHere(songOwn)" :value="songOwn" disabled>Always {{ notHere(songOwn)?.name }} - not on this device</option>
+      <optgroup v-for="g in GROUPS" :key="g.id" :label="g.label">
+        <option v-for="p in g.offered" :key="p.id" :value="p.id">Always {{ shortName(p.name) }}</option>
+      </optgroup>
     </select>
     <template v-if="playlist">
       <h4>The playlist “{{ playlist.name }}”</h4>
       <select :value="playlist.visual ?? ''" @change="setPlaylist(($event.target as HTMLSelectElement).value)">
         <option value="">As the mode says</option>
-        <option v-for="p in everything" :key="p.id" :value="p.id">Always {{ p.name }}</option>
+        <option v-if="notHere(playlist.visual)" :value="playlist.visual" disabled>Always {{ notHere(playlist.visual)?.name }} - not on this device</option>
+        <optgroup v-for="g in GROUPS" :key="g.id" :label="g.label">
+          <option v-for="p in g.offered" :key="p.id" :value="p.id">Always {{ shortName(p.name) }}</option>
+        </optgroup>
       </select>
     </template>
 
@@ -236,6 +343,12 @@ h4 {
   letter-spacing: 0.7px;
   color: var(--muted);
 }
+h4 .count {
+  float: right;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
 .now {
   margin: 8px 0;
   display: flex;
@@ -272,7 +385,8 @@ h4 {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 select,
-input[type='number'] {
+input[type='number'],
+input.find {
   width: 100%;
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
@@ -294,36 +408,109 @@ input[type='number'] {
   flex: 1;
   accent-color: var(--accent);
 }
-.pool {
-  display: grid;
+.moods {
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
+  margin: 6px 0 4px;
 }
-.preset {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 8px;
-  padding: 6px 8px;
-  border-radius: 8px;
+.mood {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font: 11px var(--font);
   cursor: pointer;
+}
+.mood.on {
+  border-color: var(--accent);
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.group {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 4px 0;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fold {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  background: none;
+  border: 0;
+  color: #fff;
+  cursor: pointer;
+  font: 600 12px var(--font);
+  text-align: left;
+}
+.fold .arrow {
+  transition: transform 0.15s;
+  transform: rotate(-90deg);
+  opacity: 0.7;
+}
+.group.open .fold .arrow {
+  transform: rotate(0deg);
+}
+.fold .label {
+  flex: 1;
+}
+.fold .count {
+  color: var(--muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 2px 0 6px;
+}
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 3px 6px;
+  border-radius: 7px;
   border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
 }
-.preset:hover {
-  background: rgba(255, 255, 255, 0.04);
+.pick span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.preset.now {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+.pick:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
-.preset input {
-  grid-row: span 2;
-  accent-color: var(--accent);
-}
-.name {
-  font-weight: 600;
+.pick.on {
   color: #fff;
 }
-.blurb {
+.pick.now {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.pick input {
+  margin: 0;
+  accent-color: var(--accent);
+  flex: none;
+}
+.none {
+  grid-column: span 2;
   color: var(--muted);
   font-size: 11px;
+  padding: 2px 6px;
+}
+.again {
+  margin-top: 6px;
 }
 .note {
   color: var(--muted);
@@ -336,20 +523,13 @@ input[type='number'] {
 .note.tight {
   margin-top: 2px;
 }
+.note.gpu {
+  margin: 4px 0;
+  color: #f0c78a;
+}
 .note.path {
   margin-top: 4px;
   word-break: break-all;
-}
-.group {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 10px 0 4px;
-  font: 600 12px var(--font);
-  color: #fff;
-}
-.group span {
-  flex: 1;
 }
 .link {
   background: none;

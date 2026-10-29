@@ -1,0 +1,248 @@
+/** Plenio Nova (owner's request 2026-10-29: more visuals, better than the MilkDrop ones, the choice compact) and what
+ * this device's graphics can draw (owner's request 2026-10-30: no WebGL visual offered where it cannot be drawn,
+ * none chosen that would not play smoothly). The shaders themselves are compiled and looked at in a browser; here:
+ * that every scene is complete, how the music is heard, and which visuals are offered. */
+import { afterEach, describe, expect, it } from 'vitest'
+
+import type { Frame } from '../src/player/visuals/analysis'
+import { chooseVisual, withDefaults } from '../src/player/visuals/chooser'
+import {
+  Governor,
+  NOVA_FLOOR,
+  NOVA_FRAME_MS,
+  governor,
+  keepTiming,
+  leaveOut,
+  leftOut,
+  loadTimings,
+  novaPixels,
+  novaSmooth,
+  novaTimings,
+  offered,
+  offeredForVideo,
+  setGpuSupport,
+  takeBackLeftOut,
+} from '../src/player/visuals/gpu'
+import { NOVA, NOVA_PRESETS, NOVA_VERSION } from '../src/player/visuals/nova'
+import { NovaMusic } from '../src/player/visuals/nova/renderer'
+import { PRESETS, presetById } from '../src/player/visuals/presets'
+
+const MOODS = ['energetic', 'calm', 'acoustic', 'electronic', 'dark']
+const GPU = { webgl: true, float: true, why: '', card: 'Test card' }
+
+function frame(over: Partial<Frame> = {}): Frame {
+  const freq = new Uint8Array(1024).fill(over.bass ? 200 : 0)
+  const wave = new Uint8Array(2048).fill(128)
+  return { freq, wave, left: wave, right: wave, bass: 0, mid: 0, treble: 0, level: 0, beat: false, pulse: 0, time: 0, dt: 1 / 60, playing: true, ...over }
+}
+
+/** Every Nova visual timed at so many nanoseconds per pixel. */
+function timeAll(ns: number): void {
+  for (const def of NOVA) keepTiming(def.id, ns)
+}
+
+afterEach(() => {
+  setGpuSupport(null)
+  novaTimings.value = {}
+  takeBackLeftOut()
+  governor.fresh()
+})
+
+describe('Plenio Nova', () => {
+  it('has its scenes, each complete', () => {
+    expect(NOVA.length).toBeGreaterThanOrEqual(20)
+    expect(new Set(NOVA.map((d) => d.id)).size).toBe(NOVA.length)
+    expect(new Set(NOVA.map((d) => d.name)).size).toBe(NOVA.length)
+    for (const def of NOVA) {
+      expect(def.id, def.name).toMatch(/^nova-[a-z-]+$/)
+      expect(def.blurb.length, def.name).toBeGreaterThan(30)
+      expect(def.suits.length, def.name).toBeGreaterThan(0)
+      for (const s of def.suits) expect(MOODS, def.name).toContain(s)
+      expect(def.image, def.name).toMatch(/vec3 image\(vec2 p, vec2 uv\)/)
+      // inside the ray-marching loops only textureLod: Windows' shader compiler cannot take gradients there
+      expect(def.image, def.name).not.toMatch(/\btexture\(/)
+      for (const code of [def.image, def.state?.code ?? '']) {
+        expect(code.split('{').length, `${def.name}: braces`).toBe(code.split('}').length)
+        expect(code.split('(').length, `${def.name}: parentheses`).toBe(code.split(')').length)
+      }
+      if (def.state) {
+        expect(def.state.code, def.name).toMatch(/vec4 next\(vec2 uv\)/)
+        expect(def.state.rate, def.name).toBeGreaterThan(0)
+        expect(def.state.height, def.name).toBeGreaterThan(16)
+      }
+      expect(def.bloom, def.name).toBeGreaterThanOrEqual(0)
+      expect(def.exposure, def.name).toBeGreaterThan(0.5)
+      expect(def.speed[0], def.name).toBeGreaterThan(0)
+    }
+    // they are visuals like the others, a group of their own
+    for (const def of NOVA) expect(PRESETS.find((p) => p.id === def.id)?.kind).toBe('nova')
+    expect(NOVA_PRESETS.map((p) => p.name)).toContain('Nova · Black hole')
+    expect(NOVA_VERSION).toMatch(/^-?\d+$/)
+  })
+
+  it('hears the music smoothly and adds up the way and the turn', () => {
+    const music = new NovaMusic()
+    music.update(frame({ time: 10 }), [1, 2])
+    expect(music.time).toBe(0)
+    expect(music.bass).toBe(0)
+    // a kick: the bass far above its own average - at once; then it is gone in a moment
+    for (let k = 1; k <= 30; k++) music.update(frame({ time: 10 + k / 60, bass: 0.2 }), [1, 2])
+    music.update(frame({ time: 10.6, bass: 0.9, beat: true, pulse: 1 }), [1, 2])
+    expect(music.kick).toBeGreaterThan(0.5)
+    expect(music.beats).toBe(1)
+    expect(music.bass).toBeGreaterThan(0.2)
+    expect(music.bass).toBeLessThan(0.9)
+    for (let k = 1; k <= 30; k++) music.update(frame({ time: 10.6 + k / 60, bass: 0.2 }), [1, 2])
+    expect(music.kick).toBeLessThan(0.1)
+    // the bass pushes the way on
+    const calm = new NovaMusic()
+    const loud = new NovaMusic()
+    for (let k = 0; k < 120; k++) {
+      calm.update(frame({ time: k / 60 }), [1, 2])
+      loud.update(frame({ time: k / 60, bass: 0.9 }), [1, 2])
+    }
+    expect(loud.travel).toBeGreaterThan(calm.travel * 1.8)
+    expect(calm.travel).toBeCloseTo(2, 1)
+    // paused: it drifts on slowly
+    const paused = new NovaMusic()
+    for (let k = 0; k < 120; k++) paused.update(frame({ time: k / 60, playing: false }), [1, 2])
+    expect(paused.travel).toBeLessThan(calm.travel / 2)
+    // the spectrum and the waveform within their ranges
+    for (const v of loud.spec) expect(v).toBeGreaterThanOrEqual(0)
+    for (const v of loud.spec) expect(v).toBeLessThanOrEqual(1)
+    expect(Math.max(...loud.spec)).toBeGreaterThan(0.5)
+    expect(Math.max(...loud.wave.map(Math.abs))).toBe(0)
+  })
+})
+
+describe('what this device can draw (owner’s request 2026-10-30)', () => {
+  it('offers no Drop or Nova visual where there is no WebGL2 on the graphics card', () => {
+    setGpuSupport({ webgl: false, float: false, why: 'This browser has no WebGL2.', card: '' })
+    timeAll(1)
+    expect(offered(presetById('bars')!)).toBe(true)
+    expect(PRESETS.filter((p) => p.kind === 'drop').some(offered)).toBe(false)
+    expect(PRESETS.filter((p) => p.kind === 'nova').some(offered)).toBe(false)
+    expect(PRESETS.filter((p) => p.kind !== undefined).some(offeredForVideo)).toBe(false)
+    // nor are they chosen, whatever the settings say
+    const settings = withDefaults(null)
+    const song = { id: 's1', genre: 'techno', mood: '', style: '', bpm: 128 }
+    for (let turn = 0; turn < 40; turn++) {
+      const id = chooseVisual({ settings, song, turn })
+      expect(presetById(id)?.kind, id).toBeUndefined()
+    }
+    expect(chooseVisual({ settings: { ...settings, mode: 'fixed', fixed: 'nova-black-hole' }, song })).toBe('bars')
+    expect(chooseVisual({ settings: { ...settings, songs: { s1: 'drop-nebula-swirl' } }, song, random: () => 0 })).not.toBe('drop-nebula-swirl')
+    // a pool of only those: one this device draws instead
+    const instead = chooseVisual({ settings: { ...settings, mode: 'random', pool: ['drop-nebula-swirl', 'nova-pulsar'] }, song })
+    expect(presetById(instead)?.kind, instead).toBeUndefined()
+  })
+
+  it('offers Plenio Drop with WebGL2, Plenio Nova where it also has half floats', () => {
+    setGpuSupport({ webgl: true, float: false, why: '', card: 'Old card' })
+    timeAll(1)
+    expect(offered(presetById('drop-nebula-swirl')!)).toBe(true)
+    expect(offered(presetById('nova-pulsar')!)).toBe(false)
+    expect(offeredForVideo(presetById('nova-pulsar')!)).toBe(false)
+  })
+
+  it('offers a Nova visual for the live picture only once timed smooth on this card', () => {
+    setGpuSupport(GPU)
+    const pulsar = presetById('nova-pulsar')!
+    expect(novaSmooth('nova-pulsar')).toBeNull()
+    expect(offered(pulsar)).toBe(false)
+    // a video draws ahead of time: offered as soon as the card can draw it at all
+    expect(offeredForVideo(pulsar)).toBe(true)
+    // smooth: within its share of a frame at the smallest picture
+    const limit = (NOVA_FRAME_MS * 1e6) / NOVA_FLOOR
+    keepTiming('nova-pulsar', limit * 0.9)
+    expect(offered(pulsar)).toBe(true)
+    keepTiming('nova-pulsar', limit * 1.2)
+    expect(novaSmooth('nova-pulsar')).toBe(false)
+    expect(offered(pulsar)).toBe(false)
+    expect(offeredForVideo(pulsar)).toBe(true)
+    // one that does not compile here is not offered at all
+    keepTiming('nova-pulsar', -1)
+    expect(offeredForVideo(pulsar)).toBe(false)
+    // the chooser takes the smooth ones
+    timeAll(2)
+    keepTiming('nova-bulb', limit * 3)
+    const settings = { ...withDefaults(null), mode: 'random' as const, pool: ['nova-bulb', 'nova-pulsar', 'nova-ink'] }
+    for (let i = 0; i < 20; i++) expect(['nova-pulsar', 'nova-ink']).toContain(chooseVisual({ settings, song: null, random: () => i / 20 }))
+  })
+
+  it('gives a Nova visual as many pixels as stay smooth', () => {
+    setGpuSupport(GPU)
+    const screen = 1920 * 1080
+    keepTiming('nova-ink', 0.5)
+    expect(novaPixels('nova-ink', screen)).toBe(screen)
+    keepTiming('nova-bulb', 10)
+    expect(novaPixels('nova-bulb', screen)).toBeCloseTo((NOVA_FRAME_MS * 1e6) / 10, 0)
+    // a huge screen: no more than the ceiling
+    expect(novaPixels('nova-ink', 7680 * 4320)).toBe(2560 * 1440)
+    // frames coming late: fewer
+    governor.factor = 0.5
+    expect(novaPixels('nova-ink', screen)).toBe(screen * 0.5)
+  })
+
+  it('keeps the timings for this card, and takes them again for another one', () => {
+    setGpuSupport(GPU)
+    loadTimings(NOVA_VERSION)
+    keepTiming('nova-ink', 3)
+    novaTimings.value = {}
+    setGpuSupport({ ...GPU, card: 'Another card' })
+    loadTimings(NOVA_VERSION)
+    expect(novaTimings.value['nova-ink']).toBeUndefined()
+    setGpuSupport(GPU)
+    loadTimings(NOVA_VERSION)
+    expect(novaTimings.value['nova-ink']).toBe(3)
+    // a changed visual is timed again
+    loadTimings(`${NOVA_VERSION}x`)
+    expect(novaTimings.value['nova-ink']).toBeUndefined()
+  })
+
+  it('leaves out a visual that did not keep up, until asked to try again', () => {
+    const fire = presetById('fire')!
+    expect(offered(fire)).toBe(true)
+    leaveOut('fire')
+    expect(offered(fire)).toBe(false)
+    expect(leftOut.value.has('fire')).toBe(true)
+    expect(chooseVisual({ settings: { ...withDefaults(null), mode: 'fixed', fixed: 'fire' }, song: null })).toBe('bars')
+    takeBackLeftOut()
+    expect(offered(fire)).toBe(true)
+  })
+})
+
+describe('the governor', () => {
+  const run = (g: Governor, ms: number, seconds: number) => {
+    for (let t = 0; t < seconds; t += ms / 1000) g.note(ms / 1000)
+  }
+
+  it('takes pixels away while frames come late, and gives them back', () => {
+    const g = new Governor()
+    run(g, 16.7, 3)
+    expect(g.factor).toBe(1)
+    run(g, 40, 3)
+    expect(g.factor).toBeLessThan(0.6)
+    run(g, 16.7, 15)
+    expect(g.factor).toBe(1)
+    expect(g.struggling).toBe(0)
+  })
+
+  it('holds a 144 Hz screen to its pace only down to smooth, not to 60 Hz', () => {
+    const g = new Governor()
+    run(g, 6.9, 3)
+    run(g, 16.7, 5)
+    expect(g.factor).toBe(1)
+  })
+
+  it('says a visual struggles once the fewest pixels do not help', () => {
+    const g = new Governor()
+    run(g, 16.7, 2)
+    run(g, 45, 8)
+    expect(g.factor).toBeCloseTo(0.35, 2)
+    expect(g.struggling).toBeGreaterThan(4)
+    g.fresh()
+    expect(g.factor).toBe(1)
+    expect(g.struggling).toBe(0)
+  })
+})

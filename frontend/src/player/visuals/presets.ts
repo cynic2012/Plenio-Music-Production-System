@@ -3,13 +3,15 @@
  * vectorscope, AVS fire) and MilkDrop-like feedback scenes (tunnel, kaleidoscope), plus a few of Plenio's
  * own. Each draws one frame on a 2D canvas from the music's ``Frame``; the scene keeps what it needs
  * between frames (caps, particles, the feedback buffer). Then Plenio Drop (drop/): MilkDrop-style visuals on
- * WebGL2, its built-in presets and the listener's own.
+ * WebGL2, its built-in presets and the listener's own; and Plenio Nova (nova/): scenes the graphics card works out
+ * for every pixel - offered only where it can draw them, and smoothly (gpu.ts).
  */
 import type { Frame } from './analysis'
 import { MORE_CLASSIC } from './classics'
 import { buffer, fade, logBins, pixels } from './draw'
 import { DROP_PRESETS, myPresets } from './drop'
 import type { PresetFile } from './drop/format'
+import { NOVA_PRESETS } from './nova'
 
 export type Scheme = 'song' | 'winamp' | 'neon' | 'mono' | 'sunset'
 
@@ -29,10 +31,11 @@ export interface Scene {
   draw(ctx: CanvasRenderingContext2D, frame: Frame, width: number, height: number, colors: Colors): void
 }
 
-/** How a scene is made: Plenio Drop's visuals can draw with a renderer of their own (a video made while the
- * player shows visuals too) at a quality of its own. */
+/** How a scene is made: Plenio Drop's and Plenio Nova's visuals can draw with a renderer of their own (a video made
+ * while the player shows visuals too, the previews) at a quality of their own. */
 export interface SceneOptions {
   drop?: { renderer: () => import('./drop/renderer').DropRenderer | null; scale: number }
+  nova?: { renderer: () => import('./nova/renderer').NovaRenderer | null; scale: number }
 }
 
 export interface Preset {
@@ -42,8 +45,9 @@ export interface Preset {
   /** What music it suits: energetic, calm, acoustic, electronic, dark. */
   suits: string[]
   create(options?: SceneOptions): Scene
-  /** A Plenio Drop preset (``source``: built in, or one of the listener's; ``file``: its preset file). */
-  kind?: 'drop'
+  /** A Plenio Drop preset (``source``: built in, or one of the listener's; ``file``: its preset file), or a Plenio
+   * Nova scene. */
+  kind?: 'drop' | 'nova'
   source?: 'builtin' | 'mine'
   file?: PresetFile
 }
@@ -794,8 +798,8 @@ export const CLASSIC: Preset[] = [bars, scope, vector, radial, tunnel, stars, pl
 
 export { logBins }
 
-/** Every built-in visual: the classics and Plenio Drop's presets. */
-export const PRESETS: Preset[] = [...CLASSIC, ...DROP_PRESETS]
+/** Every built-in visual: the classics, Plenio Drop's presets and Plenio Nova's scenes. */
+export const PRESETS: Preset[] = [...CLASSIC, ...DROP_PRESETS, ...NOVA_PRESETS]
 
 /** Every visual, the listener's own Drop presets included (they are read later, and again when edited). */
 export function allPresets(): Preset[] {

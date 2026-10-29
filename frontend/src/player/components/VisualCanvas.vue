@@ -5,19 +5,28 @@
  * softly: both play on while the new one fades, zooms or slides in, or comes with a flash on the beat, over
  * the time set (visuals/mixer.ts; owner's request 2026-10-18). ``mini`` draws the player bar's little square
  * (``miniScene``).
+ *
+ * Smooth (owner's request 2026-10-30): the governor (visuals/gpu.ts) takes pixels away while frames come late and
+ * gives them back; a visual that still does not keep up - after one that did, so that a busy computer does not leave
+ * out one visual after the other - is left out for the session and another one comes. Plenio Nova's visuals are timed
+ * on this graphics card once, a little after the visual first shows.
  */
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
 import { mediaReady } from '../api'
 import { songHue } from '../colors'
 import { engine } from '../engine'
+import { videosAtWork } from '../jobs'
 import { lines } from '../now'
-import { current, settings } from '../store'
+import { current, say, settings } from '../store'
+import type { Frame } from '../visuals/analysis'
 import { chooseVisual } from '../visuals/chooser'
 import { dropOptions, dropRenderer } from '../visuals/drop/renderer'
 import { myPresets } from '../visuals/drop'
 import { tellRenderer } from '../visuals/drop/story'
+import { governor, leaveOut, loadTimings } from '../visuals/gpu'
 import { SceneMixer } from '../visuals/mixer'
+import { NOVA_VERSION, checkNova, novaOptions } from '../visuals/nova'
 import { makeColors, miniScene, presetById, type Scene } from '../visuals/presets'
 
 const props = defineProps<{ section?: string; playlistVisual?: string; mini?: boolean; force?: string }>()
@@ -32,6 +41,10 @@ let raf = 0
 let turn = 0
 let lastSwitch = performance.now()
 let quiet = 0
+/** Whether the visual before this one played smoothly, and how long this one has so far. */
+let smoothBefore = true
+let smoothFor = 0
+let checkAfter = 0
 
 const hue = computed(() => (current.value ? songHue(current.value.id, current.value.genre) : 200))
 /** The song's cover as a picture for the Drop visuals that draw it (owner's request 2026-10-18). */
@@ -56,6 +69,9 @@ watch(
 function use(id: string, again = false): void {
   const preset = presetById(id) ?? presetById('bars')
   if (!preset || (preset.id === presetId.value && !again)) return
+  smoothBefore = !presetId.value || smoothFor > 5
+  smoothFor = 0
+  governor.fresh()
   mixer.use(preset, { style: settings.visuals.fade, seconds: settings.visuals.fadeSeconds }, again)
   presetId.value = preset.id
   lastSwitch = performance.now()
@@ -86,7 +102,9 @@ function pick(newTurn = false, asked = false): void {
 function resize(): void {
   const el = canvas.value
   if (!el) return
-  const ratio = Math.min(props.mini ? 2 : 1.5, window.devicePixelRatio || 1)
+  // the classics draw every pixel of the canvas: fewer while frames come late (Drop and Nova draw at their own size)
+  const gpu = mixer.preset?.kind === 'drop' || mixer.preset?.kind === 'nova'
+  const ratio = Math.min(props.mini ? 2 : 1.5, window.devicePixelRatio || 1) * (props.mini || gpu ? 1 : Math.max(0.6, Math.sqrt(governor.factor)))
   const w = Math.max(1, Math.floor(el.clientWidth * ratio))
   const h = Math.max(1, Math.floor(el.clientHeight * ratio))
   if (el.width !== w || el.height !== h) {
@@ -103,7 +121,8 @@ function loop(): void {
   const ctx = el.getContext('2d')
   if (!ctx) return
   engine.sensitivity = settings.visuals.sensitivity
-  dropOptions.scale = settings.visuals.dropScale
+  dropOptions.scale = settings.visuals.dropScale * Math.sqrt(governor.factor)
+  novaOptions.scale = settings.visuals.dropScale
   const frame = engine.frame()
   const colors = makeColors(hue.value, props.mini ? 'song' : settings.visuals.scheme, frame.time)
   if (props.mini && mini) {
@@ -121,6 +140,7 @@ function loop(): void {
     tellRenderer(renderer, song ? { id: song.id, title: song.title, cover: cover.value, lines: lines.value } : null, engine.time)
   }
   mixer.draw(ctx, frame, el.width, el.height, colors)
+  keepSmooth(frame, colors.palette())
   if (props.force) return
   // the switches during a song: every N seconds, or when the music drops in after a quiet passage
   const v = settings.visuals
@@ -132,6 +152,27 @@ function loop(): void {
       quiet = 0
       pick(true)
     }
+  }
+}
+
+/** Smooth or not: frames that come late take pixels away (the governor); a visual that does not keep up even so is
+ * left out for this session and another one comes - unless the one before did not keep up either (then the computer
+ * is busy, not the visual too heavy). The first time the visual shows, Plenio Nova's visuals are timed here. */
+function keepSmooth(frame: Frame, palette: Uint8ClampedArray): void {
+  if (document.hidden || videosAtWork.value) return
+  if (!checkAfter) checkAfter = performance.now() + 2500
+  else if (checkAfter > 0 && performance.now() > checkAfter) {
+    checkAfter = -1
+    checkNova(palette)
+  }
+  if (!frame.playing) return
+  governor.note(frame.dt)
+  if (!governor.struggling) smoothFor += frame.dt
+  if (governor.struggling > 4 && smoothBefore && !mixer.changing && presetId.value && !props.force) {
+    const name = presetById(presetId.value)?.name ?? 'This visual'
+    leaveOut(presetId.value)
+    say(`${name} does not play smoothly on this computer - another visual instead (Visuals: Try again).`, 6000)
+    pick(true)
   }
 }
 
@@ -150,6 +191,8 @@ watch(myPresets, () => {
 })
 
 onMounted(() => {
+  // the timings of Plenio Nova's visuals kept for this graphics card: which ones play smoothly here
+  loadTimings(NOVA_VERSION)
   pick()
   raf = requestAnimationFrame(loop)
 })

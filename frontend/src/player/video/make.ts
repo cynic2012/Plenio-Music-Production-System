@@ -23,6 +23,8 @@ import { settings } from '../store'
 import { lineAt, sectionAt, sectionName, sectionsInSong, songAnchors, type TimedSection } from '../timing'
 import { chooseVisual, songMoods } from '../visuals/chooser'
 import { DropRenderer } from '../visuals/drop/renderer'
+import { gpuSupport, offeredForVideo } from '../visuals/gpu'
+import { NovaRenderer } from '../visuals/nova/renderer'
 import { storySprites, tellRenderer, textPicture } from '../visuals/drop/story'
 import { SceneMixer, fadeWithDefaults, type FadeStyle } from '../visuals/mixer'
 import { allPresets, makeColors, presetById, type Scheme } from '../visuals/presets'
@@ -81,7 +83,47 @@ export interface VideoOptions {
   corner: boolean
   progress: boolean
   credit: boolean
-  quality: 'standard' | 'high'
+  /** How much picture per second (owner's request 2026-10-29: more steps, a bitrate of one's own): a level, or
+   * ``custom`` - ``bitrate`` Mbit/s, kept the same all the way with ``constant``. */
+  quality: Quality
+  bitrate: number
+  constant: boolean
+  /** A full picture every so many seconds (between them only what changed): shorter seeks better, longer is
+   * smaller. */
+  keyframes: number
+  /** The browser's encoder: as it likes, the graphics card's, or the processor's. */
+  encoder: 'auto' | 'hardware' | 'software'
+  /** The sound as AAC, kbit/s. */
+  audio: number
+}
+
+export type Quality = 'low' | 'medium' | 'standard' | 'high' | 'very-high' | 'best' | 'custom'
+
+/** The quality levels: bits per pixel and frame of the H.264 stream (the encoder aims at that rate on average). */
+export const QUALITIES: { id: Quality; label: string; factor: number }[] = [
+  { id: 'low', label: 'Low - the smallest file', factor: 0.035 },
+  { id: 'medium', label: 'Medium', factor: 0.055 },
+  { id: 'standard', label: 'Standard', factor: 0.085 },
+  { id: 'high', label: 'High', factor: 0.15 },
+  { id: 'very-high', label: 'Very high', factor: 0.25 },
+  { id: 'best', label: 'Best - the largest file', factor: 0.4 },
+  { id: 'custom', label: 'A bitrate of your own …', factor: 0 },
+]
+export const BITRATE_LIMITS = { min: 0.5, max: 200 }
+export const KEYFRAMES = [1, 2, 4, 8]
+export const AUDIO_RATES = [128, 192, 256, 320]
+
+/** The video's bitrate in bit/s: from the level, or the one chosen. */
+export function videoBitrate(options: Pick<VideoOptions, 'width' | 'height' | 'fps' | 'quality' | 'bitrate'>): number {
+  if (options.quality === 'custom') return Math.round(Math.min(BITRATE_LIMITS.max, Math.max(BITRATE_LIMITS.min, options.bitrate)) * 1e6)
+  const factor = QUALITIES.find((q) => q.id === options.quality)?.factor ?? 0.085
+  return Math.round(options.width * options.height * options.fps * factor)
+}
+
+/** About how large the MP4 gets (bytes): a variable rate stays below its aim on average, a constant one keeps it. */
+export function videoSize(options: Pick<VideoOptions, 'width' | 'height' | 'fps' | 'quality' | 'bitrate' | 'constant' | 'audio'>, seconds: number): number {
+  const constant = options.quality === 'custom' && options.constant
+  return ((videoBitrate(options) * (constant ? 1 : 0.75) + options.audio * 1000) * seconds) / 8
 }
 
 const ENTRANCE_IDS: Entrance[] = ['none', 'fade', 'rise', 'zoom', 'drop', 'blur', 'wipe', 'glitch', 'random']
@@ -90,9 +132,14 @@ export const COVER_PLACES: CoverLook['place'][] = ['top-left', 'top', 'top-right
 export const SIZES: { id: string; label: string; width: number; height: number }[] = [
   { id: '1080p', label: '1920 × 1080 - Full HD, 16:9', width: 1920, height: 1080 },
   { id: '720p', label: '1280 × 720 - HD, 16:9', width: 1280, height: 720 },
+  { id: '1440p', label: '2560 × 1440 - QHD, 16:9', width: 2560, height: 1440 },
   { id: '4k', label: '3840 × 2160 - 4K, 16:9', width: 3840, height: 2160 },
   { id: 'square', label: '1080 × 1080 - square', width: 1080, height: 1080 },
+  { id: 'square-4k', label: '2160 × 2160 - square, 4K', width: 2160, height: 2160 },
+  { id: 'portrait', label: '1080 × 1350 - 4:5 (an Instagram post)', width: 1080, height: 1350 },
   { id: 'vertical', label: '1080 × 1920 - upright (Shorts, Reels, TikTok)', width: 1080, height: 1920 },
+  { id: 'vertical-720', label: '720 × 1280 - upright, small', width: 720, height: 1280 },
+  { id: 'vertical-4k', label: '2160 × 3840 - upright, 4K', width: 2160, height: 3840 },
 ]
 
 export const DEFAULT_VIDEO: VideoOptions = {
@@ -128,6 +175,11 @@ export const DEFAULT_VIDEO: VideoOptions = {
   progress: true,
   credit: true,
   quality: 'standard',
+  bitrate: 12,
+  constant: false,
+  keyframes: 2,
+  encoder: 'auto',
+  audio: 192,
 }
 
 /** Saved video settings, checked. */
@@ -165,7 +217,12 @@ export function videoWithDefaults(raw: unknown, lyrics?: unknown, version?: unkn
   out.cover = cover
   const into = (given.into && typeof given.into === 'object' ? given.into : {}) as Partial<VideoOptions['into']>
   out.into = { title: !!into.title, lyrics: !!into.lyrics, cover: !!into.cover }
-  if (!['standard', 'high'].includes(out.quality)) out.quality = 'standard'
+  if (!QUALITIES.some((q) => q.id === out.quality)) out.quality = 'standard'
+  out.bitrate = Math.min(BITRATE_LIMITS.max, Math.max(BITRATE_LIMITS.min, Number(out.bitrate) || DEFAULT_VIDEO.bitrate))
+  out.constant = out.constant === true
+  if (!KEYFRAMES.includes(out.keyframes)) out.keyframes = DEFAULT_VIDEO.keyframes
+  if (!['auto', 'hardware', 'software'].includes(out.encoder)) out.encoder = 'auto'
+  if (!AUDIO_RATES.includes(out.audio)) out.audio = DEFAULT_VIDEO.audio
   return out
 }
 
@@ -215,6 +272,7 @@ export class Composer {
   private readonly analysis: OfflineAnalysis
   private readonly mixer: SceneMixer
   private drop: DropRenderer | null | undefined
+  private nova: NovaRenderer | null | undefined
   /** The slot whose visual shows, and when it changed (the visual's clock). */
   private slot = -1
   private readonly look: { stack: string; weight: number; lit: string }
@@ -244,7 +302,9 @@ export class Composer {
     this.canvas.height = height
     this.ctx = this.canvas.getContext('2d') as CanvasRenderingContext2D
     this.analysis = new OfflineAnalysis(sound, options.fps, settings.visuals.sensitivity * options.look.reactivity)
-    this.mixer = new SceneMixer((preset) => preset.create({ drop: { renderer: () => this.dropRenderer(), scale: 1 } }))
+    this.mixer = new SceneMixer((preset) =>
+      preset.create({ drop: { renderer: () => this.dropRenderer(), scale: 1 }, nova: { renderer: () => this.novaRenderer(), scale: 1 } })
+    )
     this.sections = sectionsInSong(detail.notation.sections, songAnchors(detail.lines, detail.notation), detail.notation.warp, sound.duration)
     this.shown = linesFor(detail, options.lyricsVersion)
     this.hue = songHue(song.id, song.genre)
@@ -279,12 +339,14 @@ export class Composer {
 
   private disposed = false
 
-  /** Give back what the frames needed - the Drop renderer's graphics memory, the mixer's pictures, the canvas -
-   * when the video or the preview is done (owner's report 2026-10-28: "out of memory" now and then). */
+  /** Give back what the frames needed - the Drop and Nova renderers' graphics memory, the mixer's pictures, the
+   * canvas - when the video or the preview is done (owner's report 2026-10-28: "out of memory" now and then). */
   dispose(): void {
     this.disposed = true
     this.drop?.dispose()
     this.drop = null
+    this.nova?.dispose()
+    this.nova = null
     this.mixer.dispose()
     this.canvas.width = 0
     this.canvas.height = 0
@@ -305,6 +367,19 @@ export class Composer {
     return this.drop
   }
 
+  /** The video's own Nova renderer (it compiles a visual at once: no frame waits for it). */
+  private novaRenderer(): NovaRenderer | null {
+    if (this.nova?.lost && !this.disposed) this.nova = undefined
+    if (this.nova === undefined) {
+      try {
+        this.nova = gpuSupport().float ? new NovaRenderer() : null
+      } catch {
+        this.nova = null
+      }
+    }
+    return this.nova
+  }
+
   /** The visual for this moment, as planned: a new slot changes it - on the next beat when wished (at most a second
    * and a half after the slot's start). */
   private pick(t: number, beat: boolean): void {
@@ -315,7 +390,8 @@ export class Composer {
     this.slot = due
     const id = this.plan[due] || this.plan[0]
     // the change as the video's crossfade says: both visuals play on while the new one comes in
-    this.mixer.use(presetById(id) ?? allPresets()[0], { style: this.options.fade, seconds: this.options.fadeSeconds })
+    const preset = presetById(id)
+    this.mixer.use(preset && offeredForVideo(preset) ? preset : allPresets().find(offeredForVideo) ?? allPresets()[0], { style: this.options.fade, seconds: this.options.fadeSeconds })
   }
 
   /** The colours now: the scheme chosen - or another one at every change of the visual. */
@@ -442,12 +518,16 @@ const SCHEMES: Scheme[] = ['song', 'neon', 'sunset', 'winamp', 'mono']
  * chosen, else at random from the seed (or, for one visual, as the visuals' settings choose for the song). */
 export function planOf(song: SongSummary, options: VideoOptions, sections: TimedSection[], length: number): { slots: Slot[]; visuals: string[] } {
   const slots = slotsOf(options.change, options.interval, sections, options.start, length, sectionName)
-  const exists = (id: string): boolean => !!presetById(id)
+  // only what this browser can draw (owner's request 2026-10-30: no WebGL visual where there is none)
+  const exists = (id: string): boolean => {
+    const preset = presetById(id)
+    return !!preset && offeredForVideo(preset)
+  }
   if (options.change === 'never') {
     const id = options.visual && exists(options.visual) ? options.visual : chooseVisual({ settings: settings.visuals, song, previous: null, turn: 0 })
     return { slots, visuals: [id] }
   }
-  const all = allPresets()
+  const all = allPresets().filter(offeredForVideo)
   let pool: string[]
   if (options.randomFrom === 'all') pool = all.map((p) => p.id)
   else if (options.randomFrom === 'match') {
@@ -496,24 +576,39 @@ export function levels(width: number, height: number, fps: number): string[] {
   return all.filter(([, maxFrame, maxRate]) => frame <= maxFrame && rate <= maxRate).map(([level]) => level)
 }
 
-async function encoderConfig(options: VideoOptions): Promise<VideoEncoderConfig> {
+const ACCELERATION: Record<VideoOptions['encoder'], HardwareAcceleration> = {
+  auto: 'no-preference',
+  hardware: 'prefer-hardware',
+  software: 'prefer-software',
+}
+
+/** The H.264 encoder's settings as the browser takes them: the best profile it has at the size and rate, the
+ * bitrate of the level (or the one chosen), constant where asked and the browser can - else variable. */
+export async function encoderConfig(options: VideoOptions): Promise<VideoEncoderConfig> {
   if (typeof VideoEncoder === 'undefined') throw new Error('This browser cannot encode video (WebCodecs): use a current Chrome or Edge.')
   const { width, height, fps } = options
-  const bitrate = Math.round(width * height * fps * (options.quality === 'high' ? 0.15 : 0.085))
-  for (const level of levels(width, height, fps)) {
-    for (const profile of ['6400', '4D00', '42E0']) {
-      const config: VideoEncoderConfig = {
-        codec: `avc1.${profile}${level}`,
-        width,
-        height,
-        bitrate,
-        framerate: fps,
-        bitrateMode: 'variable',
-        latencyMode: 'quality',
-        avc: { format: 'annexb' },
+  const bitrate = videoBitrate(options)
+  const modes: VideoEncoderBitrateMode[] = options.quality === 'custom' && options.constant ? ['constant', 'variable'] : ['variable']
+  const accelerations: HardwareAcceleration[] = options.encoder === 'auto' ? ['no-preference'] : [ACCELERATION[options.encoder], 'no-preference']
+  for (const hardwareAcceleration of accelerations) {
+    for (const bitrateMode of modes) {
+      for (const level of levels(width, height, fps)) {
+        for (const profile of ['6400', '4D00', '42E0']) {
+          const config: VideoEncoderConfig = {
+            codec: `avc1.${profile}${level}`,
+            width,
+            height,
+            bitrate,
+            framerate: fps,
+            bitrateMode,
+            latencyMode: 'quality',
+            hardwareAcceleration,
+            avc: { format: 'annexb' },
+          }
+          const answer = await VideoEncoder.isConfigSupported(config)
+          if (answer.supported) return answer.config ?? config
+        }
       }
-      const answer = await VideoEncoder.isConfigSupported(config)
-      if (answer.supported) return answer.config ?? config
     }
   }
   throw new Error(`This browser cannot encode H.264 at ${width} × ${height}, ${fps} frames a second.`)
@@ -581,6 +676,7 @@ export async function makeVideo(
     fps: options.fps,
     width: composer.canvas.width,
     height: composer.canvas.height,
+    audio: options.audio,
   })
   let failure: unknown = null
   let pending: Uint8Array[] = []
@@ -623,7 +719,7 @@ export async function makeVideo(
       if (failure) throw failure
       composer.draw(k)
       const frame = new VideoFrame(composer.canvas, { timestamp: Math.round((k * 1e6) / options.fps), duration: Math.round(1e6 / options.fps) })
-      encoder.encode(frame, { keyFrame: k % (options.fps * 2) === 0 })
+      encoder.encode(frame, { keyFrame: k % (options.fps * options.keyframes) === 0 })
       frame.close()
       while (encoder.encodeQueueSize > 6) await dequeued(encoder)
       if (inFlight > MAX_IN_FLIGHT) await uploading

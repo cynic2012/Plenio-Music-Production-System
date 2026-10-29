@@ -21,7 +21,7 @@ import { go, settings } from '../store'
 import { formatTime, sectionName, sectionsInSong, songAnchors } from '../timing'
 import type { Scheme } from '../visuals/presets'
 import { FADE_STYLES } from '../visuals/mixer'
-import { COVER_PLACES, SIZES, preview, soundOf, videoWithDefaults, type VideoOptions } from '../video/make'
+import { AUDIO_RATES, BITRATE_LIMITS, COVER_PLACES, KEYFRAMES, QUALITIES, SIZES, preview, soundOf, videoBitrate, videoSize, videoWithDefaults, type VideoOptions } from '../video/make'
 import { ENTRANCES } from '../video/overlay'
 import { PreviewMaker } from '../video/previews'
 import { media } from '../api'
@@ -91,10 +91,21 @@ const end = computed({
   set: (value: number) => (options.length = Math.max(0, Math.min(duration.value, value) - options.start)),
 })
 const partLength = computed(() => (options.length > 0 ? options.length : Math.max(0, duration.value - options.start)))
-const estimate = computed(() => {
-  const bits = options.width * options.height * options.fps * (options.quality === 'high' ? 0.15 : 0.085) * 0.75 + 192000
-  return (bits * partLength.value) / 8 / 2 ** 20
+const estimate = computed(() => videoSize(options, partLength.value) / 2 ** 20)
+/** What the quality chosen means: the video's rate, and how large a minute of it gets. */
+const rateText = computed(() => {
+  const mbit = videoBitrate(options) / 1e6
+  const constant = options.quality === 'custom' && options.constant
+  const minute = videoSize(options, 60) / 2 ** 20
+  return `${mbit >= 10 ? Math.round(mbit) : mbit.toFixed(1)} Mbit/s ${constant ? 'all the way' : 'aimed at, less where little moves'} · about ${Math.max(1, Math.round(minute))} MB a minute`
 })
+const FPS_CHOICES: [number, string][] = [
+  [24, '24 a second - like a film'],
+  [25, '25 a second'],
+  [30, '30 a second'],
+  [50, '50 a second - smoother'],
+  [60, '60 a second - the smoothest, larger'],
+]
 
 function remember(): void {
   // which lyrics belongs to the song (its page, the player bar), not to every video; the visuals chosen belong to
@@ -239,8 +250,27 @@ onBeforeUnmount(() => {
 
         <form class="right" @submit.prevent>
           <label>Size <select v-model="sizeId"><option v-for="s in SIZES" :key="s.id" :value="s.id">{{ s.label }}</option></select></label>
-          <label>Frame rate <select v-model.number="options.fps"><option :value="30">30 frames a second</option><option :value="60">60 frames a second (smoother, larger)</option></select></label>
-          <label>Quality <select v-model="options.quality"><option value="standard">Standard</option><option value="high">High (larger file)</option></select></label>
+          <div class="row pair">
+            <label>Frame rate <select v-model.number="options.fps"><option v-for="[fps, label] in FPS_CHOICES" :key="fps" :value="fps">{{ label }}</option></select></label>
+            <label>Quality <select v-model="options.quality"><option v-for="q in QUALITIES" :key="q.id" :value="q.id">{{ q.label }}</option></select></label>
+          </div>
+          <div v-if="options.quality === 'custom'" class="row">
+            <label class="inline">Bitrate <input v-model.number="options.bitrate" type="number" :min="BITRATE_LIMITS.min" :max="BITRATE_LIMITS.max" step="0.5" /> Mbit/s</label>
+            <label class="check" title="Every second gets the same number of bits - for a platform that asks for a constant rate; otherwise a variable one gives quiet parts less and busy parts more"><input v-model="options.constant" type="checkbox" /> constant - the same all the way</label>
+          </div>
+          <p class="hint">{{ rateText }}</p>
+          <details class="more">
+            <summary>More about the encoding</summary>
+            <div class="row pair">
+              <label title="Between two full pictures only what changed is stored: closer ones jump better in a player, farther ones make a smaller file">A full picture every
+                <select v-model.number="options.keyframes"><option v-for="s in KEYFRAMES" :key="s" :value="s">{{ s }} {{ s === 1 ? 'second' : 'seconds' }}</option></select>
+              </label>
+              <label title="The browser encodes on the graphics card where it can - usually the fastest; the processor's encoder is slower">Encoder
+                <select v-model="options.encoder"><option value="auto">as the browser chooses</option><option value="hardware">the graphics card</option><option value="software">the processor</option></select>
+              </label>
+            </div>
+            <label>Sound <select v-model.number="options.audio"><option v-for="rate in AUDIO_RATES" :key="rate" :value="rate">AAC, {{ rate }} kbit/s{{ rate === 192 ? ' (as before)' : rate === 320 ? ' - the best AAC' : '' }}</option></select></label>
+          </details>
 
           <fieldset>
             <legend>The part</legend>
@@ -381,7 +411,7 @@ onBeforeUnmount(() => {
         </form>
       </div>
       <footer>
-        <span class="hint">MP4 (H.264, AAC) · about {{ Math.max(1, Math.round(estimate)) }} MB · saved in the player’s videos folder · made in the background</span>
+        <span class="hint">MP4 (H.264, AAC {{ options.audio }} kbit/s) · about {{ Math.max(1, Math.round(estimate)) }} MB · saved in the player’s videos folder · made in the background</span>
         <button v-if="job && (job.state === 'working' || job.state === 'waiting')" class="ghost" @click="cancel">Stop</button>
         <button class="primary" :disabled="!detail" :title="job && (job.state === 'working' || job.state === 'waiting') ? 'Another video of this song, with the settings as they are now, after the one being made' : ''" @click="make"><Icon name="download" :size="16" /> {{ job && (job.state === 'working' || job.state === 'waiting') ? 'Make another' : 'Make the video' }}</button>
       </footer>
@@ -519,6 +549,26 @@ input.text {
 .look .beat {
   align-self: end;
   padding-bottom: 6px;
+}
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: end;
+}
+details.more {
+  display: grid;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+details.more summary {
+  cursor: pointer;
+  color: #ddd;
+}
+details.more[open] summary {
+  margin-bottom: 6px;
 }
 input[type='range'] {
   flex: 1;

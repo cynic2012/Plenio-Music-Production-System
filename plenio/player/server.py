@@ -39,7 +39,7 @@ from .peaks import peaks
 from .song_page import render as render_song_page
 from .studio import StudioLauncher, StudioLaunchError
 from .thumbs import thumbnail
-from .video import VideoJobs, videos_dir
+from .video import AUDIO_BITRATE, VideoJobs, videos_dir
 from .visuals import list_presets, open_folder, save_copy, show_folder, visuals_dir
 
 STATIC = Path(__file__).resolve().parent / "static"
@@ -61,6 +61,8 @@ NEW_SONGS_EVERY = 2.0
 """Live Play asks every few seconds for new songs: the folders are read again at most this often."""
 VIDEO_FPS = (24, 25, 30, 50, 60)
 VIDEO_MAX_SIDE = 3840
+VIDEO_AUDIO_KBITS = (128, 192, 256, 320)
+"""The video's sound as AAC (owner's request 2026-10-29: more quality settings)."""
 CHUNK = 256 * 1024
 GZIP_MIN = 1400
 """Answers at least this large go compressed to a browser that takes gzip: the library of 2958 songs is 9.6 MB of
@@ -1130,6 +1132,9 @@ def make_handler(
                     return self._error(400, f"a frame rate of {VIDEO_FPS} and a size up to {VIDEO_MAX_SIDE}")
                 if start < 0 or not 0 < length <= 4 * 3600:
                     return self._error(400, "a part of the song")
+                sound = body.get("audio", AUDIO_BITRATE // 1000)
+                if sound not in VIDEO_AUDIO_KBITS:
+                    return self._error(400, f"the sound at {VIDEO_AUDIO_KBITS} kbit/s")
                 job = jobs.start(
                     {
                         "song": song.id,
@@ -1140,6 +1145,7 @@ def make_handler(
                         "height": height,
                         "start": start,
                         "length": length,
+                        "audio_bitrate": int(sound) * 1000,
                     }
                 )
                 return self._json({"job": job})

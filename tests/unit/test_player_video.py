@@ -143,6 +143,25 @@ def test_a_song_becomes_an_mp4_with_its_sound(server: tuple[str, int, str, Path]
     )
 
 
+def test_the_sound_has_the_quality_chosen(server: tuple[str, int, str, Path]) -> None:
+    """More quality settings (owner's request 2026-10-29): the AAC sound at 128 to 320 kbit/s; other rates refused."""
+    start = {"song": server[2], "start": 0, "length": 5.0, "fps": FPS, "width": W, "height": H}
+    assert call(server, "POST", "/api/video", {**start, "audio": 64})[0] == 400
+    assert call(server, "POST", "/api/video", {**start, "audio": "320"})[0] == 400
+    binary = {"Content-Type": "application/octet-stream", "X-Plenio-Player": "1"}
+    stream = h264_stream(5 * FPS)
+    rates = {}
+    for kbits in (128, 320):
+        job = call(server, "POST", "/api/video", {**start, "audio": kbits})[1]["job"]
+        call(server, "POST", f"/api/video/{job}/data", raw=stream, **binary)
+        made = call(server, "POST", f"/api/video/{job}/finish", {"frames": 5 * FPS})[1]
+        with av.open(str(server[3] / made["file"])) as video:
+            rates[kbits] = video.streams.audio[0].codec_context.bit_rate
+    # the rate the MP4 says it has: FFmpeg's AAC needs less than 320 kbit/s for a test tone, but the higher setting
+    # gives the sound clearly more
+    assert rates[128] == pytest.approx(128_000, rel=0.05) and rates[320] > rates[128] * 1.5
+
+
 def test_only_the_players_page_makes_videos_and_nothing_else_is_served(
     server: tuple[str, int, str, Path],
 ) -> None:

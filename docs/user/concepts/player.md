@@ -441,6 +441,49 @@ glides into the new one.
 | Drop · Harmonic Rose | lights travelling along a three-petalled rose, their trails weaving a slow, harmonious flower | calm, acoustic |
 | Drop · Cover Droste | the song's cover inside itself, again and again, winding into an endless spiral | calm, electronic, any |
 
+**Plenio Nova** (2026-10-29): scenes the graphics card works out anew for every pixel and every frame - flights
+through tunnels, fractals and a city, a black hole bending the starlight, liquid chrome, nebulae, the sea under the
+moon; most of them in 3D, a few that grow from frame to frame (ink, living patterns, the song's last seconds as
+mountains). The music moves them - the bass, its kicks, the mids, the highs, the beat, the spectrum, the waveform -
+the colour scheme colours them, and every one goes through the same light: a glow round the bright parts, a filmic
+tone curve, a touch of colour fringing on the beat, darker corners and fine grain.
+
+| Visual | What you see | Suits |
+|---|---|---|
+| Nova · Hyperspace | warp speed through a tunnel of stars - the bass on the throttle, a flash at its end on every beat | energetic, electronic |
+| Nova · Nebula | glowing gas and dark dust folding slowly into each other, a bright heart breathing with the bass | calm, dark, acoustic |
+| Nova · Black hole | a black hole bending the light of the stars round itself, its glowing disk spinning faster with the bass | dark, electronic, calm |
+| Nova · Galaxy | a spiral galaxy turning, its bulge flaring with the bass, its star clusters sparkling with the highs | calm, acoustic |
+| Nova · Northern lights | curtains of light rippling over the stars, mirrored in a still lake below dark mountains | calm, acoustic |
+| Nova · Moonlit sea | waves rolling under a big moon, its light a glittering path on the water - the swell rises with the bass | calm, acoustic |
+| Nova · Neon rings | a flight through hexagonal neon rings, each lit by its own band of the spectrum | energetic, electronic |
+| Nova · Mandelbulb | the famous 3D fractal turning in the dark, its shape breathing with the bass | electronic, dark, calm |
+| Nova · Gyroid caves | gliding through endless curved caves, their walls breathing with the bass, glowing veins along the way | electronic, calm |
+| Nova · Spectrum city | flying low over a night city whose towers rise and fall with the spectrum, neon on the roofs | energetic, electronic |
+| Nova · Outrun | a night drive down a neon valley towards a striped sunset, the grid pumping with the bass | energetic, electronic |
+| Nova · Pulsar | the last seconds of the spectrum as ridge lines stacked into the distance - the famous album cover, alive | dark, energetic, electronic |
+| Nova · Sound mountains | the song's last seconds as a neon mountain range: the newest at your feet, the bass in the middle | energetic, electronic |
+| Nova · Liquid chrome | blobs of liquid metal melting into each other in a studio of lights, swelling with the bands | electronic, energetic |
+| Nova · Sound sphere | a pearly sphere the spectrum shapes - the bass bulging its middle - inside a ring of the waveform | electronic, calm |
+| Nova · Ink in water | three inks poured into swirling water - one for the bass, one for the mids, one for the highs | calm, acoustic |
+| Nova · Living patterns | spots, stripes and coral growing by themselves as in nature's own chemistry; every beat sows new ones | calm, dark, electronic |
+| Nova · Plasma globe | lightning crawling from the core to the glass, each arc a band of the spectrum, wilder with the highs | energetic, dark |
+| Nova · Stained glass | a window of living stained glass, every pane lit by its own band, the lead glowing on the beat | energetic, electronic, acoustic |
+| Nova · Laser show | laser fans sweeping through stage smoke, each beam a band - a new formation every eight beats | energetic, electronic |
+| Nova · Mandala | an endless kaleidoscope of fractal lace, blooming with the bass, its finest threads lit by the highs | calm, electronic |
+| Nova · Silk | ribbons of silk drifting in the dark, catching the light as they turn - soft, slow, rippling with the spectrum | calm, acoustic |
+
+**Only what plays smoothly here.** Plenio Drop and Plenio Nova draw with WebGL 2 on the graphics card. A browser
+without it - or one that draws WebGL with the processor, far too slow for them - is not offered either of them: the
+visuals' settings say why, and the classic visuals play as ever. Each Nova visual is timed once on your graphics card,
+a few seconds after the visual first shows (it takes a moment, in the background; the timings are kept for that
+card in this browser): one that would not play smoothly even at a small picture is not offered on this computer, and
+each of the others gets as many pixels as keep it smooth. While a visual plays, the player watches the frames: when
+they come late (the graphics card busy with something else, a heavy moment), it draws fewer pixels for a while and
+more again when it can; a visual that still does not keep up is left out for the session and another one comes -
+*Try again* in the visuals' settings offers it again. A song's or a playlist's own visual that this device does not
+draw falls back to the mode.
+
 **Write your own:** a Plenio Drop preset is a short text file of numbers and small formulas. *Edit a copy*
 in the visuals' settings saves the visual that plays into your presets folder; change it in any editor, save,
 and the visual changes on screen. Your presets appear as *My · <name>*. The guide:
@@ -471,9 +514,12 @@ Open the visuals' settings with ✦ in Now playing (or press **V**):
 - **The playlist**: a visual for the whole playlist that plays. You can also choose it on the playlist's page.
 - **Look**: the song's colours, Winamp classic, neon, sunset or monochrome. **Sensitivity** makes the visuals
   react more or less. Switch the lyrics over the visual and the title card on or off.
-- The visuals are listed in groups (*Classic*, *Plenio Drop*, *My presets*); **all** and **none** tick or
-  untick a whole group, for example to leave out Plenio Drop.
-- **Plenio Drop**: the **Quality** (*Fast* for a slow computer, *Balanced*, *Sharp*), **Edit a copy**,
+- **The visuals to choose from**, compact even with a hundred of them: **find one** by name or by what it shows,
+  or show only those that suit **energetic, calm, electronic, acoustic** or **dark** music. The groups (*Classic*,
+  *Plenio Drop*, *Plenio Nova*, *My presets*) fold away and say how many of theirs are ticked; **all** and **none**
+  tick or untick a whole group. Each visual is a small chip with its name - what it shows when the mouse rests on
+  it - and the one that plays is outlined. Under a group: what is not offered on this computer, and why.
+- **Plenio Drop and Nova**: the **Quality** (*Fast* for a slow computer, *Balanced*, *Sharp*), **Edit a copy**,
   **Open my folder**, and any of your preset files that has a mistake, with what is wrong.
 - **Visuals on** switches all visuals off (Now playing then shows the song's colours).
 
@@ -561,14 +607,24 @@ folder. *Clear the finished* tidies the list (the files stay).
 **Video…** on a song's page (or *Save as a video…* in its menu) makes an **MP4 video** of the song: a visual
 moving with the music, and over it what you choose.
 
-- **Size**: 1920 × 1080 (Full HD), 1280 × 720, 3840 × 2160 (4K), 1080 × 1080 (square) or 1080 × 1920
-  (upright, for Shorts, Reels and TikTok). **30 or 60 frames a second**, standard or high quality.
+- **Size**: 1920 × 1080 (Full HD), 1280 × 720, 2560 × 1440 (QHD), 3840 × 2160 (4K), 1080 × 1080 or 2160 × 2160
+  (square), 1080 × 1350 (4:5, an Instagram post), 1080 × 1920, 720 × 1280 or 2160 × 3840 (upright, for Shorts,
+  Reels and TikTok). **24, 25, 30, 50 or 60 frames a second.**
+- **Quality**: seven steps from *Low* (the smallest file) through *Medium*, *Standard*, *High* and *Very high* to
+  *Best* - or **a bitrate of your own** (0.5 to 200 Mbit/s), **constant** if a platform asks for a constant rate
+  (else variable: quiet parts take less, busy ones more). The dialog says what it means: so many Mbit/s, about so
+  many MB a minute. **More about the encoding**: a full picture every 1, 2, 4 or 8 seconds (closer: a player jumps
+  in it more quickly; farther: a smaller file), the encoder (as the browser chooses, the graphics card or the
+  processor) and the sound (AAC at 128, 192, 256 or 320 kbit/s). The picture is H.264, which every player and
+  platform plays.
 - **The part**: the whole song, or from - to (in seconds; the section chips set a section). A part cut out
   of the song fades in and out.
 - **The visuals**: **one visual** all the way, **a new one at every section** (verse, chorus …) or **every few
   seconds**. A strip shows the part of the song with its sections or spans, as wide as they last, each with a still
-  of its visual; click one, and a **gallery** opens with every visual - classic, Plenio Drop, your own presets - each
-  in a little window **playing to the music of that part**, so you see how it moves with this song before you choose.
+  of its visual; click one, and a **gallery** opens with every visual this browser can draw - classic, Plenio Drop,
+  Plenio Nova, your own presets - each in a little window **playing to the music of that part**, so you see how it
+  moves with this song before you choose. Jump to a group, find one by name, show only those that suit a mood; *large*
+  shows larger windows with what each one shows.
   The first window, **At random**, leaves the choice to the dice: *Shuffle the random ones* draws others, from the
   visuals ticked in the visuals' settings, from those that suit the song, or from every visual. **The same visual for
   every chorus, every verse …** (on by default) gives every section of one name the visual of the first one - a

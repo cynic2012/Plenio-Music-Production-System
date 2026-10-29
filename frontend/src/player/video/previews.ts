@@ -10,6 +10,8 @@ import { songHue } from '../colors'
 import { linesFor } from '../lyricsVersion'
 import { settings } from '../store'
 import { DropRenderer } from '../visuals/drop/renderer'
+import { gpuSupport } from '../visuals/gpu'
+import { NovaRenderer } from '../visuals/nova/renderer'
 import { tellRenderer } from '../visuals/drop/story'
 import { makeColors, presetById, type Scheme } from '../visuals/presets'
 import { nextTask, type Sound } from './make'
@@ -45,6 +47,7 @@ export class PreviewMaker {
   private running = false
   private stopped = false
   private drop: DropRenderer | null | undefined
+  private nova: NovaRenderer | null | undefined
   private readonly hue: number
   readonly width: number
   readonly height: number
@@ -80,6 +83,19 @@ export class PreviewMaker {
     return this.drop
   }
 
+  private novaRenderer(): NovaRenderer | null {
+    if (this.stopped) return null
+    if (this.nova?.lost) this.nova = undefined
+    if (this.nova === undefined) {
+      try {
+        this.nova = gpuSupport().float ? new NovaRenderer() : null
+      } catch {
+        this.nova = null
+      }
+    }
+    return this.nova
+  }
+
   /** A preview drawn already (``null``: not yet). */
   ready(id: string, at: number, frames = PREVIEW_FRAMES): Preview | null {
     return this.kept.get(keyOf(id, at, frames)) ?? null
@@ -112,8 +128,8 @@ export class PreviewMaker {
     for (const wanted of this.queue.splice(0)) for (const done of [wanted.resolve, ...wanted.promises]) done(null)
   }
 
-  /** No more previews (the dialog closed, or another size or colour wants new ones): the strips and the Drop
-   * renderer's graphics memory go back at once (owner's report 2026-10-28: "out of memory" now and then). */
+  /** No more previews (the dialog closed, or another size or colour wants new ones): the strips and the Drop and
+   * Nova renderers' graphics memory go back at once (owner's report 2026-10-28: "out of memory" now and then). */
   stop(): void {
     this.stopped = true
     this.forget()
@@ -121,6 +137,8 @@ export class PreviewMaker {
     this.kept.clear()
     this.drop?.dispose()
     this.drop = null
+    this.nova?.dispose()
+    this.nova = null
   }
 
   private async work(): Promise<void> {
@@ -160,7 +178,8 @@ export class PreviewMaker {
     strip.height = height
     const out = strip.getContext('2d') as CanvasRenderingContext2D
     const renderer = preset.kind === 'drop' ? this.renderer() : null
-    const scene = preset.create({ drop: { renderer: () => renderer, scale: 1 } })
+    const nova = preset.kind === 'nova' ? this.novaRenderer() : null
+    const scene = preset.create({ drop: { renderer: () => renderer, scale: 1 }, nova: { renderer: () => nova, scale: 1 } })
     const analysis = new OfflineAnalysis(this.sound, PREVIEW_FPS, this.sensitivity)
     const warm = Math.round(WARM_UP_S * PREVIEW_FPS)
     const start = Math.max(0, Math.min(this.sound.duration - 0.5, at) - WARM_UP_S)

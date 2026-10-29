@@ -2,7 +2,9 @@
  * Which visual plays: a song of its own (fixed for that song) wins, then the playlist's visual, then the
  * mode - *auto* (one that suits the song's genre and mood), *random* (from the visuals you ticked), *cycle*
  * (through them in turn) or *fixed* (always the same). When it changes: with every song, at every new
- * section of the song, every so many seconds, or when the music drops in after a quiet passage.
+ * section of the song, every so many seconds, or when the music drops in after a quiet passage. Only visuals this
+ * device draws, and smoothly, are chosen (gpu.ts): no Drop or Nova visual where there is no WebGL2 on the graphics
+ * card, no Nova visual too heavy for it, none that did not keep up in this session.
  */
 import type { SongSummary } from '../api'
 import { hashOf } from '../colors'
@@ -10,10 +12,14 @@ import { DEFAULT_FADE, fadeWithDefaults, type FadeStyle } from './mixer'
 import { MORE_CLASSIC } from './classics'
 import { MILKDROP } from './drop/milkdrop'
 import { slug } from './drop/format'
+import { offered } from './gpu'
+import { NOVA } from './nova'
 import { PRESETS, allPresets, type Scheme } from './presets'
 
 /** The visuals added on 2026-10-23: offered once to settings saved before them. */
 const ADDED_2026_10_23 = [...MORE_CLASSIC.map((p) => p.id), ...MILKDROP.map((f) => `drop-${slug(f.name)}`)]
+/** Plenio Nova's visuals (2026-10-29): the same. */
+const ADDED_NOVA = NOVA.map((def) => def.id)
 
 export type VisualMode = 'auto' | 'random' | 'cycle' | 'fixed'
 export type SwitchOn = 'song' | 'section' | 'interval' | 'drop'
@@ -33,12 +39,14 @@ export interface VisualSettings {
   lyrics: boolean
   /** Short title card when a song starts. */
   titles: boolean
-  /** Plenio Drop's quality: the feedback's size against the screen (0.5, 0.75, 1). */
+  /** Plenio Drop's and Plenio Nova's quality: their picture's size against the screen (0.5, 0.75, 1). */
   dropScale: number
   /** Plenio Drop's presets were offered in the pool once (settings saved before them had only the classics). */
   dropsOffered: boolean
   /** The visuals of 2026-10-23 (twelve classics, thirty Drop presets) were offered in the pool once. */
   moreOffered: boolean
+  /** Plenio Nova's visuals were offered in the pool once. */
+  novaOffered: boolean
   /** How one visual changes into the next, and how long it takes (owner's request 2026-10-18: softly). */
   fade: FadeStyle
   fadeSeconds: number
@@ -59,6 +67,7 @@ export const DEFAULT_VISUALS: VisualSettings = {
   dropScale: 0.75,
   dropsOffered: true,
   moreOffered: true,
+  novaOffered: true,
   fade: DEFAULT_FADE.style,
   fadeSeconds: DEFAULT_FADE.seconds,
 }
@@ -78,6 +87,10 @@ export function withDefaults(raw: unknown): VisualSettings {
   if (!given.moreOffered) {
     for (const id of ADDED_2026_10_23) if (!merged.pool.includes(id)) merged.pool.push(id)
     merged.moreOffered = true
+  }
+  if (!given.novaOffered) {
+    for (const id of ADDED_NOVA) if (!merged.pool.includes(id)) merged.pool.push(id)
+    merged.novaOffered = true
   }
   if (![0.5, 0.75, 1].includes(merged.dropScale)) merged.dropScale = 0.75
   const fade = fadeWithDefaults(merged.fade, merged.fadeSeconds)
@@ -118,11 +131,12 @@ export interface Choice {
 
 export function chooseVisual({ settings, song, playlist = '', previous = null, turn = 0, random = Math.random }: Choice): string {
   const own = song ? settings.songs[song.id] : undefined
-  const all = allPresets()
+  // only what this device draws smoothly; a song's or playlist's own visual it cannot draw falls back to the mode
+  const all = allPresets().filter(offered)
   if (own && all.some((p) => p.id === own)) return own
   if (playlist && all.some((p) => p.id === playlist)) return playlist
   const known = settings.pool.filter((id) => all.some((p) => p.id === id))
-  const pool = known.length ? known : PRESETS.map((p) => p.id)
+  const pool = known.length ? known : all.map((p) => p.id)
   switch (settings.mode) {
     case 'fixed':
       return all.some((p) => p.id === settings.fixed) ? settings.fixed : 'bars'

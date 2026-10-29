@@ -13,6 +13,7 @@ import type { SongSummary } from '../api'
 import { settings } from '../store'
 import { sectionName, type TimedSection } from '../timing'
 import { chooseVisual, songMoods } from '../visuals/chooser'
+import { offeredForVideo } from '../visuals/gpu'
 import { allPresets, presetById } from '../visuals/presets'
 import type { VideoOptions } from '../video/make'
 import { resolvePlan, setPick, slotsOf, type Slot } from '../video/plan'
@@ -33,11 +34,15 @@ const gallery = ref<Slot | null>(null)
 const stills = new Map<number, HTMLCanvasElement>()
 
 const slots = computed(() => slotsOf(props.options.change, props.options.interval, props.sections, props.options.start, props.length, sectionName))
-const exists = (id: string): boolean => !!presetById(id)
+/** A visual this browser can draw (no WebGL visual where there is none). */
+const exists = (id: string): boolean => {
+  const preset = presetById(id)
+  return !!preset && offeredForVideo(preset)
+}
 /** Where the random visuals come from. */
 const pool = computed(() => randomPool(props.options.randomFrom))
 function randomPool(from: VideoOptions['randomFrom']): string[] {
-  const all = allPresets()
+  const all = allPresets().filter(offeredForVideo)
   if (from === 'all') return all.map((p) => p.id)
   if (from === 'match') {
     const moods = songMoods(props.song)

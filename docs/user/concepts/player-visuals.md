@@ -1,8 +1,8 @@
 # Plenio Drop: visuals of your own
 
-The [Plenio Player](player.md) has two kinds of visuals. The *classic* ones (bars, oscilloscope, fire …)
-and **Plenio Drop**: visuals in the spirit of Winamp's MilkDrop, drawn by Plenio's own renderer on your
-graphics card. Plenio Drop comes with 21 presets - five of them draw the song itself, its cover, its title and
+The [Plenio Player](player.md) has three kinds of visuals. The *classic* ones (bars, oscilloscope, fire …),
+**Plenio Nova** - scenes the graphics card works out for every pixel (see the player's page) - and **Plenio
+Drop**: visuals in the spirit of Winamp's MilkDrop, drawn by Plenio's own renderer on your graphics card. Plenio Drop comes with 21 presets - five of them draw the song itself, its cover, its title and
 the words sung, into the picture - and *Drop · Random*, which makes up a new one every time it is chosen. And
 you can write your own: a preset is a short text file.
 
@@ -378,14 +378,16 @@ you any of them, ready to change.
 ## Quality and speed
 
 Plenio Drop draws on the graphics card and runs at the screen's full frame rate on ordinary computers. Under
-**Plenio Drop > Quality** in the visuals' settings:
+**Plenio Drop and Nova > Quality** in the visuals' settings:
 
 - **Fast**: draws the picture at half the size and scales it up. For a slow computer or a very large screen.
 - **Balanced** (the default): three quarters of the size.
 - **Sharp**: every pixel.
 
-Plenio Drop needs WebGL 2, which every current browser has. Where it is missing, a Drop visual says so; the
-classic visuals work everywhere.
+While frames come late (the graphics card busy with something else), the player draws fewer pixels for a while,
+and more again when it can. Plenio Drop needs WebGL 2 drawn by the graphics card, which every current browser has;
+where it is missing, or the browser draws WebGL with the processor, Plenio Drop and Plenio Nova are not offered (the
+visuals' settings say why) - the classic visuals work everywhere.
 
 ## Sharing presets
 

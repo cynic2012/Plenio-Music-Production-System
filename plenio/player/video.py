@@ -104,6 +104,7 @@ class VideoJobs:
                 start=float(meta.get("start") or 0.0),
                 length=float(meta["length"]),
                 frames=frames,
+                audio_bitrate=int(meta.get("audio_bitrate") or AUDIO_BITRATE),
             )
             partial.replace(target)
         finally:
@@ -126,10 +127,19 @@ class VideoJobs:
 
 
 def mux(
-    stream: Path, audio: Path, target: Path, *, fps: int, start: float, length: float, frames: int
+    stream: Path,
+    audio: Path,
+    target: Path,
+    *,
+    fps: int,
+    start: float,
+    length: float,
+    frames: int,
+    audio_bitrate: int = AUDIO_BITRATE,
 ) -> None:
     """The H.264 stream (frame ``k`` at ``k / fps``) and ``length`` seconds of ``audio`` from ``start`` into an
-    MP4. The sound fades in when the part starts inside the song, and out at its end when it is cut."""
+    MP4, the sound as AAC at ``audio_bitrate``. The sound fades in when the part starts inside the song, and out at
+    its end when it is cut."""
     import av
     import numpy as np
 
@@ -145,7 +155,7 @@ def mux(
         ain = audio_in.streams.audio[0]
         aout = out.add_stream("aac", rate=AUDIO_RATE)
         aout.layout = "stereo"
-        aout.bit_rate = AUDIO_BITRATE
+        aout.bit_rate = audio_bitrate
         k = 0
         for packet in video_in.demux(vin):
             if packet.size == 0:

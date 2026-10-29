@@ -3,10 +3,15 @@
  * The visuals to choose from, each in a little window playing to the song (owner's request 2026-10-25): for one
  * section or span of the video - or the whole video - the visual chosen, or *At random*. The previews are drawn
  * with the music of that moment (video/previews.ts); the windows in sight first.
+ *
+ * Compact (owner's request 2026-10-29: many visuals, yet easy to oversee): small windows with their names (larger
+ * ones with what each shows, to switch), a search, the moods they suit, and a jump to each group. Only visuals this
+ * browser can draw are offered (owner's request 2026-10-30).
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { myPresets } from '../visuals/drop'
+import { gpuSupport, offeredForVideo } from '../visuals/gpu'
 import { CLASSIC, PRESETS, presetById, type Preset } from '../visuals/presets'
 import { PREVIEW_FPS, type PreviewMaker, showFrame } from '../video/previews'
 import Icon from './Icon.vue'
@@ -26,6 +31,42 @@ const props = defineProps<{
 const emit = defineEmits<{ pick: [id: string]; close: [] }>()
 
 const query = ref('')
+const mood = ref('')
+const MOODS = ['energetic', 'calm', 'electronic', 'acoustic', 'dark']
+const LARGE = 'plenio.gallery.large'
+/** Larger windows with what each visual shows (remembered in this browser). */
+const large = ref(readLarge())
+function readLarge(): boolean {
+  try {
+    return localStorage.getItem(LARGE) === '1'
+  } catch {
+    return false
+  }
+}
+function toggleLarge(): void {
+  large.value = !large.value
+  try {
+    localStorage.setItem(LARGE, large.value ? '1' : '0')
+  } catch {
+    // only for this time
+  }
+}
+const sections = new Map<string, HTMLElement>()
+function keepSection(label: string, el: unknown): void {
+  if (el instanceof HTMLElement) sections.set(label, el)
+}
+function jump(label: string): void {
+  sections.get(label)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+/** Why Plenio Drop or Nova are not in the gallery here. */
+const gpuNote = (() => {
+  const support = gpuSupport()
+  if (!support.webgl) return `Plenio Drop and Plenio Nova are not offered here: ${support.why}`
+  if (!support.float) return 'Plenio Nova is not offered here: this graphics card cannot draw its light in WebGL2.'
+  return ''
+})()
+/** A visual's name in its group. */
+const shortName = (name: string): string => name.replace(/^(Drop|Nova|My) · /, '')
 const grid = ref<HTMLElement | null>(null)
 const tiles = new Map<string, HTMLCanvasElement>()
 const visible = new Set<string>()
@@ -35,11 +76,15 @@ let tick = 0
 
 const groups = computed<[string, Preset[]][]>(() => {
   const words = query.value.toLowerCase().split(/\s+/).filter(Boolean)
-  const keep = (p: Preset) => !words.length || words.every((w) => `${p.name} ${p.blurb} ${p.suits.join(' ')}`.toLowerCase().includes(w))
+  const keep = (p: Preset) =>
+    offeredForVideo(p) &&
+    (!words.length || words.every((w) => `${p.name} ${p.blurb} ${p.suits.join(' ')}`.toLowerCase().includes(w))) &&
+    (!mood.value || p.suits.includes(mood.value) || p.suits.includes('any'))
   return (
     [
       ['Classic', CLASSIC.filter(keep)],
       ['Plenio Drop', PRESETS.filter((p) => p.kind === 'drop').filter(keep)],
+      ['Plenio Nova', PRESETS.filter((p) => p.kind === 'nova').filter(keep)],
       ['My presets', myPresets.value.filter(keep)],
     ] as [string, Preset[]][]
   ).filter(([, list]) => list.length)
@@ -113,7 +158,14 @@ const shape = computed(() => (props.maker ? { aspectRatio: `${props.maker.width}
         <input v-model="query" type="search" placeholder="Find a visual …" aria-label="Find a visual" />
         <button class="icon-btn" title="Close" @click="emit('close')"><Icon name="close" /></button>
       </header>
-      <div ref="grid" class="grid-scroll">
+      <nav class="bar">
+        <button v-for="[label, list] in groups" :key="label" class="jump" :title="`To ${label}`" @click="jump(label)">{{ label }} <small>{{ list.length }}</small></button>
+        <span class="spacer" />
+        <button v-for="m in MOODS" :key="m" class="mood" :class="{ on: mood === m }" :title="`Only the visuals that suit ${m} music`" @click="mood = mood === m ? '' : m">{{ m }}</button>
+        <button class="jump" :title="large ? 'Small windows: more at a glance' : 'Larger windows, with what each visual shows'" @click="toggleLarge"><Icon :name="large ? 'grid' : 'list'" :size="13" /> {{ large ? 'small' : 'large' }}</button>
+      </nav>
+      <p v-if="gpuNote" class="gpu">{{ gpuNote }}</p>
+      <div ref="grid" class="grid-scroll" :class="{ large }">
         <div class="tiles">
           <button class="tile special" :class="{ on: !chosen }" @click="emit('pick', '')">
             <span class="dice"><Icon name="dice" :size="34" /></span>
@@ -121,13 +173,13 @@ const shape = computed(() => (props.maker ? { aspectRatio: `${props.maker.width}
             <small>{{ first === 'random' ? (randomName ? `now: ${randomName} - 🎲 shuffles` : 'a different one, by the dice') : 'for this song, as in the player' }}</small>
           </button>
         </div>
-        <section v-for="[label, list] in groups" :key="label">
+        <section v-for="[label, list] in groups" :key="label" :ref="(el) => keepSection(label, el)">
           <h4>{{ label }} <small>{{ list.length }}</small></h4>
           <div class="tiles">
-            <button v-for="p in list" :key="p.id" class="tile" :class="{ on: chosen === p.id }" :title="p.blurb" @click="emit('pick', p.id)">
+            <button v-for="p in list" :key="p.id" class="tile" :class="{ on: chosen === p.id }" :title="`${p.name} - ${p.blurb}`" @click="emit('pick', p.id)">
               <canvas :ref="(el) => register(p.id, el)" class="window" :style="shape" />
-              <b>{{ p.name }}</b>
-              <small>{{ p.blurb }}</small>
+              <b>{{ shortName(p.name) }}</b>
+              <small v-if="large">{{ p.blurb }}</small>
             </button>
           </div>
         </section>
@@ -193,6 +245,48 @@ header input {
   overflow-y: auto;
   padding: 14px 18px 22px;
 }
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.bar .spacer {
+  flex: 1;
+}
+.jump,
+.mood {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #ddd;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: 12px var(--font);
+  cursor: pointer;
+}
+.jump small {
+  color: var(--muted);
+}
+.mood {
+  color: var(--muted);
+  background: transparent;
+}
+.mood.on {
+  border-color: var(--accent);
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.gpu {
+  margin: 0;
+  padding: 6px 18px;
+  color: #f0c78a;
+  font-size: 12px;
+}
 h4 {
   margin: 16px 0 8px;
   font-size: 13px;
@@ -205,13 +299,17 @@ h4 small {
 }
 .tiles {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 8px;
+}
+.large .tiles {
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 10px;
 }
 .tile {
   display: grid;
   gap: 4px;
-  padding: 8px;
+  padding: 6px;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
@@ -243,6 +341,12 @@ h4 small {
   }
 }
 .tile b {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.large .tile b {
   font-size: 13px;
 }
 .tile small {
