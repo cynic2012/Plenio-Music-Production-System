@@ -21,11 +21,15 @@ The Registry's icon and banner are the raw GitHub URLs of `assets/branding/icon.
 
 ## Demo gallery
 
-The listening page is GitHub Pages from the `docs/` folder of `main` (`docs/index.html`, `docs/.nojekyll` so the other documents are not processed); every push to `main` publishes it. Three collections, one tab each (`#plenio`, `#songs`, `#covers` link to them):
+The listening page is GitHub Pages from the `docs/` folder of `main` (`docs/index.html`, `docs/.nojekyll` so the other documents are not processed); every push to `main` publishes it. From the top: two films with sound (`#sound`; `docs/assets/media/` - *Plenio in 30 seconds* and *Twelve genres*, 720p H.264 with a poster each, cut from the 1.4.0 social clips), the song videos on YouTube (`#videos`), new songs (`#new`, shown once there is one), how the songs were made (`#how`) and the archive (`#archive`) with its three collections.
+
+**Song videos and new songs** come from `docs/demo-showcase.js`, written by `tools/demo_showcase.py` - [docs/demo-showcase.md](../demo-showcase.md) says how to add a song (from its FLAC or record: SoundCloud, YouTube or its MP3 copied into `docs/assets/showcase/`) or a video, list and remove them. Only what the song's page in the player shows is copied.
+
+The archive's three collections have a tab each (`#plenio`, `#songs`, `#covers` open one):
 
 - **Songs from Plenio** - `docs/demo-plenio.js`, covers in `docs/assets/demo-plenio/`. Built by `python tools/build_demo_catalog.py <folder with *.plenio.json>` from the release records of a batch: one song per brief template (length against the brief, Song Sheet warnings, a render that matches the template's vocals, distinct titles; `--pick TEMPLATE=FILE` overrides a choice). It also writes the upload checklist `docs/demo-plenio-upload.md` (files, SoundCloud titles, descriptions, tags, alternatives per genre). Running it again keeps the `soundcloudUrl` and `comment` values typed into the catalog and its config. The tab shows only the songs that have a `soundcloudUrl` (the others stay in the catalog); a song's cover is its JPG in `docs/assets/demo-plenio/` when stored there (run the tool again after adding one), otherwise the page loads the track's SoundCloud artwork (oEmbed).
 - **MiniMax Music 3** and **YuE2 Cover** - `docs/demo-tracks.js`, `docs/demo-covers.js`, images in `docs/assets/demo-covers/`; built with the predecessor toolkit's scripts, new entries are added by hand in the same format.
 
 The Song API's reference is on the same site: `docs/api/index.html` (`/api/`) shows `docs/api/openapi.json` with Redoc, loaded from jsDelivr - the one page of the site that loads a script from elsewhere.
 
-Audio is streamed from SoundCloud: a track's `soundcloudUrl` is its public SoundCloud URL (a player loads when the visitor presses play; without a URL the card says *Coming to SoundCloud*), and the playlist button of a tab uses that catalog's `soundcloudPlaylistUrl`. The page loads nothing else from third parties.
+Audio is streamed from SoundCloud: a track's `soundcloudUrl` is its public SoundCloud URL (a player loads when the visitor presses play; without a URL the card says *Coming to SoundCloud*), and the playlist button of a tab uses that catalog's `soundcloudPlaylistUrl`. The song videos show YouTube's picture of each video (`i.ytimg.com`) and load the player from `youtube-nocookie.com` only on a click; the films and a new song's MP3 come from the page itself. The page loads nothing else from third parties.

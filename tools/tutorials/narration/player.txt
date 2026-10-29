@@ -153,6 +153,12 @@ One click switches, and the song keeps your choice.
 @ W does it too | optional
 W does it too, or the chip in the bar. The notation always follows the written lyrics.
 
+@ Full lyrics: the whole text | optional
+Full lyrics: the whole text, with its sections. Copy it for a new song, with or without the section tags, and the style too.
+
+@ The song’s page: the lyrics | optional
+The song's page: the lyrics, the prompts, every setting and the files, on one page. Export Release writes it next to every song.
+
 @ A new playlist: plus, a name
 A new playlist: click plus, and give it a name.
 

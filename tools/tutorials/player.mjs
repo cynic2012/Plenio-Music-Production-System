@@ -390,6 +390,32 @@ export default async function player(s) {
       await s.callout(chipW, 'W', { ms: 2600, side: 'top' })
     }
     await talk(s, 'W does it too, or the chip in the bar. The notation always follows the written lyrics.')
+    const full = versions.locator('button', { hasText: 'Full lyrics' })
+    if (await full.count()) {
+      await s.click(full)
+      await s.wait(800)
+      await talk(s, 'Full lyrics: the whole text with its sections - to copy for a new song, with or without the section tags, and the style too.')
+      await s.click(page.locator('.full-lyrics .copy-row button').first())
+      await s.wait(600)
+      const sheetLink = page.locator('.full-lyrics .copy-row a').first()
+      if (await sheetLink.count()) {
+        const [sheet] = await Promise.all([s.context.waitForEvent('page'), s.click(sheetLink)])
+        await s.switchTo(sheet)
+        await sheet.waitForLoadState('load')
+        await s.wait(1000)
+        await talk(s, 'The song’s page: the lyrics, the prompts, every setting and the files on one page - Export Release writes it next to every song.')
+        for (let step = 0; step < 4; step++) {
+          await sheet.mouse.wheel(0, 420)
+          await s.wait(450)
+        }
+        await s.wait(800)
+        await s.switchTo(page)
+        await sheet.close()
+      }
+      // back to the timed lyrics: the player keeps the view for the next song
+      await s.click(versions.locator('button', { hasText: 'As written' }))
+      await s.wait(500)
+    }
     await s.click(page.locator('.side a.link', { hasText: 'Songs' }))
     await s.wait(600)
     // back to the video's song: the chapters after this one play it (Live Play, the video, Open in ComfyUI)

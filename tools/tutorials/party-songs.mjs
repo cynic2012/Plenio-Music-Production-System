@@ -223,9 +223,11 @@ export default async function partySongs(s) {
   await talk(s, 'Made - with its title and its cover.')
   await s.click(page.locator('.side a.link', { hasText: 'Live Play' }))
   await s.wait(1500)
-  const fresh = page.locator('.list .row.fresh').first()
-  if (await fresh.count()) await s.hover(fresh)
-  await talk(s, 'It joined Live Play, marked new, and plays next.')
+  // the new song waits in the list - or, when the song before it just ended, it plays already: point at either
+  const fresh = await page.locator('.list .row.fresh').first().boundingBox({ timeout: 1500 }).catch(() => null)
+  const playingNow = fresh ? null : await page.locator('.playing').first().boundingBox({ timeout: 1500 }).catch(() => null)
+  if (fresh || playingNow) await s.hover(fresh ?? playingNow)
+  await talk(s, 'It joined Live Play, marked new.')
 
   // --- a guest orders a song on the party's phone page ---
   s.chapter('Guests make songs')

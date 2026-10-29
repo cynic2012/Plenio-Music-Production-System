@@ -85,7 +85,7 @@ Mastered, timed, and saved.
 Made, with its title and its cover.
 
 @ It joined Live Play
-It joined Live Play, marked new, and it plays next.
+It joined Live Play, marked new.
 
 @ Guests in your network
 Guests in your network: everyone on the party's Wi-Fi scans the QR code.
