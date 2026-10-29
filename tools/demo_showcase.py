@@ -62,9 +62,8 @@ def load(path: Path = DATA) -> dict[str, Any]:
 
 
 def save(data: dict[str, Any], path: Path = DATA) -> None:
-    path.write_text(
-        HEADER + VARIABLE + json.dumps(data, ensure_ascii=False, indent=2) + ";\n", encoding="utf-8"
-    )
+    text = HEADER + VARIABLE + json.dumps(data, ensure_ascii=False, indent=2) + ";\n"
+    path.write_text(text, encoding="utf-8", newline="\n")  # LF on every system, as the repository keeps it
 
 
 def youtube_id(text: str) -> str:

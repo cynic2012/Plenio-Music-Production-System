@@ -9,6 +9,10 @@
 *.flac binary
 *.mp3 binary
 *.wav binary
+*.mp4 binary
+*.webp binary
+*.gif binary
+*.pdf binary
 
 # Windows batch files need CRLF line endings; shell scripts LF
 *.bat text eol=crlf
