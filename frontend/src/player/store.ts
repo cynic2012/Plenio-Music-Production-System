@@ -297,6 +297,22 @@ function applySettings(stored: Partial<Settings>): void {
   Object.assign(settings, { ...DEFAULT_SETTINGS, ...stored, visuals: withDefaults(stored.visuals), filters: filtersOf(stored.filters), live: liveWithDefaults(stored.live), lyrics: lyricsWithDefaults(stored.lyrics), lyricsChoice: choiceOf(stored.lyricsChoice), lyricsFor: choicesOf(stored.lyricsFor), lyricsView: stored.lyricsView === 'text' ? 'text' : 'timed', mp3: !!stored.mp3, notationShift: shiftsOf(stored.notationShift), savedFilters: savedFiltersOf(stored.savedFilters), moreFilters: !!stored.moreFilters, welcomed: !!stored.welcomed, phoneView: stored.phoneView === 'grid' ? 'grid' : 'list', makePresets: presetsOf(stored.makePresets) })
 }
 
+/** The measured stars of the songs (song id -> stars; ``null``: measured, without stars) - for the library's filter
+ * (owner's request 2026-10-30). The player measures the songs exported before 1.4.0 in the background: asked again
+ * every half minute while it does. */
+export const measuredStars = shallowRef<Record<string, number | null>>({})
+let starsTimer = 0
+export async function loadStars(): Promise<void> {
+  window.clearTimeout(starsTimer)
+  try {
+    const answer = await api.stars()
+    measuredStars.value = answer.stars
+    if (answer.measuring.total > 0) starsTimer = window.setTimeout(() => void loadStars(), 30000)
+  } catch {
+    // an older player without them: no measured stars to filter by
+  }
+}
+
 /** Replace everything the player keeps (a backup read back, or ``null``: start afresh). */
 export async function replaceState(data: Partial<PlayerState> | null): Promise<void> {
   const fresh = data ?? {}
@@ -337,6 +353,7 @@ export async function load(): Promise<void> {
     engine.setRate(settings.rate)
     loadError.value = ''
     restore()
+    void loadStars()
   } catch (error) {
     loadError.value = error instanceof Error ? error.message : String(error)
   } finally {
@@ -422,6 +439,7 @@ export async function reloadLibrary(): Promise<void> {
   const answer = await api.library()
   library.value = answer.songs
   folders.value = answer.folders
+  void loadStars()
 }
 
 // --- removing a song (owner's request 2026-10-16: a song you do not want any more) -----------------------

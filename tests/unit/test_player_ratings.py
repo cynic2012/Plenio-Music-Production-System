@@ -17,7 +17,7 @@ import pytest
 
 from plenio.player.accounts import Accounts
 from plenio.player.library import Library
-from plenio.player.measured import ratings_of
+from plenio.player.measured import measured_for, ratings_of
 from plenio.player.server import State, serve
 
 av = pytest.importorskip("av")
@@ -108,6 +108,32 @@ def test_a_song_is_measured_once_and_kept_and_one_since_1_4_has_it_in_its_record
     assert kept[ids["Old"]]["quality"]["stars"] == measured["stars"]
     assert call(port, "GET", f"/api/quality/{ids['New']}")[1]["quality"]["stars"] == 4.5
     assert call(port, "GET", "/api/quality/ffffffffffff")[0] == 404
+
+
+def test_the_measured_stars_of_every_song_for_the_filter_the_others_measured_in_the_background(
+    player: Any, tmp_path: Path
+) -> None:
+    port, _folder, ids = player
+    status, answer = call(port, "GET", "/api/stars")
+    # the record's at once, without opening it again; the old song is not measured yet
+    assert status == 200 and answer["stars"] == {ids["New"]: 4.5}
+    assert answer["measuring"] == {"done": 0, "total": 0}
+    # the running player measures it in the background (python -m plenio.player starts this)
+    measured = measured_for(tmp_path / "state" / "cache")
+    measured.start(Library([tmp_path / "output"]))
+    try:
+        for _ in range(200):
+            stars = call(port, "GET", "/api/stars")[1]["stars"]
+            if ids["Old"] in stars:
+                break
+            time.sleep(0.1)
+        assert 0 <= stars[ids["Old"]] <= 5 and stars[ids["New"]] == 4.5
+    finally:
+        measured.close()
+    kept = json.loads((tmp_path / "state" / "cache" / "quality.json").read_text(encoding="utf-8"))
+    assert kept[ids["Old"]]["quality"]["stars"] == stars[ids["Old"]] and ids["New"] not in kept
+    # the song's page asks for the same, kept one
+    assert call(port, "GET", f"/api/quality/{ids['Old']}")[1]["quality"]["stars"] == stars[ids["Old"]]
 
 
 def test_the_admins_stars_go_into_the_songs_own_page(player: Any) -> None:

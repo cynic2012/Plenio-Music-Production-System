@@ -21,7 +21,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import type { SongSummary } from '../api'
 import { isPhone, touch } from '../layout'
 import { isPortable } from '../portable'
-import { current, go, library, playSongs, saveFilter, say, settings, shareFor, state, toggleCurrent } from '../store'
+import { current, go, library, measuredStars, playSongs, saveFilter, say, settings, shareFor, state, toggleCurrent } from '../store'
 import { countOf, formatTime } from '../timing'
 import { chipFilter, chipParts, facetOf, filterRows, fold, lyricsSnippet, parseQuery, scoreWith, sortSongs, suggest, toggleFilterChip, valueLabel, type SortKey } from '../search'
 import { indexMarks } from '../listIndex'
@@ -73,7 +73,7 @@ const base = computed<SongSummary[]>(() => {
 const terms = computed(() => parseQuery([searchText.value, ...chips.value].join(' ')))
 const searched = computed(() => parseQuery(searchText.value))
 const chipRows = computed(() => chipFilter(chips.value))
-const context = computed(() => ({ favorites: new Set(state.favorites), tags: state.tags, plays: state.plays }))
+const context = computed(() => ({ favorites: new Set(state.favorites), tags: state.tags, plays: state.plays, ratings: state.ratings, measured: measuredStars.value }))
 const scored = computed(() => {
   const map = new Map<string, number>()
   const found = base.value.filter((song) => {
@@ -167,7 +167,7 @@ function railMove(event: PointerEvent): void {
 
 // --- the filters ------------------------------------------------------------------------------------------
 /** The rows shown before *More filters* (and every row with a chip on). */
-const FIRST_ROWS = new Set(['tag', 'genre', 'mood', 'made', 'model'])
+const FIRST_ROWS = new Set(['tag', 'stars', 'measured', 'genre', 'mood', 'made', 'model'])
 /** Rows opened to every value, and the word to look for in one. */
 const opened = reactive<Record<string, boolean>>({})
 const lookFor = reactive<Record<string, string>>({})

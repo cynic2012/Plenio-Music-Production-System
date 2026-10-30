@@ -31,7 +31,7 @@ from ..core.errors import PlenioError
 from ..core.release import RECORD_SUFFIX, base_title, numbered_title_in
 from . import other as other_music
 
-CACHE_VERSION = 11
+CACHE_VERSION = 12
 REFRESH_S = 15.0
 """A reader's songs are read again (in the background) when they are older than this."""
 RETIRED_DIR = "_retired"
@@ -417,6 +417,18 @@ def _files(record: Mapping[str, Any], path: Path) -> dict[str, Path]:
     return files
 
 
+def measured_facts(record: Mapping[str, Any]) -> dict[str, Any] | None:
+    """How well the song came out as Export Release measured it (since 1.4.0): the measures' version and the stars -
+    for the library's filter, without opening the record again (``None``: not measured at the export)."""
+    quality = record.get("quality")
+    if not isinstance(quality, Mapping) or not isinstance(quality.get("version"), int):
+        return None
+    stars = quality.get("stars")
+    if isinstance(stars, bool) or not isinstance(stars, (int, float)):
+        stars = None
+    return {"version": quality["version"], "stars": None if stars is None else float(stars)}
+
+
 def made_facts(record: Mapping[str, Any]) -> dict[str, Any]:
     """How the song was made (the record's ``made``, since 1.4.0): when its run began and ended, how long it took,
     on what, the lyrics fidelity - for an older record the fidelity from its prompt or its Best Take."""
@@ -474,6 +486,7 @@ def summarize(record: Mapping[str, Any], path: Path, root: Path) -> Song:
         "title": title,
         "created": created,
         "made": made_facts(record),
+        "measured": measured_facts(record),
         "year": created[:4],
         "seconds": float(audio.get("seconds") or 0.0),
         "model": model,
@@ -1109,6 +1122,11 @@ class Library:
     def song(self, song_id: str) -> Song | None:
         self._refresh()
         return self._songs.get(song_id)
+
+    def every(self) -> list[Song]:
+        """Every song, in no order."""
+        self._refresh()
+        return list(self._songs.values())
 
     def expect(self, record: Path) -> None:
         """A release record the player's studio just made (``maker``): the reading that first finds it counts it as

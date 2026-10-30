@@ -32,7 +32,7 @@ from . import maker as maker_rules
 from . import other as other_music
 from .guest import GuestHub
 from .library import RETIRED_DIR, Library, song_detail
-from .measured import Measured, ratings_of
+from .measured import measured_for, ratings_of
 from .network import REMOTE_HEADER, REMOTE_HOST_HEADER, NetworkAccess
 from .package import MAX_SONGS, PackageJobs, package_file, packages_dir
 from .package import listing as package_listing
@@ -305,7 +305,7 @@ def make_handler(
     jobs = VideoJobs(videos_dir(state.path.parent))
     packages = PackageJobs()
     # how well each song came out, measured: the record's, else measured once and kept (owner's request 2026-10-29)
-    measured = Measured(state.path.parent / "cache")
+    measured = measured_for(state.path.parent / "cache")
     user_states: dict[str, State] = {}
     states_lock = threading.Lock()
     # the library's answer, made once per change of the songs: JSON and compressed (``version``, raw, gzip) - for
@@ -712,6 +712,9 @@ def make_handler(
                 return self._send(
                     200, body, "application/json; charset=utf-8", cache="no-cache", etag=etag, gzipped=packed
                 )
+            if route == "/api/stars":
+                # the measured stars of every song known now, for the library's filter (owner's request 2026-10-30)
+                return self._json({"stars": measured.stars(library), "measuring": dict(measured.progress)})
             if route.startswith("/api/quality/"):
                 # how well it came out, measured (owner's request 2026-10-29): the record's, else measured now
                 song = library.song(route.removeprefix("/api/quality/"))

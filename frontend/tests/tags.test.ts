@@ -160,3 +160,31 @@ describe('tags of your own', () => {
     expect(tagsOf(null)).toEqual({})
   })
 })
+
+describe('the stars among the filters (owner’s request 2026-10-30)', () => {
+  const rated = { ...context, ratings: { a: 4.5, b: 2 }, measured: { a: 3, c: 5, b: null } }
+  const ids = (chips: string[], query = ''): string[] => matching(SONGS, query, chips, rated).map((s) => s.id)
+
+  it('filter by your own stars and by the measured ones, each in steps, and by none', () => {
+    const mine = FACETS.find((f) => f.id === 'stars')!
+    expect(facetValues(SONGS, mine, rated)).toEqual([['4-4.5', 1], ['2-2.5', 1], ['none', 1]])
+    expect(valueLabel(mine, 'none')).toBe('not rated yet')
+    const measured = FACETS.find((f) => f.id === 'measured')!
+    expect(facetValues(SONGS, measured, rated)).toEqual([['5', 1], ['3-3.5', 1], ['none', 1]])
+    expect(valueLabel(measured, 'none')).toBe('not measured yet')
+    expect(ids(['stars:"4-4.5"'])).toEqual(['a'])
+    expect(ids(['stars:"4-4.5"', 'stars:"2-2.5"'])).toEqual(['a', 'b']) // one row: alternatives
+    expect(ids(['measured:"none"'])).toEqual(['b']) // measured, without stars
+    expect(ids(['stars:"4-4.5"', 'measured:"3-3.5"'])).toEqual(['a']) // two rows: both
+    expect(ids(['-measured:"5"'])).toEqual(['a', 'b'])
+    // typed
+    expect(ids([], 'stars:>=4')).toEqual(['a'])
+    expect(ids([], 'rating:none')).toEqual(['c'])
+    expect(ids([], 'measured:<4')).toEqual(['a'])
+    expect(suggest('stars:', SONGS, rated).length).toBeGreaterThan(0)
+    // the rows show once there are stars to tell songs apart
+    const rows = filterRows(SONGS, '', [], rated).map((r) => r.id)
+    expect(rows).toEqual(expect.arrayContaining(['stars', 'measured']))
+    expect(filterRows(SONGS, '', [], context).map((r) => r.id)).not.toContain('stars')
+  })
+})

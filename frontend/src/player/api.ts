@@ -217,6 +217,13 @@ export interface QualityPart {
   kind?: 'quality' | 'fault'
 }
 
+/** The measured stars of every song known now (``null``: measured, without stars), and how far the player is with
+ * measuring the songs not measured yet (``total`` 0: none waiting). */
+export interface StarsAnswer {
+  stars: Record<string, number | null>
+  measuring: { done: number; total: number }
+}
+
 /** How well a song came out, measured: a hint where to listen first, never the verdict. */
 export interface Quality {
   version: number
@@ -447,6 +454,8 @@ const serverApi = {
   song: (id: string) => json<SongDetail>(`/api/song/${id}`),
   /** How well a song came out, measured (the record's, else measured now - about half a second). */
   quality: (id: string) => json<{ quality: Quality | null }>(`/api/quality/${id}`),
+  /** The measured stars of every song known now, for the library's filter. */
+  stars: () => json<StarsAnswer>('/api/stars'),
   state: async (): Promise<StateAnswer> => (inBrowser ? { ...browserState(), rev: 0 } : json<StateAnswer>('/api/state')),
   /** The number of the last change saved (another page's too). */
   stateRev: async () => (inBrowser ? { rev: 0 } : json<{ rev: number }>('/api/state/rev')),
@@ -552,6 +561,7 @@ function sharedApi(): typeof serverApi {
   return {
     ...serverApi,
     library: async () => ({ songs: data.songs, folders: [], errors: [], version: data.plenio }),
+    stars: async () => ({ stars: {}, measuring: { done: 0, total: 0 } }),
     song: async (id: string) => {
       const page = await portablePage(id)
       if (!page) throw new Error('no such song')

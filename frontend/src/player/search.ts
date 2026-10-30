@@ -2,7 +2,8 @@
  * The library's search: free words over title, genre, mood, style, lyrics, the brief and your tags, plus field
  * filters - ``genre:pop``, ``mood:warm``, ``bpm:>100``, ``bpm:90-120``, ``key:Am``, ``model:yue2``,
  * ``year:2026``, ``lang:german``, ``vocals:instrumental``, ``mode:jazz`` (the creative mode), ``len:<3``
- * (minutes), ``creativity:>60`` (or ``creativity:varied``), ``tag:party`` (or ``#party``), ``is:fav``, ``is:unplayed``, ``has:pdf`` - and ``"quoted phrases"``;
+ * (minutes), ``creativity:>60`` (or ``creativity:varied``), ``tag:party`` (or ``#party``), ``is:fav``, ``is:unplayed``, ``has:pdf``,
+ * ``stars:>=4`` (your stars; ``stars:none``: not rated yet), ``measured:<2`` (the measured stars) - and ``"quoted phrases"``;
  * ``-`` in front keeps out what matches. Every word must match; the best matches come first. The filter chips
  * (``chipFilter``): several in one row are alternatives, the rows must all match.
  */
@@ -22,6 +23,7 @@ const FIELDS: Record<string, string> = {
   plenio: 'plenio', version: 'plenio',
   template: 'template', writer: 'writer', meter: 'meter', tag: 'tag', tags: 'tag', kind: 'kind',
   creativity: 'creativity', creative: 'creativity',
+  stars: 'stars', rating: 'stars', rated: 'stars', measured: 'measured', auto: 'measured',
 }  // prettier-ignore
 
 export function parseQuery(query: string): Term[] {
@@ -67,6 +69,10 @@ export interface Context {
   tags?: Record<string, string[]>
   /** Plays per song (``is:played``, ``is:unplayed``). */
   plays?: Record<string, number>
+  /** The listener's own stars per song, 0 to 5 in halves (``stars:``). */
+  ratings?: Record<string, number>
+  /** The measured stars per song (``measured:``; ``null``: measured, without stars). */
+  measured?: Record<string, number | null>
 }
 
 /** How well ``song`` matches ``terms`` (0: not at all). Title hits weigh most, lyrics least. */
@@ -173,6 +179,12 @@ function creativityTest(value: string, creativity: number | null | undefined): b
   return numberTest(value, creativity)
 }
 
+/** ``stars:>=4``, ``stars:3-4``, ``stars:5`` - or ``stars:none``: no stars (not rated, not measured yet). */
+function starsTest(value: string, stars: number | null | undefined): boolean {
+  if (fold(value) === 'none') return stars === null || stars === undefined
+  return numberTest(value, stars)
+}
+
 /** Every text of a song folded once (a library of thousands of songs folded its lyrics again for every song at every
  * key typed: 140 ms a key for 2958 songs). The summaries of a library do not change, so they are kept by the object. */
 const foldedTexts = new WeakMap<SongSummary, Map<string | undefined, string>>()
@@ -205,6 +217,8 @@ function matches(song: SongSummary, term: Term, context: Context): number {
     case 'mode': return has(song.arrangement) ? 2 : 0
     case 'len': return numberTest(term.value, song.seconds / 60) ? 2 : 0
     case 'creativity': return creativityTest(term.value, song.brief.creativity) ? 2 : 0
+    case 'stars': return starsTest(term.value, context.ratings?.[song.id]) ? 2 : 0
+    case 'measured': return starsTest(term.value, context.measured?.[song.id]) ? 2 : 0
     case 'meter': return has(song.score_meter) || has(song.brief.meter) ? 2 : 0
     case 'is': return isTest(song, v, context) ? 2 : 0
     case 'plenio': return versionTest(term.value, song.plenio) ? 2 : 0
@@ -302,6 +316,12 @@ const LENGTHS: [string, string][] = [['<3', 'under 3 min'], ['3-5', '3-5 min'], 
 const HAS: [string, string][] = [['timing', 'timed lyrics'], ['pdf', 'sheet music'], ['score', 'notation'], ['original', 'unmastered take'], ['cover', 'a cover picture']]
 const PLAYED: [string, string][] = [['fav', 'favourites'], ['played', 'played'], ['unplayed', 'never played'], ['untagged', 'no tags yet']]
 const MADE: [string, string][] = [['plenio', 'Plenio'], ['other', 'other music']]
+/** The stars in steps (both kinds come in halves). */
+const STARS: [string, string][] = [['5', '★ 5'], ['4-4.5', '★ 4-4½'], ['3-3.5', '★ 3-3½'], ['2-2.5', '★ 2-2½'], ['<2', '★ below 2']]
+const MY_STARS: [string, string][] = [...STARS, ['none', 'not rated yet']]
+const MEASURED_STARS: [string, string][] = [...STARS, ['none', 'not measured yet']]
+const starSteps = (stars: number | null | undefined): string[] =>
+  stars === null || stars === undefined ? ['none'] : STARS.filter(([r]) => numberTest(r, stars)).map(([r]) => r)
 
 /** The filters' rows, in their order (Tags first when there are any). */
 export const FACETS: FacetDef[] = [
@@ -321,6 +341,8 @@ export const FACETS: FacetDef[] = [
   { id: 'year', key: 'year', label: 'Year', top: 4, values: (s) => [s.year] },
   { id: 'has', key: 'has', label: 'Has', top: 5, fixed: HAS, values: (s) => HAS.filter(([v]) => hasTest(s, v)).map(([v]) => v) },
   { id: 'played', key: 'is', label: 'Listening', top: 4, fixed: PLAYED, values: (s, c) => PLAYED.filter(([v]) => isTest(s, v, c)).map(([v]) => v) },
+  { id: 'stars', key: 'stars', label: 'My stars', top: 6, fixed: MY_STARS, values: (s, c) => starSteps(c.ratings?.[s.id]) },
+  { id: 'measured', key: 'measured', label: 'Measured stars', top: 6, fixed: MEASURED_STARS, values: (s, c) => starSteps(c.measured?.[s.id]) },
 ]  // prettier-ignore
 
 /** Every value of a facet among ``songs`` with its count - the most common first, or a fixed facet in its
@@ -475,6 +497,7 @@ const FIELD_HELP: [string, string][] = [
   ['has', 'timing, pdf, score, original, cover'], ['year', '2026'], ['plenio', 'the Plenio version: >=1.0'], ['title', 'words in the title'],
   ['lyrics', 'words in the lyrics'], ['artist', 'other music: the artist'], ['album', 'other music: the album'], ['meter', '4/4, 3/4'],
   ['writer', 'the model that wrote it'], ['style', 'words in the style'], ['creativity', '0-100: >60, 40-60, varied'],
+  ['stars', 'your stars: >=4, 3-4, none'], ['measured', 'the measured stars: >=4, <2, none'],
 ] // prettier-ignore
 
 const FIXED_VALUES: Record<string, [string, string][]> = {
@@ -483,6 +506,8 @@ const FIXED_VALUES: Record<string, [string, string][]> = {
   bpm: TEMPOS,
   len: LENGTHS,
   creativity: CREATIVITY_RANGES,
+  stars: MY_STARS,
+  measured: MEASURED_STARS,
   vocals: [['instrumental', 'no singing'], ['sparse', 'only a few sung phrases'], ['sung', 'with singing']],
 }
 

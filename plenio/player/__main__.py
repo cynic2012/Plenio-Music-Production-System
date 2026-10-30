@@ -21,6 +21,7 @@ from .accounts import Accounts
 from .guest import GuestHub
 from .library import Library
 from .maker import PartySongs, Studio
+from .measured import measured_for
 from .network import NetworkAccess
 from .paths import default_folders, state_dir
 from .server import State, comfyui_at, find_comfyui, serve, studio_finder
@@ -121,6 +122,8 @@ def main(argv: list[str] | None = None) -> int:
         say(f"Reading the songs of {', '.join(str(f) for f in folders)} ...")
         library.scan(force=True)
         say(f"{len(library.songs())} songs ({len(library.errors)} records could not be read)")
+        # the stars of the songs not measured yet, for the library's filter: measured in the background
+        measured_for(directory / "cache").start(library)
 
     threading.Thread(target=read_songs, name="plenio-library", daemon=True).start()
     maker.start()
@@ -139,6 +142,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         pass
     finally:
+        measured_for(directory / "cache").close()
         maker.close()
         guests.close()
         network.close()
