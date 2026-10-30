@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { begin, continueAsGuest, guest, initials, logIn, me } from '../src/player/account'
+import { begin, canRemoveSongs, continueAsGuest, guest, initials, logIn, me, session } from '../src/player/account'
 import { api, keepStateInBrowser } from '../src/player/api'
 
 const anna = { id: 'a1b2c3d4e5f6', name: 'Anna Lee', admin: false, avatar: false, color: '#4fbf7f' }
@@ -52,5 +52,22 @@ describe('account', () => {
     expect(me.value?.id).toBe(anna.id)
     expect(initials('Anna Lee')).toBe('AL')
     expect(initials('bo')).toBe('BO')
+  })
+
+  it('offers removing songs to whom the server lets remove them', () => {
+    session.value = { login: true, user: anna, chosen: true, local: false, users: [anna] }
+    me.value = anna // a listener or a maker
+    expect(canRemoveSongs.value).toBe(false)
+    me.value = { ...anna, helper: true } // the admins' group
+    expect(canRemoveSongs.value).toBe(true)
+    me.value = null // a guest
+    expect(canRemoveSongs.value).toBe(false)
+    me.value = admin
+    expect(canRemoveSongs.value).toBe(true)
+    // a player without the login: its server lets every page remove, as before
+    session.value = { login: false, user: null, chosen: true, local: true, users: [] }
+    me.value = null
+    expect(canRemoveSongs.value).toBe(true)
+    session.value = null
   })
 })

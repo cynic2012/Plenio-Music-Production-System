@@ -215,3 +215,8 @@ def test_the_folder_is_shown_by_explorer_with_the_video_chosen(
     assert started[0].lower().startswith('"') and "explorer.exe" in started[0].lower()
     assert started[1].endswith(f' "{folder.resolve()}"') and started[2] == started[1]
     assert not (folder / "README.txt").exists()  # the visuals' README belongs to the visuals folder only
+    # a quote would end the path inside Explorer's command line: such a folder (no Windows name holds one) is not
+    # shown - nothing of its name becomes an argument of its own
+    with pytest.raises(OSError):
+        visuals.show_folder(tmp_path / 'my" /root,"C:\\Windows')
+    assert len(started) == 3

@@ -78,6 +78,20 @@ def test_system_route(server: ComfyServer) -> None:
     assert "### Hardware rule table" in data["markdown"]
 
 
+def test_what_only_this_computer_may_ask_is_not_answered_to_the_network(server: ComfyServer) -> None:
+    """ComfyUI has no login: with --listen - or the Plenio Player's In your network, whose gateway says so - everyone
+    in the network reaches Plenio's routes. The System Check's report (this computer's folders) and starting the
+    Plenio Player (a program on it) answer only a browser on the computer itself."""
+    for header in ({"X-Plenio-Remote": "1"}, {"X-Forwarded-For": "192.168.1.20"}):
+        status, data = server.request("GET", "/plenio/system", headers=header)
+        assert status == 403 and data["error"]["type"] == "PlenioAccessError", data
+        assert "System Check node" in data["error"]["hint"]
+        status, data = server.request("POST", "/plenio/player/open", {}, headers=header)
+        assert status == 403 and "In your network" in data["error"]["hint"], data
+    # what the editor uses from any computer stays as it was
+    assert server.request("GET", "/plenio/templates", headers={"X-Plenio-Remote": "1"})[0] == 200
+
+
 def test_unknown_plenio_route_is_404(server: ComfyServer) -> None:
     status, _ = server.request("GET", "/plenio/does-not-exist")
     assert status == 404

@@ -39,7 +39,7 @@ Vision projectors (`mmproj`), embedding models and the later parts of split file
 
 GGUF files need a llama.cpp server program. Plenio looks for one in this order and the System Check shows which it found:
 
-1. `PLENIO_LLAMA_SERVER` or `[llm] llama_server` in `config.toml` (the program or its folder);
+1. `PLENIO_LLAMA_SERVER` or `[llm] llama_server` in `config.toml` (the program or its folder - a program whose name begins with `llama-server`; Plenio starts no other);
 2. `llama-server` on the PATH (Windows: `winget install llama.cpp`, macOS/Linux: `brew install llama.cpp`, or a [release](https://github.com/ggml-org/llama.cpp/releases));
 3. the build Unsloth Studio installs (`~/.unsloth/llama.cpp`), winget's and Homebrew's folders;
 4. llama-cpp-python, if it is installed in ComfyUI's Python (slower to support new model architectures).

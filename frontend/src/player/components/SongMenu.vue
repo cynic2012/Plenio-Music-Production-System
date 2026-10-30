@@ -10,6 +10,7 @@ import { addToPlaylist, enqueue, go, isFavorite, library, newPlaylist, openInCom
 import { makeShown } from '../make/state'
 import { isPortable } from '../portable'
 import { isPhone } from '../layout'
+import { canRemoveSongs } from '../account'
 import BottomSheet from './BottomSheet.vue'
 import Icon from './Icon.vue'
 import TagEditor from './TagEditor.vue'
@@ -61,7 +62,7 @@ function create(): void {
       <div v-if="tagging" class="tags"><TagEditor :ids="[song.id]" autofocus @filter="songsTagged" /></div>
       <button v-if="!song.other && !isPortable" @click="comfy">Open in ComfyUI</button>
       <button v-if="!isPortable" @click="videoFor = song; done()">Save as a video…</button>
-      <button v-if="!isPortable" class="remove" @click="removing = song; done()">Remove from the library…</button>
+      <button v-if="!isPortable && canRemoveSongs" class="remove" @click="removing = song; done()">Remove from the library…</button>
       <p class="head small">Add to a playlist</p>
       <button v-for="p in state.playlists" :key="p.id" @click="addToPlaylist(p, [song.id]); done()">
         <i class="dot" :style="{ background: `hsl(${p.hue ?? 260} 80% 60%)` }" />{{ p.name }}

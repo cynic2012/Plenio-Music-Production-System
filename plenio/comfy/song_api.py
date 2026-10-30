@@ -112,9 +112,15 @@ def guarded(handler: Handler) -> Handler:
             return await handler(request)
         except SongApiError as error:
             return _error(error)
-        except Exception as error:  # noqa: BLE001 - a bug: said as one, logged
+        except Exception:  # noqa: BLE001 - a bug: said as one, its text only in the log (it can name folders)
             log.exception("Plenio Song API %s failed", request.path)
-            return _error(SongApiError("internal", f"The Song API failed: {error}", status=500))
+            return _error(
+                SongApiError(
+                    "internal",
+                    "The Song API failed - an error in Plenio. ComfyUI's console (its log) says which.",
+                    status=500,
+                )
+            )
 
     return wrapper
 

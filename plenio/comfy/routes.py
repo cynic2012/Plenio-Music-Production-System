@@ -3,7 +3,8 @@
 Handlers only parse JSON, call ``plenio.core`` and serialise the result - the
 same functions the nodes use, so the editor never decides musical validity.
 Errors become ``{"error": {"type", "message", "hint"}}`` with status 400 (user
-errors) or 500 (bugs).
+errors), 403 (only for a browser on this computer) or 500 (bugs - said without
+their text, which the log keeps: ``core.errors.public_error``).
 """
 
 from __future__ import annotations
@@ -19,8 +20,9 @@ from aiohttp import web
 from ..core import blocks, continuation, song_form, syllables
 from ..core import lyrics as lyrics_rules
 from ..core import score as score_rules
+from ..core.access import from_this_computer
 from ..core.engines import rules_for
-from ..core.errors import PlenioError, PlenioUserError
+from ..core.errors import PlenioAccessError, PlenioError, PlenioUserError, public_error
 from ..core.sheet import DOCUMENT_KINDS, REVIEW_MODES, evaluate_sheet, parse_sheet_state
 from ..player.launch import ensure_player
 from ..player.paths import state_dir
@@ -41,13 +43,17 @@ Handler = Callable[[web.Request], Awaitable[web.StreamResponse]]
 
 
 def error_response(error: Exception) -> web.Response:
-    status = 400 if isinstance(error, PlenioUserError) else 500
-    body: dict[str, Any] = {"type": type(error).__name__, "message": str(error)}
-    if isinstance(error, PlenioError):
-        body["message"] = error.message
-        body["hint"] = error.hint
-        body["details"] = error.details
+    status, body = public_error(error)
     return web.json_response({"error": body}, status=status)
+
+
+def only_here(request: web.Request, what: str, hint: str) -> None:
+    """Refuse a request that does not come from a browser on this computer (``core.access``): ComfyUI has no login,
+    and with ``--listen`` - or the Plenio Player's *In your network* - everyone in the network reaches its routes."""
+    sockname = request.transport.get_extra_info("sockname") if request.transport is not None else None
+    own = [str(sockname[0])] if isinstance(sockname, tuple) and sockname else []
+    if not from_this_computer(request.remote, request.headers, own):
+        raise PlenioAccessError(f"{what} - only for a browser on the computer ComfyUI runs on.", hint=hint)
 
 
 def guarded(handler: Handler) -> Handler:
@@ -103,6 +109,12 @@ def _text(data: dict[str, Any], key: str, required: bool = True) -> str:
 
 
 async def system(request: web.Request) -> web.StreamResponse:
+    """The System Check's report - this computer's folders, versions and graphics cards: for a browser on it."""
+    only_here(
+        request,
+        "The System Check's report names this computer's folders and versions",
+        "From another computer, run the System Check node: its report shows in the workflow.",
+    )
     report, markdown = system_report()
     return web.json_response({"report": report.to_dict(), "markdown": markdown})
 
@@ -510,7 +522,14 @@ async def workflow_blocks(request: web.Request) -> web.StreamResponse:
 async def player_open(request: web.Request) -> web.StreamResponse:
     """The *Plenio Player* button (owner's request 2026-10-16): the address of the Plenio Player running on
     this computer - started now when none runs, as a program of its own that plays ComfyUI's output folder
-    and keeps running when ComfyUI stops (``plenio.player.launch``). ComfyUI never serves the player."""
+    and keeps running when ComfyUI stops (``plenio.player.launch``). ComfyUI never serves the player. It starts a
+    program, so only for a browser on this computer - where the answer's address (``127.0.0.1``) leads, too."""
+    only_here(
+        request,
+        "Starting the Plenio Player",
+        "From another computer, open the player by its address in your network: on the computer itself, the "
+        "player's Settings > In your network shows it.",
+    )
     comfyui = f"{request.scheme}://{request.host}"
     try:
         found = await asyncio.to_thread(ensure_player, host.output_directory(), comfyui, state_dir())

@@ -21,7 +21,7 @@ import urllib.request
 from collections.abc import Callable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
@@ -150,6 +150,47 @@ def from_this_computer(client: str, remote: bool) -> bool:
     return client in ("127.0.0.1", "::1") and not remote
 
 
+PLACE_KEYS = frozenset(
+    {
+        "audio",
+        "file_path",
+        "folder",
+        "folders",
+        "path",
+        "record",
+        "record_path",
+        "retire_to",
+        "root",
+        "started_with",
+        "state",
+    }
+)
+"""The keys under which the player's answers name a place on this computer: a folder, a file."""
+REMOTE_FAILURE = "The player could not do that - its log on the computer says why."
+"""What a request from the network hears of a failure (its text can name this computer's folders)."""
+
+
+def place_name(text: str) -> str:
+    """A folder's or file's own name, without where it is (``D:\\Music\\Plenio`` -> ``Plenio``)."""
+    return PureWindowsPath(text).name  # takes "/" and "\\" apart: a path of any system
+
+
+def without_places(data: Any, key: str = "") -> Any:
+    """``data`` as a request from the network gets it: the folders and files of this computer by their names - where
+    they are stays this computer's (the absolute paths among the values of ``PLACE_KEYS``)."""
+    if isinstance(data, dict):
+        return {name: without_places(value, str(name)) for name, value in data.items()}
+    if isinstance(data, list):
+        return [without_places(value, key) for value in data]
+    if (
+        isinstance(data, str)
+        and key in PLACE_KEYS
+        and (PureWindowsPath(data).is_absolute() or data.startswith("/"))
+    ):
+        return place_name(data)
+    return data
+
+
 def comfyui_at(url: str, timeout: float = 0.8) -> dict[str, Any] | None:
     """The ComfyUI answering at ``url`` (a loopback address only: the player asks no other computer)."""
     if not LOOPBACK_URL.fullmatch(url):
@@ -267,27 +308,28 @@ def make_handler(
     measured = Measured(state.path.parent / "cache")
     user_states: dict[str, State] = {}
     states_lock = threading.Lock()
-    # the library's answer, made once per change of the songs: JSON and compressed (``version``, raw, gzip)
-    listing: list[Any] = [None, b"", b""]
+    # the library's answer, made once per change of the songs: JSON and compressed (``version``, raw, gzip) - for
+    # this computer, and for the network (``True``)
+    listings: dict[bool, list[Any]] = {False: [None, b"", b""], True: [None, b"", b""]}
     listing_lock = threading.Lock()
 
-    def library_answer() -> tuple[str, bytes, bytes]:
-        """The library as the page reads it - with its ETag: a page that has it gets ``304`` instead of 9 MB."""
+    def library_answer(remote: bool = False) -> tuple[str, bytes, bytes]:
+        """The library as the page reads it - with its ETag: a page that has it gets ``304`` instead of 9 MB. From the
+        network its folders by their names, and of a record that could not be read only the file's name."""
         songs = library.songs()
         key = (library.version, tuple(str(f) for f in library.folders))
         with listing_lock:
+            listing = listings[remote]
             if listing[0] != key:
+                folders, errors = [str(f) for f in library.folders], library.errors[:20]
+                if remote:  # a record's error ("<file>: <why>") can name its folder
+                    folders, errors = [place_name(f) for f in folders], [e.split(": ", 1)[0] for e in errors]
                 body = json.dumps(
-                    {
-                        "songs": songs,
-                        "folders": [str(f) for f in library.folders],
-                        "errors": library.errors[:20],
-                        "version": __version__,
-                    },
+                    {"songs": songs, "folders": folders, "errors": errors, "version": __version__},
                     ensure_ascii=False,
                 ).encode("utf-8")
                 listing[:] = [key, body, gzip.compress(body, 5)]
-            return f'"lib-{BOOT}-{library.version}"', listing[1], listing[2]
+            return f'"lib-{BOOT}-{library.version}{"-net" if remote else ""}"', listing[1], listing[2]
 
     def may_admin(account: dict[str, Any] | None) -> bool:
         """The admin's rights: the admin, or a user of the group *admin* (a helper - owner's request 2026-10-29).
@@ -521,11 +563,13 @@ def make_handler(
                 self.wfile.write(body)
 
         def _json(self, data: Any, status: int = 200, cookie: str = "") -> None:
+            if self.remote:
+                data = without_places(data)
             body = json.dumps(data, ensure_ascii=False).encode("utf-8")
             self._send(status, body, "application/json; charset=utf-8", cookie=cookie)
 
         def _error(self, status: int, message: str) -> None:
-            self._json({"error": message}, status)
+            self._json({"error": REMOTE_FAILURE if status >= 500 and self.remote else message}, status)
 
         def _unchanged(self, etag: str) -> bool:
             """The browser has this version already (``If-None-Match``): ``304`` answered."""
@@ -635,8 +679,11 @@ def make_handler(
                     }
                 )
             if route == "/api/comfyui":
-                # also the one the player starts itself (Settings > The studio), on the port set there
-                found = find_comfyui(query.get("url", "") or comfyui, launcher.url if launcher else None)
+                # also the one the player starts itself (Settings > The studio), on the port set there; an address of
+                # its own (a loopback one: the player asks no other computer) only from this computer - from the
+                # network it would let anyone knock at this computer's ports
+                asked = "" if self.remote else query.get("url", "")
+                found = find_comfyui(asked or comfyui, launcher.url if launcher else None)
                 return self._json({"found": found})
             if route == "/api/find":
                 # the song of a record file (Export Release's button in ComfyUI opens the player at it)
@@ -659,7 +706,7 @@ def make_handler(
                                 "version": __version__,
                             }
                         )
-                etag, body, packed = library_answer()
+                etag, body, packed = library_answer(self.remote)
                 if self._unchanged(etag):
                     return None
                 return self._send(
@@ -1319,6 +1366,9 @@ def make_handler(
                 return self._error(400, "confirm the song's id")
             if body.get("action") not in ("retire", "delete"):
                 return self._error(400, "action: retire or delete")
+            # the library is the admin's: a listener, a maker or a guest keeps their own playlists, not the songs
+            if not may_admin(self.account):
+                return self._error(403, "only the admin removes songs from the library")
             if body["action"] == "delete" and self._not_from_network("Deleting a song for good (retire it)"):
                 return None
             try:

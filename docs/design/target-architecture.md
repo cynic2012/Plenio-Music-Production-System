@@ -230,7 +230,7 @@ The frontend never decides musical validity. It calls these routes (all JSON, al
 | `GET /plenio/templates`, `GET /plenio/templates/{id}`, `POST /plenio/templates` | template library listing, loading, saving user templates into the ComfyUI **user** directory (never into the package) |
 | `GET /plenio/asr/notes/{draft_sha256}` | the Transcribe Lyrics note of a lyrics draft (unsure and left-out words), keyed by the draft's hash; `{"note": null}` when unknown (Phase 4B) |
 | `GET /plenio/presets/{kind}` | EQ and loudness presets (single source for backend and frontend) |
-| `GET /plenio/system` | diagnostics for the System Check node and troubleshooting |
+| `GET /plenio/system` | diagnostics for the System Check node and troubleshooting - for a browser on the computer ComfyUI runs on only (403 from the network: it names that computer's folders) |
 
 Node → frontend: each node returns a small UI payload (`NodeOutput(ui=…)`) with the documents it saw, their hashes, validation results and status. Frontend → node: only widget values (the Song Sheet's `sheet_state`, EQ bands); nothing else is written into the graph by the frontend.
 

@@ -43,6 +43,13 @@ All notable changes of the current version and the one before. Versions follow s
 - **The copy buttons of a song's page** (the seeds, the record's path) did nothing in a player opened through *In your network*, whose plain HTTP has no clipboard API; they copy there too now.
 - **Links to a section of the settings** (*Switch it on in Settings*, *How to start it*) opened the settings at the top when they were already open, or before the section had loaded.
 
+### Security
+
+- **What only this computer may ask is answered only on it.** ComfyUI has no login, and with `--listen` - or the player's *In your network* - everyone in the network reaches Plenio's routes in it. The System Check's report, which names the computer's folders and versions, and starting the Plenio Player now answer only a browser on the computer ComfyUI runs on; the System Check node still shows the report in the workflow. [Details](SECURITY.md#plenios-http-routes)
+- **An error tells the network no more than that it happened**: a bug in one of Plenio's routes or the Song API is answered without its text, which can name a folder of the computer - ComfyUI's console keeps it. The player answers requests from the network alike, and names them no place of the computer: folders and files only by their names.
+- **Only the admin and the admins' group take songs out of the library**: listeners, makers and guests keep their own playlists, not the songs, and *Remove…* shows only to whom may.
+- **The player and Local LLM start only what they are meant to**: the studio's folder must be a ComfyUI folder (its `main.py` beside `folder_paths.py`, `execution.py` and `comfy`) and its remembered Python a Python; a `llama-server` named in the settings or in `PLENIO_LLAMA_SERVER` must be one, or another program is not started. An address of a page's own to look for ComfyUI at is taken only from this computer.
+
 ## 1.3.2 - 2026-10-27
 
 **Lyrics you can correct in Enhance & Master, and instrumental covers that run again.** Enhance & Master gets an optional *Lyrics* block: the recording's words are heard, corrected on a Song Sheet and released as you wrote them. An instrumental cover no longer stops at the transcription, and the player's help plays the tutorials of 1.3.1.

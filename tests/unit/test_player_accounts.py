@@ -202,3 +202,49 @@ def test_users_are_listeners_makers_or_helpers_with_the_admins_rights(
     assert call(port, "PUT", f"/api/users/{lea_id}", {"name": "Lea B"}, **JSON, **lea_session)[0] == 200
     # what only this computer does stays this computer's, for a helper too
     assert call(port, "POST", "/api/quit", {}, **JSON, **helper, **{"X-Plenio-Player": "1"})[0] == 403
+
+
+def test_only_the_admin_or_a_helper_takes_songs_out_of_the_library(tmp_path: Path) -> None:
+    """A listener, a maker and a guest keep their own playlists, not the library's songs; a helper retires one from
+    their phone - deleting for good stays this computer's."""
+    folder = tmp_path / "songs"
+    folder.mkdir()
+    for title in ("One", "Two"):
+        (folder / f"{title}.plenio.json").write_text(
+            json.dumps({"title": title, "files": [{"name": f"{title}.flac", "format": "flac"}]}),
+            encoding="utf-8",
+        )
+        (folder / f"{title}.flac").write_bytes(b"x" * 64)
+    library = Library([folder])
+    library.scan(force=True)
+    accounts = Accounts(tmp_path / "state")
+    server = serve(library, State(tmp_path / "state" / "state.json"), "127.0.0.1", 0, accounts=accounts)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        port = server.server_address[1]
+        ids = {s["title"]: s["id"] for s in call(port, "GET", "/api/library")[2]["songs"]}
+
+        def remove(title: str, **who: str) -> int:
+            body = {"action": "retire", "confirm": ids[title]}
+            return call(port, "POST", f"/api/song/{ids[title]}/remove", body, **JSON, **who)[0]
+
+        sessions = {}
+        for name, group in (("Lea", "listener"), ("Max", "maker"), ("Hal", "admin")):
+            user = accounts.create(name, "secret1", group)
+            answer = call(
+                port,
+                "POST",
+                "/api/login",
+                {"user": user["id"], "password": "secret1"},
+                **JSON,
+                **FROM_NETWORK,
+            )
+            sessions[name] = {**cookie_of(answer[1]), **FROM_NETWORK}
+        assert remove("One", **sessions["Lea"]) == 403 and remove("One", **sessions["Max"]) == 403
+        assert remove("One", **FROM_NETWORK) == 403  # a guest
+        assert remove("One", **sessions["Hal"]) == 200
+        assert remove("Two") == 200  # the admin, on this computer
+        assert not (folder / "One.flac").exists() and not (folder / "Two.flac").exists()
+    finally:
+        server.shutdown()
+        server.server_close()

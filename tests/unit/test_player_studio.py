@@ -21,11 +21,13 @@ from plenio.player.server import State, from_this_computer, serve
 from plenio.player.studio import StudioLauncher, StudioLaunchError, parse_args
 
 
-def comfyui(tmp_path: Path) -> Path:
+def comfyui(tmp_path: Path, name: str = "ComfyUI") -> Path:
     """A folder that looks like ComfyUI: its main.py waits a while (the test's ComfyUI never answers)."""
-    root = tmp_path / "ComfyUI"
-    root.mkdir()
+    root = tmp_path / name
+    (root / "comfy").mkdir(parents=True)
     (root / "main.py").write_text("import time\ntime.sleep(60)\n", encoding="utf-8")
+    for other in ("folder_paths.py", "execution.py"):
+        (root / other).write_text("", encoding="utf-8")
     return root
 
 
@@ -77,7 +79,8 @@ def test_comfyui_starts_the_way_it_was_last_started(tmp_path: Path, monkeypatch:
     ]
     root = comfyui(tmp_path)
     state = tmp_path / "state"
-    venv = tmp_path / "venv-python.exe"
+    venv = tmp_path / "venv" / "python.exe"
+    venv.parent.mkdir()
     venv.write_bytes(b"")
     remember_start(
         state, [str(root / "main.py"), "--models-directory", "F:/models", "--port", "8000"], str(venv)
@@ -111,6 +114,12 @@ def test_comfyui_starts_the_way_it_was_last_started(tmp_path: Path, monkeypatch:
     ]
     file.write_text(json.dumps(known), encoding="utf-8")
     assert launcher.command()[0][-1:] == ["--fast"] and "--listen" not in launcher.command()[0]
+    # ... and starts a Python, whatever program the file names
+    other = tmp_path / "tool.exe"
+    other.write_bytes(b"")
+    known[str((root / "main.py").resolve())]["python"] = str(other)
+    file.write_text(json.dumps(known), encoding="utf-8")
+    assert launcher.command()[0][0] != str(other)
 
 
 def test_comfyui_and_the_player_start_without_a_window() -> None:
@@ -139,8 +148,7 @@ def test_the_command_runs_the_folders_comfyui(tmp_path: Path) -> None:
     assert kept["root"] == str(root) and kept["port"] == 8191
     # the portable build: its embedded Python, as its own .bat starts it
     portable = tmp_path / "portable"
-    (portable / "ComfyUI").mkdir(parents=True)
-    (portable / "ComfyUI" / "main.py").write_text("", encoding="utf-8")
+    comfyui(portable)
     (portable / "python_embeded").mkdir()
     (portable / "python_embeded" / "python.exe").write_bytes(b"")
     launcher.configure({"root": str(portable / "ComfyUI"), "args": ""})
@@ -148,7 +156,17 @@ def test_the_command_runs_the_folders_comfyui(tmp_path: Path) -> None:
     if sys.platform == "win32":
         assert command[:2] == [str(portable / "python_embeded" / "python.exe"), "-s"]
         assert command[-1] == "--windows-standalone-build"
-    for wrong in ({"root": str(tmp_path)}, {"port": 80}, {"port": "x"}, {"args": "--listen"}):
+    # a folder with a main.py of its own is no ComfyUI: the player runs no other program's main.py
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "main.py").write_text("", encoding="utf-8")
+    for wrong in (
+        {"root": str(tmp_path)},
+        {"root": str(elsewhere)},
+        {"port": 80},
+        {"port": "x"},
+        {"args": "--listen"},
+    ):
         with pytest.raises(StudioLaunchError):
             launcher.configure(wrong)
 
@@ -216,8 +234,7 @@ def test_a_waiting_song_starts_it_and_it_stops_when_idle(tmp_path: Path) -> None
 
 
 def test_a_comfyui_that_ends_at_once_is_not_started_again_and_again(tmp_path: Path) -> None:
-    root = tmp_path / "ComfyUI"
-    root.mkdir()
+    root = comfyui(tmp_path)
     (root / "main.py").write_text("raise SystemExit(1)\n", encoding="utf-8")  # a port taken, say
     clock = Clock()
     launcher = StudioLauncher(tmp_path / "state", clock=clock)

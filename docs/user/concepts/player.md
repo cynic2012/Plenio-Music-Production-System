@@ -1033,7 +1033,8 @@ folders the player reads, the player's version, and **Stop the player**.
 
 ## Remove a song
 
-A song you do not want any more: **Remove…** (👎) on its page, or *Remove from the library…* in its menu.
+A song you do not want any more: **Remove…** (👎) on its page, or *Remove from the library…* in its menu -
+for the admin and the admins' group; listeners, makers and guests keep their own playlists, not the songs.
 The dialog lists the song's files - the record, the audio of every take, the unmastered take, the cover,
 the sheet music, the subtitles, the stems - and offers two ways:
 

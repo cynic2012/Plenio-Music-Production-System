@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -66,10 +67,21 @@ class StudioLaunchError(ValueError):
         self.status = status
 
 
+COMFYUI_FILES = ("main.py", "folder_paths.py", "execution.py")
+"""What a ComfyUI folder holds besides its ``comfy`` package: the player starts no other ``main.py``."""
+PYTHON_NAME = re.compile(r"pythonw?(\d+(\.\d+)*)?(\.exe)?", re.IGNORECASE)
+"""A Python interpreter's file name (``python.exe``, ``python3.12``): the only program the player starts."""
+
+
+def is_comfyui(folder: Path) -> bool:
+    """``folder`` is ComfyUI's own: its ``main.py`` beside ``folder_paths.py``, ``execution.py`` and ``comfy``."""
+    return all((folder / name).is_file() for name in COMFYUI_FILES) and (folder / "comfy").is_dir()
+
+
 def installed_root() -> Path | None:
-    """The ComfyUI Plenio is installed in: ``<ComfyUI>/custom_nodes/<Plenio>`` with ``<ComfyUI>/main.py``."""
+    """The ComfyUI Plenio is installed in: ``<ComfyUI>/custom_nodes/<Plenio>``."""
     candidate = PACKAGE_ROOT.parent.parent
-    if PACKAGE_ROOT.parent.name == "custom_nodes" and (candidate / "main.py").is_file():
+    if PACKAGE_ROOT.parent.name == "custom_nodes" and is_comfyui(candidate):
         return candidate
     return None
 
@@ -227,14 +239,17 @@ class StudioLauncher:
         temp.replace(self.path)
 
     def configure(self, changes: dict[str, Any]) -> dict[str, Any]:
-        """The admin's settings, checked: a folder with ComfyUI's ``main.py`` (empty: the one Plenio is in), the
-        arguments, a port, starting by itself, stopping after idle minutes."""
+        """The admin's settings, checked: ComfyUI's own folder (empty: the one Plenio is in), the arguments, a port,
+        starting by itself, stopping after idle minutes."""
         with self.lock:
             settings = dict(self.settings)
             if "root" in changes:
                 root = str(changes["root"] or "").strip()
-                if root and not (Path(root) / "main.py").is_file():
-                    raise StudioLaunchError("That folder has no main.py - choose ComfyUI's own folder.")
+                if root and not is_comfyui(Path(root)):
+                    raise StudioLaunchError(
+                        "That is no ComfyUI folder (its main.py, folder_paths.py, execution.py and comfy) - choose "
+                        "ComfyUI's own folder."
+                    )
                 settings["root"] = root
             if "args" in changes:
                 text = str(changes["args"] or "").strip()
@@ -267,12 +282,12 @@ class StudioLauncher:
         chosen = str(self.settings.get("root") or "").strip()
         if chosen:
             path = Path(chosen)
-            return path if (path / "main.py").is_file() else None
+            return path if is_comfyui(path) else None
         installed = installed_root()
         if installed is not None:
             return installed
         last = remembered_start(self.directory)
-        return last[0].parent if last else None
+        return last[0].parent if last and is_comfyui(last[0].parent) else None
 
     def arguments(self, root: Path) -> tuple[list[str], str, dict[str, Any] | None]:
         """The arguments for ``main.py``: the ones set in Settings, else those of the last start of this ComfyUI
@@ -309,9 +324,11 @@ class StudioLauncher:
             )
         extra, _source, last = self.arguments(root)
         python, embedded = python_of(root)
-        if last is not None and Path(str(last.get("python") or "")).is_file():
-            # the Python it last ran on (ComfyUI Desktop's own environment, a conda one ...)
-            python = Path(str(last["python"]))
+        last_python = Path(str((last or {}).get("python") or ""))
+        if last_python.is_file() and PYTHON_NAME.fullmatch(last_python.name):
+            # the Python it last ran on (ComfyUI Desktop's own environment, a conda one ...) - a Python, whatever
+            # the start file says
+            python = last_python
             embedded = python.parent.name == "python_embeded"
         command = [str(python)]
         if embedded:

@@ -104,9 +104,14 @@ def show_folder(folder: Path, select: Path | None = None) -> None:
         windir = Path(os.environ.get("WINDIR") or os.environ.get("SystemRoot") or "C:\\Windows")
         explorer = windir / "explorer.exe"
         program = str(explorer) if explorer.is_file() else "explorer.exe"
+        shown = chosen.resolve() if chosen else folder.resolve()
+        if '"' in str(
+            shown
+        ):  # no Windows name holds one: nothing slips out of the quotes below as an argument
+            raise OSError(f"no folder to show: {shown.name}")
         # Explorer reads /select,"path" - the quotes round the path only (a list of arguments would quote
         # the whole "/select,path", and Explorer then opens Documents instead)
-        target = f'/select,"{chosen.resolve()}"' if chosen else f'"{folder.resolve()}"'
+        target = f'/select,"{shown}"' if chosen else f'"{shown}"'
         subprocess.Popen(f'"{program}" {target}')  # noqa: S603 - Explorer with our own folder
     elif sys.platform == "darwin":
         subprocess.Popen(["open", "-R", str(chosen)] if chosen else ["open", str(folder)])  # noqa: S603, S607

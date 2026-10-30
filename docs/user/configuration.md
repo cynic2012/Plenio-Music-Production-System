@@ -31,7 +31,7 @@ timeout_seconds = 3600
 idle_timeout_seconds = 300
 
 [llm]                                  # Local LLM
-llama_server = "D:/tools/llama.cpp"    # the llama-server program or its folder
+llama_server = "D:/tools/llama.cpp"    # the llama-server program or its folder (no other program is started)
 other_apps = true                      # LM Studio, Hugging Face cache, Ollama ...
 
 [llm.folders]                          # more GGUF folders: label = folder

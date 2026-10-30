@@ -3,14 +3,11 @@ UniverSR: Unified and Versatile Audio Super-Resolution via Vocoder-Free Flow Mat
 Inference wrapper module.
 """
 
-import os
 from typing import Optional, Union
 
 import numpy as np
 import torch
 import torchaudio
-import yaml
-from huggingface_hub import hf_hub_download
 
 from .models.unet import ConvNeXtUNetCond
 from .flow.path import OriginalCFMPath
@@ -48,99 +45,6 @@ class UniverSR(torch.nn.Module):
         self.transform = transform
         self.path = path
         self._device = device
-
-    @classmethod
-    def from_pretrained(
-        cls,
-        repo_id_or_path: str,
-        device: str = "cuda",
-        revision: Optional[str] = None,
-    ) -> "UniverSR":
-        """
-        Load a pretrained UniverSR model.
-
-        Args:
-            repo_id_or_path: HuggingFace repo ID (e.g. "woongzip1/universr-speech")
-                             or local directory path containing config.yaml and pytorch_model.bin.
-            device: Device to load the model on.
-            revision: Optional HuggingFace revision (branch, tag, or commit hash).
-
-        Returns:
-            UniverSR instance ready for inference.
-        """
-        if os.path.isdir(repo_id_or_path):
-            config_path = os.path.join(repo_id_or_path, "config.yaml")
-            model_path = os.path.join(repo_id_or_path, "pytorch_model.bin")
-        else:
-            config_path = hf_hub_download(
-                repo_id=repo_id_or_path, filename="config.yaml", revision=revision
-            )
-            model_path = hf_hub_download(
-                repo_id=repo_id_or_path, filename="pytorch_model.bin", revision=revision
-            )
-
-        # Load config
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-
-        # Build model
-        model = ConvNeXtUNetCond(**config["model"])
-        state_dict = torch.load(model_path, map_location="cpu", weights_only=True)
-        model.load_state_dict(state_dict)
-        model.to(device).eval()
-
-        # Build transform
-        transform = AmplitudeCompressedComplexSTFT(**config["transform"])
-        transform.to(device)
-
-        # Build probability path
-        path_args = config.get("path", {}).get("init_args", {"sigma_min": 1e-4})
-        path = OriginalCFMPath(**path_args)
-
-        return cls(model=model, transform=transform, path=path, device=device)
-
-    @classmethod
-    def from_local(
-        cls,
-        ckpt_path: str,
-        config_path: str,
-        device: str = "cuda",
-    ) -> "UniverSR":
-        """
-        Load UniverSR from a local checkpoint (e.g. training checkpoint with optimizer state).
-
-        This handles the standard training checkpoint format where weights are stored
-        under the 'model_state_dict' key, as opposed to from_pretrained() which expects
-        a clean state_dict saved as pytorch_model.bin.
-
-        Args:
-            ckpt_path: Path to checkpoint file (.pth).
-            config_path: Path to YAML config file.
-            device: Device to load the model on.
-
-        Returns:
-            UniverSR instance ready for inference.
-        """
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-
-        model = ConvNeXtUNetCond(**config["model"])
-        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-
-        # Handle both formats: raw state_dict or training checkpoint
-        if "model_state_dict" in ckpt:
-            model.load_state_dict(ckpt["model_state_dict"])
-        else:
-            model.load_state_dict(ckpt)
-        model.to(device).eval()
-
-        transform = AmplitudeCompressedComplexSTFT(**config["transform"])
-        transform.to(device)
-
-        path_args = config.get("path", {}).get("init_args", {"sigma_min": 1e-4})
-        path = OriginalCFMPath(**path_args)
-
-        return cls(model=model, transform=transform, path=path, device=device)
 
     # ------------------------------------------------------------------ #
     #  Public API                                                         #

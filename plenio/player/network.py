@@ -12,9 +12,11 @@ that says how to come in. *New link* makes another code; the old link and every 
 A gateway reads a request's head, checks the cookie, and passes the request on with this computer's own
 address as its host (ComfyUI and the player answer only requests addressed to themselves), the cookie taken
 out and ``Connection: close``; then it passes the bytes both ways until the answer is done - a WebSocket
-(ComfyUI's ``/ws``) stays open as long as it lasts. Requests that come to the player this way say so
-(``X-Plenio-Remote``): from the network, the player does everything but choose its folders, stop, open folders
-on this computer's screen and delete songs for good (it retires them).
+(ComfyUI's ``/ws``) stays open as long as it lasts. Requests that come this way say so (``X-Plenio-Remote``,
+a browser's own value taken out): from the network, the player does everything but choose its folders, stop,
+open folders on this computer's screen and delete songs for good (it retires them), and it names no folders of
+this computer; ComfyUI ignores the header, and Plenio's routes in it answer what only this computer may ask -
+the System Check's report, starting the player - as they answer ``--listen``: not from the network.
 
 Standard library only.
 """
@@ -386,7 +388,7 @@ class NetworkAccess:
                 (self.host, port),
                 self,
                 self.comfyui_target,
-                remote=False,
+                remote=True,
                 missing=door(
                     "ComfyUI",
                     "ComfyUI is not running on the computer just now. Start it there, then reload this page.",

@@ -58,13 +58,18 @@ def find_runtimes(
     configured: Path | None = None,
     python: str = sys.executable,
 ) -> list[Runtime]:
-    """The runtimes on this machine, best first (see the module text); ``configured`` is a program or the
-    folder that holds it."""
+    """The runtimes on this machine, best first (see the module text); ``configured`` is llama.cpp's
+    ``llama-server`` or the folder that holds it - a program of another name is not started (a configuration, or
+    an environment variable, names no other program to run)."""
     server = _exe("llama-server", platform)
     local = Path(env["LOCALAPPDATA"]) if env.get("LOCALAPPDATA") else home / "AppData" / "Local"
     candidates: list[tuple[str, Path | None]] = []
     if configured is not None:
-        candidates.append(("configured", configured / server if configured.is_dir() else configured))
+        program = configured / server if configured.is_dir() else configured
+        if program.name.lower().startswith(
+            "llama-server"
+        ):  # llama-server, llama-server.exe, llama-server-cuda ...
+            candidates.append(("configured", program))
     found = shutil.which("llama-server", path=env.get("PATH"))
     candidates.append(("PATH", Path(found) if found else None))
     unsloth = home / ".unsloth" / "llama.cpp"

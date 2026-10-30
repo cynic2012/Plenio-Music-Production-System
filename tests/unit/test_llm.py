@@ -541,6 +541,22 @@ def test_runtimes_in_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     assert found[-1].command[1:] == ("-m", "plenio.workers.llama_http")
 
 
+def test_a_configured_program_is_llama_server_or_none(tmp_path: Path) -> None:
+    """The configuration (or PLENIO_LLAMA_SERVER) names llama.cpp's server or its folder - no other program to run."""
+    exe = runtime._exe("llama-server", sys.platform)
+    other = touch(tmp_path / "tools" / runtime._exe("anything", sys.platform))
+    cuda = touch(tmp_path / "cuda" / runtime._exe("llama-server-cuda", sys.platform))
+
+    def configured(path: Path) -> list[str]:
+        found = llm.find_runtimes({}, tmp_path / "home", platform=sys.platform, configured=path, python="py")
+        return [r.command[0] for r in found if r.name == "llama-server (configured)"]
+
+    assert configured(other) == [] and configured(cuda) == [str(cuda)]
+    assert configured(other.parent) == []  # a folder without llama-server
+    server = touch(tmp_path / "tools" / exe)
+    assert configured(other.parent) == [str(server)]
+
+
 FAKE_LLAMA_SERVER = r"""
 import argparse, json, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer

@@ -30,6 +30,10 @@ class PlenioUserError(PlenioError):
     """The input or the configuration is wrong; the user can fix it."""
 
 
+class PlenioAccessError(PlenioUserError):
+    """A request from where it may not come: what only a browser on the computer ComfyUI runs on may ask."""
+
+
 class PlenioValidationError(PlenioUserError):
     """A document or value failed validation.
 
@@ -104,3 +108,30 @@ class PlenioWorkerError(PlenioError):
 
 class PlenioCancelledError(PlenioError):
     """The user interrupted the run."""
+
+
+INTERNAL_MESSAGE = (
+    "Plenio could not answer this request - an error in Plenio. ComfyUI's console (its log) says which."
+)
+"""What an HTTP route says of an error that is no Plenio error (a bug): its own text stays in the log."""
+
+
+def public_error(error: BaseException) -> tuple[int, dict[str, Any]]:
+    """What an HTTP route answers about ``error`` - its status and the body's ``error``: Plenio's errors as they are
+    written for the user (403 for a request from where it may not come, 400 for the user's, 500 else), any other
+    error without its text - an exception's text can name this computer's folders and files - which the log keeps."""
+    if isinstance(error, PlenioError):
+        status = (
+            403
+            if isinstance(error, PlenioAccessError)
+            else 400
+            if isinstance(error, PlenioUserError)
+            else 500
+        )
+        return status, {
+            "type": type(error).__name__,
+            "message": error.message,
+            "hint": error.hint,
+            "details": error.details,
+        }
+    return 500, {"type": "InternalError", "message": INTERNAL_MESSAGE, "hint": None, "details": {}}

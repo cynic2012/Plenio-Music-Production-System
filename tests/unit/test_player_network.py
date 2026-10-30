@@ -17,6 +17,7 @@ from typing import Any
 import pytest
 
 from plenio.player import network as network_module
+from plenio.player import server as server_module
 from plenio.player.library import Library
 from plenio.player.network import COOKIE, NetworkAccess
 from plenio.player.server import State, serve
@@ -152,17 +153,19 @@ def test_a_request_is_passed_on_as_if_it_came_from_this_computer(access: Network
         and sent["x-plenio-remote-host"] == here
     )
     assert sent["connection"] == "close"
-    # another site's page keeps its own origin (and the player turns it away); ComfyUI's gateway names no network
+    # another site's page keeps its own origin (and the player turns it away); ComfyUI hears it came from the
+    # network too - Plenio's routes in it answer what only this computer may ask (its System Check's report,
+    # starting the player) not by this way, as they answer --listen - whatever the browser said itself
     code, _, body = call(
         comfy,
         "GET",
         "/prompt",
         Cookie=f"{COOKIE}={token}",
         Origin="http://evil.example",
-        **{"X-Plenio-Remote": "1"},
+        **{"X-Plenio-Remote": "0"},
     )
     sent = {k.lower(): v for k, v in json.loads(body)["headers"].items()}
-    assert sent["origin"] == "http://evil.example" and "x-plenio-remote" not in sent
+    assert sent["origin"] == "http://evil.example" and sent["x-plenio-remote"] == "1"
 
 
 def test_a_websocket_stays_open_both_ways(tmp_path: Path) -> None:
@@ -289,6 +292,58 @@ def test_from_the_network_the_player_does_all_but_this_computers_own_things(
     assert json.loads(call(port, "GET", "/api/state")[2])["favorites"] == ["a"]
     # a program on this computer that sends the header itself only holds itself back (it could do more)
     assert json.loads(call(port, "GET", "/api/info", **{"X-Plenio-Remote": "1"})[2])["remote"] is True
+
+
+def test_from_the_network_the_player_names_no_place_on_this_computer(
+    player: tuple[int, NetworkAccess, State], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Where the songs, the state and the made files lie is this computer's business: the network hears their names,
+    and of a failure only that it failed (its text can name a folder); the page on this computer hears it all."""
+    port, network, _ = player
+    assert (
+        call(port, "PUT", "/api/network", b'{"on": true}', **{"Content-Type": "application/json"})[0] == 200
+    )
+    door, cookie = network.status()["port"], {"Cookie": f"{COOKIE}={network.token}"}
+    here, there = (json.loads(call(p, "GET", "/api/info", **h)[2]) for p, h in ((port, {}), (door, cookie)))
+    assert here["state"] == str(tmp_path / "state" / "state.json") and here["folders"] == [
+        str(tmp_path / "songs")
+    ]
+    assert there["state"] == "state.json" and there["folders"] == ["songs"]
+    library = json.loads(call(door, "GET", "/api/library", **cookie)[2])
+    assert library["folders"] == ["songs"] and library["songs"][0]["title"] == "One"
+    assert json.loads(call(port, "GET", "/api/library")[2])["folders"] == [str(tmp_path / "songs")]
+    song = library["songs"][0]["id"]
+    (tmp_path / "songs" / "One.plenio.json").write_text("{broken", encoding="utf-8")
+    code, _, body = call(door, "GET", f"/api/song/{song}", **cookie)
+    assert code == 500 and json.loads(body)["error"] == server_module.REMOTE_FAILURE
+    code, _, body = call(port, "GET", f"/api/song/{song}")
+    assert code == 500 and json.loads(body)["error"] != server_module.REMOTE_FAILURE
+    # an address of its own to look for ComfyUI at: from this computer only (from the network it would knock at
+    # this computer's ports)
+    asked: list[str] = []
+    monkeypatch.setattr(server_module, "find_comfyui", lambda preferred, also=None: asked.append(preferred))
+    call(port, "GET", "/api/comfyui?url=http://127.0.0.1:9999")
+    call(door, "GET", "/api/comfyui?url=http://127.0.0.1:9999", **cookie)
+    assert asked == ["http://127.0.0.1:9999", ""]
+
+
+def test_the_places_named_for_the_network_are_names_only() -> None:
+    data = {
+        "folder": r"D:\Music\Plenio",
+        "folders": ["/home/anna/music", r"\\server\share\songs", "relative/one"],
+        "jobs": [
+            {"folder": "C:/Users/anna/.plenio/player/videos", "file": "Song.mp4", "url": "/videos/Song.mp4"}
+        ],
+        "title": r"C:\not a place - a title",
+        "record_path": "",
+    }
+    assert server_module.without_places(data) == {
+        "folder": "Plenio",
+        "folders": ["music", "songs", "relative/one"],
+        "jobs": [{"folder": "videos", "file": "Song.mp4", "url": "/videos/Song.mp4"}],
+        "title": r"C:\not a place - a title",
+        "record_path": "",
+    }
 
 
 def test_two_pages_saving_at_once_are_told_and_merge(player: tuple[int, NetworkAccess, State]) -> None:

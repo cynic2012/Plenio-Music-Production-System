@@ -46,6 +46,9 @@ export const session = ref<Session | null>(null)
 export const me = ref<Account | null>(null)
 /** The admin's rights here: the admin, or a helper. */
 export const canAdmin = computed(() => !!me.value && (me.value.admin || !!me.value.helper))
+/** Songs may leave the library from this page: the admin's rights - or a player without the login, as its server
+ * says (a listener, a maker or a guest keeps their own playlists, not the songs). */
+export const canRemoveSongs = computed(() => !session.value?.login || canAdmin.value)
 export const GROUPS: [Group, string, string][] = [
   ['listener', 'Listens', 'Listens only: may not make songs'],
   ['maker', 'Makes songs', 'Listens and makes songs, when the party’s settings let users make them'],

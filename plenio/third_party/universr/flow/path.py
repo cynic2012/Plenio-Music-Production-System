@@ -1,4 +1,3 @@
-import importlib
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple
 
@@ -35,20 +34,3 @@ class OriginalCFMPath(ConditionalProbabilityPath):
 
     def get_target_vector_field(self, xt, x0, x1, t):
         return x1 - (1 - self.sigma_min) * x0
-    
-def get_path(config):
-    class_path = config.get("class_path")
-    
-    if not class_path:
-        raise ValueError("Configuration must contain a 'class_path' key")
-    try:
-        module_path, class_name = class_path.rsplit(".", 1)
-    except ValueError:
-        raise ValueError(f"Invalid class_path '{class_path}'. Must contain at least one")
-    
-    module = importlib.import_module(module_path)
-    Class = getattr(module, class_name)
-    init_args = config.get("init_args", {})
-    return Class(**init_args)
-    
-    

@@ -203,10 +203,15 @@ class ComfyServer:
 
     # --- HTTP ---------------------------------------------------------------
 
-    def request(self, method: str, path: str, body: Any = None) -> tuple[int, Any]:
+    def request(
+        self, method: str, path: str, body: Any = None, headers: Mapping[str, str] | None = None
+    ) -> tuple[int, Any]:
         data = json.dumps(body).encode("utf-8") if body is not None else None
         request = urllib.request.Request(
-            self.url + path, data=data, method=method, headers={"Content-Type": "application/json"}
+            self.url + path,
+            data=data,
+            method=method,
+            headers={"Content-Type": "application/json", **(headers or {})},
         )
         try:
             with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - local test server
