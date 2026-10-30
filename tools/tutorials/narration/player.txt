@@ -124,7 +124,7 @@ Match the music picks a visual for the song's genre, mood and tempo.
 Random picks from the visuals you tick. Cycle goes through them in turn, and Fixed keeps just one.
 
 @ Tick the ones you like
-Tick the ones you like. There are twenty-five classics, fifty-one Plenio Drop visuals, and twenty-two Plenio Nova scenes, in folded groups, with a search.
+Tick the ones you like. There are twenty-five classics, fifty-one Plenio Drop visuals, and Plenio Nova's twenty-two scenes, in folded groups, with a search.
 
 @ Find one by name | optional
 Find one by name, or by what it shows. Or pick a mood.
