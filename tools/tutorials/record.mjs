@@ -55,7 +55,7 @@ if (!args.includes('--render-only')) {
     if (!r.ok) throw new Error(`could not set ${key} on ${url}: ${r.status}`)
   }
   fs.rmSync(dir, { recursive: true, force: true })
-  const studio = await openStudio({ url, out: dir, headless: !args.includes('--headed') })
+  const studio = await openStudio({ url, out: dir, headless: !args.includes('--headed'), gpu: !!script.meta.gpu })
   let failure = null
   try {
     await (comfy ? studio.openComfy() : studio.openPage())

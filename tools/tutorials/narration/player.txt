@@ -63,6 +63,12 @@ The bright square on the right moves with the music. Click it, and Now playing o
 @ ⓘ beside the song opens its page
 The little i beside the song opens its page, too.
 
+@ Its stars: give your own | optional
+Its stars: give your own, by ear. Until you do, the measured ones stand there, faded.
+
+@ Four of five: your stars | optional
+Four out of five: your stars, kept just like your playlists.
+
 @ Its lyrics light up
 Its lyrics light up while they are sung. The times were measured by listening, when the song was exported.
 
@@ -77,6 +83,9 @@ The details list every field of the brief. One you left empty shows its default.
 
 @ How it was made | optional
 How it was made: when. And for a song made since one point four, how long it took, on what, and with which lyrics fidelity.
+
+@ How it came out, measured | optional
+How it came out, measured: the lyrics sung as written, the harmony, the beat, and what went wrong. A hint where to listen first.
 
 @ Every file to download
 And every file to download: the audio, the sheet music, the subtitles, the cover, and the record.
@@ -115,13 +124,25 @@ Match the music picks a visual for the song's genre, mood and tempo.
 Random picks from the visuals you tick. Cycle goes through them in turn, and Fixed keeps just one.
 
 @ Tick the ones you like
-Tick the ones you like. There are twenty-five classics, and fifty-one Plenio Drop visuals.
+Tick the ones you like. There are twenty-five classics, fifty-one Plenio Drop visuals, and twenty-two Plenio Nova scenes, in folded groups, with a search.
+
+@ Find one by name | optional
+Find one by name, or by what it shows. Or pick a mood.
 
 @ They change with every song
 They can change with every song, at every section, every few seconds, or when the music drops in.
 
 @ A song can have a visual of its own
 A song can have a visual of its own, and so can a playlist. The song's choice wins, then the playlist's, then the mode.
+
+@ Plenio Nova: scenes
+Plenio Nova: scenes the graphics card works out for every pixel. A galaxy, northern lights, the Mandelbulb, a black hole that bends the starlight.
+
+@ The player offers only the visuals this computer draws smoothly - here
+The player offers only the visuals this computer draws smoothly. Here, the heaviest ones are left out.
+
+@ The player offers only the visuals | optional
+The player offers only the visuals this computer draws smoothly.
 
 @ Plenio Drop: visuals like
 Plenio Drop: visuals like Winamp's MilkDrop, made anew and drawn on the graphics card. And one is made up fresh, every time.
@@ -213,6 +234,9 @@ The playlist follows, and tells you what the guests did.
 @ A song as a video
 A song as a video: its visual, the lyrics as karaoke, and the notes following the music. In Full HD, in 4K, or upright for Shorts.
 
+@ Seven steps of quality | optional
+Seven steps of quality, from low to best. Or a bitrate of your own.
+
 @ Made on the graphics card
 It's made on the graphics card, faster than the song plays. An MP4, in the player's videos folder.
 
@@ -252,8 +276,8 @@ The studio: when ComfyUI isn't running, the player starts it for you, the way yo
 @ Accounts: who logged in | optional
 Accounts: who's logged in, and the users the admin has set up.
 
-@ A name and a password | optional
-A name and a password, that's all. A user logs in on any device that opens the player, also through the network.
+@ A name, a password and a group | optional
+A name, a password, and a group: listens only, makes songs, or helps as an admin. A user logs in on any device that opens the player.
 
 @ Everything you set is kept
 Everything you set is kept on this computer, by the player itself, not by the browser.

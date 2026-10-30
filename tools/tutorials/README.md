@@ -57,7 +57,10 @@ recording (for example after a change of the narration);
 `--headed` shows the browser. `PLENIO_TUTORIAL_REHEARSE=1` keeps every pause under a fifth of a second: a
 rehearsal that finds what a script cannot click in minutes instead of a long take (its recording is not for
 the edit; give it another `--out`). Tutorial 8 plays the song named by its file name in `PLENIO_PLAYER_SONG`
-(else the longest with timed lyrics, a score and sheet music). `enhance-master` masters `$PLENIO_TUTORIAL_AUDIO` (an unmastered take shows
+(else the longest with timed lyrics, a score and sheet music). Its script asks for a graphics card (`meta.gpu`):
+the browser draws WebGL on the computer's default one - a headless browser otherwise draws it on the processor, and
+the player offers neither Plenio Drop nor Plenio Nova there; its Nova chapter shows the first of a few Nova visuals
+this graphics card draws smoothly. `enhance-master` masters `$PLENIO_TUTORIAL_AUDIO` (an unmastered take shows
 the most; without it, the repository's sample song); `yue2-daw` imports `assets/Open Window Sketch.mid`
 (an original 18-bar song made for the video, in the shape of the writer's lyrics for its brief - `assets/Open Window Sketch.abc` is its score - or
 `$PLENIO_TUTORIAL_MIDI`).

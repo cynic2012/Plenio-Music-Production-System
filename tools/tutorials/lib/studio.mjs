@@ -408,11 +408,14 @@ const CAMERA = `(() => {
 
 // --- the studio -------------------------------------------------------------------------------------
 
-export async function openStudio({ url, out, width = 1920, height = 1000, scale = 1, fps = 30, headless = true, log = console.log }) {
+export async function openStudio({ url, out, width = 1920, height = 1000, scale = 1, fps = 30, headless = true, gpu = false, log = console.log }) {
   fs.mkdirSync(out, { recursive: true })
   const { chromium } = loadPlaywright()
   // sound without a click first: the score editor's playback starts from the script (tap.mjs records it)
-  const browser = await chromium.launch({ headless, args: ['--force-color-profile=srgb', '--hide-scrollbars', '--autoplay-policy=no-user-gesture-required'] })
+  const args = ['--force-color-profile=srgb', '--hide-scrollbars', '--autoplay-policy=no-user-gesture-required']
+  // ``gpu``: WebGL drawn by the graphics card, also headless - the Plenio Player offers Plenio Drop and Nova only there
+  if (gpu) args.push('--enable-gpu', '--ignore-gpu-blocklist', ...(process.platform === 'win32' ? ['--use-angle=d3d11'] : []))
+  const browser = await chromium.launch({ headless, args })
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale, locale: 'en-US', colorScheme: 'dark' })
   await context.addInitScript(OVERLAY)
   await context.addInitScript(TAP)

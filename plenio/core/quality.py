@@ -481,15 +481,6 @@ def song_quality(
     return rated
 
 
-def stars_text(stars: float | None) -> str:
-    """★★★½☆ - for a page without the player's stars."""
-    if stars is None:
-        return ""
-    full = int(stars)
-    half = stars - full >= 0.5
-    return "★" * full + ("½" if half else "") + "☆" * (5 - full - (1 if half else 0))
-
-
 def summary_line(quality: Mapping[str, Any]) -> str:
     """One line for a song's details: the stars and the measures that cost the most."""
     stars = quality.get("stars")

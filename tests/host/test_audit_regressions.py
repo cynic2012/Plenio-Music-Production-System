@@ -358,6 +358,9 @@ def test_a_repeated_title_gets_a_number_and_the_record_says_why_there_are_no_tim
     assert record["title"] == "Yesterday" and "title:" not in first["markdown"]
     assert record["subtitles"]["wanted"] is True and record["subtitles"]["takes"] == 0
     assert record["subtitles"]["why"][0].startswith("the lyrics ASR could not run")
+    # how it came out, measured: in the record, and its stars in the summary when there are any
+    assert record["quality"]["version"] == 1
+    assert ("- stars: " in first["markdown"]) == (record["quality"]["stars"] is not None)
     second, record = export("number", embed=False)
     assert record["title"] == "Yesterday (2)"
     assert (

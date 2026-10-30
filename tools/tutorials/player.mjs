@@ -23,6 +23,10 @@ import { parseNarration } from './lib/voice.mjs'
 
 export const meta = {
   name: 'Plenio tutorial 8 - Plenio Player',
+  // the visuals on a graphics card: without one the player offers neither Plenio Drop nor Plenio Nova (Playwright's
+  // Chromium takes the computer's default one - on the recording computer the processor's integrated graphics, where
+  // the player offers 20 of the 22 Nova visuals)
+  gpu: true,
 }
 
 const TEMPLATE = '1 · YuE2 · Song'
@@ -234,6 +238,16 @@ export default async function player(s) {
   await s.click(page.locator('.bar .song .icon-btn').first())
   await s.wait(1200)
   await talk(s, 'ⓘ beside the song opens its page, too.')
+  // its stars: the measured ones (measured as the page opens, about half a second) faded until the listener rates it
+  await page.waitForFunction(() => / measured/.test(document.querySelector('.rating')?.textContent ?? ''), null, { timeout: 15000 }).catch(() => {})
+  const stars = page.locator('.rating .stars.editable')
+  if (await stars.count()) {
+    await s.hover(page.locator('.rating .measured'))
+    await talk(s, 'Its stars: give your own, by ear - until you do, the measured ones stand there, faded.')
+    await s.click(stars.locator('.star').nth(3), { fx: 0.8 })
+    await s.hover(page.locator('.rating .mine'))
+    await talk(s, 'Four of five: your stars, kept like your playlists.', 2600)
+  }
   await talk(s, 'Its lyrics light up as they are sung - the times were measured when the song was exported.')
   const later = page.locator('.karaoke .line').nth(6)
   if (await later.count()) {
@@ -254,6 +268,12 @@ export default async function player(s) {
   if (await made.count()) {
     await s.spotlight(made, { ms: 3000, pad: 6 })
     await talk(s, 'How it was made: when - and for a song made since 1.4, how long it took, on what, and with which lyrics fidelity.')
+  }
+  const measured = page.locator('.details .block.quality').first()
+  if (await measured.count()) {
+    await measured.scrollIntoViewIfNeeded()
+    await s.spotlight(measured, { ms: 3200, pad: 6 })
+    await talk(s, 'How it came out, measured: the lyrics sung as written, the harmony, the beat - and what went wrong. A hint where to listen first.')
   }
   await page.locator('.downloads').scrollIntoViewIfNeeded()
   await s.hover(page.locator('.downloads .file').first())
@@ -305,12 +325,64 @@ export default async function player(s) {
   await s.click(ticked)
   await talk(s, 'Tick the ones you like: 25 classics, 51 Plenio Drop visuals and 22 Plenio Nova scenes - in groups, with a search.', 2600)
   await s.click(ticked)
+  const find = page.locator('.vpanel input.find')
+  if (await find.count()) {
+    await s.click(find)
+    await s.type('space')
+    await s.wait(700)
+    await talk(s, 'Find one by name or by what it shows - or pick a mood.')
+    await page.fill('.vpanel input.find', '')
+    await s.wait(300)
+  }
   const change = page.locator('.vpanel select').first()
   show(s, 'They change with every song, at every section, every few seconds - or when the music drops in.')
   await s.openSelect(change, { choose: 'section', browse: 3, read: 1000 })
   await talk(s, 'They change with every song, at every section, every few seconds - or when the music drops in.', 1600)
   await s.hover(page.locator('.vpanel h4', { hasText: 'This song' }))
   await talk(s, 'A song can have a visual of its own, and so can a playlist: the song’s wins, then the playlist’s, then the mode.')
+
+  s.chapter('Plenio Nova')
+  await s.click(page.locator('.vpanel .mode', { hasText: 'Fixed' }))
+  await s.wait(500)
+  // offered once timed on this graphics card - in the background, the first time a visual shows (Now playing above)
+  await page.waitForFunction(() => {
+    try {
+      return Object.keys(JSON.parse(localStorage.getItem('plenio.nova.timings') || 'null')?.timings ?? {}).length >= 22
+    } catch {
+      return false
+    }
+  }, null, { timeout: 90000 }).catch(() => {})
+  // the first of these this graphics card draws smoothly
+  const fixedNova = page.locator('.vpanel select').first()
+  const novaPick = await fixedNova.evaluate(
+    (sel, ids) => ids.find((id) => [...sel.options].some((o) => o.value === id)) ?? null,
+    ['nova-galaxy', 'nova-aurora', 'nova-bulb', 'nova-black-hole', 'nova-city'],
+  )
+  if (!novaPick) throw new Error('the player offers no Plenio Nova visual here: record with a graphics card')
+  show(s, 'Plenio Nova: scenes the graphics card works out for every pixel - a galaxy, northern lights, the Mandelbulb, a black hole bending the starlight.')
+  await s.openSelect(fixedNova, { choose: novaPick, browse: 5, read: 1200 })
+  await s.click(page.locator('.vpanel header .icon-btn'))
+  await s.rest(400)
+  await talk(s, 'Plenio Nova: scenes the graphics card works out for every pixel - a galaxy, northern lights, the Mandelbulb, a black hole bending the starlight.', 6500)
+  await s.click(page.locator('.np .top .tools .icon-btn[title^="Visuals"]'))
+  await s.wait(700)
+  // the Nova group: what this graphics card is offered, and what is too heavy for it
+  const novaGroup = page.locator('.vpanel .group', { has: page.locator('.fold', { hasText: 'Plenio Nova' }) }).first()
+  if (await novaGroup.count()) {
+    if ((await novaGroup.locator('.fold').getAttribute('aria-expanded')) !== 'true') await s.click(novaGroup.locator('.fold'))
+    await s.wait(500)
+    const heavy = novaGroup.locator('.note', { hasText: 'Too heavy' }).first()
+    if (await heavy.count()) {
+      await heavy.scrollIntoViewIfNeeded()
+      await s.spotlight(heavy, { ms: 3600, pad: 6 })
+      await talk(s, 'The player offers only the visuals this computer draws smoothly - here, the heaviest are left out.', 3600)
+    } else {
+      await s.spotlight(novaGroup, { ms: 3000, pad: 6 })
+      await talk(s, 'The player offers only the visuals this computer draws smoothly.', 3600)
+    }
+  } else {
+    await talk(s, 'The player offers only the visuals this computer draws smoothly.', 3600)
+  }
 
   s.chapter('Plenio Drop')
   await s.click(page.locator('.vpanel .mode', { hasText: 'Fixed' }))
@@ -572,6 +644,12 @@ export default async function player(s) {
   await s.click(page.locator('.dialog button', { hasText: 'Preview' }))
   await s.wait(1500)
   await talk(s, 'A song as a video: its visual, the lyrics as karaoke, the notes following the music - Full HD, 4K, or upright for Shorts.', 2400)
+  const quality = page.locator('.dialog label', { hasText: 'Quality' }).locator('select').first()
+  if (await quality.count()) {
+    show(s, 'Seven steps of quality, from Low to Best - or a bitrate of your own.')
+    await s.openSelect(quality, { choose: 'high', browse: 4, read: 900 })
+    await talk(s, 'Seven steps of quality, from Low to Best - or a bitrate of your own.', 1600)
+  }
   await s.click(page.locator('.dialog button', { hasText: 'Make the video' }))
   await page.waitForSelector('.dialog .done, .dialog .error', { timeout: 300000 })
   await s.wait(600)
@@ -662,9 +740,14 @@ export default async function player(s) {
     await s.type('Sam')
     await s.click(add.locator('input').nth(1))
     await s.type('sam-1234')
+    const group = add.locator('select.group')
+    if (await group.count()) {
+      show(s, 'A name, a password and a group - listens, makes songs, or helps as an admin. A user logs in on any device that opens the player.')
+      await s.openSelect(group, { choose: 'listener', browse: 3, read: 900 })
+    }
     await s.click(add.locator('button'))
     await s.wait(900)
-    await talk(s, 'A name and a password: a user logs in on any device that opens the player - also through the network.')
+    await talk(s, 'A name, a password and a group - listens, makes songs, or helps as an admin. A user logs in on any device that opens the player.')
   }
   await talk(s, 'Everything you set is kept on this computer, by the player - not in the browser.')
   await s.hover(page.locator('.settings button', { hasText: 'Download a backup' }))

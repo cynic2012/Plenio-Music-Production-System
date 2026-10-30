@@ -29,7 +29,7 @@ from ...core.engines import ENGINES
 from ...core.errors import PlenioCancelledError, PlenioError, PlenioUserError
 from ...core.files import atomic_write_bytes, atomic_write_text
 from ...core.models import AUDIO_MODEL_FOLDERS
-from ...core.quality import song_quality
+from ...core.quality import song_quality, summary_line
 from ...core.release import (
     FORMATS,
     PROJECT_EMBEDDED,
@@ -830,6 +830,12 @@ class PlenioExportRelease(io.ComfyNode):
                     f"- loudness: {level['integrated_lufs']} LUFS, true peak {level['true_peak_dbtp']} dBTP"
                     if level["valid"]
                     else "- loudness: not measurable (silent or too short)"
+                ),
+                # the stars it measured, and the measures that cost the most - where to listen first
+                *(
+                    [f"- stars: {summary_line(record['quality'])}"]
+                    if (record.get("quality") or {}).get("stars") is not None
+                    else []
                 ),
                 *([f"- licence: {x}" for x in licences]),
                 *([f"- {n}" for n in notes]),

@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from plenio.core.quality import measure_audio, measure_record, rate, song_quality, stars_text, summary_line
+from plenio.core.quality import measure_audio, measure_record, rate, song_quality, summary_line
 
 RATE = 22050
 
@@ -158,7 +158,6 @@ def test_the_stars_weigh_how_it_sounds_and_take_off_for_what_went_wrong() -> Non
     assert rate({})["stars"] is None
     parts = {p["key"]: p for p in rate(good)["parts"]}
     assert parts["chords"]["kind"] == "quality" and parts["ending"]["kind"] == "fault"
-    assert stars_text(3.5) == "★★★½☆" and stars_text(None) == ""
     assert summary_line(rate(good)) == "5 of 5 by measure"
     assert "weakest: lyrics sung as written" in summary_line(rate({**good, "lyrics": 0.6}))
 
