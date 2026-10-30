@@ -1,6 +1,28 @@
 # Changelog
 
-All notable changes of the current version and the one before. Versions follow semantic versioning; published Registry versions are immutable. Earlier versions (0.2.0 to 1.3.1): the [changelog of 1.3.2](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.3.2/CHANGELOG.md) (1.3.1), the [changelog of 1.3.1](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.3.1/CHANGELOG.md) (1.3.0), the [changelog of 1.3.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.3.0/CHANGELOG.md) (1.2.1), the [changelog of 1.2.1](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.2.1/CHANGELOG.md) (1.2.0), the [changelog of 1.2.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.2.0/CHANGELOG.md) (1.1.0), the [changelog of 1.1.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.1.0/CHANGELOG.md) (1.0.2), the [changelog of 1.0.2](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.0.2/CHANGELOG.md) (1.0.1), the [changelog of 1.0.1](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.0.1/CHANGELOG.md) (1.0.0), the [changelog of 1.0.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.0.0/CHANGELOG.md) (0.8.0), the [changelog of 0.8.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.8.0/CHANGELOG.md) (0.7.0), the [changelog of 0.7.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.7.0/CHANGELOG.md) (0.6.1), the [changelog of 0.6.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.6.0/CHANGELOG.md) (0.5.0 and 0.6.0), the [changelog of 0.4.4](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.4.4/CHANGELOG.md) (0.2.0 to 0.4.4) and the [GitHub releases](https://github.com/jplenio/Plenio-Music-Production-System/releases).
+All notable changes of the current version and the one before. Versions follow semantic versioning; published Registry versions are immutable. Earlier versions (0.2.0 to 1.3.2): the [changelog of 1.4.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.4.0/CHANGELOG.md) (1.3.2), the [changelog of 1.3.2](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.3.2/CHANGELOG.md) (1.3.1), the [changelog of 1.3.1](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.3.1/CHANGELOG.md) (1.3.0), the [changelog of 1.3.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.3.0/CHANGELOG.md) (1.2.1), the [changelog of 1.2.1](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.2.1/CHANGELOG.md) (1.2.0), the [changelog of 1.2.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.2.0/CHANGELOG.md) (1.1.0), the [changelog of 1.1.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.1.0/CHANGELOG.md) (1.0.2), the [changelog of 1.0.2](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.0.2/CHANGELOG.md) (1.0.1), the [changelog of 1.0.1](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.0.1/CHANGELOG.md) (1.0.0), the [changelog of 1.0.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v1.0.0/CHANGELOG.md) (0.8.0), the [changelog of 0.8.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.8.0/CHANGELOG.md) (0.7.0), the [changelog of 0.7.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.7.0/CHANGELOG.md) (0.6.1), the [changelog of 0.6.0](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.6.0/CHANGELOG.md) (0.5.0 and 0.6.0), the [changelog of 0.4.4](https://github.com/jplenio/Plenio-Music-Production-System/blob/v0.4.4/CHANGELOG.md) (0.2.0 to 0.4.4) and the [GitHub releases](https://github.com/jplenio/Plenio-Music-Production-System/releases).
+
+## 1.4.1 - 2026-10-30
+
+**Plenio Nova calm and sharp, any visual with one click, and the lyrics as written unless you choose otherwise.** Plenio Nova's visuals no longer flicker at their edges and in their finest detail - most of all the Mandelbulb, Spectrum City and the Mandala -, their stars shine steadily, no strip of another picture shows at a picture's edge, and *Balanced* draws them at the screen's own size. In the visuals' settings a visual's name shows it at once, and *Fixed* lists every Nova visual, those this graphics card does not play smoothly greyed with why. The player shows a song's lyrics as sung only when you choose it.
+
+### Added
+
+- **Any visual at once**: in the visuals' settings (✦ in Now playing, or **V**), a click on a visual's name shows it right away - with *Fixed* it stays, otherwise the mode takes over again at the next change; its tick lets the mode choose it, as before.
+
+### Changed
+
+- **The lyrics as written, unless you choose as sung**: the player no longer shows a song's lyrics *as sung* by itself (it did where the take departed far from its lyrics) - the lyrics ASR does not always hear the word sung, a rare word or a name. *As sung* is one click away, on the song's page, in the player bar or with **W**, and kept for that song; *Settings › Lyrics* still sets it for every song. The rule *Auto* chosen before counts as *As written*.
+- **Plenio Nova at the screen's own size**: *Plenio Drop and Nova › Quality › Balanced*, the default, draws Nova's visuals at the full size of the screen (it drew three quarters of it and scaled them up), and *Sharp* finer still - up to one and a half times each way - smoothed down onto the screen; each visual as far as the graphics card keeps it smooth. Plenio Drop draws as before.
+- **Steady stars**: the stars of the nebula, the black hole, the galaxy, the northern lights, the moonlit sea, Spectrum City and Outrun no longer blink: each is a soft dot whose light stays the same as it moves between pixels, and a star smaller than the screen can show fades out instead of sparkling. The galaxy's arms brighten with the mids, where its clusters sparkled with the highs.
+- Spectrum City flies a little slower, and the Mandelbulb's shape breathes with the music's level rather than jumping with every bass note.
+
+### Fixed
+
+- **Plenio Nova's visuals flickered at their edges and in their finest detail**, most of all the Mandelbulb, Spectrum City and the Mandala. What is finer than a pixel is now drawn as its even glow: the Mandelbulb's surface and its outline, Spectrum City's windows, roof neon and street lanes, the Mandala's finest threads, Outrun's grid far off, the streaks of Hyperspace and the glitter on the moonlit sea; the glow no longer blinks with a single bright pixel, and the fine grain stands still. Measured from frame to frame at the same size and with the same music, the flicker is down by 73 % in the Mandala, 51 % in the Mandelbulb, 50 % around the black hole and 31 % in Spectrum City.
+- **A strip of another picture at the top and right edge of a Plenio Nova visual**, most visible while one visual turned into the next: scaling the picture onto the screen blended in what was drawn beside it. The picture now has an edge of its own to blend with.
+- **Spectrum City flew through its towers**; they now stay below the flight.
+- **Plenio Nova's visuals were missing from *Fixed***: a visual is offered once it has been timed smooth on the graphics card, and one timed while the card was busy - a song being made on it - stayed out. Every visual is timed anew with this version, one timed too heavy again each time the player opens (keeping its faster timing), and the lists of one visual - *Fixed*, this song's, the playlist's - show the ones not offered here greyed, with why (*being timed on this graphics card …*, *too heavy for this graphics card*).
 
 ## 1.4.0 - 2026-10-29
 
@@ -49,21 +71,3 @@ All notable changes of the current version and the one before. Versions follow s
 - **An error tells the network no more than that it happened**: a bug in one of Plenio's routes or the Song API is answered without its text, which can name a folder of the computer - ComfyUI's console keeps it. The player answers requests from the network alike, and names them no place of the computer: folders and files only by their names.
 - **Only the admin and the admins' group take songs out of the library**: listeners, makers and guests keep their own playlists, not the songs, and *Remove…* shows only to whom may.
 - **The player and Local LLM start only what they are meant to**: the studio's folder must be a ComfyUI folder (its `main.py` beside `folder_paths.py`, `execution.py` and `comfy`) and its remembered Python a Python; a `llama-server` named in the settings or in `PLENIO_LLAMA_SERVER` must be one, or another program is not started. An address of a page's own to look for ComfyUI at is taken only from this computer.
-
-## 1.3.2 - 2026-10-27
-
-**Lyrics you can correct in Enhance & Master, and instrumental covers that run again.** Enhance & Master gets an optional *Lyrics* block: the recording's words are heard, corrected on a Song Sheet and released as you wrote them. An instrumental cover no longer stops at the transcription, and the player's help plays the tutorials of 1.3.1.
-
-### Added
-
-- **Enhance & Master: correct the lyrics before the release.** An optional *Lyrics* block (bypassed until you switch it on) hears the recording's words and stops at a Song Sheet; the words fixed there go into the subtitles, the lyrics tag and the release record, timed to the singing. Before, the words went out as the ASR heard them, misheard ones included. [Details](docs/user/paths/enhance-master.md#correcting-the-lyrics)
-
-### Fixed
-
-- **An instrumental cover stopped at Transcribe Lyrics** (*The transcription found no vocal melody*) when the source had no singing, although the Cover Brief said *instrumental* (since 1.2.1). An instrumental cover now skips the transcription.
-- **A Song Sheet waiting for review let an Export Release that reads only its report run**, with the unreviewed documents; the report now waits for the approval like the sheet's other outputs.
-- With *copy from loaded file*, a Song Sheet's lyrics now win over the lyrics tag copied from the file.
-
-### Changed
-
-- **Help & tutorials in the player** plays the tutorials of 1.3.1: *8 · The Plenio Player* in its new recording, and the new *9 · Party songs* and *10 · Song API*. The player guide and the Song API guide link them too.

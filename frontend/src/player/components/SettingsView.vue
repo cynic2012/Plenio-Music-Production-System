@@ -18,7 +18,6 @@ import LyricsPanel from './LyricsPanel.vue'
 import LyricsVersionSwitch from './LyricsVersionSwitch.vue'
 import AccountsPanel from './AccountsPanel.vue'
 import { canAdmin, guest, me, session } from '../account'
-import { DEPARTS_EXTRA, DEPARTS_HEARD } from '../lyricsVersion'
 import NetworkAccess from './NetworkAccess.vue'
 import MakeSettings from './MakeSettings.vue'
 import StudioSettings from './StudioSettings.vue'
@@ -343,7 +342,7 @@ function jumpTo(id: string): void {
     <section id="lyrics" class="block">
       <h3><Icon name="mic" /> Lyrics</h3>
       <p class="lead">How the lyrics look while a song plays: the font, the size, the colour - and how each syllable comes in as it is sung.</p>
-      <p class="lead">Which lyrics to follow: <b>as written</b> - the song's lyrics - or <b>as sung</b> - what the take really sings, as heard when it was exported (a music model may repeat a line, make one up or leave one out). <b>Auto</b> shows a song as sung when its take departs far from its lyrics (less than {{ Math.round(DEPARTS_HEARD * 100) }} % of their words sung as written, or more than {{ Math.round(DEPARTS_EXTRA * 100) }} % words of its own), else as written. Switch a song either way on its page or in the player bar (W) - like master and original; the choice is kept for that song. Songs exported before Plenio kept what was sung show their written lyrics.</p>
+      <p class="lead">Which lyrics to follow: <b>as written</b> - the song's lyrics - or <b>as sung</b> - what the take really sings, as heard when it was exported (a music model may repeat a line, make one up or leave one out). Every song shows its lyrics as written until you choose otherwise: what was heard is not always the word sung - a rare word, a name. Switch a song either way on its page or in the player bar (W) - like master and original; the choice is kept for that song. Here: the rule for every song. Songs exported before Plenio kept what was sung show their written lyrics.</p>
       <LyricsVersionSwitch />
       <LyricsPanel />
     </section>

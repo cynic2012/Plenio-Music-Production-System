@@ -2,16 +2,17 @@
  * Which lyrics the player follows (owner's requests 2026-10-23): the lyrics **as written** - the song's lyrics,
  * timed by listening - or **as sung** - what the take really sings, as the lyrics ASR heard it when the song was
  * exported (``core.subtitles.time_sung``). A music model does not always sing what it was given: it repeats a
- * line, makes one up, leaves one out. By default (*auto*) a song whose take departs far from its lyrics shows
- * them as sung, the others as written; the listener switches a song either way, like master and original
- * (the choice is kept for that song). The notation always follows the score: only the written syllables have
- * a note.
+ * line, makes one up, leaves one out. Every song shows its lyrics as written, and as sung only where the listener
+ * chooses it (owner's request 2026-10-30) - for a song, like master and original (the choice is kept for that
+ * song), or in Settings for every song; never by itself: the ASR does not always hear the word sung (a rare word, a
+ * name), and unasked its words would puzzle. The notation always follows the score: only the written syllables
+ * have a note.
  */
 import type { SongDetail, SungLyrics, TimedLine } from './api'
 
 export type LyricsVersion = 'written' | 'sung'
-/** The listener's rule for every song: ``auto`` decides by how far the take departs from its lyrics. */
-export type LyricsChoice = 'auto' | LyricsVersion
+/** The listener's rule for every song: as written unless they choose as sung. */
+export type LyricsChoice = LyricsVersion
 
 export const LYRICS_VERSIONS: { id: LyricsVersion; label: string; title: string }[] = [
   { id: 'written', label: 'As written', title: "The song's lyrics, at the times they are sung" },
@@ -19,21 +20,17 @@ export const LYRICS_VERSIONS: { id: LyricsVersion; label: string; title: string 
 ]
 
 export const LYRICS_CHOICES: { id: LyricsChoice; label: string; title: string }[] = [
-  { id: 'auto', label: 'Auto', title: 'As sung where the take departs far from its lyrics, else as written' },
-  ...LYRICS_VERSIONS
+  { id: 'written', label: 'As written', title: "Every song's lyrics as written (a song's own choice aside)" },
+  { id: 'sung', label: 'As sung', title: "Every song as its take sings it, where the song was exported with that (a song's own choice aside)" }
 ]
-
-/** Below this share of its lyrics' words sung as written, a take departs from its lyrics. */
-export const DEPARTS_HEARD = 0.75
-/** Above this many words of its own (a share of its lyrics' words), a take departs from its lyrics. */
-export const DEPARTS_EXTRA = 0.25
 
 export function versionOf(raw: unknown): LyricsVersion {
   return raw === 'sung' ? 'sung' : 'written'
 }
 
+/** The rule kept: as sung only where it was chosen so - anything else, the *Auto* of before 1.4.1 too, as written. */
 export function choiceOf(raw: unknown): LyricsChoice {
-  return raw === 'sung' || raw === 'written' ? raw : 'auto'
+  return raw === 'sung' ? 'sung' : 'written'
 }
 
 /** The listener's choices for single songs, as kept (anything else is dropped). */
@@ -51,14 +48,6 @@ export function sungOf(detail: SongDetail | null | undefined): SungLyrics | null
   return sung && Array.isArray(sung.lines) && sung.lines.length ? (sung as SungLyrics) : null
 }
 
-/** Whether a take departs far from its lyrics: much of them not sung as written, or many words of its own. */
-export function departs(sung: SungLyrics): boolean {
-  const words = sung.sections.reduce((n, s) => n + s.words, 0)
-  const heard = typeof sung.written_heard === 'number' ? sung.written_heard : 1
-  const extra = typeof sung.extra_words === 'number' && words ? sung.extra_words / words : 0
-  return heard < DEPARTS_HEARD || extra > DEPARTS_EXTRA
-}
-
 export interface LyricsPrefs {
   lyricsChoice: LyricsChoice
   lyricsFor: Record<string, LyricsVersion>
@@ -66,10 +55,7 @@ export interface LyricsPrefs {
 
 /** The version a song follows by the rule alone (``choice``): written for a song without what its take sings. */
 export function ruleFor(detail: SongDetail | null | undefined, choice: LyricsChoice): LyricsVersion {
-  const sung = sungOf(detail)
-  if (!sung) return 'written'
-  if (choice === 'auto') return departs(sung) ? 'sung' : 'written'
-  return choice
+  return sungOf(detail) ? choice : 'written'
 }
 
 /** The version a song follows: the listener's choice for it, else the rule. */

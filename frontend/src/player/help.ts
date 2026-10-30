@@ -90,7 +90,7 @@ export const TOPICS: HelpTopic[] = [
     body: [
       '**The lyrics light up word by word** as they are sung; a click on a line plays from there. **W** (or the *Lyrics* chip) switches between the lyrics as written and as the take really sings them. On a song’s page, *Full lyrics* shows them as text with their sections, to copy - and *The song’s page* has the lyrics, the prompts and every setting on one page.',
       '**The notation** follows the music - also through the instrumental parts; a click on a note jumps there.',
-      '**Visuals** (✦ in Now playing, or **V**): classics like Winamp\'s, and *Plenio Drop* visuals like MilkDrop\'s. Choose how they are picked (*match the music*, random, cycle, fixed), when they change (every song, every section, every few seconds) and how (*Morph*, *Melt* …). **N** shows another one; **Shift+F** puts the visual on the whole screen.',
+      '**Visuals** (✦ in Now playing, or **V**): classics like Winamp\'s, and *Plenio Drop* visuals like MilkDrop\'s. Click a visual\'s name there to see it at once. Choose how they are picked (*match the music*, random, cycle, fixed), when they change (every song, every section, every few seconds) and how (*Morph*, *Melt* …). **N** shows another one; **Shift+F** puts the visual on the whole screen.',
       '**How the lyrics look** (🎤): eleven fonts, eleven effects (*Glow*, *Bounce*, *Neon*, *On the beat* …), colour and size - also in videos.',
       '**A · master / B · original** plays the unmastered take in step; the speed changes without changing the pitch.',
     ],

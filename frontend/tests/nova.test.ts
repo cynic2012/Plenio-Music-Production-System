@@ -8,6 +8,7 @@ import type { Frame } from '../src/player/visuals/analysis'
 import { chooseVisual, withDefaults } from '../src/player/visuals/chooser'
 import {
   Governor,
+  NOVA_DRAW_MS,
   NOVA_FLOOR,
   NOVA_FRAME_MS,
   governor,
@@ -23,8 +24,8 @@ import {
   setGpuSupport,
   takeBackLeftOut,
 } from '../src/player/visuals/gpu'
-import { NOVA, NOVA_PRESETS, NOVA_VERSION } from '../src/player/visuals/nova'
-import { NovaMusic, NovaRenderer } from '../src/player/visuals/nova/renderer'
+import { NOVA, NOVA_PRESETS, NOVA_VERSION, novaScaleFor, toTime } from '../src/player/visuals/nova'
+import { MAX_SUPERSAMPLE, NovaMusic, NovaRenderer } from '../src/player/visuals/nova/renderer'
 import { PRESETS, presetById } from '../src/player/visuals/presets'
 
 const MOODS = ['energetic', 'calm', 'acoustic', 'electronic', 'dark']
@@ -78,6 +79,19 @@ describe('Plenio Nova', () => {
     for (const def of NOVA) expect(PRESETS.find((p) => p.id === def.id)?.kind).toBe('nova')
     expect(NOVA_PRESETS.map((p) => p.name)).toContain('Nova · Black hole')
     expect(NOVA_VERSION).toMatch(/^-?\d+$/)
+  })
+
+  it('draws steady stars: none blinks with the highs or the time (owner’s request 2026-10-30)', () => {
+    for (const def of NOVA) {
+      expect(def.image, def.name).not.toMatch(/twinkl/i)
+      for (const line of def.image.split('\n').filter((l) => /starDot/.test(l))) {
+        expect(line, def.name).not.toMatch(/\btreb\b|sin\(T/)
+      }
+    }
+    // the sky scenes all draw their stars so
+    for (const id of ['nova-nebula', 'nova-black-hole', 'nova-galaxy', 'nova-aurora', 'nova-ocean', 'nova-city', 'nova-outrun']) {
+      expect(NOVA.find((d) => d.id === id)?.image, id).toMatch(/starDot/)
+    }
   })
 
   it('hears the music smoothly and adds up the way and the turn', () => {
@@ -176,12 +190,29 @@ describe('what this device can draw (owner’s request 2026-10-30)', () => {
     keepTiming('nova-ink', 0.5)
     expect(novaPixels('nova-ink', screen)).toBe(screen)
     keepTiming('nova-bulb', 10)
-    expect(novaPixels('nova-bulb', screen)).toBeCloseTo((NOVA_FRAME_MS * 1e6) / 10, 0)
+    expect(novaPixels('nova-bulb', screen)).toBeCloseTo((NOVA_DRAW_MS * 1e6) / 10, 0)
     // a huge screen: no more than the ceiling
     expect(novaPixels('nova-ink', 7680 * 4320)).toBe(2560 * 1440)
+    // Sharp: finer than the screen where the card has the time
+    expect(novaPixels('nova-ink', 1280 * 720 * MAX_SUPERSAMPLE ** 2)).toBe(1280 * 720 * MAX_SUPERSAMPLE ** 2)
     // frames coming late: fewer
     governor.factor = 0.5
     expect(novaPixels('nova-ink', screen)).toBe(screen * 0.5)
+  })
+
+  it('draws Nova at the screen’s own size when balanced, finer when sharp (issue 2026-10-30: blurred edges)', () => {
+    expect(novaScaleFor(0.5)).toBe(0.5)
+    expect(novaScaleFor(0.75)).toBe(1)
+    expect(novaScaleFor(1)).toBe(MAX_SUPERSAMPLE)
+  })
+
+  it('times a visual too heavy here once more each session, and every one not timed yet', () => {
+    setGpuSupport(GPU)
+    const limit = (NOVA_FRAME_MS * 1e6) / NOVA_FLOOR
+    const [a, b, c, d] = NOVA
+    const timings = { [a.id]: limit * 0.5, [b.id]: limit * 3, [d.id]: -1 }
+    expect(toTime([a, b, c, d], timings, new Set()).map((x) => x.id)).toEqual([b.id, c.id])
+    expect(toTime([a, b, c, d], timings, new Set([b.id])).map((x) => x.id)).toEqual([c.id])
   })
 
   it('keeps the timings for this card, and takes them again for another one', () => {
@@ -247,9 +278,10 @@ describe('the governor', () => {
   })
 })
 
-/** A WebGL2 context that draws nothing and notes every use of a picture already let go (deleted). */
-function fakeWebGl(): { gl: WebGL2RenderingContext; misuse: string[] } {
+/** A WebGL2 context that draws nothing and notes every use of a picture already let go (deleted), and the viewports. */
+function fakeWebGl(): { gl: WebGL2RenderingContext; misuse: string[]; viewports: number[][] } {
   const misuse: string[] = []
+  const viewports: number[][] = []
   let made = 0
   const object = () => ({ id: ++made, deleted: false })
   const methods: Record<string, (...args: never[]) => unknown> = {
@@ -263,6 +295,7 @@ function fakeWebGl(): { gl: WebGL2RenderingContext; misuse: string[] } {
     deleteFramebuffer: (f: { deleted: boolean }) => void (f.deleted = true),
     bindTexture: (_target: number, t: { id: number; deleted: boolean } | null) => void (t?.deleted && misuse.push(`texture ${t.id}`)),
     bindFramebuffer: (_target: number, f: { id: number; deleted: boolean } | null) => void (f?.deleted && misuse.push(`framebuffer ${f.id}`)),
+    viewport: (...args: number[]) => void viewports.push(args),
   }
   for (const name of ['createTexture', 'createFramebuffer', 'createProgram', 'createShader', 'createVertexArray', 'createBuffer']) methods[name] = object
   const gl = new Proxy({} as Record<string, unknown>, {
@@ -272,11 +305,27 @@ function fakeWebGl(): { gl: WebGL2RenderingContext; misuse: string[] } {
       return () => undefined
     },
   })
-  return { gl: gl as unknown as WebGL2RenderingContext, misuse }
+  return { gl: gl as unknown as WebGL2RenderingContext, misuse, viewports }
 }
 
 describe('the Nova renderer', () => {
   afterEach(() => vi.restoreAllMocks())
+
+  it('draws a guard beyond the picture, and finer than the screen when asked (issue 2026-10-30: flickering edges)', () => {
+    const { gl, viewports } = fakeWebGl()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => gl as never)
+    const renderer = new NovaRenderer()
+    const palette = new Uint8ClampedArray(256 * 3)
+    // asked for four times the screen's pixels: drawn MAX_SUPERSAMPLE finer each way, no more
+    const picture = renderer.render(NOVA[0], new NovaMusic(), palette, 800, 450, {}, 800 * 450 * 4)
+    expect(picture).not.toBeNull()
+    expect([picture!.width, picture!.height]).toEqual([Math.round(800 * MAX_SUPERSAMPLE), Math.round(450 * MAX_SUPERSAMPLE)])
+    // the last pass: two pixels beyond its top and right edge (repeating it), and the canvas large enough for them -
+    // scaled onto the screen, the picture's edge blends with itself, never with another picture left there
+    expect(viewports.at(-1)).toEqual([0, 0, picture!.width + 2, picture!.height + 2])
+    expect(picture!.canvas.width).toBeGreaterThanOrEqual(picture!.width + 2)
+    expect(picture!.canvas.height).toBeGreaterThanOrEqual(picture!.height + 2)
+  })
 
   it('never draws into a picture it let go - a crossfade, the timing and the governor ask for several sizes', () => {
     // as on a weaker graphics card: each visual gets the pixels it draws smoothly, so their pictures differ in size

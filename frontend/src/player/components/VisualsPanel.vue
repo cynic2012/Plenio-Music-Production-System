@@ -7,10 +7,11 @@
  *
  * The visuals to choose from in a compact overview (owner's request 2026-10-29: many visuals, yet easy to oversee):
  * a search and the moods they suit, the groups folded with how many are ticked, each visual a small chip (what it
- * shows on hovering). Only what this device can draw smoothly is offered (owner's request 2026-10-30); what is not,
- * and why, is said under its group.
+ * shows on hovering) - its name shows it now (with *Fixed*: for good), its tick lets the mode choose it. Only what
+ * this device can draw smoothly is offered (owner's request 2026-10-30); what is not, and why, is said under its
+ * group, and the lists of one visual show it greyed with the reason (a Nova visual still being timed, too heavy).
  */
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 import { guestStatus } from '../guests'
 import { current, queueSource, say, settings, state } from '../store'
@@ -23,13 +24,13 @@ import Icon from './Icon.vue'
 import { isPortable } from '../portable'
 
 const props = defineProps<{ active: string }>()
-const emit = defineEmits<{ close: []; next: []; fullscreen: [] }>()
+const emit = defineEmits<{ close: []; next: []; play: [id: string]; fullscreen: [] }>()
 
 const GUIDE = 'https://github.com/jplenio/Plenio-Music-Production-System/blob/main/docs/user/concepts/player-visuals.md'
 const QUALITY: [number, string][] = [
   [0.5, 'Fast - for a slow computer'],
   [0.75, 'Balanced'],
-  [1, 'Sharp - every pixel'],
+  [1, 'Sharp - finest'],
 ]
 const support = gpuSupport()
 
@@ -41,6 +42,8 @@ interface Group {
   offered: Preset[]
   /** What is not offered here, and why. */
   notes: string[]
+  /** The visuals not offered here, each with why: greyed in the lists of one visual. */
+  unavailable: { preset: Preset; why: string }[]
 }
 
 function names(list: Preset[]): string {
@@ -52,24 +55,30 @@ const GROUPS = computed<Group[]>(() => {
   const nova = PRESETS.filter((p) => p.kind === 'nova')
   const groups: Group[] = []
   const out = (list: Preset[]) => list.filter((p) => leftOut.value.has(p.id))
-  groups.push({ id: 'classic', label: 'Classic', all: CLASSIC, offered: CLASSIC.filter(offered), notes: [] })
+  groups.push({ id: 'classic', label: 'Classic', all: CLASSIC, offered: CLASSIC.filter(offered), notes: [], unavailable: [] })
   if (support.webgl) {
-    groups.push({ id: 'drop', label: 'Plenio Drop', all: drop, offered: drop.filter(offered), notes: [] })
+    groups.push({ id: 'drop', label: 'Plenio Drop', all: drop, offered: drop.filter(offered), notes: [], unavailable: [] })
     if (support.float) {
-      const timing = nova.filter((p) => novaTimings.value[p.id] === undefined).length
+      const waiting = nova.filter((p) => novaTimings.value[p.id] === undefined)
       const heavy = nova.filter((p) => novaSmooth(p.id) === false && novaTimings.value[p.id] !== -1)
       const broken = nova.filter((p) => novaTimings.value[p.id] === -1)
       const notes: string[] = []
-      if (timing) notes.push(`Timing them on this graphics card … ${nova.length - timing} of ${nova.length} done - offered once they play smoothly here.`)
-      if (heavy.length) notes.push(`Too heavy to play smoothly on this graphics card, so not offered here: ${names(heavy)}.`)
+      if (waiting.length) notes.push(`Timing them on this graphics card … ${nova.length - waiting.length} of ${nova.length} done - offered once they play smoothly here.`)
+      if (heavy.length) notes.push(`Too heavy to play smoothly on this graphics card, so not offered here: ${names(heavy)} (timed again each time the player opens).`)
       if (broken.length) notes.push(`Not working in this browser: ${names(broken)}.`)
-      groups.push({ id: 'nova', label: 'Plenio Nova', all: nova, offered: nova.filter(offered), notes })
+      const unavailable = [
+        ...waiting.map((preset) => ({ preset, why: 'being timed on this graphics card …' })),
+        ...heavy.map((preset) => ({ preset, why: 'too heavy for this graphics card' })),
+        ...broken.map((preset) => ({ preset, why: 'not working in this browser' })),
+      ]
+      groups.push({ id: 'nova', label: 'Plenio Nova', all: nova, offered: nova.filter(offered), notes, unavailable })
     }
-    if (myPresets.value.length) groups.push({ id: 'mine', label: 'My presets', all: myPresets.value, offered: myPresets.value.filter(offered), notes: [] })
+    if (myPresets.value.length) groups.push({ id: 'mine', label: 'My presets', all: myPresets.value, offered: myPresets.value.filter(offered), notes: [], unavailable: [] })
   }
   for (const g of groups) {
     const gone = out(g.all)
     if (gone.length) g.notes.push(`Left out for now - they did not keep up here: ${names(gone)}.`)
+    for (const preset of gone) if (!g.unavailable.some((u) => u.preset === preset)) g.unavailable.push({ preset, why: 'left out for now - did not keep up' })
   }
   return groups
 })
@@ -145,6 +154,12 @@ const notHere = (id: string | undefined): Preset | null => {
   return preset && !offeredAll.value.includes(preset) ? preset : null
 }
 
+/** A visual's name clicked: shown now - with *Fixed* the fixed one from now on, else until the next change. Shown
+ * once the new fixed one has been taken up: a song's or a playlist's own visual comes before it, not before a click. */
+function play(id: string): void {
+  if (v.mode === 'fixed') v.fixed = id
+  void nextTick(() => emit('play', id))
+}
 function togglePool(id: string): void {
   const at = v.pool.indexOf(id)
   if (at >= 0 && v.pool.length > 1) v.pool.splice(at, 1)
@@ -208,8 +223,10 @@ async function editCopy(): Promise<void> {
         <option v-if="notHere(v.fixed)" :value="v.fixed" disabled>{{ notHere(v.fixed)?.name }} - not on this device</option>
         <optgroup v-for="g in GROUPS" :key="g.id" :label="g.label">
           <option v-for="p in g.offered" :key="p.id" :value="p.id">{{ shortName(p.name) }}</option>
+          <option v-for="u in g.unavailable" :key="u.preset.id" :value="u.preset.id" disabled>{{ shortName(u.preset.name) }} - {{ u.why }}</option>
         </optgroup>
       </select>
+      <p class="note tight">Or click a visual's name below.</p>
     </template>
 
     <template v-if="v.mode !== 'fixed'">
@@ -233,6 +250,7 @@ async function editCopy(): Promise<void> {
     <p class="note tight">{{ FADE_STYLES.find(([id]) => id === v.fade)?.[2] }}. Both visuals play on while it changes; from one Plenio Drop preset to another the picture stays and its motion turns into the new one.</p>
 
     <h4>{{ v.mode === 'auto' ? 'Choose from' : v.mode === 'fixed' ? 'All visuals' : 'Ticked visuals' }} <small class="count">{{ offeredAll.filter((p) => v.pool.includes(p.id)).length }} of {{ offeredAll.length }}</small></h4>
+    <p class="note tight">Click a name to see it now{{ v.mode === 'fixed' ? ' - it stays' : '' }}; tick it to let {{ v.mode === 'fixed' ? 'the other modes' : 'the mode' }} choose it.</p>
     <input v-model="query" class="find" type="search" placeholder="Find a visual …" aria-label="Find a visual" />
     <div class="moods" role="group" aria-label="The visuals that suit">
       <button v-for="m in MOODS" :key="m" class="mood" :class="{ on: mood === m }" :title="`Only the visuals that suit ${m} music`" @click="mood = mood === m ? '' : m">{{ m }}</button>
@@ -249,10 +267,10 @@ async function editCopy(): Promise<void> {
         <button class="link" :title="`Untick every ${g.label} visual`" @click="tickGroup(g.offered, false)">none</button>
       </div>
       <div v-if="isOpen(g.id, g.shown.length)" class="chips">
-        <label v-for="p in g.shown" :key="p.id" class="pick" :class="{ on: v.pool.includes(p.id), now: p.id === active }" :title="`${p.name} - ${p.blurb}`">
-          <input type="checkbox" :checked="v.pool.includes(p.id)" @change="togglePool(p.id)" />
-          <span>{{ shortName(p.name) }}</span>
-        </label>
+        <div v-for="p in g.shown" :key="p.id" class="pick" :class="{ on: v.pool.includes(p.id), now: p.id === active }" :title="`${p.name} - ${p.blurb}`">
+          <input type="checkbox" :checked="v.pool.includes(p.id)" :aria-label="`Let the mode choose ${shortName(p.name)}`" @change="togglePool(p.id)" />
+          <button class="name" :aria-label="`Show ${shortName(p.name)} now`" @click="play(p.id)">{{ shortName(p.name) }}</button>
+        </div>
         <span v-if="!g.shown.length" class="none">none {{ filtering ? 'found' : 'here' }}</span>
       </div>
       <p v-for="n in g.notes" :key="n" class="note tight">{{ n }}</p>
@@ -262,7 +280,7 @@ async function editCopy(): Promise<void> {
     <template v-if="support.webgl">
       <h4>Plenio Drop and Nova</h4>
       <label class="row">Quality
-        <select v-model.number="v.dropScale" title="How finely Plenio Drop and Nova draw: Fast draws a quarter of the pixels, and every computer keeps up. Nova's visuals also take as many pixels as this graphics card draws smoothly.">
+        <select v-model.number="v.dropScale" title="How finely Plenio Drop and Nova draw: Fast draws a quarter of the pixels, and every computer keeps up. Balanced draws Nova at the screen's own size, Sharp finer still and smoothed down - each Nova visual as far as this graphics card keeps it smooth.">
           <option v-for="[scale, label] in QUALITY" :key="scale" :value="scale">{{ label }}</option>
         </select>
       </label>
@@ -284,6 +302,7 @@ async function editCopy(): Promise<void> {
       <option v-if="notHere(songOwn)" :value="songOwn" disabled>Always {{ notHere(songOwn)?.name }} - not on this device</option>
       <optgroup v-for="g in GROUPS" :key="g.id" :label="g.label">
         <option v-for="p in g.offered" :key="p.id" :value="p.id">Always {{ shortName(p.name) }}</option>
+        <option v-for="u in g.unavailable" :key="u.preset.id" :value="u.preset.id" disabled>{{ shortName(u.preset.name) }} - {{ u.why }}</option>
       </optgroup>
     </select>
     <template v-if="playlist">
@@ -293,6 +312,7 @@ async function editCopy(): Promise<void> {
         <option v-if="notHere(playlist.visual)" :value="playlist.visual" disabled>Always {{ notHere(playlist.visual)?.name }} - not on this device</option>
         <optgroup v-for="g in GROUPS" :key="g.id" :label="g.label">
           <option v-for="p in g.offered" :key="p.id" :value="p.id">Always {{ shortName(p.name) }}</option>
+          <option v-for="u in g.unavailable" :key="u.preset.id" :value="u.preset.id" disabled>{{ shortName(u.preset.name) }} - {{ u.why }}</option>
         </optgroup>
       </select>
     </template>
@@ -480,14 +500,29 @@ input[type='number'] {
   padding: 3px 6px;
   border-radius: 7px;
   border: 1px solid transparent;
-  cursor: pointer;
   font-size: 12px;
   color: var(--muted);
 }
-.pick span {
+.pick .name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pick .name:hover,
+.pick .name:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+}
+.pick input {
+  cursor: pointer;
 }
 .pick:hover {
   background: rgba(255, 255, 255, 0.05);

@@ -146,6 +146,11 @@ export interface NovaPicture {
 const MAX_STEPS = 40
 /** Picture sizes kept at once (their scene and bloom pictures): two visuals of a crossfade and the timing. */
 const CHAINS = 3
+/** A picture is drawn at most this much larger than on screen (each way): finer, then scaled down - its edges
+ * smoother (the quality *Sharp*, where the graphics card has the time). */
+export const MAX_SUPERSAMPLE = 1.5
+/** The rows and columns drawn beyond the picture, repeating its edge (FINAL_FS). */
+const GUARD = 2
 
 export class NovaRenderer {
   readonly canvas: HTMLCanvasElement
@@ -233,14 +238,15 @@ export class NovaRenderer {
   }
 
   /** One frame of ``def`` for ``slot`` (a scene's own: what it carries over), ``width`` x ``height`` on screen, at
-   * ``pixels`` pixels at most. ``null``: nothing to show (compiling still, or it does not work here). */
+   * ``pixels`` pixels at most (more than the screen's: drawn finer, up to ``MAX_SUPERSAMPLE`` each way). ``null``:
+   * nothing to show (compiling still, or it does not work here). */
   render(def: NovaDef, music: NovaMusic, palette: Uint8ClampedArray, width: number, height: number, slot: object, pixels: number): NovaPicture | null {
     if (this.lost) return null
     const programs = this.programs(def, !this.live)
     if (!programs) return null
     const gl = this.gl
     this.frames += 1
-    const k = Math.min(1, Math.sqrt(Math.max(1, pixels) / Math.max(1, width * height)))
+    const k = Math.min(MAX_SUPERSAMPLE, Math.sqrt(Math.max(1, pixels) / Math.max(1, width * height)))
     const w = Math.max(2, Math.round(width * k))
     const h = Math.max(2, Math.round(height * k))
     const chain = this.chain(w, h)
@@ -260,10 +266,10 @@ export class NovaRenderer {
     // its glow
     const glow = this.bloom(chain)
 
-    // to the canvas
-    this.fit(w, h)
+    // to the canvas - with the guard beyond the picture's top and right edge (FINAL_FS)
+    this.fit(w + GUARD, h + GUARD)
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-    gl.viewport(0, 0, w, h)
+    gl.viewport(0, 0, w + GUARD, h + GUARD)
     const final = this.post.final
     gl.useProgram(final)
     this.bind(0, chain.scene.texture)
@@ -282,7 +288,8 @@ export class NovaRenderer {
   }
 
   /** How long ``def`` takes here, in nanoseconds per pixel: frames at 640 x 360 timed until the graphics card has
-   * finished them, to music that moves. ``-1``: it does not compile here; ``null``: still compiling. */
+   * finished them, to music that moves - the faster of two rounds, so that a moment the card was busy with something
+   * else does not count. ``-1``: it does not compile here; ``null``: still compiling. */
   measure(def: NovaDef, palette: Uint8ClampedArray): number | null {
     const ready = this.prepare(def)
     if (ready === null) return null
@@ -299,14 +306,17 @@ export class NovaRenderer {
       music.update(frame, def.speed)
       this.render(def, music, palette, width, height, slot, width * height)
     }
-    // the first frames make the pictures and fill the state; then three timed
+    // the first frames make the pictures and fill the state; then two rounds of three timed
     draw(0)
     draw(1 / 60)
     this.finish()
-    const started = performance.now()
-    for (let i = 0; i < 3; i++) draw(0.5 + i * 0.37)
-    this.finish()
-    const ms = (performance.now() - started) / 3
+    let ms = Infinity
+    for (let round = 0; round < 2; round++) {
+      const started = performance.now()
+      for (let i = 0; i < 3; i++) draw(0.5 + round * 1.3 + i * 0.37)
+      this.finish()
+      ms = Math.min(ms, (performance.now() - started) / 3)
+    }
     const state = this.slots.get(slot)
     if (state) for (const t of state.targets) this.free(t)
     this.slots.delete(slot)

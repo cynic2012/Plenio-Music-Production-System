@@ -39,7 +39,7 @@ workflow saved before the option has no value for it and keeps *standard*.
 - The documents: the lyrics, the style and the score stay exactly as approved - the takes differ only by
   their seed.
 - The hearing is a measurement: an unclear voice can score lower than it sings, and a word the ASR mishears
-  counts as not sung. A take that departs far from its lyrics still shows them *as sung* in the Plenio Player.
+  counts as not sung. What the kept take sings is one click away in the Plenio Player (*As sung*).
 - The *take seed* shown is the first take's; the kept take's seed is in the report (+1 or +2).
 
 Related: [Seeds](seeds.md), [Tags, variables and lyrics subtitles](tags-and-subtitles.md), [Plenio

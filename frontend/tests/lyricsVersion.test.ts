@@ -1,11 +1,12 @@
 /**
- * Which lyrics to follow (owner's requests 2026-10-23): as written, or as the take sings them - by default as sung
- * where the take departs far from its lyrics, switched per song like master and original.
+ * Which lyrics to follow (owner's requests 2026-10-23): as written, or as the take sings them - as sung only where
+ * the listener chooses it (owner's request 2026-10-30), switched per song like master and original.
  */
 import { describe, expect, it } from 'vitest'
 
 import type { SongDetail, SungLyrics, TimedLine } from '../src/player/api'
-import { choiceOf, choicesOf, chooseFor, departs, type LyricsPrefs, linesFor, ruleFor, sectionsNotSung, sungNote, sungOf, versionFor, versionOf } from '../src/player/lyricsVersion'
+import { choiceOf, choicesOf, chooseFor, type LyricsPrefs, linesFor, ruleFor, sectionsNotSung, sungNote, sungOf, versionFor, versionOf } from '../src/player/lyricsVersion'
+import { settings } from '../src/player/store'
 import { videoWithDefaults } from '../src/player/video/make'
 
 const written: TimedLine[] = [{ text: 'Walking down the river side', start: 1, end: 3, units: [[1, 7, 0.5]] }]
@@ -52,29 +53,35 @@ describe('lyricsVersion', () => {
     expect(videoWithDefaults(null).lyricsVersion).toBe('written')
   })
 
-  it('shows a take that departs far from its lyrics as sung, the others as written', () => {
-    // 'Take a Chance On Me' (owner's covers, 2026-10-23): 58 % of the words as written, 189 of 490 its own
-    expect(departs(sung)).toBe(true)
-    const close = { ...sung, written_heard: 0.9, extra_words: 3 }
-    expect(departs(close)).toBe(false)
-    expect(departs({ ...close, extra_words: 6 })).toBe(true) // 6 of 18 words its own
-    const prefs: LyricsPrefs = { lyricsChoice: 'auto', lyricsFor: {} }
-    expect(versionFor(detail({ sung }), prefs)).toBe('sung')
-    expect(versionFor(detail({ sung: close }), prefs)).toBe('written')
+  it('shows every song as written, as sung only where the listener chooses it (owner’s request 2026-10-30)', () => {
+    // even a take far from its lyrics: 'Take a Chance On Me' (owner's covers, 2026-10-23) sang 58 % of the words as
+    // written, 189 of 490 its own - what the ASR heard of it is not always the word sung
+    const far = { ...sung, written_heard: 0.58, extra_words: 7 }
+    expect(settings.lyricsChoice).toBe('written')
+    const prefs: LyricsPrefs = { lyricsChoice: choiceOf(undefined), lyricsFor: {} }
+    expect(versionFor(detail({ sung: far }), prefs)).toBe('written')
+    expect(versionFor(detail({ sung }), prefs)).toBe('written')
+    // the rule of before, Auto, is as written now; as sung stays where it was chosen
+    expect(choiceOf('auto')).toBe('written')
+    expect(choiceOf('sung')).toBe('sung')
+    expect(versionFor(detail({ sung: far }), { lyricsChoice: 'written', lyricsFor: { a: 'sung' } })).toBe('sung')
+    expect(versionFor(detail({ sung }), { lyricsChoice: 'sung', lyricsFor: {} })).toBe('sung')
     expect(versionFor(detail({}), { lyricsChoice: 'sung', lyricsFor: { a: 'sung' } })).toBe('written') // nothing sung kept
-    expect(ruleFor(detail({ sung: close }), 'sung')).toBe('sung')
+    expect(ruleFor(detail({ sung }), 'sung')).toBe('sung')
+    expect(ruleFor(detail({}), 'sung')).toBe('written')
   })
 
   it('keeps the listener’s choice for a song only where it differs from the rule', () => {
-    const prefs: LyricsPrefs = { lyricsChoice: 'auto', lyricsFor: {} }
+    const prefs: LyricsPrefs = { lyricsChoice: 'written', lyricsFor: {} }
     const song = detail({ sung })
-    chooseFor(song, 'written', prefs)
-    expect(prefs.lyricsFor).toEqual({ a: 'written' })
-    expect(versionFor(song, prefs)).toBe('written')
-    chooseFor(song, 'sung', prefs) // the rule's own: nothing to keep
+    chooseFor(song, 'sung', prefs)
+    expect(prefs.lyricsFor).toEqual({ a: 'sung' })
+    expect(versionFor(song, prefs)).toBe('sung')
+    chooseFor(song, 'written', prefs) // the rule's own: nothing to keep
     expect(prefs.lyricsFor).toEqual({})
+    expect(versionFor(song, prefs)).toBe('written')
     expect(choiceOf('written')).toBe('written')
-    expect(choiceOf(undefined)).toBe('auto')
+    expect(choiceOf(undefined)).toBe('written')
     expect(choicesOf({ a: 'sung', b: 'loud', c: 3 })).toEqual({ a: 'sung' })
   })
 })

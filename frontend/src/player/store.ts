@@ -40,8 +40,8 @@ export interface Settings {
   video: Record<string, unknown>
   /** How the lyrics look: font, size, colour, effect. */
   lyrics: LyricsStyle
-  /** Which lyrics to follow: by how far the take departs from them (auto), as written, or as the take sings
-   * them (lyricsVersion.ts). */
+  /** Which lyrics to follow for every song: as written, or as the take sings them - only where chosen so
+   * (lyricsVersion.ts). */
   lyricsChoice: LyricsChoice
   /** The listener's choice for single songs where it differs from ``lyricsChoice`` (song id -> version). */
   lyricsFor: Record<string, LyricsVersion>
@@ -91,7 +91,7 @@ const DEFAULT_SETTINGS: Settings = {
   live: liveWithDefaults(null),
   video: {},
   lyrics: lyricsWithDefaults(null),
-  lyricsChoice: 'auto',
+  lyricsChoice: 'written',
   lyricsFor: {},
   lyricsView: 'timed',
   mp3: false,

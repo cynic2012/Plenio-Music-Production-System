@@ -26,7 +26,7 @@ import { myPresets } from '../visuals/drop'
 import { tellRenderer } from '../visuals/drop/story'
 import { governor, leaveOut, loadTimings } from '../visuals/gpu'
 import { SceneMixer } from '../visuals/mixer'
-import { NOVA_VERSION, checkNova, novaOptions } from '../visuals/nova'
+import { NOVA_VERSION, checkNova, novaOptions, novaScaleFor } from '../visuals/nova'
 import { makeColors, miniScene, presetById, type Scene } from '../visuals/presets'
 
 const props = defineProps<{ section?: string; playlistVisual?: string; mini?: boolean; force?: string }>()
@@ -122,7 +122,7 @@ function loop(): void {
   if (!ctx) return
   engine.sensitivity = settings.visuals.sensitivity
   dropOptions.scale = settings.visuals.dropScale * Math.sqrt(governor.factor)
-  novaOptions.scale = settings.visuals.dropScale
+  novaOptions.scale = novaScaleFor(settings.visuals.dropScale)
   const frame = engine.frame()
   const colors = makeColors(hue.value, props.mini ? 'song' : settings.visuals.scheme, frame.time)
   if (props.mini && mini) {
@@ -198,7 +198,8 @@ onMounted(() => {
 })
 onBeforeUnmount(() => cancelAnimationFrame(raf))
 
-defineExpose({ presetId, next: () => pick(true, true) })
+// show: a visual chosen in the panel, now (the rules take over again at the next change)
+defineExpose({ presetId, next: () => pick(true, true), show: (id: string) => use(id) })
 </script>
 
 <template>

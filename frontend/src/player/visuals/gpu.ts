@@ -75,6 +75,9 @@ export function setGpuSupport(support: GpuSupport | null): void {
  * needs more than that even this small is not offered here. */
 export const NOVA_FLOOR = 640 * 360
 export const NOVA_FRAME_MS = 7
+/** The time a live Nova picture may take on the card while it plays: its pixels are as many as fit (the governor
+ * takes some away when frames come late all the same). */
+export const NOVA_DRAW_MS = 10
 /** The most a live Nova picture gets, however fast the card (the screen hardly shows more). */
 const NOVA_CEILING = 2560 * 1440
 
@@ -115,11 +118,12 @@ export function novaSmooth(id: string): boolean | null {
   return ns > 0 && (ns * NOVA_FLOOR) / 1e6 <= NOVA_FRAME_MS
 }
 
-/** How many pixels the live picture of Nova visual ``id`` gets on a screen of ``screen`` pixels: as many as stay
- * within its share of a frame - fewer while the governor says frames come late. */
+/** How many pixels the live picture of Nova visual ``id`` gets when it may have ``screen`` at most (the screen's, or
+ * more where it is drawn finer than the screen): as many as stay within its time - fewer while the governor says
+ * frames come late. */
 export function novaPixels(id: string, screen: number): number {
   const ns = novaTimings.value[id]
-  const affordable = ns && ns > 0 ? (NOVA_FRAME_MS * 1e6) / ns : NOVA_FLOOR
+  const affordable = ns && ns > 0 ? (NOVA_DRAW_MS * 1e6) / ns : NOVA_FLOOR
   return Math.max(NOVA_FLOOR * 0.6, Math.min(screen, NOVA_CEILING, affordable) * governor.factor)
 }
 

@@ -1,15 +1,15 @@
 <script setup lang="ts">
 /**
  * Which lyrics to follow (lyricsVersion.ts). For a song: as written or as sung - kept for that song, like the
- * player bar's switch (W); *As sung* needs a song exported with what its take sings. In Settings: the rule for
- * every song - auto (as sung where the take departs far from its lyrics), as written, as sung. On a song's page
+ * player bar's switch (W); *As sung* needs a song exported with what its take sings, and is never chosen by itself.
+ * In Settings: the rule for every song - as written (the default) or as sung. On a song's page
  * (``full``) a third choice shows the lyrics as their full text, with their sections, to copy (GitHub issue
  * 2026-10-28) - a view only: the song keeps following the version chosen.
  */
 import { computed } from 'vue'
 
 import type { SongDetail } from '../api'
-import { chooseFor, departs, LYRICS_CHOICES, LYRICS_VERSIONS, sectionsNotSung, sungNote, sungOf, versionFor } from '../lyricsVersion'
+import { chooseFor, LYRICS_CHOICES, LYRICS_VERSIONS, sectionsNotSung, sungNote, sungOf, versionFor } from '../lyricsVersion'
 import { settings } from '../store'
 
 /** ``detail``: the song the switch is for; none (Settings, or nothing plays): the rule for every song. */
@@ -19,12 +19,6 @@ const sung = computed(() => sungOf(props.detail))
 const note = computed(() => (sung.value ? sungNote(sung.value) : ''))
 const notSung = computed(() => (sung.value ? sectionsNotSung(sung.value) : []))
 const shown = computed(() => versionFor(props.detail, settings))
-const own = computed(() => !!props.detail && !!settings.lyricsFor[props.detail.id])
-/** Why the song shows what it shows, when the listener did not choose. */
-const why = computed(() => {
-  if (!sung.value || own.value || settings.lyricsChoice !== 'auto') return ''
-  return departs(sung.value) ? 'Auto: as sung - this take departs far from its lyrics.' : 'Auto: as written - this take keeps close to its lyrics.'
-})
 const chosen = computed(() => Object.keys(settings.lyricsFor).length)
 const asText = computed(() => !!props.full && settings.lyricsView === 'text')
 function follow(version: 'written' | 'sung'): void {
@@ -79,8 +73,8 @@ function follow(version: 'written' | 'sung'): void {
       {{ chosen }} song{{ chosen === 1 ? '' : 's' }} with a choice of their own.
       <button type="button" class="link" @click="settings.lyricsFor = {}">Follow the rule again</button>
     </p>
-    <p v-if="details && !asText && (note || why)" class="note">
-      {{ why }} {{ note }}<template v-if="notSung.length"> Not sung as written: {{ notSung.map((t) => `[${t}]`).join(', ') }}.</template>
+    <p v-if="details && !asText && note" class="note">
+      {{ note }}<template v-if="notSung.length"> Not sung as written: {{ notSung.map((t) => `[${t}]`).join(', ') }}.</template>
     </p>
     <details v-if="details && !asText && sung && sung.not_sung.length" class="missing">
       <summary>Lines of the lyrics not heard</summary>

@@ -468,13 +468,13 @@ tone curve, a touch of colour fringing on the beat, darker corners and fine grai
 | Visual | What you see | Suits |
 |---|---|---|
 | Nova · Hyperspace | warp speed through a tunnel of stars - the bass on the throttle, a flash at its end on every beat | energetic, electronic |
-| Nova · Nebula | glowing gas and dark dust folding slowly into each other, a bright heart breathing with the bass | calm, dark, acoustic |
+| Nova · Nebula | glowing gas and dark dust folding slowly into each other, a bright heart breathing with the bass, calm stars behind | calm, dark, acoustic |
 | Nova · Black hole | a black hole bending the light of the stars round itself, its glowing disk spinning faster with the bass | dark, electronic, calm |
-| Nova · Galaxy | a spiral galaxy turning, its bulge flaring with the bass, its star clusters sparkling with the highs | calm, acoustic |
+| Nova · Galaxy | a spiral galaxy turning, its bulge flaring with the bass and its arms brightening with the mids | calm, acoustic |
 | Nova · Northern lights | curtains of light rippling over the stars, mirrored in a still lake below dark mountains | calm, acoustic |
 | Nova · Moonlit sea | waves rolling under a big moon, its light a glittering path on the water - the swell rises with the bass | calm, acoustic |
 | Nova · Neon rings | a flight through hexagonal neon rings, each lit by its own band of the spectrum | energetic, electronic |
-| Nova · Mandelbulb | the famous 3D fractal turning in the dark, its shape breathing with the bass | electronic, dark, calm |
+| Nova · Mandelbulb | the famous 3D fractal turning in the dark, its shape breathing with the music | electronic, dark, calm |
 | Nova · Gyroid caves | gliding through endless curved caves, their walls breathing with the bass, glowing veins along the way | electronic, calm |
 | Nova · Spectrum city | flying low over a night city whose towers rise and fall with the spectrum, neon on the roofs | energetic, electronic |
 | Nova · Outrun | a night drive down a neon valley towards a striped sunset, the grid pumping with the bass | energetic, electronic |
@@ -494,8 +494,10 @@ tone curve, a touch of colour fringing on the beat, darker corners and fine grai
 without it - or one that draws WebGL with the processor, far too slow for them - is not offered either of them: the
 visuals' settings say why, and the classic visuals play as ever. Each Nova visual is timed once on your graphics card,
 a few seconds after the visual first shows (it takes a moment, in the background; the timings are kept for that
-card in this browser): one that would not play smoothly even at a small picture is not offered on this computer, and
-each of the others gets as many pixels as keep it smooth. While a visual plays, the player watches the frames: when
+card in this browser): one that would not play smoothly even at a small picture is not offered on this computer -
+the lists of one visual show it greyed, with why - and is timed again each time the player opens (a graphics card
+busy with something else the first time, making a song, makes a visual look slower than it is); each of the others
+gets as many pixels as keep it smooth. While a visual plays, the player watches the frames: when
 they come late (the graphics card busy with something else, a heavy moment), it draws fewer pixels for a while and
 more again when it can; a visual that still does not keep up is left out for the session and another one comes -
 *Try again* in the visuals' settings offers it again. A song's or a playlist's own visual that this device does not
@@ -513,7 +515,7 @@ Open the visuals' settings with ✦ in Now playing (or press **V**):
     calm visuals, dance songs fast ones.
   - *Random*: a random pick from the visuals you tick, never the same twice in a row.
   - *Cycle*: the ticked visuals in turn.
-  - *Fixed*: always the same visual.
+  - *Fixed*: always the same visual: choose it in the list, or click its name among the visuals to choose from.
 - **Change**: with every song, at every section (verse, chorus …), **every few seconds - also within a song**
   (10, 20, 30, 60 s or any number from 5), or *when the music drops in* after a quiet passage.
 - **Crossfade**: how one visual turns into the next, and over how many seconds (0.5-8, 3 by default). Both
@@ -535,7 +537,9 @@ Open the visuals' settings with ✦ in Now playing (or press **V**):
   or show only those that suit **energetic, calm, electronic, acoustic** or **dark** music. The groups (*Classic*,
   *Plenio Drop*, *Plenio Nova*, *My presets*) fold away and say how many of theirs are ticked; **all** and **none**
   tick or untick a whole group. Each visual is a small chip with its name - what it shows when the mouse rests on
-  it - and the one that plays is outlined. Under a group: what is not offered on this computer, and why.
+  it - and the one that plays is outlined. **Click a name** to see that visual at once (with *Fixed* it stays,
+  otherwise the mode takes over again at the next change); its tick lets the mode choose it. Under a group: what
+  is not offered on this computer, and why.
 - **Plenio Drop and Nova**: the **Quality** (*Fast* for a slow computer, *Balanced*, *Sharp*), **Edit a copy**,
   **Open my folder**, and any of your preset files that has a mistake, with what is wrong.
 - **Visuals on** switches all visuals off (Now playing then shows the song's colours).
@@ -1104,12 +1108,11 @@ listens to every take (below), so it knows both: the **lyrics as written**, at t
   their section tags and their spelling where the same word was heard; the words the lyrics do not have make
   lines of their own between them. It is what the ASR heard, so a misheard word shows as it was heard.
 
-By default (**Auto**) a song whose take departs far from its lyrics - less than 75 % of their words sung as
-written, or more than a quarter of words of its own - shows its lyrics **as sung**, every other song **as
-written**. Switch a song either way like master and original: the **Lyrics · as written / as sung** chip in
-the player bar (key **W**), the switch on the song's *Lyrics* tab or in 🎤 in Now playing - the choice is kept
-for that song. *Settings > Lyrics* sets the rule for every song (*Auto*, *As written*, *As sung*) and forgets
-the songs' own choices with *Follow the rule again*. A song exported before Plenio kept what was sung shows its
+Every song shows its lyrics **as written**, and **as sung** only when you choose it - the ASR does not always
+hear the word sung (a rare word, a name). Switch a song either way like master and original: the **Lyrics · as
+written / as sung** chip in the player bar (key **W**), the switch on the song's *Lyrics* tab or in 🎤 in Now
+playing - the choice is kept for that song. *Settings > Lyrics* sets the rule for every song (*As written*, the
+default, or *As sung*) and forgets the songs' own choices with *Follow the rule again*. A song exported before Plenio kept what was sung shows its
 written lyrics. *Save as a video* starts with what the song shows (*Which*, next to the lyrics). The song's
 page says how far the take follows its lyrics - *This take sings 86 % of its lyrics' words as written, 12 words
 they do not have, 2 lines not heard* - and names the sections it did not sing as written.

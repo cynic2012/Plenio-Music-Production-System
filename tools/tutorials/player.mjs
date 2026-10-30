@@ -448,9 +448,9 @@ export default async function player(s) {
     if (await note.count()) {
       await s.spotlight(note, { ms: 3600, pad: 6 })
       await s.hover(note, { fx: 0.3 })
-      await talk(s, 'Auto: a take that departs far from its lyrics shows them as sung - as its vocals were heard.')
+      await talk(s, 'How far the take follows its lyrics. A song shows them as written - as sung only when you choose it.')
     }
-    await s.click(versions.locator('button', { hasText: 'As written' }))
+    await s.click(versions.locator('button', { hasText: 'As sung' }))
     await s.wait(700)
     await talk(s, 'One click switches, and the song keeps your choice.')
     await s.rest(400)
@@ -770,7 +770,7 @@ export default async function player(s) {
     await rule.scrollIntoViewIfNeeded()
     await s.spotlight(rule, { ms: 2800, pad: 6 })
     await s.hover(rule)
-    await talk(s, 'Lyrics: the rule for every song - auto, as written or as sung.')
+    await talk(s, 'Lyrics: the rule for every song - as written, or as sung.')
   }
   const stop = page.locator('.settings button', { hasText: 'Stop the player' })
   await stop.scrollIntoViewIfNeeded()

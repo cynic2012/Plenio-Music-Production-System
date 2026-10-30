@@ -381,8 +381,12 @@ Plenio Drop draws on the graphics card and runs at the screen's full frame rate 
 **Plenio Drop and Nova > Quality** in the visuals' settings:
 
 - **Fast**: draws the picture at half the size and scales it up. For a slow computer or a very large screen.
-- **Balanced** (the default): three quarters of the size.
-- **Sharp**: every pixel.
+- **Balanced** (the default): Plenio Drop at three quarters of the size, Plenio Nova at the screen's own size.
+- **Sharp**: Plenio Drop with every pixel; Plenio Nova finer still - up to one and a half times each way - and
+  smoothed down onto the screen, for the calmest edges.
+
+Plenio Nova's visuals take only as many pixels as the graphics card draws smoothly (each one is timed on it), so a
+heavy one can stay below the size its quality asks for.
 
 While frames come late (the graphics card busy with something else), the player draws fewer pixels for a while,
 and more again when it can. Plenio Drop needs WebGL 2 drawn by the graphics card, which every current browser has;

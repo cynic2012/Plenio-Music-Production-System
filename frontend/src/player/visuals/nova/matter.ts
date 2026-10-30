@@ -344,17 +344,30 @@ vec3 kali(vec2 q) {
   float a = mod(atan(q.y, q.x), TAU / n);
   a = abs(a - PI / n);
   q = length(q) * vec2(cos(a), sin(a));
-  q *= 1.15 - 0.12 * kick;
+  // breathing with the bass (smoothed) - a jump on every kick made the whole lace shiver
+  float zoom = 1.15 - 0.08 * bass;
+  q *= zoom;
+  // a pixel's size here, followed through the folds: the lace that grows finer than a pixel gives its average light
+  // instead of a noise that crawls from frame to frame, and the threads are never thinner than a pixel
+  float fp = PX * 0.5 * zoom;
   vec2 c = vec2(0.82 + 0.05 * sin(T * 0.07), 0.62 + 0.05 * cos(T * 0.05) + 0.06 * bass);
   float acc = 0.0;
   float trap = 1e3;
+  float trapPx = 0.0;
   for (int i = 0; i < 11; i++) {
-    q = abs(q) / max(dot(q, q), 1e-4) - c;
-    acc += exp(-length(q) * 3.0);
-    trap = min(trap, abs(q.y));
+    float m = max(dot(q, q), 1e-4);
+    q = abs(q) / m - c;
+    fp /= m;
+    acc += mix(0.12, exp(-length(q) * 3.0), smoothstep(0.5, 0.12, fp));
+    float y = abs(q.y);
+    if (y < trap) {
+      trap = y;
+      trapPx = fp;
+    }
   }
   vec3 col = pal(acc * 0.11 + T * 0.02) * pow(acc * 0.1, 1.6);
-  return col + mix(pal(0.1 + trap), vec3(1.0), 0.4) * exp(-trap * 40.0) * (0.15 + 0.9 * treb);
+  float w = max(0.025, trapPx);
+  return col + mix(pal(0.1 + trap), vec3(1.0), 0.4) * exp(-trap / w) * (0.025 / w) * (0.15 + 0.9 * treb);
 }
 vec3 image(vec2 p, vec2 uv) {
   vec2 o = vec2(0.5) / R.y;

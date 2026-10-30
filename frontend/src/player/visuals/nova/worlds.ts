@@ -49,7 +49,7 @@ vec3 image(vec2 p, vec2 uv) {
 const bulb: NovaDef = {
   id: 'nova-bulb',
   name: 'Mandelbulb',
-  blurb: 'The famous 3D fractal turning slowly in the dark, its shape breathing with the bass, its glow with the beat',
+  blurb: 'The famous 3D fractal turning slowly in the dark, its shape breathing with the music, its glow with the beat',
   suits: ['electronic', 'dark', 'calm'],
   bloom: 1,
   exposure: 1.15,
@@ -60,7 +60,8 @@ float bulb(vec3 p) {
   vec3 z = p;
   float dr = 1.0;
   float r = 0.0;
-  float power = 8.0 + 1.1 * sin(T * 0.11) + 0.9 * bass;
+  // the shape breathes with the level (slow): with the bass every fine bump moved on each beat, and glittered
+  float power = 8.0 + 1.1 * sin(T * 0.11) + 0.4 * level;
   trap = 1e9;
   for (int i = 0; i < 7; i++) {
     r = length(z);
@@ -73,10 +74,27 @@ float bulb(vec3 p) {
   }
   return 0.5 * log(max(r, 1e-6)) * r / dr;
 }
+// The surface's light at q (where a ray met it, at distance t; px: a pixel's size there): its normal no finer than a
+// pixel, so the fractal's tiniest bumps do not glitter from frame to frame.
+vec3 shadeBulb(vec3 q, vec3 rd, float px, float steps) {
+  float shade = trap;
+  vec2 e = vec2(max(0.0008, px * 0.5), -max(0.0008, px * 0.5));
+  vec3 n = normalize(e.xyy * bulb(q + e.xyy) + e.yyx * bulb(q + e.yyx) + e.yxy * bulb(q + e.yxy) + e.xxx * bulb(q + e.xxx));
+  vec3 light = normalize(vec3(0.6, 0.8, 0.4));
+  float diff = max(0.0, dot(n, light));
+  float back = max(0.0, dot(n, -light)) * 0.25;
+  float rim = pow(1.0 - max(0.0, dot(n, -rd)), 4.0);
+  float ao = pow(clamp(1.0 - steps / 100.0, 0.0, 1.0), 1.5);
+  vec3 base = mix(pal(0.05), pal(0.55), smoothstep(0.15, 1.1, shade));
+  base = mix(base, vec3(1.0), 0.12);
+  return base * (0.05 + 1.3 * diff + back) * ao + pal(0.1) * rim * (0.2 + 0.8 * mid) * ao + vec3(1.0) * pow(max(0.0, dot(reflect(rd, n), light)), 20.0) * 0.45 * ao;
+}
 vec3 image(vec2 p, vec2 uv) {
   float ang = T * 0.06 + spin * 0.12;
   vec3 ro = vec3(sin(ang) * 2.6, 0.8 * sin(T * 0.05), cos(ang) * 2.6);
   vec3 rd = look(ro, vec3(0.0), p, 1.8);
+  // a pixel's angle: the surface is met to half a pixel, and a ray passing within a pixel covers it in part
+  float pa = PX / 1.8;
   float r2 = dot(p, p);
   vec3 col = pal(0.62) * 0.025 * exp(-r2 * 0.8) + pal(0.1) * 0.015 * pulse;
   float b = dot(ro, rd);
@@ -87,31 +105,33 @@ vec3 image(vec2 p, vec2 uv) {
     float glow = 0.0;
     float steps = 0.0;
     bool hit = false;
+    float nearest = 1e9;
+    float nearT = 0.0;
+    float nearSteps = 0.0;
     for (int i = 0; i < 110; i++) {
       vec3 q = ro + rd * t;
       float d = bulb(q);
       glow += exp(-d * 40.0);
       steps += 1.0;
-      if (d < 0.0005 * t) {
+      float cover = d / (t * pa);
+      if (cover < nearest) {
+        nearest = cover;
+        nearT = t;
+        nearSteps = steps;
+      }
+      if (d < 0.5 * t * pa) {
         hit = true;
         break;
       }
       t += d * 0.9;
       if (t > far) break;
     }
-    if (hit) {
-      vec3 q = ro + rd * t;
-      float shade = trap;
-      vec2 e = vec2(0.0008, -0.0008);
-      vec3 n = normalize(e.xyy * bulb(q + e.xyy) + e.yyx * bulb(q + e.yyx) + e.yxy * bulb(q + e.yxy) + e.xxx * bulb(q + e.xxx));
-      vec3 light = normalize(vec3(0.6, 0.8, 0.4));
-      float diff = max(0.0, dot(n, light));
-      float back = max(0.0, dot(n, -light)) * 0.25;
-      float rim = pow(1.0 - max(0.0, dot(n, -rd)), 4.0);
-      float ao = pow(clamp(1.0 - steps / 90.0, 0.0, 1.0), 2.0);
-      vec3 base = mix(pal(0.05), pal(0.55), smoothstep(0.15, 1.1, shade));
-      base = mix(base, vec3(1.0), 0.12);
-      col = base * (0.05 + 1.3 * diff + back) * ao + pal(0.1) * rim * (0.2 + 0.8 * mid) * ao + vec3(1.0) * pow(max(0.0, dot(reflect(rd, n), light)), 40.0) * 0.7 * ao;
+    if (hit) col = shadeBulb(ro + rd * t, rd, t * pa, steps);
+    else if (nearest < 1.5) {
+      // passed the fractal within a pixel or so: its edge, softly
+      vec3 q = ro + rd * nearT;
+      bulb(q);
+      col = mix(col, shadeBulb(q, rd, nearT * pa, nearSteps), smoothstep(1.5, 0.5, nearest));
     }
     col += pal(0.15) * glow * 0.0025 * (0.5 + 1.5 * pulse + kick);
   }
@@ -181,13 +201,22 @@ const city: NovaDef = {
   suits: ['energetic', 'electronic'],
   bloom: 1,
   exposure: 1.1,
-  speed: [0.8, 1.6],
+  speed: [0.6, 1.1],
   image: `
 float house(vec2 cell) {
   float h = hash12(cell);
   if (h < 0.18) return 0.0;
   float band = spec(fract(abs(cell.x) * 0.0625) * 0.8 + 0.02);
-  return (0.4 + 1.6 * h * h) * (0.45 + 1.7 * band);
+  // at most 2.7 high: the flight (3.2 and higher) never goes through a tower
+  return (0.4 + 1.1 * h * h) * (0.5 + 1.3 * band);
+}
+// The share of [x - w/2, x + w/2] inside [a, b] of every cell: a row of windows averaged over a pixel's width w.
+float rowOf(float x, float a, float b, float w) {
+  float x0 = x - 0.5 * w;
+  float x1 = x + 0.5 * w;
+  float i0 = floor(x0) * (b - a) + clamp(fract(x0), a, b) - a;
+  float i1 = floor(x1) * (b - a) + clamp(fract(x1), a, b) - a;
+  return (i1 - i0) / max(w, 1e-4);
 }
 float box(vec3 p, vec3 b) {
   vec3 d = abs(p) - b;
@@ -201,16 +230,20 @@ float map(vec3 p) {
   if (h > 0.0) d = min(d, box(vec3(f.x, p.y - h * 0.5, f.y), vec3(0.36, h * 0.5, 0.36)));
   return d;
 }
-vec3 sky(vec3 rd) {
+vec3 sky(vec3 rd, float ang) {
   vec3 col = mix(pal(0.92) * 0.12, pal(0.65) * 0.01, smoothstep(-0.05, 0.5, rd.y));
   vec3 s = rd * 200.0;
-  col += vec3(0.7) * step(0.99, hash13(floor(s))) * smoothstep(0.35, 0.0, length(fract(s) - 0.5)) * smoothstep(0.1, 0.4, rd.y);
+  vec3 id = floor(s);
+  vec3 at = fract(s) - 0.5 - (hash33(id) - 0.5) * 0.3;
+  col += vec3(0.7) * step(0.99, hash13(id)) * starDot3(at, 0.16, ang * 200.0) * smoothstep(0.1, 0.4, rd.y);
   return col;
 }
 vec3 image(vec2 p, vec2 uv) {
   float z0 = travel * 2.5;
   vec3 ro = vec3(0.5 + 0.8 * sin(z0 * 0.05), 3.6 + 0.4 * sin(T * 0.1), z0);
   vec3 rd = look(ro, ro + vec3(0.3 * sin(T * 0.07), -1.4, 4.0), p, 1.5);
+  // a pixel's angle: how wide it is at the distance a ray goes (windows, lines, stars no finer than that)
+  float ang = PX / 1.5;
   vec2 sd = vec2(rd.x >= 0.0 ? 1.0 : -1.0, rd.z >= 0.0 ? 1.0 : -1.0) * max(abs(rd.xz), vec2(1e-4));
   float t = 0.0;
   bool hit = false;
@@ -226,32 +259,41 @@ vec3 image(vec2 p, vec2 uv) {
     if (t > 70.0) break;
   }
   vec3 horizon = pal(0.92) * 0.12;
-  if (!hit) return sky(rd);
+  if (!hit) return sky(rd, ang);
   vec3 q = ro + rd * t;
   vec2 cell = floor(q.xz);
   vec2 f = fract(q.xz) - 0.5;
+  // a pixel's size where the ray meets the city
+  float foot = t * ang;
   vec3 col;
   if (q.y < 0.004) {
+    float fp = foot / max(-rd.y, 0.08);
+    float lw = max(0.03, fp);
     float street = smoothstep(0.42, 0.5, max(abs(f.x), abs(f.y)));
-    float lanes = smoothstep(0.03, 0.0, abs(abs(f.x) - 0.5)) + smoothstep(0.03, 0.0, abs(abs(f.y) - 0.5));
-    col = vec3(0.004) + pal(0.1) * lanes * 0.25 * (0.5 + bass) + sky(reflect(rd, vec3(0.0, 1.0, 0.0))) * 0.25 * street;
+    float lanes = (smoothstep(lw, 0.0, abs(abs(f.x) - 0.5)) + smoothstep(lw, 0.0, abs(abs(f.y) - 0.5))) * 0.03 / lw;
+    col = vec3(0.004) + pal(0.1) * lanes * 0.25 * (0.5 + bass) + sky(reflect(rd, vec3(0.0, 1.0, 0.0)), ang) * 0.25 * street;
   } else {
     vec2 e = vec2(0.002, -0.002);
     vec3 n = normalize(e.xyy * map(q + e.xyy) + e.yyx * map(q + e.yyx) + e.yxy * map(q + e.yxy) + e.xxx * map(q + e.xxx));
+    float fp = foot / max(abs(dot(n, rd)), 0.15);
     float h = house(cell);
     float hue = hash12(cell + 7.0);
     col = pal(hue) * 0.015 + pal(0.6) * 0.02 * max(0.0, n.y);
     if (n.y > 0.5) {
       float edge = 0.36 - max(abs(f.x), abs(f.y));
       float band = spec(fract(abs(cell.x) * 0.0625) * 0.8 + 0.02);
-      col += pal(hue * 0.5 + 0.05) * smoothstep(0.025, 0.0, edge) * (1.0 + 4.0 * band * band) ;
+      float lw = max(0.025, fp);
+      col += pal(hue * 0.5 + 0.05) * smoothstep(lw, 0.0, edge) * (0.025 / lw) * (1.0 + 4.0 * band * band);
     } else {
       vec2 wall = abs(n.x) > 0.5 ? vec2(q.z, q.y) : vec2(q.x, q.y);
-      vec2 w = fract(wall * vec2(7.0, 9.0));
-      vec2 wid = floor(wall * vec2(7.0, 9.0));
-      float lit = step(0.5, hash12(wid + cell * 13.1));
-      float glass = step(0.22, w.x) * step(w.x, 0.78) * step(0.28, w.y) * step(w.y, 0.72);
-      col += mix(vec3(1.0, 0.72, 0.42), pal(hue), 0.45) * glass * lit * 1.4 * step(q.y, h - 0.05);
+      vec2 rows = wall * vec2(7.0, 9.0);
+      vec2 cw = fp * vec2(7.0, 9.0);
+      // windows averaged over the pixel; far away, where a pixel spans a window, the lights as an even glow
+      float far = smoothstep(0.35, 1.0, max(cw.x, cw.y));
+      float lit = mix(step(0.5, hash12(floor(rows) + cell * 13.1)), 0.5, far);
+      float glass = rowOf(rows.x, 0.22, 0.78, cw.x) * rowOf(rows.y, 0.28, 0.72, cw.y);
+      float below = smoothstep(h - 0.05 + fp, h - 0.05 - fp, q.y);
+      col += mix(vec3(1.0, 0.72, 0.42), pal(hue), 0.45) * glass * lit * 1.4 * below;
     }
   }
   return mix(col, horizon, 1.0 - exp(-t * 0.035));
@@ -286,7 +328,7 @@ vec3 sky(vec3 rd) {
   col = mix(col, sun, disc * clamp(cut, 0.0, 1.0));
   col += pal(0.05) * exp(-r * 6.0) * (0.25 + 0.4 * level + 0.5 * pulse);
   vec3 st = rd * 180.0;
-  col += vec3(0.8) * step(0.988, hash13(floor(st))) * smoothstep(0.35, 0.0, length(fract(st) - 0.5)) * smoothstep(0.2, 0.5, rd.y);
+  col += vec3(0.8) * step(0.988, hash13(floor(st))) * starDot3(fract(st) - 0.5, 0.18, PX / 1.6 * 180.0) * smoothstep(0.2, 0.5, rd.y);
   return col;
 }
 vec3 image(vec2 p, vec2 uv) {
@@ -321,10 +363,12 @@ vec3 image(vec2 p, vec2 uv) {
   vec3 q = ro + rd * t;
   vec2 g = q.xz;
   vec2 w = fwidth(g);
-  vec2 dl = abs(fract(g + 0.5) - 0.5) / max(w, vec2(1e-4));
-  float line = 1.0 - min(min(dl.x, dl.y), 1.0);
   vec2 l2 = abs(fract(g + 0.5) - 0.5);
-  float halo = exp(-min(l2.x, l2.y) * 16.0);
+  // each line about a pixel wide; far off, where a cell shrinks to a few pixels, the lines and their halo turn into
+  // their even glow - sampled once a pixel, they would shimmer as they come closer
+  vec2 axis = mix(1.0 - min(l2 / max(w, vec2(1e-4)), 1.0), min(w, vec2(1.0)), smoothstep(vec2(0.25), vec2(0.6), w));
+  float line = max(axis.x, axis.y);
+  float halo = mix(exp(-min(l2.x, l2.y) * 16.0), 0.22, smoothstep(0.05, 0.2, max(w.x, w.y)));
   vec3 lineColor = mix(pal(0.92), pal(0.55), smoothstep(0.0, 5.0, q.y));
   float pump = 0.6 + 0.8 * bass + 1.5 * kick * exp(-t * 0.08);
   vec3 land = mix(vec3(0.012, 0.0, 0.03), pal(0.7) * 0.05, smoothstep(0.0, 6.0, q.y)) + lineColor * (line * 1.5 + halo * 0.3) * pump;

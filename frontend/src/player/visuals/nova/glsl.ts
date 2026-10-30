@@ -56,6 +56,20 @@ vec3 look(vec3 from, vec3 to, vec2 p, float lens) {
   vec3 f = normalize(to - from), r = normalize(cross(vec3(0.0, 1.0, 0.0), f)), u = cross(f, r);
   return normalize(f * lens + r * p.x + u * p.y);
 }
+// A pixel's size in p (2 / the picture's height), and in a ray's angle through a lens of that length.
+#define PX (2.0 / R.y)
+// A star of a grid: f the pixel's place from the star's (in cells), r its size and px a pixel's (in cells). Soft and
+// at least about a pixel wide, its light the same however small it is on screen - so it neither blinks nor hops from
+// pixel to pixel as it moves; a grid finer than about two pixels a cell fades instead of sparkling. (A star sits at
+// most 0.15 of a cell off its centre, so that its glow is not cut at the cell's edge.)
+float starDot(vec2 f, float r, float px) {
+  float w = max(r, 0.7 * px);
+  return exp(-2.0 * dot(f, f) / (w * w)) * (r * r) / (w * w) * smoothstep(0.65, 0.45, px);
+}
+float starDot3(vec3 f, float r, float px) {
+  float w = max(r, 0.7 * px);
+  return exp(-2.0 * dot(f, f) / (w * w)) * (r * r) / (w * w) * smoothstep(0.65, 0.45, px);
+}
 `
 
 /** After ``image``: the pixel's light, never NaN or endless (one bad pixel would spread through the bloom). */
@@ -76,7 +90,9 @@ void main() {
   o = c;
 }`
 
-/** The bright parts at half size (a soft threshold), the first step of the bloom. */
+/** The bright parts at half size (a soft threshold), the first step of the bloom. The four pixels are weighed by
+ * 1 / (1 + their brightness) (Karis): one tiny bright pixel - a star, a glint - does not make a glow that blinks as
+ * it moves between pixels. */
 export const PREFILTER_FS = `#version 300 es
 precision highp float;
 uniform sampler2D src;
@@ -84,10 +100,17 @@ uniform vec2 texel;
 uniform float threshold;
 in vec2 uv;
 out vec4 o;
+vec3 tap(vec2 at, inout float weight) {
+  vec3 c = texture(src, at).rgb;
+  float w = 1.0 / (1.0 + max(c.r, max(c.g, c.b)));
+  weight += w;
+  return c * w;
+}
 void main() {
-  vec3 c = texture(src, uv + texel * vec2(-0.5, -0.5)).rgb + texture(src, uv + texel * vec2(0.5, -0.5)).rgb
-         + texture(src, uv + texel * vec2(-0.5, 0.5)).rgb + texture(src, uv + texel * vec2(0.5, 0.5)).rgb;
-  c *= 0.25;
+  float weight = 0.0;
+  vec3 c = tap(uv + texel * vec2(-0.5, -0.5), weight) + tap(uv + texel * vec2(0.5, -0.5), weight)
+         + tap(uv + texel * vec2(-0.5, 0.5), weight) + tap(uv + texel * vec2(0.5, 0.5), weight);
+  c /= max(weight, 1e-4);
   float b = max(c.r, max(c.g, c.b));
   float knee = threshold * 0.6;
   float soft = clamp(b - threshold + knee, 0.0, 2.0 * knee);
@@ -125,16 +148,20 @@ void main() {
 }`
 
 /** To the screen: the picture with its glow, exposed, through a filmic tone curve (ACES), a touch of colour fringing
- * towards the edges that grows on the beat, a vignette, and fine grain against banding. */
+ * towards the edges that grows on the beat, a vignette, and fine grain against banding (still, so it does not crawl).
+ * It is drawn two pixels wider and higher than the picture, those repeating its last column and row: the picture is
+ * then scaled onto the screen from a larger canvas, and its edge pixels blend with these - never with what another
+ * picture left beside it there. */
 export const FINAL_FS = `#version 300 es
 precision highp float;
 uniform sampler2D scene, glow;
 uniform vec2 R;
 uniform float bloom, exposure, pulse, T, fringe;
-in vec2 uv;
 out vec4 o;
 vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
 void main() {
+  vec2 at = min(gl_FragCoord.xy, R - 0.5);
+  vec2 uv = at / R;
   vec2 d = uv - 0.5;
   float f = fringe * (0.35 + pulse) * dot(d, d);
   vec3 c = vec3(texture(scene, uv - d * f).r, texture(scene, uv).g, texture(scene, uv + d * f).b);
@@ -144,6 +171,6 @@ void main() {
   float v = length(d * vec2(R.x / R.y, 1.0));
   c *= 1.0 - 0.32 * smoothstep(0.45, 1.15, v);
   c = pow(c, vec3(1.0 / 2.2));
-  float n = fract(sin(dot(gl_FragCoord.xy + fract(T * 7.31) * 113.0, vec2(12.9898, 78.233))) * 43758.5453);
+  float n = fract(sin(dot(at, vec2(12.9898, 78.233))) * 43758.5453);
   o = vec4(c + (n - 0.5) * (1.5 / 255.0), 1.0);
 }`

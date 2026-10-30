@@ -179,7 +179,7 @@ defineExpose({ nextVisual: () => visual.value?.next(), setView: (v: View) => (vi
       :class="view === 'visual' ? [settings.live.wayInCorner, `size-${settings.live.wayInSize}`] : []"
       :side="view === 'visual' ? WAY_IN_SIDES[settings.live.wayInSize] : 104"
     />
-    <Transition name="panel"><VisualsPanel v-if="panel" class="vpanel" :active="activeVisual" @close="panel = false" @next="visual?.next()" @fullscreen="visualFullscreen" /></Transition>
+    <Transition name="panel"><VisualsPanel v-if="panel" class="vpanel" :active="activeVisual" @close="panel = false" @next="visual?.next()" @play="visual?.show($event)" @fullscreen="visualFullscreen" /></Transition>
     <Transition name="panel">
       <aside v-if="lyricsPanel" class="vpanel lpanel">
         <header><h3><Icon name="mic" /> Lyrics</h3><button class="icon-btn" title="Close" @click="lyricsPanel = false"><Icon name="close" /></button></header>

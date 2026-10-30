@@ -31,8 +31,13 @@ vec3 image(vec2 p, vec2 uv) {
     float head = hash12(id + 9.71) * 0.6;
     float len = 0.1 + 0.6 * clamp(bass * 0.8 + kick, 0.0, 1.4);
     float t = (f.y - head) / len;
-    float trail = step(0.0, t) * pow(max(0.0, 1.0 - t), 1.6);
-    float across = smoothstep(0.07 + 0.02 * fi, 0.0, abs(f.x - x));
+    // a streak no thinner than a pixel (its light kept), its head soft over a pixel - no pixel blinks as it passes
+    float pxAcross = PX * cells / (TAU * max(r, 0.002));
+    float pxAlong = 1.6 * 0.45 / max(r * r, 1e-4) * PX / len;
+    float trail = smoothstep(-pxAlong, pxAlong, t) * pow(max(0.0, 1.0 - t), 1.6);
+    float thin = 0.07 + 0.02 * fi;
+    float wide = max(thin, 0.7 * pxAcross);
+    float across = smoothstep(wide, 0.0, abs(f.x - x)) * thin / wide;
     vec3 c = mix(pal(h * 0.35 + fi * 0.13), vec3(1.0), 0.35 + 0.35 * treb);
     col += c * on * trail * across * (0.8 + 2.2 * treb + 0.8 * kick) * near;
   }
@@ -49,7 +54,7 @@ vec3 image(vec2 p, vec2 uv) {
 const nebula: NovaDef = {
   id: 'nova-nebula',
   name: 'Nebula',
-  blurb: 'Glowing gas and dark dust folding slowly into each other, a bright heart breathing with the bass, stars twinkling with the highs',
+  blurb: 'Glowing gas and dark dust folding slowly into each other, a bright heart breathing with the bass, calm stars behind',
   suits: ['calm', 'dark', 'acoustic'],
   bloom: 0.9,
   exposure: 1.1,
@@ -69,14 +74,13 @@ vec3 image(vec2 p, vec2 uv) {
   vec3 col = gas + mix(pal(0.08), vec3(1.0), 0.5) * glow * smoothstep(0.2, 0.9, n + 0.2);
   for (int i = 0; i < 3; i++) {
     float fi = float(i);
-    vec2 s = (p + vec2(travel * 0.01 * (fi + 1.0), 0.0)) * (40.0 + fi * 50.0);
+    float k = 40.0 + fi * 50.0;
+    vec2 s = (p + vec2(travel * 0.01 * (fi + 1.0), 0.0)) * k;
     vec2 id = floor(s);
     vec2 f = fract(s) - 0.5;
     float h = hash12(id + fi * 17.0);
-    vec2 jitter = (hash22(id + 3.0) - 0.5) * 0.6;
-    float d = length(f - jitter);
-    float twinkle = 0.7 + 0.6 * sin(T * (2.0 + h * 6.0) + h * 40.0) * treb;
-    float star = step(0.93, h) * smoothstep(0.12, 0.0, d) * twinkle;
+    vec2 jitter = (hash22(id + 3.0) - 0.5) * 0.3;
+    float star = step(0.93, h) * starDot(f - jitter, 0.1, PX * k);
     col += mix(pal(h), vec3(1.0), 0.7) * star * (1.2 - fi * 0.3);
   }
   return col;
@@ -92,25 +96,30 @@ const blackHole: NovaDef = {
   exposure: 1,
   speed: [0.5, 1.8],
   image: `
-vec3 sky(vec3 d) {
+// The stars behind (ang: a pixel's angle on this part of the sky - wider where the hole squeezes the sky together),
+// steady: no star blinks with the highs.
+vec3 sky(vec3 d, float ang) {
   vec3 col = vec3(0.0);
   for (int i = 0; i < 2; i++) {
     float fi = float(i);
-    vec3 q = d * (140.0 + fi * 160.0);
+    float k = 140.0 + fi * 160.0;
+    vec3 q = d * k;
     vec3 id = floor(q);
     vec3 f = fract(q) - 0.5;
     float h = hash13(id + fi * 13.0);
-    float star = step(0.975, h) * smoothstep(0.32, 0.0, length(f)) * (0.4 + 2.0 * hash13(id + 7.7));
+    float star = step(0.975, h) * starDot3(f, 0.16, ang * k) * (0.6 + 1.6 * hash13(id + 7.7));
     col += mix(pal(h * 3.0), vec3(1.0), 0.75) * star;
   }
   float band = exp(-pow(d.y * 3.5 + 0.35 * sin(d.x * 3.0 + d.z * 2.0), 2.0));
   col += pal(0.55 + 0.3 * fbm3(d * 2.5)) * band * 0.18 * fbm3(d * 5.0 + 3.0);
-  return col * (0.8 + 0.6 * treb);
+  return col * 1.1;
 }
-vec3 image(vec2 p, vec2 uv) {
+// One ray through pixel p, bent round the hole: the light it brings.
+vec3 trace(vec2 p) {
   float ang = T * 0.04 + spin * 0.06;
   vec3 ro = vec3(sin(ang) * 11.0, 1.3 + 0.6 * sin(T * 0.031), cos(ang) * 11.0);
   vec3 rd = look(ro, vec3(0.0), p, 1.9);
+  vec3 start = rd;
   vec3 pos = ro;
   vec3 col = vec3(0.0);
   float through = 1.0;
@@ -144,14 +153,20 @@ vec3 image(vec2 p, vec2 uv) {
     }
     if (r > 40.0 || through < 0.02) break;
   }
-  return col + through * sky(normalize(rd));
+  // the more a ray was bent, the more of the sky one pixel sees: its stars wider and fainter there, not glittering
+  vec3 out_ = normalize(rd);
+  float bent = 1.0 - dot(out_, start);
+  return col + through * sky(out_, PX / 1.9 * (1.0 + 12.0 * bent));
+}
+vec3 image(vec2 p, vec2 uv) {
+  return trace(p);
 }`,
 }
 
 const galaxy: NovaDef = {
   id: 'nova-galaxy',
   name: 'Galaxy',
-  blurb: 'A spiral galaxy turning, its bulge flaring with the bass and its star clusters sparkling with the highs',
+  blurb: 'A spiral galaxy turning, its bulge flaring with the bass and its arms brightening with the mids',
   suits: ['calm', 'acoustic'],
   bloom: 1,
   exposure: 1.05,
@@ -173,15 +188,17 @@ vec3 image(vec2 p, vec2 uv) {
   col *= 1.0 - 0.7 * lanes * smoothstep(0.1, 0.5, r) * n;
   float bulge = exp(-r * r * 22.0);
   col += mix(pal(0.08), vec3(1.0, 0.95, 0.85), 0.6) * (bulge * (1.6 + 2.5 * bass + 2.0 * kick) + exp(-r * 5.0) * 0.4);
+  // the star clusters and the stars between them: steady points (a pixel's size in q: the squeeze of y widens it)
   vec2 s = q * 55.0;
   vec2 id = floor(s);
   float h = hash12(id);
-  float blob = smoothstep(0.3, 0.0, length(fract(s) - 0.5 - (hash22(id) - 0.5) * 0.5));
+  float squeeze = 1.0 / (0.5 + 0.08 * sin(T * 0.05));
+  float blob = starDot(fract(s) - 0.5 - (hash22(id) - 0.5) * 0.3, 0.16, PX * 55.0 * squeeze);
   float density = arms * disk;
-  col += mix(pal(h + 0.5), vec3(1.0), 0.6) * blob * step(0.975 - 0.7 * density, h) * (0.5 + 1.5 * treb) * (0.2 + 2.0 * density);
+  col += mix(pal(h + 0.5), vec3(1.0), 0.6) * blob * step(0.975 - 0.7 * density, h) * 1.2 * (0.2 + 2.0 * density);
   vec2 b = p * 90.0;
   vec2 bid = floor(b);
-  col += vec3(0.8) * step(0.985, hash12(bid + 9.0)) * smoothstep(0.4, 0.0, length(fract(b) - 0.5));
+  col += vec3(0.8) * step(0.985, hash12(bid + 9.0)) * starDot(fract(b) - 0.5, 0.18, PX * 90.0);
   return col;
 }`,
 }
@@ -208,12 +225,13 @@ vec3 curtain(vec3 rd) {
   }
   return acc * 0.24 * (0.45 + 1.4 * mid + 0.6 * kick);
 }
-vec3 sky(vec3 rd) {
+// The sky (ang: a pixel's angle - wider in the lake, whose ripples move the stars): steady stars, none blinking.
+vec3 sky(vec3 rd, float ang) {
   vec3 col = mix(pal(0.6) * 0.03, vec3(0.002, 0.004, 0.012), smoothstep(0.0, 0.6, rd.y));
   vec3 s = rd * 260.0;
   vec3 id = floor(s);
   float h = hash13(id);
-  col += vec3(0.9) * step(0.985, h) * smoothstep(0.35, 0.0, length(fract(s) - 0.5)) * (0.8 + 0.5 * sin(T * 3.0 + h * 50.0) * treb);
+  col += vec3(0.9) * step(0.985, h) * starDot3(fract(s) - 0.5, 0.18, ang * 260.0);
   return col + curtain(rd) * smoothstep(0.0, 0.18, rd.y);
 }
 vec3 image(vec2 p, vec2 uv) {
@@ -221,12 +239,12 @@ vec3 image(vec2 p, vec2 uv) {
   vec3 rd = normalize(vec3(p.x, p.y - horizon, 1.6));
   rd.xz = rot(T * 0.01 + spin * 0.02) * rd.xz;
   vec3 col;
-  if (rd.y > 0.0) col = sky(rd);
+  if (rd.y > 0.0) col = sky(rd, PX / 1.6);
   else {
     vec2 w = rd.xz / max(-rd.y, 0.02) * 0.6;
     vec3 m = vec3(rd.x, -rd.y, rd.z);
     m.xz += (vec2(noise(w * 3.0 + T * 0.3), noise(w * 3.0 - T * 0.25)) - 0.5) * 0.04 * (0.5 + bass);
-    col = sky(normalize(m)) * 0.55;
+    col = sky(normalize(m), PX / 1.6 * 3.0) * 0.55;
   }
   float hills = 0.04 + 0.13 * fbm(vec2(p.x * 1.4 + spin * 0.05, 2.0));
   float above = p.y - horizon;
@@ -261,7 +279,8 @@ float sea(vec2 q) {
   }
   return h;
 }
-vec3 skyColor(vec3 rd, vec3 moon) {
+// The night sky (ang: a pixel's angle - wider in the waves' reflection, where the stars move).
+vec3 skyColor(vec3 rd, vec3 moon, float ang) {
   float y = max(rd.y, 0.0);
   vec3 col = mix(pal(0.62) * 0.15, pal(0.66) * 0.008, pow(y, 0.45));
   float m = dot(rd, moon);
@@ -270,7 +289,7 @@ vec3 skyColor(vec3 rd, vec3 moon) {
   col += mix(pal(0.1), vec3(1.0), 0.6) * pow(max(m, 0.0), 500.0) * 0.9;
   vec3 s = rd * 220.0;
   vec3 id = floor(s);
-  col += vec3(0.8) * step(0.988, hash13(id)) * smoothstep(0.35, 0.0, length(fract(s) - 0.5)) * smoothstep(0.05, 0.3, rd.y);
+  col += vec3(0.8) * step(0.988, hash13(id)) * starDot3(fract(s) - 0.5, 0.18, ang * 220.0) * smoothstep(0.05, 0.3, rd.y);
   float cloud = smoothstep(0.5, 0.9, fbm(rd.xz / max(rd.y, 0.05) * 0.5 + vec2(T * 0.01, 0.0)));
   col = mix(col, pal(0.6) * 0.05 + vec3(0.9) * pow(max(m, 0.0), 8.0) * 0.12, cloud * smoothstep(0.02, 0.2, rd.y) * 0.7);
   return col;
@@ -279,7 +298,7 @@ vec3 image(vec2 p, vec2 uv) {
   vec3 moon = normalize(vec3(0.0, 0.2, 1.0));
   vec3 ro = vec3(0.0, 2.2, travel * 2.0);
   vec3 rd = normalize(vec3(p.x, p.y - 0.1, 1.5));
-  if (rd.y > 0.02) return skyColor(rd, moon);
+  if (rd.y > 0.02) return skyColor(rd, moon, PX / 1.5);
   float t = 0.0;
   for (int i = 0; i < 96; i++) {
     vec3 q = ro + rd * t;
@@ -295,11 +314,13 @@ vec3 image(vec2 p, vec2 uv) {
   refl.y = abs(refl.y);
   float fres = 0.04 + 0.96 * pow(1.0 - max(0.0, dot(n, -rd)), 5.0);
   vec3 water = pal(0.62) * 0.015 + pal(0.55) * 0.05 * smoothstep(0.1, 0.6, q.y);
-  vec3 col = mix(water, skyColor(refl, moon), fres);
+  vec3 col = mix(water, skyColor(refl, moon, PX / 1.5 * 4.0), fres);
   col += vec3(1.0, 0.95, 0.85) * pow(max(0.0, dot(refl, moon)), 240.0) * 5.0 * (0.7 + level);
   col += pal(0.1) * pow(max(0.0, dot(refl, moon)), 12.0) * 0.3 * (0.5 + level);
-  col += vec3(1.0) * smoothstep(0.75, 1.0, noise(q.xz * 18.0 + T * 2.0)) * (0.3 + treb) * pow(max(0.0, dot(refl, moon)), 90.0) * 3.0;
-  col = mix(col, skyColor(normalize(vec3(rd.x, 0.02, rd.z)), moon), 1.0 - exp(-t * 0.012));
+  // the glitter of the moon's path, gone where its ripples are finer than a pixel (there it only crawled)
+  float glitter = smoothstep(0.12, 0.04, t * PX / 1.5 / max(-rd.y, 0.02) * 18.0);
+  col += vec3(1.0) * smoothstep(0.75, 1.0, noise(q.xz * 18.0 + T * 2.0)) * glitter * (0.3 + treb) * pow(max(0.0, dot(refl, moon)), 90.0) * 3.0;
+  col = mix(col, skyColor(normalize(vec3(rd.x, 0.02, rd.z)), moon, PX / 1.5), 1.0 - exp(-t * 0.012));
   return col;
 }`,
 }
