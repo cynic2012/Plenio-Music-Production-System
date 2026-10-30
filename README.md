@@ -103,7 +103,7 @@ Six ready-made templates in ComfyUI's template browser, each one clear path from
 ## ▶️ The Plenio Player
 
 <p align="center">
-  <img src="assets/branding/readme/bento-player.jpg" alt="The Plenio Player - your songs deserve a stage: visuals that move with the music (77, with Plenio Drop presets after MilkDrop and the lyrics as they are sung), on every screen (phone, tablet, the party's big screen), party mode (guests order songs and react, live on the big screen), every song on one page (the full lyrics to copy, the prompts, how it was made), songs as videos (karaoke lyrics, notation, 4K or upright), your look (eleven fonts, eleven effects) and share as a player (one HTML file)" width="100%" />
+  <img src="assets/branding/readme/bento-player.jpg" alt="The Plenio Player - your songs deserve a stage: visuals that move with the music (99, with Plenio Drop presets after MilkDrop and Plenio Nova scenes worked out for every pixel - here a black hole), on every screen (phone, tablet, the party's big screen), party mode (guests order songs and react, live on the big screen), every song on one page (the full lyrics to copy, the prompts, how it was made), songs as videos (karaoke lyrics, notation, 4K or upright), your look (eleven fonts, eleven effects) and share as a player (one HTML file)" width="100%" />
 </p>
 
 A program of its own: it runs without ComfyUI, opens at `http://127.0.0.1:8765/`, and finds every song Export Release wrote. **Plenio Player** beside *Run* in ComfyUI opens it; or double-click `Plenio Player.bat` (`./plenio_player.sh` on macOS and Linux).
@@ -111,16 +111,16 @@ A program of its own: it runs without ComfyUI, opens at `http://127.0.0.1:8765/`
 <table>
 <tr>
 <td width="56%"><img src="assets/branding/readme/party-reactions.webp" alt="Live Play on the party's big screen: a Plenio Drop visual with the lyrics and the guests' QR code; beside it a guest's phone - taps on fire, hearts and party poppers float up the big screen" width="100%" /></td>
-<td width="44%"><b>Party mode.</b> Everyone on the party's Wi-Fi scans a QR code: the live playlist on their phones, songs to add - and with <b>party songs</b> they order a song of their own: a style, a few words, <i>Generate</i>. It plays when it is ready, with who made it and at which party on the big screen. Their reactions 🔥 ❤️ 🎉 float up the screen and are kept for every song. <a href="docs/user/concepts/player.md#guests-in-your-network">Party guide</a></td>
+<td width="44%"><b>Party mode.</b> Everyone on the party's Wi-Fi scans a QR code: the live playlist on their phones, songs to add - and with <b>party songs</b> they order a song of their own: a style, a few words, <i>Generate</i>. It plays when it is ready, with who made it and at which party on the big screen. Their reactions 🔥 ❤️ 🎉 float up the screen and are kept for every song, and the songs made at the party play again on their phones. <a href="docs/user/concepts/player.md#guests-in-your-network">Party guide</a></td>
 </tr>
 </table>
 
 - **The lyrics as they are sung** - lit up syllable by syllable, as written or as the take really sings them, and as **full lyrics to copy** with their sections. The sheet music follows the music, note by note.
-- **77 visuals** - 25 classics and 51 **Plenio Drop** presets after Winamp's MilkDrop, drawn on the graphics card and moving with the music, plus one made up fresh each time. Write your own as a small JSON file of formulas ([guide](docs/user/concepts/player-visuals.md)).
+- **99 visuals** - 25 classics, 51 **Plenio Drop** presets after Winamp's MilkDrop and 22 **Plenio Nova** scenes the graphics card works out for every pixel (a black hole, a galaxy, northern lights, the Mandelbulb, liquid chrome), all moving with the music, plus one made up fresh each time - and only the ones a device draws smoothly are offered. Write your own as a small JSON file of formulas ([guide](docs/user/concepts/player-visuals.md)).
 - **Find anything** - search titles, lyrics and briefs, or `genre:jazz bpm:>110 key:Am`; filters, saved filters, tags of your own, smart lists, playlists, crossfades and a sleep timer - quick with thousands of songs.
-- **A page per song** - its lyrics, notation, sheet music, every field of the brief, how it was made (when, how long, on which graphics card, with which lyrics fidelity), its files and its other takes.
-- **Make songs from the player** - presets for the whole form, up to four takes at once; the player starts ComfyUI in the background, the way you last started it.
-- **Songs as videos** - an MP4 of the visual with karaoke lyrics and the notation, Full HD, 4K, square or upright for Shorts, made on your graphics card faster than the song lasts.
+- **A page per song** - its lyrics, notation, sheet music, every field of the brief, how it was made (when, how long, on which graphics card, with which lyrics fidelity), your stars and the measured ones, its files and its other takes.
+- **Make songs from the player** - presets for the whole form, up to four takes at once, users who listen, make songs or help as admins, and new songs released after their maker heard them or an admin approved them; the player starts ComfyUI in the background, the way you last started it.
+- **Songs as videos** - an MP4 of the visual with karaoke lyrics and the notation, Full HD, 4K, square or upright for Shorts, from *Low* to *Best* or a bitrate of your own, made on your graphics card faster than the song lasts.
 - **Share as a player** - one HTML file with the songs you choose: anyone double-clicks it and listens, with the lyrics and the visuals. No install, no server, no account.
 - **On every screen** - phone, tablet and the big screen, with *Add to Home screen*; *In your network* opens the whole player on another device at home.
 
@@ -133,8 +133,16 @@ Guide: [Plenio Player](docs/user/concepts/player.md).
 <td width="50%"><img src="assets/branding/1.4.0/player-full-lyrics.jpg" alt="A song's page in the Plenio Player with Full lyrics chosen: the lyrics with their sections and the buttons Copy the lyrics, Without the section tags, Copy the style and The song's page" width="100%" /></td>
 <td width="50%"><img src="assets/branding/1.4.0/player-how-made.jpg" alt="A song's page with the guests' reactions under its title and How it was made: the date and time, Making took 4 min 19 s, the graphics card and the processor" width="100%" /></td>
 </tr>
+<tr>
+<td width="50%"><img src="assets/branding/1.4.0/player-nova.jpg" alt="Plenio Nova's black hole: a glowing accretion disk bent round the dark shadow, its light lensed over and under it, in a field of stars - worked out by the graphics card for every pixel and moving with the music" width="100%" /></td>
+<td width="50%"><img src="assets/branding/1.4.0/player-stars.jpg" alt="A song's page with 4.5 stars given by ear and 3.5 measured, faded, beside them; Details shows How it came out, measured - harmony, clashes, key, beat, ending, holes, length, clipping - each with a bar" width="100%" /></td>
+</tr>
 </table>
 
+- **Plenio Nova: 22 visuals worked out for every pixel** - a black hole, a galaxy, northern lights, the Mandelbulb, liquid chrome, an outrun valley - in a compact choice with a search and moods; only the visuals a device draws smoothly are offered.
+- **Stars for every song** - yours by ear, 0 to 5, and the measured ones as a faded pre-fill: the lyrics sung as written, the harmony, the beat, what went wrong.
+- **Who may do what** - users listen, make songs or help as admins; a new song can wait until its maker heard it or an admin approved it; the guests hear the party's songs again on their phones.
+- **Videos in more qualities** - seven steps from *Low* to *Best* or a bitrate of your own, 24 to 60 frames a second, AAC up to 320 kbit/s.
 - **The full lyrics to copy** on a song's page, and **a page per song** (`<name>.html`) beside every export - the lyrics with their sections, the prompts, every setting and the files, in any browser.
 - **LoRAs for YuE2** - up to four, on the plan or the sound, in ComfyUI's and m-a-p's layout.
 - **ComfyUI started the way you start it** - the player reuses your models folder and options; a missing model file is named, with what to do.
