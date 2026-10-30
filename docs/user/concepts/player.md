@@ -729,12 +729,16 @@ what played. The music keeps playing on your computer; the phones get no sound a
   Choose **as many per song as they like** or **one per song and guest** - then a tap on another emoji changes the
   guest's reaction, and the same one again counts once. One phone sends at most 60 a minute, and at most 40 float
   at once. **Reactions** switches them off.
+- **Hear them again** (on by default): every guest hears the songs made at this party again on their own phone,
+  once they played - the guests', the users' and yours, made from the player since the party began; no other song.
+  A party begins when you switch the access on or make a new address - or with **start a new party**; the settings
+  show since when, and how many songs there are so far.
 - *n guests are looking now* counts the phones that asked in the last half minute.
 
 The access is a small server of its own on port 8770 (8771-8779 when it is taken), apart from the player,
 which still answers this computer only. It answers only below the random part of the address - the guests'
-page, the live playlist with titles and covers, the reactions, and in *change* mode the library's titles to add
-from. The
+page, the live playlist with titles and covers, the reactions, the audio of this party's songs that played and of
+a guest's own song waiting to be released, and in *change* mode the library's titles to add from. The
 first time, **Windows may ask whether Python may accept connections**: allow it for private networks, or
 the phones cannot reach the player. On a network you do not trust (a café, a hotel) leave it off. It stays on
 when the player starts again, with the same address; `--guests-host` (or `PLENIO_GUESTS_HOST`) sets where it
@@ -798,6 +802,22 @@ of its description), and where it is:
 - **Being made** - for how long, what the studio does now (*writing the lyrics*, *composing*, *singing and playing*,
   *painting the cover*, *mastering and saving*), roughly when it is ready. **✕** stops it.
 - **Ready 21:14** - in the library and at the party; **▶** plays it.
+
+### Before everybody hears a new song
+
+*Settings > Party songs > Before everybody hears a new song*: a song made from the player joins the songs - and
+Live Play - as soon as it is ready (the default), or it waits:
+
+- **Its maker hears it first** - on their own device, in *Make a song* (a guest on their phone, on the party's
+  page): ▶ to hear it, then **Release it** or **Don't release**.
+- **An admin approves it** - you or a helper, in *Make a song* under **Waiting for your approval** (the sidebar
+  counts them): hear each one on this device, then **Approve** or **Reject**. With both on, the maker releases it
+  first and an admin approves it after.
+
+Songs of the admins (you and the helpers) are released at once. A waiting song is made into a folder of its own,
+`_waiting/<number>` beside its folder, which the library does not read - so nobody else sees or hears it, and Live
+Play does not take it in. Released, it moves to its folder (a name taken there gets a number) and comes in as a new
+song; one not released or not approved is kept in `_waiting/not released`, nothing is deleted.
 
 ### Again: a new take, a new song like it, a cover of it
 
@@ -942,8 +962,19 @@ The player opens with **Who is listening?** - once per device:
   tags and settings, the same on every device they log in on (a phone in the network, a laptop, this computer).
 - **The admin** (*this computer* - only on the computer the player runs on) has the player's own playlists and
   settings, as they were before the login, and sets up the users: *Settings > Accounts* - *Set up a user*
-  (name and password), a picture for each (click the round picture), a new password, rename, remove (their
+  (name, password and group), a picture for each (click the round picture), a new password, rename, remove (their
   playlists and plays go with them).
+
+Every user is in one of three **groups**, chosen when they are set up and changed in their row at any time:
+
+- **Listens**: listens only - they may not make songs.
+- **Makes songs**: listens and makes songs, when the party's settings let users make them (users set up before
+  the groups are in this one).
+- **Admin - a helper**: everything the admin may - set up users and their groups, approve songs, change the
+  party's settings, start ComfyUI on this computer - from any device they log in on with their password, to step
+  in when needed. Their own playlists, favourites and plays stay theirs; the player's own are the admin's. What
+  only this computer does (choose the folders, stop the player, delete songs for good, switch *In your network*)
+  stays this computer's, for a helper too.
 - **Continue as a guest** - as before, without an account: what you keep stays **in this browser** only;
   another browser or device starts afresh.
 

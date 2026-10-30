@@ -131,13 +131,39 @@ def test_nobody_but_the_admin_makes_songs_until_it_is_switched_on(tmp_path: Path
     assert kept["settings"]["on"] is True and kept["settings"]["guests"] is False
 
 
+def test_a_listener_makes_no_songs_and_a_helper_has_the_admins_rights(party: Any) -> None:
+    """The groups (owner's request 2026-10-29): a listener may not make songs - not through the network with the
+    whole studio either; a helper (the group *admin*) makes them like the admin and sees everybody's."""
+    songs, _studio, _clock, _library = party
+    songs.configure({"remote": True})
+    listener = {**ANNA, "group": "listener"}
+    allowed, why = songs.may({**listener, "remote": True})
+    assert allowed is False and "listens only" in why
+    with pytest.raises(MakerError):
+        songs.create(listener, {"fields": SONG})
+    assert songs.may({**ANNA, "group": "maker"}) == (True, "")
+    helper = {"kind": "admin", "id": "hhhhhhhhhhhh", "name": "Hal", "group": "admin"}
+    made = songs.create(ANNA, {"fields": SONG})
+    assert songs.full(helper) and made["id"] in [j["id"] for j in songs.status(helper, everyone=True)["jobs"]]
+    # Anna made a helper later still sees her own song
+    assert made["id"] in [j["id"] for j in songs.status({**ANNA, "kind": "admin"})["jobs"]]
+
+
 def test_a_song_waits_in_the_line_and_only_its_owner_and_the_admin_see_it(party: Any) -> None:
     songs, _studio, _clock, _library = party
     made = songs.create(GUEST, {"fields": {**SONG, "description": "  a  night\ndrive  "}})
     assert made["status"] == "waiting" and made["position"] == 1 and made["mine"]
     assert made["label"] == "synthwave · 2:00 · warm female vocal"
     assert made["fields"]["description"] == "a night\ndrive"
-    assert made["can"] == {"edit": True, "up": False, "down": False, "delete": True}
+    assert made["can"] == {
+        "edit": True,
+        "up": False,
+        "down": False,
+        "delete": True,
+        "listen": False,
+        "release": False,
+        "discard": False,
+    }
     assert songs.listing(ANNA) == []
     everyone = songs.status(ADMIN, everyone=True)["jobs"]
     assert [j["owner"] for j in everyone] == [{"kind": "guest", "name": "Guest"}]
@@ -1015,3 +1041,209 @@ def test_a_waiting_song_starts_the_studio_when_the_admin_wants_it(party: Any) ->
     songs.create(ANNA, {"fields": SONG})
     songs.tick()
     assert launcher.calls == [False, True]
+
+
+# --- released, or not (owner's request 2026-10-29) ---------------------------------------------------------
+
+
+def exported(folder: Path, title: str) -> Path:
+    """A song as Export Release writes it into its folder: the record, FLAC, MP3, the cover and its page."""
+    folder.mkdir(parents=True, exist_ok=True)
+    data = {
+        **record(title),
+        "files": [
+            {"name": f"{title}.flac", "format": "flac"},
+            {"name": f"{title}.mp3", "format": "mp3"},
+            {"name": f"{title}.jpg", "role": "cover"},
+        ],
+        "fingerprint": "old",
+    }
+    (folder / f"{title}.plenio.json").write_text(json.dumps(data), encoding="utf-8")
+    (folder / f"{title}.flac").write_bytes(b"fLaC" + b"f" * 60)
+    (folder / f"{title}.mp3").write_bytes(b"ID3" + b"m" * 1000)
+    (folder / f"{title}.jpg").write_bytes(b"\xff\xd8\xff" + b"j" * 20)
+    (folder / f"{title}.html").write_text("<!doctype html>", encoding="utf-8")
+    return folder / f"{title}.plenio.json"
+
+
+def finish(songs: PartySongs, studio: FakeStudio, clock: Clock, title: str) -> dict[str, Any]:
+    """The song being made is done: Export Release wrote it where the request said."""
+    sent = studio.sent[-1]
+    comfy = f"comfy-{len(studio.sent)}"
+    output = songs.library.folders[0]
+    record_path = exported(output / sent["release"].get("folder", "plenio"), title)
+    clock.now += 300
+    studio.views[comfy] = {
+        "id": comfy,
+        "status": "succeeded",
+        "started_at": clock.now - 300,
+        "finished_at": clock.now,
+        "result": {"title": title, "record": str(record_path)},
+    }
+    songs.tick()
+    return next(j for j in songs.jobs if j.get("comfy") == comfy)
+
+
+def titles(library: Library) -> list[str]:
+    library.scan(force=True)
+    return sorted(s["title"] for s in library.songs())
+
+
+def test_a_song_waits_for_its_maker_and_an_admin_before_everybody_hears_it(party: Any) -> None:
+    songs, studio, clock, library = party
+    songs.configure({"listen_first": True, "approve": True})
+    assert songs.status(ANNA)["settings"]["listen_first"] is True  # the makers are told
+    made = songs.create(ANNA, {"fields": SONG})
+    songs.tick()
+    # made into a folder of its own, which the library does not read
+    assert studio.sent[-1]["release"]["folder"] == f"plenio/_waiting/{made['id']}"
+    job = finish(songs, studio, clock, "Neon")
+    assert job["release"] == "maker" and titles(library) == []
+    view = songs.listing(ANNA)[0]
+    assert view["release"] == "maker" and view["can"]["listen"] and view["can"]["release"]
+    assert not view["can"]["delete"]
+    # Anna hears it first on her own device (the MP3, which every phone plays); nobody else but the admins
+    assert songs.listen(ANNA, made["id"]).name == "Neon.mp3"
+    assert songs.listen(ANNA, made["id"], "cover").name == "Neon.jpg"
+    assert songs.listen(ADMIN, made["id"]).name == "Neon.mp3"
+    with pytest.raises(MakerError):
+        songs.listen(BEN, made["id"])
+    with pytest.raises(MakerError):
+        songs.release(BEN, made["id"])
+    # she releases it: now an admin approves it
+    assert songs.release(ANNA, made["id"])["release"] == "admin" and titles(library) == []
+    with pytest.raises(MakerError) as refused:
+        songs.release(ANNA, made["id"])
+    assert refused.value.status == 403
+    assert [j["id"] for j in songs.status(ADMIN)["approvals"]] == [made["id"]]
+    assert songs.status(ANNA)["approvals"] == []
+    # waiting songs are kept however long they wait
+    clock.now += 2 * 86400
+    songs.tick()
+    assert any(j["id"] == made["id"] for j in songs.jobs)
+    # the admin approves: it moves to its folder and comes into the library - new for Live Play
+    since = library.scan_started
+    released = songs.release(ADMIN, made["id"])
+    assert released["release"] == "released" and released["result"]["song"]
+    output = library.folders[0]
+    assert (output / "plenio" / "Neon.mp3").is_file()
+    assert not (output / "plenio" / "_waiting" / made["id"]).exists()
+    assert titles(library) == ["Neon"]
+    assert [s["title"] for s in library.newer(since)] == ["Neon"]
+    with pytest.raises(MakerError):
+        songs.release(ADMIN, made["id"])  # not waiting any more
+
+
+def test_a_released_song_takes_a_number_where_its_name_is_taken(party: Any) -> None:
+    songs, studio, clock, library = party
+    songs.configure({"approve": True})
+    output = library.folders[0]
+    exported(output / "plenio", "Neon")
+    made = songs.create(ANNA, {"fields": SONG})
+    songs.tick()
+    # nothing to hear first: the admin's turn at once
+    assert finish(songs, studio, clock, "Neon")["release"] == "admin"
+    songs.release(ADMIN, made["id"])
+    assert (output / "plenio" / "Neon (2).mp3").is_file() and (output / "plenio" / "Neon (2).html").is_file()
+    data = json.loads((output / "plenio" / "Neon (2).plenio.json").read_text(encoding="utf-8"))
+    assert [f["name"] for f in data["files"]] == ["Neon (2).flac", "Neon (2).mp3", "Neon (2).jpg"]
+    assert data["fingerprint"] != "old"
+    assert titles(library) == ["Neon", "Neon (2)"]  # the library numbers the second one's title, as ever
+
+
+def test_a_song_not_released_is_kept_aside_and_the_admins_songs_never_wait(party: Any) -> None:
+    songs, studio, clock, library = party
+    songs.configure({"listen_first": True})
+    first = songs.create(ANNA, {"fields": SONG})
+    songs.tick()
+    finish(songs, studio, clock, "Rain")
+    gone = songs.discard(ANNA, first["id"])
+    assert gone["release"] == "discarded" and not gone["can"]["listen"]
+    output = library.folders[0]
+    assert (output / "plenio" / "_waiting" / "not released" / first["id"] / "Rain.mp3").is_file()
+    assert titles(library) == []
+    # with the admin's approval too: the admin rejects one Ben released
+    songs.configure({"approve": True})
+    second = songs.create(BEN, {"fields": SONG})
+    songs.tick()
+    finish(songs, studio, clock, "Snow")
+    songs.release(BEN, second["id"])
+    with pytest.raises(MakerError):
+        songs.discard(BEN, second["id"])  # the admin decides now
+    assert songs.discard(ADMIN, second["id"])["release"] == "rejected"
+    # the admin's own song, and a helper's, are released at once
+    helper = {"kind": "admin", "id": "hhhhhhhhhhhh", "name": "Hal"}
+    mine = songs.create(helper, {"fields": SONG})
+    songs.tick()
+    assert studio.sent[-1]["release"].get("folder") is None
+    done = finish(songs, studio, clock, "Sun")
+    assert done["id"] == mine["id"] and done.get("release") is None and titles(library) == ["Sun"]
+
+
+def test_a_waiting_song_is_heard_and_released_through_the_routes(servers: Any) -> None:
+    port, hub, songs, studio = servers
+    songs.configure({"on": True, "listen_first": True})
+    call(port, "PUT", "/api/guests", {"on": True})
+    guest_port, token = hub.settings["port"], hub.settings["token"]
+    _status, headers, _ = call(guest_port, "GET", f"/{token}/api/make")
+    cookie = headers["Set-Cookie"].split(";")[0]
+    made = call(guest_port, "POST", f"/{token}/api/make/jobs", {"fields": SONG}, Cookie=cookie)[2]
+    clock = Clock()
+    songs.clock = clock
+    songs.tick()
+    finish(songs, studio, clock, "Party")
+    # the guest hears it on their phone, in parts as a phone's player asks
+    path = f"/{token}/api/make/jobs/{made['id']}/audio"
+    whole = call(guest_port, "GET", path, Cookie=cookie)
+    assert whole[0] == 200 and whole[1]["Content-Type"] == "audio/mpeg" and whole[2].startswith(b"ID3")
+    part = call(guest_port, "GET", path, Cookie=cookie, Range="bytes=0-9")
+    assert part[0] == 206 and part[1]["Content-Range"] == "bytes 0-9/1003" and len(part[2]) == 10
+    assert call(guest_port, "GET", path)[0] == 404  # another phone
+    assert call(port, "GET", f"/api/make/jobs/{made['id']}/audio")[0] == 200  # the admin, on this computer
+    remote = {"X-Plenio-Remote": "1"}
+    assert call(port, "GET", f"/api/make/jobs/{made['id']}/audio", **remote)[0] == 404
+    released = call(guest_port, "POST", f"/{token}/api/make/jobs/{made['id']}/release", {}, Cookie=cookie)
+    assert released[0] == 200 and released[2]["release"] == "released"
+    assert call(guest_port, "GET", path, Cookie=cookie)[0] == 409
+
+
+def test_the_guests_hear_the_partys_songs_again_on_their_phones(servers: Any) -> None:
+    """The party's songs made at it, once they played, to hear again on one's own phone (owner's request
+    2026-10-29) - no other song, and only this party's."""
+    port, hub, songs, studio = servers
+    songs.configure({"on": True})
+    call(port, "PUT", "/api/guests", {"on": True})
+    assert hub.settings["party_since"] > 0  # switched on: a party begins
+    guest_port, token = hub.settings["port"], hub.settings["token"]
+    _status, headers, _ = call(guest_port, "GET", f"/{token}/api/make")
+    cookie = headers["Set-Cookie"].split(";")[0]
+    call(guest_port, "POST", f"/{token}/api/make/jobs", {"fields": SONG}, Cookie=cookie)
+    songs.tick()
+    job = finish(songs, studio, Clock(), "Party")
+    made = job["result"]["song"]
+    other = exported(songs.library.folders[0] / "plenio", "Old")
+    songs.library.scan(force=True)
+    old = songs.library.find_record(other)
+    assert made and old is not None
+    # nothing to hear again before it played
+    assert call(guest_port, "GET", f"/{token}/api/party")[2] == {"on": True, "songs": []}
+    assert call(guest_port, "GET", f"/{token}/song/{made}")[0] == 404
+    # the player's page says what played: the party's song - and a song of the library
+    hub.publish({"live": True, "playing": True, "played": [{"id": made}, {"id": old.id}]})
+    listed = call(guest_port, "GET", f"/{token}/api/party")[2]
+    assert [(s["title"], s["by"]) for s in listed["songs"]] == [("Party", "Guest")]
+    assert call(guest_port, "GET", f"/{token}/api/live")[2]["replay"] is True
+    heard = call(guest_port, "GET", f"/{token}/song/{made}", Range="bytes=0-2")
+    assert heard[0] == 206 and heard[1]["Content-Type"] == "audio/mpeg" and heard[2] == b"ID3"
+    assert call(guest_port, "GET", f"/{token}/song/{old.id}")[0] == 404
+    page = call(guest_port, "GET", f"/{token}/")
+    assert "media-src 'self'" in page[1]["Content-Security-Policy"]
+    # the host switches it off - and a new party starts with nothing to hear again
+    call(port, "PUT", "/api/guests", {"replay": False})
+    assert call(guest_port, "GET", f"/{token}/api/party")[2] == {"on": False, "songs": []}
+    assert call(guest_port, "GET", f"/{token}/song/{made}")[0] == 404
+    call(port, "PUT", "/api/guests", {"replay": True, "new_party": True})
+    assert call(guest_port, "GET", f"/{token}/api/party")[2]["songs"] == []
+    # a song made before this party began is not this party's
+    hub.publish({"live": True, "playing": True, "played": [{"id": made}]})
+    assert call(guest_port, "GET", f"/{token}/api/party")[2]["songs"] == []

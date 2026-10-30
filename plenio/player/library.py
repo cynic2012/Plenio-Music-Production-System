@@ -35,6 +35,10 @@ CACHE_VERSION = 11
 REFRESH_S = 15.0
 """A reader's songs are read again (in the background) when they are older than this."""
 RETIRED_DIR = "_retired"
+WAITING_DIR = "_waiting"
+"""Where a song made in the player waits until it is released (owner's request 2026-10-29): each in a folder of its
+own below its release folder, which the library does not read - the songs not released stay there, in ``not
+released``."""
 CLOCK_SLACK = 1.0
 """Seconds a file's time may run ahead of the clock read at a scan's start: on Windows a file written just
 before can carry a time a little after a coarse ``time.time()``. A file further ahead (a wrong clock, a copy from
@@ -42,7 +46,7 @@ another time zone) is not taken for "now" - it would hide every song made until 
 EXPECTED_FOR_S = 3600.0
 """How long a record the player's studio made is waited for (:meth:`Library.expect`)."""
 """Where removed songs go, below the library folder they were in; the library does not read it."""
-SKIP_DIRS = {".plenio-player", "__pycache__", ".git", RETIRED_DIR}
+SKIP_DIRS = {".plenio-player", "__pycache__", ".git", RETIRED_DIR, WAITING_DIR}
 AUDIO_KINDS = ("flac", "mp3", "wav")
 ENGINE_NAMES = {"yue2": "YuE2", "minimax_music3": "MiniMax Music 3", "minimax": "MiniMax Music 3"}
 RESOURCES = Path(__file__).resolve().parents[2] / "resources"

@@ -8,8 +8,8 @@
 <title>Plenio Live</title>
 <style>
   /* The guests' page of the Plenio Player's Live Play (plenio/player/guest.py): the song that plays, what
-     comes next, reactions that float over the host's screen, and - when the host allows it - moving, taking
-     out and adding songs. Phone first. */
+     comes next, reactions that float over the host's screen, the party's songs to hear again on one's phone, and
+     - when the host allows it - moving, taking out and adding songs. Phone first. */
   :root {
     --bg: #0d0b17;
     --panel: rgba(255, 255, 255, 0.05);
@@ -94,6 +94,11 @@
   @keyframes fly { from { transform: translate(-50%, -50%) scale(0.7); opacity: 1; }
                    to { transform: translate(calc(-50% + var(--dx)), calc(-50% - 170px)) scale(1.6) rotate(var(--rot)); opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .fly { display: none; } }
+  /* the party's songs again, on one's own phone (owner's request 2026-10-29) */
+  .again .hint { margin: -2px 0 8px; color: var(--muted); font-size: 13px; }
+  .again audio { width: 100%; margin-bottom: 8px; }
+  .again li { grid-template-columns: 44px 1fr auto; }
+  .again li.playing { outline: 2px solid var(--accent); }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -132,6 +137,12 @@
     <h2><span>Add a song</span></h2>
     <input id="find" type="search" placeholder="Search: title, artist, genre …" autocomplete="off" enterkeyhint="search" />
     <ol id="found" style="margin-top: 8px"></ol>
+  </section>
+  <section id="againBox" class="again" hidden>
+    <h2><span>Hear them again</span><span id="againCount"></span></h2>
+    <p class="hint">The songs made at this party, once they played - here on your phone.</p>
+    <audio id="againPlayer" controls preload="none" hidden></audio>
+    <ol id="again"></ol>
   </section>
   <details id="playedBox" hidden>
     <summary>Played before</summary>
@@ -202,6 +213,7 @@
     for (const id of ["now", "reactBox", "nextBox", "addBox", "playedBox"]) $(id).hidden = true;
     $("pill").className = "pill off";
     $("pill").textContent = "OFF";
+    loadAgain(false);
   }
 
   function render() {
@@ -275,6 +287,52 @@
       return row;
     }));
     $("foot").textContent = change ? "You may move, take out and add songs - the host's player plays them." : "View only - the host chooses the songs.";
+    loadAgain(false);
+  }
+
+  // the party's songs that played, to hear again on this phone
+  let againAt = -1e9;
+  let againShown = "";
+  let hearing = "";
+  async function loadAgain(force) {
+    if (!view || !view.replay) {
+      $("againBox").hidden = true;
+      return;
+    }
+    if (!force && performance.now() - againAt < 15000) return;
+    againAt = performance.now();
+    try {
+      const answer = await fetch("api/party", { cache: "no-store" });
+      const data = await answer.json();
+      renderAgain(data.on ? data.songs || [] : []);
+    } catch {
+      /* the next look tries again */
+    }
+  }
+  function renderAgain(songs) {
+    $("againBox").hidden = !songs.length;
+    $("againCount").textContent = songs.length ? String(songs.length) : "";
+    const key = songs.map((s) => s.id).join(",") + "|" + hearing;
+    if (key === againShown) return;
+    againShown = key;
+    $("again").replaceChildren(...songs.map((song) => {
+      const row = el("li");
+      if (song.id === hearing) row.className = "playing";
+      const text = el("div", "t");
+      text.append(el("b", "", song.title), el("small", "", song.by ? `made by ${song.by} · ${time(song.seconds)}` : time(song.seconds)));
+      const tools = el("div", "tools");
+      tools.append(Object.assign(button("▶", `Hear ${song.title} again`, false, () => hear(song, songs)), { className: "go" }));
+      row.append(art(song), text, tools);
+      return row;
+    }));
+  }
+  function hear(song, songs) {
+    const player = $("againPlayer");
+    player.hidden = false;
+    player.src = `song/${song.id}`;
+    hearing = song.id;
+    player.play().catch(() => say("Tap ▶ in the player to start"));
+    renderAgain(songs);
   }
   function button(text, title, disabled, act) {
     const b = el("button", "", text);

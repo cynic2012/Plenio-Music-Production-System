@@ -151,3 +151,54 @@ def test_a_user_has_their_own_state_on_every_device(player: tuple[int, Accounts,
     assert call(port, "DELETE", f"/api/users/{anna}", None, **phone, **JSON)[0] == 403
     assert call(port, "DELETE", f"/api/users/{anna}", None, **JSON)[0] == 200
     assert call(port, "GET", "/api/state", **phone)[0] == 401  # her session is gone with her
+
+
+def test_users_are_listeners_makers_or_helpers_with_the_admins_rights(
+    player: tuple[int, Accounts, State], tmp_path: Path
+) -> None:
+    """The groups (owner's request 2026-10-29): a listener, a maker - and an admin, a helper with the admin's
+    rights from any device, whose own things stay theirs."""
+    port, accounts, state = player
+    # set up with a group; a user from before the groups is a maker
+    made = call(port, "POST", "/api/users", {"name": "Hal", "password": "secret1", "group": "admin"}, **JSON)[
+        2
+    ]
+    hal = made["user"]
+    assert hal["group"] == "admin" and hal["helper"] is True and hal["admin"] is False
+    lea = call(
+        port, "POST", "/api/users", {"name": "Lea", "password": "secret1", "group": "listener"}, **JSON
+    )[2]
+    assert lea["user"]["group"] == "listener" and not lea["user"]["helper"]
+    assert (
+        call(port, "POST", "/api/users", {"name": "Max", "password": "secret1", "group": "boss"}, **JSON)[0]
+        == 400
+    )
+    old = accounts.create("Old", "secret1")
+    data = json.loads((tmp_path / "state" / "users.json").read_text(encoding="utf-8"))
+    for user in data["users"]:
+        if user["id"] == old["id"]:
+            del user["group"]
+    (tmp_path / "state" / "users.json").write_text(json.dumps(data), encoding="utf-8")
+    assert accounts.user(old["id"])["group"] == "maker"
+    # the helper logs in from their phone and does what the admin does: users, their groups
+    code, headers, _ = call(
+        port, "POST", "/api/login", {"user": hal["id"], "password": "secret1"}, **JSON, **FROM_NETWORK
+    )
+    helper = {**cookie_of(headers), **FROM_NETWORK}
+    assert call(port, "GET", "/api/users", **helper)[2]["users"][0].get("created")
+    assert (
+        call(port, "POST", "/api/users", {"name": "Zoe", "password": "secret1"}, **JSON, **helper)[0] == 200
+    )
+    lea_id = lea["user"]["id"]
+    changed = call(port, "PUT", f"/api/users/{lea_id}", {"group": "maker"}, **JSON, **helper)
+    assert changed[0] == 200 and changed[2]["user"]["group"] == "maker"
+    # ... but has their own things, not the admin's
+    assert call(port, "GET", "/api/state", **helper)[2]["favorites"] == []
+    assert state.read()["favorites"] == ["the owner's"]
+    # a user cannot change their own group
+    code, headers, _ = call(port, "POST", "/api/login", {"user": lea_id, "password": "secret1"}, **JSON)
+    lea_session = cookie_of(headers)
+    assert call(port, "PUT", f"/api/users/{lea_id}", {"group": "admin"}, **JSON, **lea_session)[0] == 403
+    assert call(port, "PUT", f"/api/users/{lea_id}", {"name": "Lea B"}, **JSON, **lea_session)[0] == 200
+    # what only this computer does stays this computer's, for a helper too
+    assert call(port, "POST", "/api/quit", {}, **JSON, **helper, **{"X-Plenio-Player": "1"})[0] == 403

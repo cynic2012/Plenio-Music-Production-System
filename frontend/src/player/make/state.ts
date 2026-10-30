@@ -63,5 +63,7 @@ export function pollMake(page: boolean, ready?: (job: MakeJob) => void): void {
 /** *Make a song* in the sidebar: for whoever may make songs (the admin always, to switch it on; the whole studio
  * from the network also while the party's song making is off). */
 export const makeShown = computed(() => !isPortable && !!makeStatus.value && (makeStatus.value.admin || !!makeStatus.value.me.full || (makeStatus.value.on && makeStatus.value.may)))
+/** Songs waiting for an admin's approval (the admins' sidebar count). */
+export const approvalsNow = computed(() => makeStatus.value?.approvals?.length ?? 0)
 /** One's songs in the making (the sidebar's count). */
 export const makingNow = computed(() => (makeStatus.value?.jobs ?? []).filter((j) => j.mine && !['done', 'failed', 'cancelled'].includes(j.status)).length)

@@ -1,23 +1,25 @@
 <script setup lang="ts">
 /**
  * Settings · Accounts (owner's request 2026-10-23): your picture and password; for the admin also the users -
- * set one up, give a new password, rename, remove. A guest is told where their things stay.
+ * set one up, give a new password, rename, remove - and each one's group (owner's request 2026-10-29): listens,
+ * makes songs, or admin (a helper with the admin's rights). A guest is told where their things stay.
  */
 import { onMounted, ref } from 'vue'
 
-import { type Account, addUser, avatarUrl, changeUser, guest, initials, listUsers, me, removeUser, setAvatar, switchUser } from '../account'
+import { type Account, type Group, GROUPS, addUser, avatarUrl, canAdmin, changeUser, guest, initials, listUsers, me, removeUser, setAvatar, switchUser } from '../account'
 import { say } from '../store'
 import Icon from './Icon.vue'
 
 const users = ref<Account[]>([])
 const name = ref('')
 const password = ref('')
+const group = ref<Group>('maker')
 const mine = ref('')
 const busy = ref(false)
 const error = ref('')
 
 async function refresh(): Promise<void> {
-  if (me.value?.admin) users.value = await listUsers().catch(() => [])
+  if (canAdmin.value) users.value = await listUsers().catch(() => [])
 }
 onMounted(refresh)
 
@@ -44,11 +46,19 @@ function picked(account: Account, event: Event): void {
 
 function create(): void {
   void act(async () => {
-    await addUser(name.value, password.value)
+    await addUser(name.value, password.value, group.value)
     name.value = ''
     password.value = ''
   }, 'User set up')
 }
+
+function setGroup(account: Account, next: Group): void {
+  const label = GROUPS.find(([id]) => id === next)?.[1] ?? next
+  void act(() => changeUser(account.id, { group: next }), `${account.name}: ${label.toLowerCase()}`)
+}
+
+/** What a user may, said under their name. */
+const groupOf = (account: Account): string => (account.admin ? 'admin · this computer' : account.helper ? 'admin · a helper' : GROUPS.find(([id]) => id === (account.group ?? 'maker'))?.[1].toLowerCase() ?? '')
 
 function newPassword(account: Account): void {
   const next = window.prompt(`A new password for ${account.name} (at least 4 characters):`)
@@ -92,8 +102,8 @@ function changeMine(): void {
           <span class="edit"><Icon name="edit" :size="13" /></span>
         </label>
         <div>
-          <p class="who">{{ me.name }} <small v-if="me.admin">admin · this computer</small></p>
-          <p class="hint">{{ me.admin ? 'The player’s own playlists, likes and settings - and the users below.' : 'Your playlists, likes and plays: the same on every device you log in on.' }}</p>
+          <p class="who">{{ me.name }} <small>{{ groupOf(me) }}</small></p>
+          <p class="hint">{{ me.admin ? 'The player’s own playlists, likes and settings - and the users below.' : me.helper ? 'Your playlists, likes and plays, the same on every device - and the admin’s rights: the users below, approvals, the party’s settings.' : 'Your playlists, likes and plays: the same on every device you log in on.' }}</p>
           <div class="row">
             <button v-if="me.avatar" class="ghost small" :disabled="busy" @click="act(() => setAvatar(me!.id, null))">Remove the picture</button>
             <button class="ghost small" :disabled="busy" @click="rename(me)">Rename</button>
@@ -106,8 +116,9 @@ function changeMine(): void {
         </div>
       </div>
 
-      <template v-if="me.admin">
+      <template v-if="canAdmin">
         <h4>Users</h4>
+        <p class="hint">Each user <b>listens</b>, also <b>makes songs</b> (when the party’s settings let users make them), or is an <b>admin</b> - a helper with your rights, from any device, to step in when needed: approve songs, set up users, change the party’s settings.</p>
         <ul class="users">
           <li v-for="u in users" :key="u.id">
             <label class="face" :style="{ background: u.color }" title="Choose a picture">
@@ -116,6 +127,9 @@ function changeMine(): void {
               <input type="file" accept="image/*" :disabled="busy" @change="picked(u, $event)" />
             </label>
             <span class="name">{{ u.name }} <small v-if="u.last_login">last in {{ new Date(u.last_login * 1000).toLocaleDateString() }}</small></span>
+            <select class="group" :value="u.group ?? 'maker'" :disabled="busy || u.id === me.id" :title="u.id === me.id ? 'Your own group: another admin changes it' : GROUPS.find(([id]) => id === (u.group ?? 'maker'))?.[2]" @change="setGroup(u, ($event.target as HTMLSelectElement).value as Group)">
+              <option v-for="[id, label, hint] in GROUPS" :key="id" :value="id" :title="hint">{{ label }}</option>
+            </select>
             <button class="icon-btn" title="Rename" :disabled="busy" @click="rename(u)"><Icon name="edit" :size="15" /></button>
             <button class="ghost small" :disabled="busy" @click="newPassword(u)">New password</button>
             <button class="icon-btn" title="Remove the user and their things" :disabled="busy" @click="remove(u)"><Icon name="trash" :size="15" /></button>
@@ -125,6 +139,9 @@ function changeMine(): void {
         <form class="row add" @submit.prevent="create">
           <input v-model="name" placeholder="Name" maxlength="40" autocomplete="off" />
           <input v-model="password" type="password" placeholder="Password (4 or more)" autocomplete="new-password" />
+          <select v-model="group" class="group" title="What the new user may">
+            <option v-for="[id, label, hint] in GROUPS" :key="id" :value="id" :title="hint">{{ label }}</option>
+          </select>
           <button class="ghost small" :disabled="busy || !name.trim() || password.length < 4"><Icon name="plus" :size="14" /> Set up a user</button>
         </form>
       </template>
@@ -218,6 +235,14 @@ function changeMine(): void {
 .users .name {
   flex: 1;
   min-width: 0;
+}
+select.group {
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font: 12px var(--font);
 }
 .users .name small {
   opacity: 0.55;

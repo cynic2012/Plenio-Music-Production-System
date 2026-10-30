@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /**
  * Settings > Party songs (owner's request 2026-10-25): whether guests and logged-in users may make songs, how
- * many each may have in the making, the longest length, covers - and what every party song is made with. The
- * admin's only; the server keeps it (party-songs.json beside the state).
+ * many each may have in the making, the longest length, covers - and what every party song is made with; whether a
+ * new song is released at once, after its maker heard it, or after an admin approved it (owner's request 2026-10-29).
+ * The admins' only; the server keeps it (party-songs.json beside the state).
  */
 import { computed, onMounted, ref } from 'vue'
 
@@ -54,6 +55,10 @@ async function change(key: string, value: unknown): Promise<void> {
         </select>
       </label>
     </div>
+    <h4 class="sub">Before everybody hears a new song</h4>
+    <label class="check"><input type="checkbox" :checked="!!settings.listen_first" :disabled="saving" @change="change('listen_first', ($event.target as HTMLInputElement).checked)" /> its maker hears it first, on their own device, and releases it - or not</label>
+    <label class="check"><input type="checkbox" :checked="!!settings.approve" :disabled="saving" @change="change('approve', ($event.target as HTMLInputElement).checked)" /> an admin approves it - you or a helper, under <i>Waiting for your approval</i> in <a @click="go('/make')">Make a song</a></label>
+    <small class="note">Off: a song joins the songs - and Live Play - as soon as it is ready. Songs of the admins (you and the helpers) are released at once. A song waits in <code>_waiting</code> beside its folder, which the library does not read; one not released is kept in <code>_waiting/not released</code>.</small>
     <label class="check remote"><input type="checkbox" :checked="settings.remote !== false" :disabled="saving" @change="change('remote', ($event.target as HTMLInputElement).checked)" /> From the network (<i>In your network</i>): the whole studio, at any time</label>
     <small class="note">Who comes through “Open the player from your network” chooses the writer model, HQ mastering, cover art, the folder, the formats and the tags - and may make songs while song making is off.</small>
     <label class="field credit">Who made it, while the song plays
@@ -105,6 +110,10 @@ async function change(key: string, value: unknown): Promise<void> {
 .check.remote {
   margin-top: 14px;
   font-weight: 600;
+}
+.sub {
+  margin: 16px 0 6px;
+  font: 650 13px var(--font);
 }
 .note {
   display: block;

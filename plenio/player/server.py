@@ -285,6 +285,11 @@ def make_handler(
                 listing[:] = [key, body, gzip.compress(body, 5)]
             return f'"lib-{BOOT}-{library.version}"', listing[1], listing[2]
 
+    def may_admin(account: dict[str, Any] | None) -> bool:
+        """The admin's rights: the admin, or a user of the group *admin* (a helper - owner's request 2026-10-29).
+        Only the admin has the admin's things (the state); what only this computer does stays this computer's."""
+        return bool(account and (account.get("admin") or account.get("helper")))
+
     def state_of(account: dict[str, Any] | None) -> State | None:
         """The state of a user (``None``: a guest, who keeps theirs in the browser)."""
         if account is None:
@@ -352,11 +357,12 @@ def make_handler(
             when the browser has none: the second value); ``remote``: by *In your network* (the whole studio)."""
             account = self.account
             if account is not None:
-                kind = "admin" if account.get("admin") else "user"
+                kind = "admin" if may_admin(account) else "user"
                 return {
                     "kind": kind,
                     "id": str(account.get("id")),
                     "name": str(account.get("name") or ""),
+                    "group": str(account.get("group") or account_rules.DEFAULT_GROUP),
                     "remote": self.remote,
                 }, ""
             token = maker_rules.token_of(self.headers.get("Cookie"))
@@ -375,12 +381,17 @@ def make_handler(
             """The party songs: ``GET /api/make`` (may I, the settings, my songs), ``GET /api/make/form``, ``GET
             /api/make/from/<song id>`` (to make it again), ``POST /api/make/jobs``, ``PUT /api/make/jobs/<id>``,
             ``POST /api/make/jobs/<id>/move``, ``DELETE /api/make/jobs/<id>``, ``POST /api/make/sources?name=`` (the
-            recording), ``PUT /api/make/settings``."""
+            recording), ``PUT /api/make/settings`` - and a song waiting to be released (owner's request 2026-10-29):
+            ``GET /api/make/jobs/<id>/audio`` and ``/cover`` to hear it first, ``POST /api/make/jobs/<id>/release``
+            and ``/discard``."""
             if maker is None:
                 return self._error(404, "no party songs")
             who, cookie = self._maker_who()
             job = re.fullmatch(r"/api/make/jobs/([0-9a-f]{16})(/move)?", route)
+            waiting = re.fullmatch(r"/api/make/jobs/([0-9a-f]{16})/(audio|cover|release|discard)", route)
             try:
+                if method == "GET" and waiting and waiting.group(2) in ("audio", "cover"):
+                    return self._file(maker.listen(who, waiting.group(1), waiting.group(2)))
                 if method == "GET" and route == "/api/make":
                     return self._json(maker.status(who, everyone=query.get("all") == "1"), cookie=cookie)
                 if method == "GET" and route == "/api/make/form":
@@ -405,6 +416,10 @@ def make_handler(
                     return self._json({"settings": maker.configure(body)})
                 if method == "POST" and route == "/api/make/jobs":
                     return self._json(maker.create(who, body), 201, cookie)
+                if method == "POST" and waiting and waiting.group(2) == "release":
+                    return self._json(maker.release(who, waiting.group(1)), cookie=cookie)
+                if method == "POST" and waiting and waiting.group(2) == "discard":
+                    return self._json(maker.discard(who, waiting.group(1)), cookie=cookie)
                 if job and method == "PUT" and not job.group(2):
                     return self._json(maker.update(who, job.group(1), body), cookie=cookie)
                 if job and method == "POST" and job.group(2):
@@ -432,7 +447,7 @@ def make_handler(
                 return self._error(
                     403, "Starting ComfyUI - only on the computer itself, not from the network"
                 )
-            if not (self.account or {}).get("admin"):
+            if not may_admin(self.account):
                 return self._error(403, "only the admin")
             try:
                 if route == "/api/studio/start":
@@ -659,8 +674,8 @@ def make_handler(
             if route == "/api/studio":
                 if launcher is None:
                     return self._error(404, "no studio here")
-                local_admin = from_this_computer(self.client_address[0], self.remote) and bool(
-                    (self.account or {}).get("admin")
+                local_admin = from_this_computer(self.client_address[0], self.remote) and may_admin(
+                    self.account
                 )
                 return self._json(launcher.status(admin=local_admin))
             if route == "/api/make" or route.startswith("/api/make/"):
@@ -668,8 +683,7 @@ def make_handler(
             if route == "/api/users":
                 if accounts is None:
                     return self._error(404, "no login")
-                admin = bool((self.account or {}).get("admin"))
-                return self._json({"users": accounts.users(details=admin)})
+                return self._json({"users": accounts.users(details=may_admin(self.account))})
             avatar = re.fullmatch(r"/api/users/([0-9a-f]{12}|admin)/avatar", route)
             if avatar:
                 path = accounts.avatar(avatar.group(1)) if accounts else None
@@ -964,9 +978,9 @@ def make_handler(
             return self._json({"ok": True}, cookie=account_rules.session_cookie("", forget=True))
 
         def _may_change(self, user_id: str) -> bool:
-            """The admin changes every user; a user only themselves."""
+            """The admin (and a helper) changes every user; a user only themselves."""
             me = self.account or {}
-            return bool(me.get("admin")) or (me.get("id") == user_id and user_id != account_rules.ADMIN)
+            return may_admin(me) or (me.get("id") == user_id and user_id != account_rules.ADMIN)
 
         def _put_user(self, route: str, raw: bytes | None) -> None:
             if accounts is None:
@@ -985,7 +999,9 @@ def make_handler(
                 body = json.loads(raw.decode("utf-8")) if raw else None
                 if not isinstance(body, dict):
                     return self._error(400, "name, password or colour")
-                changes = {k: body[k] for k in ("name", "password", "color") if k in body}
+                changes = {k: body[k] for k in ("name", "password", "color", "group") if k in body}
+                if "group" in changes and not may_admin(self.account):
+                    return self._error(403, "only the admin sets a user's group")
                 if "password" in changes and self.token:
                     changes["keep_session"] = account_rules.session_key(self.token)
                 return self._json({"user": accounts.update(target, changes)})
@@ -1011,7 +1027,7 @@ def make_handler(
                         return self._error(403, "only the admin, or the user themselves")
                     return self._json({"user": accounts.set_avatar(picture.group(1), None)})
                 assert gone is not None
-                if not (self.account or {}).get("admin"):
+                if not may_admin(self.account):
                     return self._error(403, "only the admin")
                 accounts.delete(gone.group(1))
                 with states_lock:
@@ -1192,13 +1208,21 @@ def make_handler(
                     return self._error(404, "no login")
                 if not self._from_this_page():
                     return self._error(403, "only from the player's page")
-                if not (self.account or {}).get("admin"):
+                if not may_admin(self.account):
                     return self._error(403, "only the admin sets up users")
                 try:
                     body = json.loads(raw.decode("utf-8")) if raw else None
                     if not isinstance(body, dict):
                         return self._error(400, "name and password")
-                    return self._json({"user": accounts.create(body.get("name"), body.get("password"))})
+                    return self._json(
+                        {
+                            "user": accounts.create(
+                                body.get("name"),
+                                body.get("password"),
+                                body.get("group", account_rules.DEFAULT_GROUP),
+                            )
+                        }
+                    )
                 except ValueError as error:
                     status = error.status if isinstance(error, account_rules.AccountError) else 400
                     return self._error(status, str(error))

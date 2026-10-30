@@ -15,6 +15,12 @@ export interface MakeClient {
   remove(id: string): Promise<MakeJob | { id: string; removed: true }>
   source(file: File): Promise<Source>
   settings(changes: Record<string, unknown>): Promise<{ settings: MakeStatus['settings'] }>
+  /** A song waiting to be released: released (by its maker; approved by an admin), or not. */
+  release(id: string): Promise<MakeJob>
+  discard(id: string): Promise<MakeJob>
+  /** Where a waiting song is heard first, and its cover. */
+  listen(id: string): string
+  cover(id: string): string
 }
 
 async function answer<T>(response: Response, what: string): Promise<T> {
@@ -52,5 +58,9 @@ export function makeClient(base: string, uploadHeader: Record<string, string>): 
         'the recording could not be sent'
       ),
     settings: async (changes) => answer<{ settings: MakeStatus['settings'] }>(await send('PUT', '/settings', changes), 'the settings could not be saved'),
+    release: async (id) => answer<MakeJob>(await send('POST', `/jobs/${id}/release`, {}), 'the song could not be released'),
+    discard: async (id) => answer<MakeJob>(await send('POST', `/jobs/${id}/discard`, {}), 'the song could not be set aside'),
+    listen: (id) => `${base}/jobs/${id}/audio`,
+    cover: (id) => `${base}/jobs/${id}/cover`,
   }
 }

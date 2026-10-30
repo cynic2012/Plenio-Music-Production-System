@@ -3,6 +3,11 @@ plays and settings on every device. The player opens with a login page: a user o
 password, set up by the admin), the admin - only on the computer the player runs on, where everything is kept
 anyway - or a guest, whose things stay in that browser, as the player had them before.
 
+Every user is in a group (owner's request 2026-10-29): **listener** (listens, may not make songs), **maker**
+(may also make songs, where the party's settings let users make them) or **admin** - a helper with the admin's
+rights, to step in when needed (approve songs, set up users, change the party's settings), from any device with
+their password. The admin's own things stay the admin's: a helper keeps playlists and likes of their own.
+
 The admin's things are the player's state as it was (``state.json``): the owner's playlists stay where they
 are. Every user has a folder of their own beside it (``users/<id>/``) with a state file of the same form and
 an avatar. Passwords are kept only as PBKDF2-SHA256 hashes; a login gives the browser a random session
@@ -38,6 +43,13 @@ FAILURES_PER_10_MIN = 8
 """Wrong passwords one address may try in ten minutes."""
 COLORS = ("#e4573d", "#e0a83c", "#4fbf7f", "#3fa7d6", "#7a6ff0", "#d65db1", "#2fb5a5", "#c46b2d")
 _USER_ID = re.compile(r"[0-9a-f]{12}")
+GROUPS = ("listener", "maker", "admin")
+DEFAULT_GROUP = "maker"
+"""A user set up before the groups: they could make songs where the host let users make them."""
+
+
+def group_of(value: Any) -> str:
+    return value if value in GROUPS else DEFAULT_GROUP
 
 
 class AccountError(ValueError):
@@ -98,10 +110,15 @@ class Accounts:
 
     @staticmethod
     def _public(user: dict[str, Any], admin: bool = False) -> dict[str, Any]:
+        """A user as the pages see them: ``admin`` is the player's admin (this computer's), ``group`` what they may
+        (the admin's: ``admin``), ``helper`` a user with the admin's rights."""
+        group = "admin" if admin else group_of(user.get("group"))
         return {
             "id": ADMIN if admin else user["id"],
             "name": user.get("name") or ("Admin" if admin else "?"),
             "admin": admin,
+            "group": group,
+            "helper": group == "admin" and not admin,
             "avatar": bool(user.get("avatar")),
             "color": user.get("color") or COLORS[0],
         }
@@ -142,8 +159,14 @@ class Accounts:
             raise AccountError(f"A password of at least {MIN_PASSWORD} characters.")
         return text
 
-    def create(self, name: Any, password: Any) -> dict[str, Any]:
-        clean, secret = self._name(name), self._password(password)
+    @staticmethod
+    def _group(group: Any) -> str:
+        if group not in GROUPS:
+            raise AccountError("A group: listener, maker or admin.")
+        return str(group)
+
+    def create(self, name: Any, password: Any, group: Any = DEFAULT_GROUP) -> dict[str, Any]:
+        clean, secret, kind = self._name(name), self._password(password), self._group(group)
         with self.lock:
             data = self._load()
             if any(u["name"].lower() == clean.lower() for u in data["users"]) or clean.lower() == "admin":
@@ -158,6 +181,7 @@ class Accounts:
                 "avatar": "",
                 "color": COLORS[(len(data["users"]) + 1) % len(COLORS)],
                 "created": int(time.time()),
+                "group": kind,
             }
             data["users"].append(user)
             self._save(data)
@@ -165,7 +189,7 @@ class Accounts:
 
     def update(self, user_id: str, changes: dict[str, Any]) -> dict[str, Any]:
         """A user's (or the admin's) new name and colour; a user's new password (their sessions end, but the
-        one that changed it)."""
+        one that changed it) and group (the admin's is always ``admin``)."""
         with self.lock:
             data = self._load()
             user = (
@@ -184,6 +208,8 @@ class Accounts:
                 user["name"] = clean
             if "color" in changes and changes["color"] in COLORS:
                 user["color"] = changes["color"]
+            if "group" in changes and user_id != ADMIN:
+                user["group"] = self._group(changes["group"])
             if "password" in changes and user_id != ADMIN:
                 salt = secrets.token_bytes(16)
                 user.update(

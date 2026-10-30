@@ -17,7 +17,7 @@ import Icon from './Icon.vue'
 import LyricsPanel from './LyricsPanel.vue'
 import LyricsVersionSwitch from './LyricsVersionSwitch.vue'
 import AccountsPanel from './AccountsPanel.vue'
-import { guest, me, session } from '../account'
+import { canAdmin, guest, me, session } from '../account'
 import { DEPARTS_EXTRA, DEPARTS_HEARD } from '../lyricsVersion'
 import NetworkAccess from './NetworkAccess.vue'
 import MakeSettings from './MakeSettings.vue'
@@ -181,7 +181,7 @@ async function stop(): Promise<void> {
 }
 
 /** The page's sections, to jump to (owner's request 2026-10-26: no long scrolling). */
-const studioShown = computed(() => !isPortable && !remote.value && (!session.value?.login || !!me.value?.admin))
+const studioShown = computed(() => !isPortable && !remote.value && (!session.value?.login || canAdmin.value))
 const index = computed(() =>
   (
     [

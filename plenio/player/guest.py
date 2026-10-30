@@ -13,6 +13,11 @@ The live playlist lives in the player's page (its queue). The page sends what it
 for the guests' wishes (``take``), which it carries out itself - so the playlist has one owner, and a wish for
 a song that has moved on is simply not done.
 
+Every guest hears the party's songs again on their own phone (owner's request 2026-10-29): the songs made at this
+party - by guests, users and the host - once they played, while the host lets them (``replay``). A party begins when
+the access is switched on, gets a new address, or the host starts a new one; its songs are kept in
+``party-played.json``, and the guests' server sends their audio - no other song's.
+
 When the host lets guests make songs (``plenio.player.maker``, owner's request 2026-10-25), the guests' page has
 *Make your own song*: a page of its own below the token (``make/``, built into ``guest_static``), and the party
 songs' routes for guests (``api/make...``) - a guest is known by a cookie of their own.
@@ -82,7 +87,12 @@ DEFAULTS: dict[str, Any] = {
     "port": 0,
     "reactions": True,
     "reactions_per_song": "any",
+    "replay": True,
+    "party_since": 0.0,
 }
+REPLAY_FILE = "party-played.json"
+"""The songs made at the party that played: ``{"since": when the party began, "songs": {id: {"at": when it played,
+"by": who made it}}}``."""
 ALL_NETWORKS = ("0.0.0.0", "")  # noqa: S104 - the guests' access is meant for the network
 
 
@@ -145,6 +155,10 @@ class GuestHub:
         self.votes: dict[str, dict[str, str]] = {}
         """Per song, the reaction each guest gave (only one per song counts)."""
         self._load_tally()
+        self.replay_path = directory / REPLAY_FILE
+        self.party: dict[str, dict[str, Any]] = {}
+        """The songs made at this party that played: what the guests hear again."""
+        self._load_party()
 
     # --- settings and the server -------------------------------------------------------------------
     def _load(self) -> dict[str, Any]:
@@ -166,7 +180,39 @@ class GuestHub:
             settings["reactions_per_song"] = "any"
         if not isinstance(settings["token"], str) or len(settings["token"]) < 12:
             settings["token"] = new_token()
+        if not isinstance(settings["replay"], bool):
+            settings["replay"] = True
+        if not isinstance(settings["party_since"], (int, float)) or isinstance(settings["party_since"], bool):
+            settings["party_since"] = 0.0
         return settings
+
+    def _load_party(self) -> None:
+        try:
+            data = json.loads(self.replay_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        if not isinstance(data, dict) or data.get("since") != self.settings["party_since"]:
+            return  # another party's
+        for song, info in (data.get("songs") or {}).items() if isinstance(data.get("songs"), dict) else ():
+            if SONG_ID.fullmatch(str(song)) and isinstance(info, dict):
+                self.party[str(song)] = {"at": float(info.get("at") or 0), "by": str(info.get("by") or "")}
+
+    def _save_party(self) -> None:
+        try:
+            self.replay_path.parent.mkdir(parents=True, exist_ok=True)
+            temp = self.replay_path.with_suffix(".tmp")
+            temp.write_text(
+                json.dumps({"since": self.settings["party_since"], "songs": self.party}), encoding="utf-8"
+            )
+            temp.replace(self.replay_path)
+        except OSError:
+            pass
+
+    def _new_party(self) -> None:
+        """A new party begins (under the lock): what the guests hear again starts empty."""
+        self.settings["party_since"] = time.time()
+        self.party = {}
+        self._save_party()
 
     def _load_tally(self) -> None:
         try:
@@ -224,6 +270,9 @@ class GuestHub:
                 self.settings["reactions"] = changes["reactions"]
             if changes.get("reactions_per_song") in PER_SONG:
                 self.settings["reactions_per_song"] = changes["reactions_per_song"]
+            if isinstance(changes.get("replay"), bool):
+                self.settings["replay"] = changes["replay"]
+            was_on = bool(self.settings["on"])
             if changes.get("regenerate"):
                 self.settings["token"] = new_token()
                 self.wishes.clear()
@@ -231,6 +280,9 @@ class GuestHub:
                 self.reacted.clear()
             if "on" in changes:
                 self.settings["on"] = bool(changes["on"])
+            # a new party: the access switched on, a new address, or the host says so
+            if changes.get("new_party") or changes.get("regenerate") or (self.settings["on"] and not was_on):
+                self._new_party()
             self._save()
             if self.settings["on"] and self.server is None:
                 self._start()
@@ -287,6 +339,9 @@ class GuestHub:
             "urls": urls,
             "guests": sum(1 for at in self.seen.values() if now - at < 30),
             "error": self.error,
+            "replay": bool(self.settings["replay"]),
+            "party_since": self.settings["party_since"],
+            "party_songs": len(self.party),
         }
 
     def token_ok(self, token: str) -> bool:
@@ -328,17 +383,69 @@ class GuestHub:
         if now is not None:
             position = data.get("position")
             now["position"] = round(float(position), 2) if isinstance(position, (int, float)) else 0.0
+        played = [e for e in (entry(x) for x in (data.get("played") or [])[:10]) if e]
         snapshot = {
             "live": bool(data.get("live")),
             "playing": bool(data.get("playing")),
             "waiting": bool(data.get("waiting")),
             "now": now,
             "next": [e for e in (entry(x) for x in (data.get("next") or [])[:LIST_LIMIT]) if e],
-            "played": [e for e in (entry(x) for x in (data.get("played") or [])[:10]) if e],
+            "played": played,
         }
         with self.lock:
             self.snapshot = snapshot
             self.snapshot_at = time.monotonic()
+        self._remember_played(played)
+
+    def _remember_played(self, played: list[dict[str, Any]]) -> None:
+        """The songs made at this party that have played: the guests may hear them again."""
+        if self.maker is None:
+            return
+        since = float(self.settings["party_since"] or 0)
+        fresh = []
+        for item in played:
+            song_id = item["id"]
+            if song_id in self.party:
+                continue
+            made = self.maker.made_here(song_id, since)
+            if made is not None:
+                fresh.append((song_id, made["by"]))
+        if fresh:
+            with self.lock:
+                for song_id, by in fresh:
+                    self.party.setdefault(song_id, {"at": time.time(), "by": by})
+                self._save_party()
+
+    def party_songs(self) -> list[dict[str, Any]]:
+        """This party's songs that played, the last first - for the guests to hear again."""
+        with self.lock:
+            kept = dict(self.party)
+        out = []
+        for song_id, info in sorted(kept.items(), key=lambda item: -item[1]["at"]):
+            song = self.library.song(song_id)
+            if song is None or "audio" not in song.files:
+                continue
+            summary = song.summary
+            out.append(
+                {
+                    "id": song_id,
+                    "title": summary.get("title") or "",
+                    "by": info.get("by") or summary.get("artist") or "",
+                    "seconds": round(float(summary.get("seconds") or 0.0), 1),
+                    "cover": bool((summary.get("has") or {}).get("cover")),
+                    "played": info.get("at"),
+                }
+            )
+        return out
+
+    def party_audio(self, song_id: str) -> Path | None:
+        """A party song's audio for a guest's phone (the MP3 where there is one); ``None`` for any other song."""
+        if not self.settings["replay"] or song_id not in self.party:
+            return None
+        song = self.library.song(song_id)
+        if song is None:
+            return None
+        return next((song.files[k] for k in ("audio_mp3", "audio") if k in song.files), None)
 
     def take(self, after: int, reacted: int | None = None) -> dict[str, Any]:
         """The guests' wishes after ``after`` (the last one the page carried out), and their reactions after
@@ -377,6 +484,7 @@ class GuestHub:
             "open": bool(fresh),
             "mode": self.settings["mode"],
             "make": make,
+            "replay": bool(self.settings["replay"]) and bool(self.party),
             "react": bool(self.settings["reactions"]),
             "per_song": self.settings["reactions_per_song"],
             **snapshot,
@@ -501,6 +609,16 @@ class GuestHub:
 
 
 IMAGE_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+MEDIA_TYPES = {
+    **IMAGE_TYPES,
+    ".mp3": "audio/mpeg",
+    ".flac": "audio/flac",
+    ".wav": "audio/wav",
+    ".m4a": "audio/mp4",
+    ".ogg": "audio/ogg",
+}
+"""What the guests' server sends of a song: its cover, and its audio - their own song to hear first, a song of the
+party to hear again."""
 MAKER_HEADERS = {
     "Referrer-Policy": "no-referrer",
     "X-Frame-Options": "DENY",
@@ -518,7 +636,7 @@ PAGE_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Content-Security-Policy": (
         "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; "
-        "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        "media-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
     ),
 }
 
@@ -598,7 +716,11 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
                 return self._json({"error": "the host does not let guests make songs"}, 403)
             who, cookie = self._guest()
             job = re.fullmatch(r"/api/make/jobs/([0-9a-f]{16})(/move)?", route)
+            waiting = re.fullmatch(r"/api/make/jobs/([0-9a-f]{16})/(audio|cover|release|discard)", route)
             try:
+                if method == "GET" and waiting and waiting.group(2) in ("audio", "cover"):
+                    # their own song, to hear it first on their phone (owner's request 2026-10-29)
+                    return self._media(maker.listen(who, waiting.group(1), waiting.group(2)))
                 if method == "GET" and route == "/api/make":
                     return self._json(maker.status(who), cookie=cookie)
                 if method == "GET" and route == "/api/make/form":
@@ -629,6 +751,10 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
                     return self._json({"error": "not JSON"}, 400)
                 if method == "POST" and route == "/api/make/jobs":
                     return self._json(maker.create(who, body), 201, cookie)
+                if method == "POST" and waiting and waiting.group(2) == "release":
+                    return self._json(maker.release(who, waiting.group(1)), cookie=cookie)
+                if method == "POST" and waiting and waiting.group(2) == "discard":
+                    return self._json(maker.discard(who, waiting.group(1)), cookie=cookie)
                 if job and method == "PUT" and not job.group(2):
                     return self._json(maker.update(who, job.group(1), body), cookie=cookie)
                 if job and method == "POST" and job.group(2):
@@ -643,6 +769,55 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
             except ValueError:
                 return self._json({"error": "not JSON"}, 400)
             return self._nothing()
+
+        def _media(self, path: Path) -> None:
+            """A song's audio or cover, in parts as a phone's player asks (``Range``) - the guests' server serves no
+            other files than the page's, the covers and these."""
+            kind = MEDIA_TYPES.get(path.suffix.lower())
+            if kind is None or not path.is_file():
+                return self._nothing()
+            size = path.stat().st_size
+            start, end = 0, size - 1
+            ranged = re.fullmatch(r"bytes=(\d*)-(\d*)", (self.headers.get("Range") or "").strip())
+            if ranged and (ranged.group(1) or ranged.group(2)):
+                if ranged.group(1):
+                    start = int(ranged.group(1))
+                    end = int(ranged.group(2)) if ranged.group(2) else size - 1
+                else:
+                    start = max(0, size - int(ranged.group(2)))
+                end = min(end, size - 1)
+                if start > end or start >= size:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{size}")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return None
+                self.send_response(206)
+                self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+            else:
+                self.send_response(200)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(end - start + 1))
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Cache-Control", "no-store")
+            for name, value in PAGE_HEADERS.items():
+                self.send_header(name, value)
+            self.end_headers()
+            if self.command == "HEAD":
+                return None
+            with path.open("rb") as stream:
+                stream.seek(start)
+                left = end - start + 1
+                while left > 0:
+                    chunk = stream.read(min(1 << 16, left))
+                    if not chunk:
+                        break
+                    try:
+                        self.wfile.write(chunk)
+                    except (BrokenPipeError, ConnectionResetError):
+                        return None
+                    left -= len(chunk)
+            return None
 
         def _read(self, limit: int) -> bytes | None:
             length = int(self.headers.get("Content-Length") or 0)
@@ -698,6 +873,13 @@ def serve_guests(hub: GuestHub, host: str, port: int) -> ThreadingHTTPServer:
                 return self._maker_page(route)
             if route == "/api/make" or route.startswith("/api/make/"):
                 return self._make("GET", route, query, b"")
+            if route == "/api/party":
+                if not hub.settings["replay"]:
+                    return self._json({"on": False, "songs": []})
+                return self._json({"on": True, "songs": hub.party_songs()})
+            if route.startswith("/song/"):
+                path = hub.party_audio(route.removeprefix("/song/"))
+                return self._media(path) if path is not None else self._nothing()
             if route == "/api/songs":
                 if hub.settings["mode"] != "change":
                     return self._json({"error": "the host lets guests only look"}, 403)

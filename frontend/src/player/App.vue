@@ -287,7 +287,16 @@ onMounted(() => {
   // the guests' reactions per song, as the player keeps them (the song's page shows them)
   if (!isPortable) void loadCheers(api.reactions)
   // party songs: the sidebar's entry and count, and a word when a song of one's own is ready
-  pollMake(false, (job) => say(`Your song “${job.result?.title || job.label}” is ready${settings.live.on ? ' - it joins the party' : ''}`, 6000))
+  pollMake(false, (job) =>
+    say(
+      job.release === 'maker'
+        ? `Your song “${job.result?.title || job.label}” is ready - hear it first in Make a song, then release it`
+        : job.release === 'admin'
+          ? `Your song “${job.result?.title || job.label}” is ready - an admin hears it before everybody does`
+          : `Your song “${job.result?.title || job.label}” is ready${settings.live.on ? ' - it joins the party' : ''}`,
+      6000
+    )
+  )
   if (!isPortable) presetTimer = window.setInterval(() => {
     if (document.visibilityState === 'visible') void loadMyPresets()
   }, 3000)

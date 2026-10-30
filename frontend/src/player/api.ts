@@ -352,6 +352,11 @@ export interface GuestStatus {
   urls: string[]
   guests: number
   error: string
+  /** Guests hear this party's songs again on their phones once they played (owner's request 2026-10-29); when the
+   * party began, and how many songs there are to hear again. */
+  replay?: boolean
+  party_since?: number
+  party_songs?: number
 }
 
 /** A guest's reaction to the song that plays (``kind``: fire, heart, party, clap, dance, laugh). */
@@ -502,7 +507,7 @@ const serverApi = {
   guests: () => json<GuestStatus>('/api/guests'),
   /** Switch the guests' access on or off, choose what they may do and what the screen shows, or make a new
    * address (``regenerate``). */
-  setGuests: (changes: Partial<Pick<GuestStatus, 'on' | 'mode' | 'show' | 'reactions' | 'reactions_per_song'>> & { regenerate?: boolean }) =>
+  setGuests: (changes: Partial<Pick<GuestStatus, 'on' | 'mode' | 'show' | 'reactions' | 'reactions_per_song' | 'replay'>> & { regenerate?: boolean; new_party?: boolean }) =>
     json<GuestStatus>('/api/guests', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) }),
   /** What the page shows of the live playlist, for the guests. */
   showGuests: (shown: unknown) => post<{ ok: boolean }>('/api/guests/live', shown),

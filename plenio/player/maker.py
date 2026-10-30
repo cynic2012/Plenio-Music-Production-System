@@ -34,6 +34,7 @@ import hashlib
 import json
 import re
 import secrets
+import shutil
 import threading
 import time
 import urllib.error
@@ -45,12 +46,15 @@ from typing import Any
 
 from ..core import brief as brief_rules
 from ..core.errors import PlenioUserError
+from ..core.release import RECORD_SUFFIX, record_fingerprint
 from ..core.song_api import brief_values, model_of
 from . import other as other_music
-from .library import Library
+from .library import WAITING_DIR, Library
 
 FILE = "party-songs.json"
 SOURCES = "party-sources"
+DEFAULT_FOLDER = "plenio"
+"""The release folder of the songs and covers made here when the party's is not theirs (the templates')."""
 COOKIE = "plenio_maker"
 GUEST_NAME = "Guest"
 DEFAULTS: dict[str, Any] = {
@@ -62,9 +66,17 @@ DEFAULTS: dict[str, Any] = {
     "covers": True,
     "credit": "off",
     "remote": True,
+    "listen_first": False,
+    "approve": False,
 }
 """Off until the admin switches it on; then users and guests may, three songs each waiting, up to about 4:00. Who
-comes through *In your network* has the whole studio, at any time (``remote``; the admin always has)."""
+comes through *In your network* has the whole studio, at any time (``remote``; the admin always has). A song made
+here is released at once - or (owner's request 2026-10-29) after its maker heard it and released it
+(``listen_first``) and/or after an admin approved it (``approve``); the admin's and the helpers' songs are released
+at once."""
+RELEASE_STEPS = ("maker", "admin")
+"""A song waiting to be released: for its maker to hear it first, or for an admin to approve it."""
+NOT_RELEASED = "not released"
 CREDITS = ("off", "spotlight", "drift")
 """Who made a party song, while it plays (Now playing, the visual, the guests' page): not shown; *spotlight* -
 large as it begins, at every new section and as it ends, a small badge between; *drift* - the name floats
@@ -263,6 +275,48 @@ def _own_release(release: Any) -> dict[str, Any]:
     return {k: v for k, v in dict(release or {}).items() if k != "collision"}
 
 
+def move_song(folder: Path, target: Path) -> Path:
+    """A released song's files from its waiting folder (``folder``: only its own) into ``target``; returns its
+    record there. A name already taken there gets a number, as Export Release gives one - the files, the stems'
+    folder and the record's list of files alike (its fingerprint computed again), and its page written anew."""
+    record = next((p for p in folder.iterdir() if p.name.endswith(RECORD_SUFFIX)), None)
+    if record is None:
+        raise MakerError("The song's record is not in its folder.", 404)
+    stem = record.name.removesuffix(RECORD_SUFFIX)
+    entries = [p for p in folder.iterdir()]
+
+    def renamed(name: str, new: str) -> str:
+        return new + name[len(stem) :] if name.startswith(stem) else name
+
+    new = stem
+    number = 2
+    while any((target / renamed(p.name, new)).exists() for p in entries):
+        new = f"{stem} ({number})"
+        number += 1
+    if new != stem:
+        data = json.loads(record.read_text(encoding="utf-8"))
+        for item in data.get("files") or []:
+            if isinstance(item, dict) and isinstance(item.get("name"), str):
+                item["name"] = renamed(item["name"], new)
+        if "fingerprint" in data:
+            data["fingerprint"] = record_fingerprint(data)
+        record.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    target.mkdir(parents=True, exist_ok=True)
+    for path in entries:
+        shutil.move(str(path), str(target / renamed(path.name, new)))
+    folder.rmdir()
+    moved = target / f"{new}{RECORD_SUFFIX}"
+    page = target / f"{new}.html"
+    if new != stem and page.exists():
+        try:
+            from .song_page import page_for
+
+            page.write_text(page_for(moved), encoding="utf-8")
+        except (OSError, ValueError):
+            pass  # the page is a reading aid; the song is released
+    return moved
+
+
 def record_kind(record: Mapping[str, Any]) -> str:
     """``song`` or ``cover`` by the record's brief (``""``: none - a file finished, not made)."""
     classes = {n.get("class_type") for n in (record.get("prompt") or {}).values() if isinstance(n, Mapping)}
@@ -388,6 +442,8 @@ class PartySongs:
         if settings["credit"] not in CREDITS:
             settings["credit"] = DEFAULTS["credit"]
         settings["remote"] = bool(settings["remote"])
+        settings["listen_first"] = bool(settings["listen_first"])
+        settings["approve"] = bool(settings["approve"])
         jobs = [j for j in data.get("jobs") or [] if isinstance(j, dict) and isinstance(j.get("id"), str)]
         rates = {
             k: float(v)
@@ -424,6 +480,12 @@ class PartySongs:
         return who.get("kind") == "admin" or bool(who.get("remote") and self.settings["remote"])
 
     def may(self, who: Mapping[str, Any]) -> tuple[bool, str]:
+        # a user of the group *listener* listens only (owner's request 2026-10-29) - also through the network
+        if who.get("kind") == "user" and who.get("group") == "listener":
+            return (
+                False,
+                "This account listens only - the admin lets it make songs (Settings: Who is listening).",
+            )
         if self.full(who):
             return True, ""
         if not self.settings["on"]:
@@ -438,8 +500,23 @@ class PartySongs:
         return bool(self.settings["on"] and self.settings["guests"])
 
     def _mine(self, who: Mapping[str, Any], job: Mapping[str, Any]) -> bool:
+        """A job of this listener: a guest's by their cookie, a user's by their id - also when their group changed
+        since (a user made a helper made it as a user)."""
         owner = job.get("owner") or {}
-        return owner.get("kind") == who.get("kind") and owner.get("id") == who.get("id")
+        guest = owner.get("kind") == "guest"
+        return guest == (who.get("kind") == "guest") and owner.get("id") == who.get("id")
+
+    def made_here(self, song_id: str, since: float = 0.0) -> dict[str, str] | None:
+        """Who made a song here - the party's songs, of guests, users and the admins - when it was ordered at or after
+        ``since``; ``None`` for a song not made here."""
+        with self.lock:
+            for job in self.jobs:
+                if (job.get("result") or {}).get("song") == song_id and float(
+                    job.get("created") or 0
+                ) >= since:
+                    owner = job.get("owner") or {}
+                    return {"by": str(owner.get("name") or GUEST_NAME), "kind": str(owner.get("kind") or "")}
+        return None
 
     def _job(self, job_id: str, who: Mapping[str, Any]) -> dict[str, Any]:
         job = next((j for j in self.jobs if j["id"] == job_id), None)
@@ -450,7 +527,7 @@ class PartySongs:
     # --- the settings -----------------------------------------------------------------------------------
     def configure(self, changes: Mapping[str, Any]) -> dict[str, Any]:
         with self.lock:
-            for key in ("on", "users", "guests", "covers", "remote"):
+            for key in ("on", "users", "guests", "covers", "remote", "listen_first", "approve"):
                 if key in changes:
                     self.settings[key] = bool(changes[key])
             if "per_person" in changes:
@@ -1288,11 +1365,23 @@ class PartySongs:
             "takes_left": int(job.get("takes_left") or 0),
             "error": job.get("error") or "",
             "note": job.get("note") or "",
+            # waiting to be released: for its maker to hear it first (``maker``), for an admin (``admin``); or
+            # ``released``, ``discarded``, ``rejected`` (owner's request 2026-10-29)
+            "release": job.get("release"),
             "can": {
                 "edit": waiting and (mine or admin),
                 "up": waiting and place > 0,
                 "down": waiting and 0 <= place < len(movers) - 1,
-                "delete": mine or admin,
+                "delete": (mine or admin) and job.get("release") not in RELEASE_STEPS,
+                "listen": (mine or admin) and job.get("release") in RELEASE_STEPS,
+                "release": job.get("release") == "maker"
+                and (mine or admin)
+                or job.get("release") == "admin"
+                and admin,
+                "discard": job.get("release") == "maker"
+                and (mine or admin)
+                or job.get("release") == "admin"
+                and admin,
             },
         }
         if mine or admin:
@@ -1315,8 +1404,13 @@ class PartySongs:
             settings = (
                 dict(self.settings)
                 if admin
-                else {k: self.settings[k] for k in ("covers", "max_length", "per_person", "credit")}
+                else {
+                    k: self.settings[k]
+                    for k in ("covers", "max_length", "per_person", "credit", "listen_first", "approve")
+                }
             )
+            # the songs waiting for an admin's approval, everybody's (owner's request 2026-10-29)
+            approvals = [self.view(j, who) for j in self.jobs if j.get("release") == "admin"] if admin else []
             waiting = len(self._waiting())
             making = any(j["status"] in ACTIVE for j in self.jobs)
             timeline = self._timeline()
@@ -1342,6 +1436,7 @@ class PartySongs:
                 "free": round(max([t[1] for t in timeline.values()], default=self.clock())),
             },
             "jobs": self.listing(who, everyone=everyone),
+            "approvals": approvals,
         }
 
     # --- the worker ---------------------------------------------------------------------------------------
@@ -1389,7 +1484,9 @@ class PartySongs:
             old = [
                 j
                 for j in self.jobs
-                if j["status"] in FINISHED and now - float(j.get("finished") or now) > KEEP_FINISHED_S
+                if j["status"] in FINISHED
+                and j.get("release") not in RELEASE_STEPS
+                and now - float(j.get("finished") or now) > KEEP_FINISHED_S
             ]
             for job in old:
                 self.jobs.remove(job)
@@ -1513,7 +1610,16 @@ class PartySongs:
                     raise StudioError(400, "missing_field", "The original recording is gone - add it again.")
                 name = str((job.get("source") or {}).get("name") or path.name)
                 audio = str(self.studio.upload(path, name if Path(name).suffix else path.name)["name"])
-            answer = self.studio.create(self.request_of(job, audio, base), key=f"plenio-player-{job['id']}")
+            request = self.request_of(job, audio, base)
+            # a song that waits to be released is made into a folder of its own, which the library does not read
+            job["hold"] = self._holds(job.get("owner") or {})
+            if job["hold"]:
+                job["final"] = str(request["release"].get("folder") or DEFAULT_FOLDER)
+                request["release"] = {
+                    **request["release"],
+                    "folder": f"{job['final']}/{WAITING_DIR}/{job['id']}",
+                }
+            answer = self.studio.create(request, key=f"plenio-player-{job['id']}")
         except StudioUnavailableError as error:
             with self.lock:
                 if job["status"] == "sending":
@@ -1623,7 +1729,117 @@ class PartySongs:
         factor = max(0.25, min(4.0, took / (base + per_second * self._seconds(job))))
         self.rates[kind] = factor if kind not in self.rates else 0.5 * self.rates[kind] + 0.5 * factor
 
+    # --- released, or not (owner's request 2026-10-29) ----------------------------------------------------
+    def _holds(self, owner: Mapping[str, Any]) -> bool:
+        """Whether a song waits to be released: one of a user or a guest while its maker hears it first or an admin
+        approves it (the admin's and the helpers' songs are released at once)."""
+        return owner.get("kind") != "admin" and bool(
+            self.settings["listen_first"] or self.settings["approve"]
+        )
+
+    def _next_step(self, job: Mapping[str, Any], heard: bool = False) -> str | None:
+        """What a song waits for now: its maker (not heard yet), an admin, or nothing (``None``: released)."""
+        owner = job.get("owner") or {}
+        if owner.get("kind") == "admin":
+            return None
+        if not heard and self.settings["listen_first"]:
+            return "maker"
+        return "admin" if self.settings["approve"] else None
+
+    def _waiting_job(self, who: Mapping[str, Any], job_id: str) -> dict[str, Any]:
+        job = self._job(job_id, who)
+        if job.get("release") not in RELEASE_STEPS:
+            raise MakerError("This song does not wait to be released.", 409)
+        return job
+
+    def listen(self, who: Mapping[str, Any], job_id: str, what: str = "audio") -> Path:
+        """A song waiting to be released, to hear it first on one's own device: its audio (MP3 where there is one -
+        every phone plays it) or its cover - for its maker and the admins only."""
+        with self.lock:
+            job = self._waiting_job(who, job_id)
+            record = Path(str((job.get("result") or {}).get("record") or ""))
+        try:
+            data = json.loads(record.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise MakerError("The song's files are not there.", 404) from error
+        files = [f for f in data.get("files") or [] if isinstance(f, dict) and isinstance(f.get("name"), str)]
+        if what == "cover":
+            names = [f["name"] for f in files if f.get("role") == "cover"]
+        else:
+            main = [f for f in files if not f.get("role")]
+            names = [f["name"] for k in ("mp3", "flac", "wav") for f in main if f.get("format") == k]
+        for name in names:
+            path = (record.parent / str(name)).resolve()
+            if path.parent == record.parent.resolve() and path.is_file():
+                return path
+        raise MakerError("The song's file is not there.", 404)
+
+    def release(self, who: Mapping[str, Any], job_id: str) -> dict[str, Any]:
+        """Release a waiting song: its maker after hearing it (then an admin approves it, where they must), an
+        admin approving it. Released, it moves to its folder and Live Play takes it in as a new song."""
+        admin = who.get("kind") == "admin"
+        with self.lock:
+            job = self._waiting_job(who, job_id)
+            if job["release"] == "admin" and not admin:
+                raise MakerError("An admin releases it - it waits for their approval.", 403)
+            step = self._next_step(job, heard=True) if job["release"] == "maker" else None
+            if step == "admin" and not admin:
+                job["release"] = "admin"
+                job["heard"] = self.clock()
+                self._save()
+                return self.view(job, who)
+        self._publish(job)
+        with self.lock:
+            return self.view(job, who)
+
+    def discard(self, who: Mapping[str, Any], job_id: str) -> dict[str, Any]:
+        """Not released: by its maker after hearing it, or rejected by an admin. Its files go to the folder ``not
+        released`` beside the waiting songs - nothing is deleted."""
+        admin = who.get("kind") == "admin"
+        with self.lock:
+            job = self._waiting_job(who, job_id)
+            if job["release"] == "admin" and not admin:
+                raise MakerError("An admin decides about it now.", 403)
+            record = Path(str((job.get("result") or {}).get("record") or ""))
+            folder = record.parent
+            if folder.is_dir() and folder.parent.name == WAITING_DIR:
+                target = folder.parent / NOT_RELEASED / folder.name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(folder), str(target))
+                job["result"]["record"] = str(target / record.name)
+            job["release"] = "discarded" if self._mine(who, job) and job["release"] == "maker" else "rejected"
+            job["decided"] = self.clock()
+            self._save()
+            return self.view(job, who)
+
+    def _publish(self, job: dict[str, Any]) -> None:
+        """A released song from its waiting folder into its release folder, then into the library."""
+        record = Path(str((job.get("result") or {}).get("record") or ""))
+        folder = record.parent
+        if folder.is_dir() and folder.parent.name == WAITING_DIR:
+            record = move_song(folder, folder.parent.parent)
+        with self.lock:
+            job["result"]["record"] = str(record)
+            job["release"] = "released"
+            job["decided"] = self.clock()
+            self._save()
+        self._into_library(job)
+
     def _file(self, job: dict[str, Any]) -> None:
+        """A finished song: waiting to be released (its maker hears it first, an admin approves it), or released
+        into the library."""
+        if job.get("hold") and job.get("release") is None:
+            step = self._next_step(job)
+            if step is not None:
+                with self.lock:
+                    job["release"] = step
+                    self._save()
+                return
+            self._publish(job)
+            return
+        self._into_library(job)
+
+    def _into_library(self, job: dict[str, Any]) -> None:
         """The finished song into the library: its record's folder is read (added when it is outside the
         library's folders), so Live Play takes it in as a new song."""
         record = Path(str((job.get("result") or {}).get("record") or ""))

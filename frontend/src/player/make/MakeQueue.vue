@@ -3,7 +3,9 @@
  * Your songs in the making (owner's request 2026-10-25): in their order, each with what identifies it (its title
  * once made; before, its style, length and voice, and the start of its description) and where it is - ready (when,
  * ▶), being made (for how long, the stage, roughly when it is ready), in line (its place, roughly when) - with ↑ ↓,
- * Edit while it waits, and ✕ (out of the line, stopped, or off the list).
+ * Edit while it waits, and ✕ (out of the line, stopped, or off the list). A song waiting to be released (owner's request
+ * 2026-10-29) plays here on one's own device - its maker hears it first and releases it or not; an admin approves it
+ * or not.
  */
 import Icon from '../components/Icon.vue'
 import { progressOf, stateOf, timeOfDay, titleOf } from './form'
@@ -19,8 +21,10 @@ const props = defineProps<{
   /** ▶ for a song made (the player's page; the guests' phones have no sound). */
   playable?: boolean
   busy?: string
+  /** Where a song waiting to be released is heard first. */
+  listen?: (job: MakeJob) => string
 }>()
-const emit = defineEmits<{ edit: [job: MakeJob]; move: [job: MakeJob, by: -1 | 1]; remove: [job: MakeJob]; play: [job: MakeJob]; again: [job: MakeJob]; remake: [job: MakeJob] }>()
+const emit = defineEmits<{ edit: [job: MakeJob]; move: [job: MakeJob, by: -1 | 1]; remove: [job: MakeJob]; play: [job: MakeJob]; again: [job: MakeJob]; remake: [job: MakeJob]; release: [job: MakeJob]; discard: [job: MakeJob] }>()
 
 const initials = (text: string): string =>
   text
@@ -70,6 +74,11 @@ const removeTitle = (job: MakeJob): string =>
         </template>
         <button v-if="job.can.delete" class="icon-btn" :title="removeTitle(job)" :disabled="busy === job.id" @click="emit('remove', job)"><Icon name="close" :size="16" /></button>
       </div>
+      <div v-if="job.can.listen && listen" class="hear">
+        <audio controls preload="none" :src="listen(job)" />
+        <button v-if="job.can.release" class="primary small" :disabled="busy === job.id" :title="job.release === 'admin' ? 'Everybody hears it: it joins the songs - and the party' : 'It joins the songs - or waits for an admin’s approval where the host asks for it'" @click="emit('release', job)"><Icon name="check" :size="15" /> {{ job.release === 'admin' ? 'Approve' : 'Release it' }}</button>
+        <button v-if="job.can.discard" class="ghost small" :disabled="busy === job.id" title="Nobody else hears it: it is kept aside, nothing is deleted" @click="emit('discard', job)">{{ job.release === 'admin' ? 'Reject' : 'Don’t release' }}</button>
+      </div>
     </li>
   </ol>
 </template>
@@ -92,6 +101,18 @@ const removeTitle = (job: MakeJob): string =>
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.hear {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.hear audio {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: 36px;
 }
 .row.busy {
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);

@@ -78,6 +78,18 @@ function remove(job: MakeJob): void {
   if (['sending', 'queued', 'running'].includes(job.status) && !window.confirm('Stop making this song?')) return
   void act(job, () => client.remove(job.id))
 }
+/** One's own song, heard first on the phone (owner's request 2026-10-29): released - or not. */
+function release(job: MakeJob): void {
+  void act(job, async () => {
+    const answer = await client.release(job.id)
+    say(answer.release === 'admin' ? 'Released - the host hears it before everybody does' : 'Released - it plays at the party')
+  })
+}
+function discard(job: MakeJob): void {
+  if (!window.confirm('Not release this song? Nobody else hears it.')) return
+  void act(job, () => client.discard(job.id))
+}
+const listenTo = (job: MakeJob): string => client.listen(job.id)
 function edit(job: MakeJob): void {
   editing.value = job
   tab.value = 'make'
@@ -105,7 +117,7 @@ async function remakeSong(job: MakeJob): Promise<void> {
   await readAgain(id)
 }
 const coverOf = (songId: string): string => `../cover/${songId}`
-const cover = (job: MakeJob): string | null => (job.result?.song ? coverOf(job.result.song) : null)
+const cover = (job: MakeJob): string | null => (job.can.listen ? client.cover(job.id) : job.result?.song ? coverOf(job.result.song) : null)
 
 onMounted(() => {
   void load()
@@ -157,7 +169,7 @@ onBeforeUnmount(() => {
         <p v-else class="empty">{{ reading ? 'Reading the song …' : 'Reading the styles …' }}</p>
       </section>
       <section v-show="tab === 'mine'" class="card">
-        <MakeQueue v-if="mine.length" :jobs="mine" :now="now" :cover="cover" :busy="busy" @edit="edit" @move="(job, by) => act(job, () => client.move(job.id, by))" @remove="remove" @again="(job) => act(job, () => client.create(retryRequest(job)))" @remake="remakeSong" />
+        <MakeQueue v-if="mine.length" :jobs="mine" :now="now" :cover="cover" :busy="busy" :listen="listenTo" @edit="edit" @move="(job, by) => act(job, () => client.move(job.id, by))" @remove="remove" @again="(job) => act(job, () => client.create(retryRequest(job)))" @remake="remakeSong" @release="release" @discard="discard" />
         <p v-else class="empty">Your songs show here - in line, being made, ready. Order one under <b>New song</b>.</p>
       </section>
     </template>

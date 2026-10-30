@@ -3,16 +3,25 @@
  * user set up by the admin keeps the same playlists, likes, plays and settings on every device; the admin logs
  * in on the player's computer only and has the player's state as it was; a guest keeps theirs in this browser.
  * A device stays logged in (a cookie) and a guest's choice is remembered here, so the page asks once.
+ *
+ * A user is a listener, a maker or an admin (owner's request 2026-10-29): an admin user is a helper with the admin's
+ * rights - from any device - but their own playlists and likes.
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { keepStateInBrowser } from './api'
 import { isPortable } from './portable'
 
+export type Group = 'listener' | 'maker' | 'admin'
+
 export interface Account {
   id: string
   name: string
+  /** The player's admin (this computer's). */
   admin: boolean
+  /** What the user may: listen, also make songs, or everything the admin may (``helper``). */
+  group?: Group
+  helper?: boolean
   avatar: boolean
   color: string
   created?: number
@@ -35,6 +44,13 @@ export interface Session {
 export const session = ref<Session | null>(null)
 /** Who this page is for (``null``: a guest). */
 export const me = ref<Account | null>(null)
+/** The admin's rights here: the admin, or a helper. */
+export const canAdmin = computed(() => !!me.value && (me.value.admin || !!me.value.helper))
+export const GROUPS: [Group, string, string][] = [
+  ['listener', 'Listens', 'Listens only: may not make songs'],
+  ['maker', 'Makes songs', 'Listens and makes songs, when the party’s settings let users make them'],
+  ['admin', 'Admin - a helper', 'Everything the admin may - users, approvals, the party’s settings - from any device; their own playlists and likes stay theirs'],
+]
 export const guest = ref(false)
 export const loginShown = ref(false)
 /** Changes with a new picture, so that the browser shows it at once. */
@@ -144,11 +160,11 @@ export async function listUsers(): Promise<Account[]> {
   return (await answer<{ users: Account[] }>(await fetch('/api/users'))).users
 }
 
-export async function addUser(name: string, password: string): Promise<Account> {
-  return (await answer<{ user: Account }>(await sendJson('/api/users', 'POST', { name, password }))).user
+export async function addUser(name: string, password: string, group: Group = 'maker'): Promise<Account> {
+  return (await answer<{ user: Account }>(await sendJson('/api/users', 'POST', { name, password, group }))).user
 }
 
-export async function changeUser(id: string, changes: { name?: string; password?: string; color?: string }): Promise<Account> {
+export async function changeUser(id: string, changes: { name?: string; password?: string; color?: string; group?: Group }): Promise<Account> {
   const account = (await answer<{ user: Account }>(await sendJson(`/api/users/${id}`, 'PUT', changes))).user
   if (me.value?.id === account.id) me.value = account
   return account

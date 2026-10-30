@@ -80,6 +80,15 @@ onBeforeUnmount(() => window.clearInterval(timer))
           <small>they float up the edges of this screen and are counted for each song (the song's page shows them - apart from your hearts)</small>
         </div>
         <div class="choice">
+          <span>Hear again</span>
+          <label><input type="checkbox" :checked="status.replay !== false" @change="change({ replay: status.replay === false })" /> guests hear this party’s songs again on their phones, once they played</label>
+          <small>
+            only the songs made at the party - by guests, users and you - and only this party’s:
+            since {{ status.party_since ? new Date(status.party_since * 1000).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : 'the access is switched on' }}<template v-if="status.party_songs"> · {{ status.party_songs }} {{ status.party_songs === 1 ? 'song' : 'songs' }} so far</template>
+            · <a @click="change({ new_party: true }, 'A new party - its songs start anew')">start a new party</a>
+          </small>
+        </div>
+        <div class="choice">
           <span>On the screen</span>
           <select :value="status.show" @change="change({ show: ($event.target as HTMLSelectElement).value as 'both' })">
             <option value="both">the QR code and the address</option>

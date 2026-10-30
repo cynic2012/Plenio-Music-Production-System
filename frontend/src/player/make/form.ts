@@ -132,7 +132,10 @@ export interface MakeJob {
   result: { title?: string; record?: string; song?: string } | null
   error: string
   note: string
-  can: { edit: boolean; up: boolean; down: boolean; delete: boolean }
+  /** Waiting to be released (owner's request 2026-10-29): for its maker to hear it first, for an admin to approve it;
+   * or released, not released by its maker, not approved. */
+  release?: Release | null
+  can: { edit: boolean; up: boolean; down: boolean; delete: boolean; listen?: boolean; release?: boolean; discard?: boolean }
   fields?: Record<string, string>
   source?: Source | null
   again?: Again | null
@@ -146,6 +149,8 @@ export interface MakeJob {
   /** Takes that follow when this song is made. */
   takes_left?: number
 }
+
+export type Release = 'maker' | 'admin' | 'released' | 'discarded' | 'rejected'
 
 /** Who made a party song, while it plays: not shown, large at its moments with a badge between, or floating
  * across the picture all the way (``plenio.player.maker.CREDITS``). */
@@ -199,10 +204,12 @@ export interface MakeStatus {
   why: string
   me: { kind: 'admin' | 'user' | 'guest'; name: string; full?: boolean; remote?: boolean }
   admin: boolean
-  settings: { on?: boolean; users?: boolean; guests?: boolean; per_person: number; max_length: string; covers: boolean; credit?: Credit; remote?: boolean }
+  settings: { on?: boolean; users?: boolean; guests?: boolean; per_person: number; max_length: string; covers: boolean; credit?: Credit; remote?: boolean; listen_first?: boolean; approve?: boolean }
   studio: { reachable: boolean; error: string }
   line: { waiting: number; making: boolean; free: number }
   jobs: MakeJob[]
+  /** The songs waiting for an admin's approval - everybody's (the admins' answer only). */
+  approvals?: MakeJob[]
 }
 
 export const SONG_FIELDS = ['template', 'description', 'genre', 'mood', 'tempo', 'length', 'vocals', 'language', 'voice', 'theme', 'key', 'meter'] as const
@@ -540,6 +547,10 @@ export function stateOf(job: MakeJob, now: number): { title: string; detail: str
       return { title: `${stage} …`, detail: `${clock(elapsed)}${job.eta ? ` · ready about ${timeOfDay(job.eta, true, now)}` : ''}`, tone: 'busy' }
     }
     case 'done':
+      if (job.release === 'maker') return { title: 'Ready - hear it first', detail: job.mine ? 'only you hear it now: release it, or not' : 'its maker hears it first', tone: 'done' }
+      if (job.release === 'admin') return { title: 'Waiting for approval', detail: 'an admin hears it before everybody does', tone: 'wait' }
+      if (job.release === 'discarded') return { title: 'Not released', detail: 'kept aside - nobody else hears it', tone: 'off' }
+      if (job.release === 'rejected') return { title: 'Not approved', detail: 'kept aside - nobody else hears it', tone: 'off' }
       return { title: `Ready${job.finished ? ` ${timeOfDay(job.finished)}` : ''}`, detail: job.result?.song ? 'in the library - and at the party' : 'finding it in the library …', tone: 'done' }
     case 'failed':
       return { title: 'That did not work', detail: job.error || 'the studio stopped', tone: 'bad' }

@@ -153,6 +153,21 @@ async function act(job: MakeJob, work: () => Promise<unknown>): Promise<void> {
     busy.value = ''
   }
 }
+/** A song waiting to be released: its maker releases it after hearing it, an admin approves it. */
+function release(job: MakeJob): void {
+  void act(job, async () => {
+    const answer = await makeApi.release(job.id)
+    say(answer.release === 'admin' ? 'Released - an admin hears it before everybody does' : 'Released - it joins the songs, and the party', 4500)
+    if (answer.release === 'released') await reloadLibrary()
+  })
+}
+function discard(job: MakeJob): void {
+  const title = job.result?.title || job.label
+  if (!window.confirm(job.release === 'admin' ? `Not approve “${title}”? Nobody else hears it; its files are kept aside.` : `Not release “${title}”? Nobody else hears it; its files are kept aside.`)) return
+  void act(job, () => makeApi.discard(job.id))
+}
+const listenTo = (job: MakeJob): string => makeApi.listen(job.id)
+
 function remove(job: MakeJob): void {
   const running = ['sending', 'queued', 'running'].includes(job.status)
   if (running && !window.confirm(`Stop making “${job.label}”? It cannot go on later.`)) return
@@ -180,7 +195,8 @@ function cancel(): void {
 function remakeSong(job: MakeJob): void {
   if (job.result?.song) go(`/make/${job.result.song}`)
 }
-const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.get(job.result.song)?.has.cover ? media(job.result.song, 'cover') : null)
+const cover = (job: MakeJob): string | null =>
+  job.can.listen ? makeApi.cover(job.id) : job.result?.song && byId.value.get(job.result.song)?.has.cover ? media(job.result.song, 'cover') : null
 </script>
 
 <template>
@@ -234,6 +250,11 @@ const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.g
         <p v-else class="empty">{{ reading ? 'Reading the song …' : 'Reading the styles …' }}</p>
       </section>
       <section v-show="!isPhone || phoneTab === 'songs'" class="card songs">
+        <template v-if="status?.approvals?.length">
+          <h2>Waiting for your approval <small>{{ status.approvals.length }}</small></h2>
+          <p class="approve-hint">Hear each one here, on this device - then approve it, and it joins the songs and the party, or reject it, and nobody else hears it.</p>
+          <MakeQueue :jobs="status.approvals" :now="now" :cover="cover" owners :busy="busy" :listen="listenTo" @release="release" @discard="discard" />
+        </template>
         <h2>
           {{ everybody ? 'Everybody’s songs' : 'Your songs' }} <small v-if="making">{{ making }} in the making</small>
           <span v-if="status?.admin" class="switch">
@@ -248,6 +269,7 @@ const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.g
           :cover="cover"
           :owners="everybody"
           :busy="busy"
+          :listen="listenTo"
           playable
           @edit="edit"
           @move="(job, by) => act(job, () => makeApi.move(job.id, by))"
@@ -255,6 +277,8 @@ const cover = (job: MakeJob): string | null => (job.result?.song && byId.value.g
           @play="play"
           @again="again"
           @remake="remakeSong"
+          @release="release"
+          @discard="discard"
         />
         <div v-else class="empty">
           <Icon name="music" :size="34" />
@@ -502,5 +526,10 @@ h2 small {
   .card {
     padding: 14px;
   }
+}
+.approve-hint {
+  margin: -4px 0 10px;
+  color: var(--muted);
+  font-size: 13px;
 }
 </style>
