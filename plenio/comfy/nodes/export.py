@@ -55,6 +55,7 @@ from ...core.release import (
 )
 from ...core.reports import Report, Status
 from ...core.score import canonical, lyric_layout
+from ...core.step_clock import StepClock
 from ...player.song_page import PAGE_SUFFIX, page_for
 from .. import audio_models, host
 from ..lyrics_asr import language_code, run_asr
@@ -552,6 +553,7 @@ class PlenioExportRelease(io.ComfyNode):
         def file(suffix: str) -> Path:
             return stem.with_name(stem.name + suffix)
 
+        clock = StepClock()
         written: list[Path] = []
         masters: list[Path] = []  # the song's FLAC files, one per take
         facts: list[dict[str, Any]] = []
@@ -574,6 +576,7 @@ class PlenioExportRelease(io.ComfyNode):
                 embed_cover(path, picture)
             facts.append({**file_facts(path), **original_facts, **_md5(path), "role": "original"})
             written.append(path)
+        clock.lap("audio files")
         subtitle_lines: list[str] = []
         timings: list[dict[str, Any]] = []
         # why a take has no subtitles: the Plenio Player says it instead of guessing (GitHub report 2026-10-22)
@@ -581,8 +584,16 @@ class PlenioExportRelease(io.ComfyNode):
         if lyrics_srt:
             for take, samples in zip(takes, items, strict=True):
                 timed, sung, why, heard_from = _subtitles(
-                    samples, rate, sheet, spans, brief, notes, on_stem=lyrics_timing == TIMING_STEM
+                    samples,
+                    rate,
+                    sheet,
+                    spans,
+                    brief,
+                    notes,
+                    on_stem=lyrics_timing == TIMING_STEM,
+                    clock=clock,
                 )
+                clock.lap("lyrics timing")
                 if timed is None:
                     untimed.append(why)
                     continue
@@ -621,6 +632,7 @@ class PlenioExportRelease(io.ComfyNode):
                         "word(s) the lyrics do not have"
                     )
                     notes.extend(f"sung lyrics{where}: {finding}" for finding in sung.findings())
+        clock.lap("lyrics timing")
         cover_path = None
         warnings: list[str] = []
         if picture is not None:
@@ -725,6 +737,7 @@ class PlenioExportRelease(io.ComfyNode):
                 carriers = []
                 plain = [{k: v for k, v in f.items() if k != "project"} for f in facts]
                 record = build_record(replace(record_input, files=plain))
+        clock.lap("stems and record")
         # how well it came out, measured from the master and the record (owner's request 2026-10-29): a hint where
         # to listen first; not part of the fingerprint, and a song is exported also when measuring fails
         try:
@@ -734,6 +747,7 @@ class PlenioExportRelease(io.ComfyNode):
             notes.append(f"quality: not measured ({type(error).__name__}: {error})")
         for path in carriers:
             embed_project(path, record)
+        clock.lap("quality")
         record_path = file(RECORD_SUFFIX)
         atomic_write_text(record_path, json.dumps(record, indent=2, ensure_ascii=False))
         page_path: Path | None = None
@@ -747,6 +761,9 @@ class PlenioExportRelease(io.ComfyNode):
                 LOG.warning("Plenio: the song page was not written: %s", error, exc_info=True)
                 notes.append(f"song page: not written ({type(error).__name__}: {error})")
                 page_path = None
+        clock.lap("record and page")
+        took = clock.line()
+        LOG.info("Plenio Export Release %s: %s", stem.name, took)
         notation: list[dict[str, Any]] = []
         if display:
             # an open page draws the PDF and posts it back (sheet_music.py)
@@ -826,6 +843,7 @@ class PlenioExportRelease(io.ComfyNode):
                     else []
                 ),
                 *subtitle_lines,
+                f"- {took}",
                 (
                     f"- loudness: {level['integrated_lufs']} LUFS, true peak {level['true_peak_dbtp']} dBTP"
                     if level["valid"]
@@ -928,6 +946,7 @@ def _subtitles(
     notes: list[str],
     *,
     on_stem: bool = False,
+    clock: StepClock | None = None,
 ) -> tuple[subtitle_rules.Subtitles | None, subtitle_rules.SungLyrics | None, str, str]:
     """The lyrics subtitles of one take, timed by listening, what it sings as heard (with lyrics), and what was
     heard - the take's vocal stem (``on_stem``, when it can be separated) or the song - or ``None`` and why
@@ -938,7 +957,11 @@ def _subtitles(
     audio = host.make_audio([samples], rate)
     heard_from = TIMING_SONG
     if on_stem:
+        if clock:
+            clock.lap("lyrics timing")
         vocals, why = vocal_stem(samples, rate)
+        if clock:
+            clock.lap("vocal stem")
         if vocals is None:
             notes.append(f"subtitles: heard on the song - {why}")
         else:
@@ -955,6 +978,9 @@ def _subtitles(
         return None, None, f"the lyrics ASR could not run: {error.message}", ""
     finally:
         progress.update(1.0)
+    if clock:
+        clock.lap("lyrics ASR")
+        clock.hearing += float(getattr(result, "seconds", 0.0) or 0.0)
     weak = weak_segments(result)
     words = [w for w in result.words if w.segment not in weak]
     seconds = samples.shape[1] / rate

@@ -482,3 +482,20 @@ def test_a_section_the_writer_filled_with_what_the_band_plays_is_played_not_sung
     assert any("stage direction" in note for note in notes)
     warnings = severities(lyrics.check_lyrics(text, instrumental=False), "warning")
     assert sum("Stage direction" in w for w in warnings) == 4
+
+
+def test_export_release_says_how_long_each_step_took(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Owner's report 2026-10-30: Export Release took minutes - its summary says where they went."""
+    from plenio.core import step_clock
+
+    now = iter([0.0, 3.2, 115.2, 167.0, 167.4, 197.0])
+    monkeypatch.setattr(step_clock.time, "perf_counter", lambda: next(now))
+    clock = step_clock.StepClock()
+    clock.lap("audio files")
+    clock.lap("vocal stem")
+    clock.lap("lyrics ASR")
+    clock.hearing = 46.2
+    clock.lap("quality")  # under a second: left out
+    assert (
+        clock.line() == "took 3:17 - audio files 3 s, vocal stem 1:52, lyrics ASR 52 s (46 s in its worker)"
+    )

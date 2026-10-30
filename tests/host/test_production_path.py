@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from pathlib import Path
 from typing import Any
@@ -254,6 +255,8 @@ def test_enhance_graph_copies_tags_from_the_loaded_file(server: ComfyServer, log
     prompt["4"]["inputs"]["original"] = ["1", 0]
     entry = server.run(prompt)
     summary = entry["outputs"]["4"]["plenio_summary"][0]
+    # how long each step took, for an export that takes long (owner's report 2026-10-30)
+    assert re.search(r"^- took \d+(:\d\d| s)", summary["markdown"], re.MULTILINE), summary["markdown"]
     assert (
         summary["status"] == "ok" and f"- tags copied from {name}" in summary["markdown"]
     )  # a note, no warning
