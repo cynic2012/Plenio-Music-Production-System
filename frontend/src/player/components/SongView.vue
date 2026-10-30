@@ -2,11 +2,12 @@
 /**
  * A song's page: its cover and facts, play and favourite, and tabs - the lyrics (each line a jump into the
  * song), the notation following the music, the sheet music PDF, every detail of how it was made, its other
- * takes and songs alike - and its files to download.
+ * takes and songs alike - and its files to download. Its stars (owner's request 2026-10-29): the listener's own,
+ * given by ear, and the measured ones - faded, a pre-fill - with every measure in the details.
  */
 import { computed, ref, watch } from 'vue'
 
-import { media, songPage, type SongDetail } from '../api'
+import { api, media, songPage, type Quality, type SongDetail } from '../api'
 import { engine } from '../engine'
 import { lineIndex, sections } from '../now'
 import {
@@ -21,6 +22,7 @@ import {
   playing,
   removing,
   say,
+  setRating,
   settings,
   songDetail,
   state,
@@ -43,6 +45,7 @@ import LyricsVersionSwitch from './LyricsVersionSwitch.vue'
 import Notation from './Notation.vue'
 import SongCard from './SongCard.vue'
 import SongMenu from './SongMenu.vue'
+import Stars from './Stars.vue'
 import TagEditor from './TagEditor.vue'
 import { isPortable } from '../portable'
 
@@ -65,6 +68,31 @@ const styleOpen = ref(false)
 
 const song = computed(() => byId.value.get(props.id) ?? null)
 const isCurrent = computed(() => current.value?.id === props.id)
+/** How well it came out, measured (asked of the player: the record's, else measured now). */
+const quality = ref<Quality | null>(null)
+const measuring = ref(false)
+const myStars = computed(() => state.ratings?.[props.id] ?? null)
+watch(
+  () => props.id,
+  async (id) => {
+    quality.value = null
+    if (isPortable) return
+    measuring.value = true
+    try {
+      const answer = await api.quality(id)
+      if (props.id === id) quality.value = answer.quality
+    } catch {
+      quality.value = null
+    } finally {
+      measuring.value = false
+    }
+  },
+  { immediate: true }
+)
+function rate(value: number | null): void {
+  setRating(props.id, value)
+  say(value === null ? 'Your stars taken back' : `${value} of 5 - your stars`, 1800)
+}
 const songTime = computed(() => (isCurrent.value ? time.value : -1))
 
 watch(
@@ -232,6 +260,15 @@ function timingSourceText(source: string, note?: string): string {
         <h1>{{ song.title }}</h1>
         <p class="style" :class="{ open: styleOpen }" @click="styleOpen = !styleOpen">{{ song.style }}</p>
         <p v-if="partyCheers" class="cheers" title="The guests' reactions while it played at a party - apart from your favourite heart">{{ partyCheers }} <span class="from">from the guests</span></p>
+        <div class="rating">
+          <Stars :rating="myStars" :measured="quality?.stars ?? null" editable @rate="rate" />
+          <span v-if="myStars !== null" class="mine">{{ myStars }} - your stars</span>
+          <span v-else-if="quality?.stars != null" class="pre">rate it by ear</span>
+          <span v-if="quality?.stars != null" class="measured" :title="'Measured from the sound and the record - a hint where to listen first, never the verdict (Details: every measure)'">
+            <Stars :rating="null" :measured="quality.stars" :size="14" /> {{ quality.stars }} measured
+          </span>
+          <span v-else-if="measuring" class="measured">measuring …</span>
+        </div>
         <p v-if="song.other" class="other-note">Not made with Plenio: it plays with what its file has - its tags, cover and lyrics (timed from an <code>.lrc</code> file beside it). No notation, measured lyrics, brief or <i>Open in ComfyUI</i>.</p>
         <div v-if="isPhone" class="actions">
           <button class="primary" @click="play"><Icon :name="isCurrent && playing ? 'pause' : 'play'" /> {{ isCurrent && playing ? 'Pause' : 'Play' }}</button>
@@ -320,6 +357,19 @@ function timingSourceText(source: string, note?: string): string {
       <div class="block">
         <h3>The song</h3>
         <dl><template v-for="f in facts" :key="f.label"><dt>{{ f.label }}</dt><dd :class="{ fallback: f.note?.startsWith('default') }">{{ f.value }}<small v-if="f.note" class="note"> ({{ f.note }})</small></dd></template></dl>
+      </div>
+      <div v-if="quality?.parts.length" class="block quality">
+        <h3>How it came out, measured <small>{{ quality.stars }} of 5</small></h3>
+        <dl>
+          <template v-for="p in quality.parts" :key="p.key">
+            <dt :title="p.note">{{ p.label }}</dt>
+            <dd>
+              <span class="meter" :class="{ low: p.score !== null && p.score < 0.6 }"><i :style="{ width: `${Math.round((p.score ?? 0) * 100)}%` }" /></span>
+              {{ p.value }}
+            </dd>
+          </template>
+        </dl>
+        <p class="hint">Measured from the sound and the record: how well the lyrics are sung as written, how clean the harmony is, how steady the beat - and what went wrong (an ending cut off, holes, clipping). A hint where to listen first: only listening tells how good a song is. Your own stars are the ones at the top.</p>
       </div>
       <div v-if="made.length" class="block">
         <h3>How it was made</h3>
@@ -598,6 +648,57 @@ h1 {
 }
 .sheet a {
   display: inline-flex;
+}
+.rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 2px 0 10px;
+}
+.rating .mine {
+  color: #f5c84a;
+  font-weight: 650;
+  font-size: 13px;
+}
+.rating .pre,
+.rating .measured {
+  color: var(--muted);
+  font-size: 12px;
+}
+.rating .measured {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.quality h3 small {
+  color: var(--muted);
+  font-weight: 500;
+}
+.quality dd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.quality .meter {
+  flex: none;
+  width: 70px;
+  height: 6px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.quality .meter i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+/* a weak measure in amber, what came out well in the accent */
+.quality .meter.low i {
+  background: #f5b301;
+}
+.quality .hint {
+  margin-top: 10px;
 }
 .cheers {
   margin: 2px 0 0;

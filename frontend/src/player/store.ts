@@ -164,7 +164,7 @@ export const loadError = ref('')
 /** The player reads its folders the first time: how far (the splash shows it). */
 export const scanning = ref<{ done: number; total: number } | null>(null)
 
-export const state = reactive<PlayerState>({ playlists: [], favorites: [], plays: {}, last_played: {}, tags: {}, settings: {} })
+export const state = reactive<PlayerState>({ playlists: [], favorites: [], plays: {}, last_played: {}, tags: {}, settings: {}, ratings: {} })
 export const settings = reactive<Settings>({ ...DEFAULT_SETTINGS })
 
 export const byId = computed(() => new Map(library.value.map((s) => [s.id, s])))
@@ -260,6 +260,7 @@ async function adopt(theirs: StateAnswer, mine = snapshot()): Promise<boolean> {
   state.plays = merged.plays ?? {}
   state.last_played = merged.last_played ?? {}
   state.tags = tagsOf(merged.tags)
+  state.ratings = ratingsOf(merged.ratings)
   applySettings((merged.settings ?? {}) as Partial<Settings>)
   if (!muted.value) engine.setVolume(settings.volume)
   engine.setRate(settings.rate)
@@ -304,6 +305,7 @@ export async function replaceState(data: Partial<PlayerState> | null): Promise<v
   state.plays = fresh.plays && typeof fresh.plays === 'object' ? fresh.plays : {}
   state.last_played = fresh.last_played && typeof fresh.last_played === 'object' ? fresh.last_played : {}
   state.tags = tagsOf(fresh.tags)
+  state.ratings = ratingsOf(fresh.ratings)
   applySettings((fresh.settings ?? {}) as Partial<Settings>)
   engine.setVolume(settings.volume)
   engine.setRate(settings.rate)
@@ -327,6 +329,7 @@ export async function load(): Promise<void> {
     const { rev, ...kept } = saved
     Object.assign(state, kept)
     state.tags = tagsOf(kept.tags)
+    state.ratings = ratingsOf(kept.ratings)
     applySettings((kept.settings ?? {}) as Partial<Settings>)
     base = JSON.parse(JSON.stringify(kept)) as PlayerState
     baseRev = rev
@@ -339,7 +342,7 @@ export async function load(): Promise<void> {
   } finally {
     loading.value = false
   }
-  watch([settings, () => state.playlists, () => state.favorites, () => state.tags], save, { deep: true })
+  watch([settings, () => state.playlists, () => state.favorites, () => state.tags, () => state.ratings], save, { deep: true })
   lastSaved.value = null
 }
 
@@ -548,6 +551,24 @@ export function deleteSavedFilter(id: string): void {
 // --- favourites and playlists -------------------------------------------------------------------------
 
 export const isFavorite = (id: string): boolean => state.favorites.includes(id)
+/** The stars a listener gives a song by ear, 0 to 5 in halves (``null``: taken back) - owner's request 2026-10-29. */
+export function setRating(id: string, value: number | null): void {
+  const next = { ...(state.ratings ?? {}) }
+  if (value === null) delete next[id]
+  else next[id] = Math.round(Math.min(5, Math.max(0, value)) * 2) / 2
+  state.ratings = next
+}
+
+/** The stars as kept: song id -> 0 to 5 in halves (anything else left out). */
+export function ratingsOf(raw: unknown): Record<string, number> {
+  const out: Record<string, number> = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === 'number' && value >= 0 && value <= 5) out[id] = Math.round(value * 2) / 2
+  }
+  return out
+}
+
 export function toggleFavorite(id: string): void {
   const at = state.favorites.indexOf(id)
   if (at >= 0) state.favorites.splice(at, 1)

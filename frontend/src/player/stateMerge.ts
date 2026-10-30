@@ -73,5 +73,7 @@ export function mergeState(base: PlayerState, mine: PlayerState, theirs: PlayerS
     }),
     // each setting: the side that changed it (this page's view, volume, where it stopped ... stay its own)
     settings: mergeRecord(base.settings ?? {}, mine.settings ?? {}, theirs.settings ?? {}, pick),
+    // each song's stars: the side that gave them (this page's when both did)
+    ratings: mergeRecord(base.ratings ?? {}, mine.ratings ?? {}, theirs.ratings ?? {}, pick),
   }
 }

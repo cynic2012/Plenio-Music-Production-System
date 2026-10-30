@@ -241,6 +241,14 @@ played it, the buttons *Play*, *Add to favourites*, *Playlist, queue …*, **Ope
 and these tabs (it opens on the tab you used last). The page of the song that plays follows the music: when the next song starts, the page shows that one, on the same tab
 (on *Lyrics*, its live lyrics), and Back still leads to where you came from.
 
+**Its stars** (since 1.4.0), under the title: 0 to 5 in halves. **Yours** are the ones you give by ear - click a
+star (its left half gives a half star), **0** for none, **✕** takes them back -, kept like your playlists and
+favourites (each user their own). Until you give yours, the **measured** stars stand in their place, faded - a
+pre-fill, a hint where to listen first, never the verdict -, and beside them, small, always the measured ones. A
+song exported since 1.4.0 has them in its record (Export Release measures every song, in about half a second); one
+exported before is measured the first time its page opens and kept in the player's cache. *Details* lists every
+measure (below).
+
 - **Lyrics**: every line with the time it is sung. Click a line to hear the song from there. While the song
   plays, the lyrics light up as they are sung, and the line sung now stays in view. A song exported with what
   its take sings has a switch above them: **As written** - the song's lyrics - or **As sung** - what the take
@@ -263,7 +271,13 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
   creative mode's), YuE2's plan and take with temperature, top-p and top-k, *(the reference)* where they are
   the values of 50. A field you left empty shows the brief's default with *(default)*, or - for a
   text field, which has none - *open - the writer chose*; a value the template filled says *(from the
-  template)*. **How it was made**: the date and time, how long making it took, the graphics card (with its memory) or the
+  template)*. **How it came out, measured**: the measured stars and every measure with a bar - how much of the
+  lyrics as written is heard in the singing, the harmony (how well the notes that sound fit a major or a minor
+  chord), few clashes (notes a semitone apart), how clearly it keeps to one key, how steady its beat -, then what
+  takes stars off: an ending that stops in the middle of the sound, silent holes, a song much shorter than asked,
+  clipping, a loudness off its aim, no headroom, too little or too much dynamics and the Song Sheet's warnings.
+  What cannot be measured - an instrumental's lyrics, the singing of a song exported before it was heard - is left
+  out, not counted against the song. **How it was made**: the date and time, how long making it took, the graphics card (with its memory) or the
   processor alone, the processor and the RAM, and the lyrics fidelity - for songs exported before 1.4.0 the date and
   time it was saved and, where its record says it, the fidelity. Then the model and the writer, loudness and true peak,
   the seeds (with a copy button, so you can make the take again), the tags in the file, the cover's prompt, and every file to download: FLAC, MP3, WAV, the
@@ -279,7 +293,10 @@ and these tabs (it opens on the tab you used last). The page of the song that pl
 One page with everything about a song, to read, print and copy from: the cover and the song to play, the
 **lyrics as written with their sections** (and as the take sings them), the **style**, what the song is about
 and the cover's prompt - each with a copy button -, every field of the brief, how it was made (with the model
-files and the LoRAs), the sound and its mastering, the score as ABC notation and links to every file.
+files and the LoRAs), the sound and its mastering, the score as ABC notation and links to every file. Under the
+title, its **stars**: the measured ones, faded, with every measure further down (*How it came out, measured*), and
+the admin's own once they rate the song by ear in the player - the player writes them into the page beside the
+song (only a page Export Release wrote there; it makes no new one). In the player the page shows your own stars.
 
 Export Release writes it next to the song as `<name>.html` (*song page (HTML)*, on by default): a double click
 opens it in any browser, with no internet and no program - its links are the files beside it. The player shows
@@ -989,7 +1006,7 @@ minutes make it wait.
 Everything you set in the player is kept - not in the browser, but by the player itself, on this computer
 (for a guest: in the browser):
 
-- your playlists, their order, colours and visuals, your favourites and play counts
+- your playlists, their order, colours and visuals, your favourites, your stars and play counts
 - every setting: the visuals (mode, the ticked ones, a song's own visual), the colours, volume, crossfade and
   speed, the library's sort and view, and its search and filters (per view)
 - the view Now playing opens in and the tab a song's page opens on
@@ -1005,7 +1022,7 @@ another version - reload it then). It shows what is kept, the file it is kept in
 
 - **Download a backup** - a `.json` file with everything above (the songs stay in their folders)
 - **Restore a backup…** - read such a file back, on this or another computer
-- **Start afresh…** - forget playlists, favourites, play counts and settings (asks once more)
+- **Start afresh…** - forget playlists, favourites, stars, play counts and settings (asks once more)
 
 **Sound:** *Play the MP3 where a song has one* - a song exported as FLAC (or WAV) **and** MP3 (Export Release:
 *mp3*) plays its MP3: about a sixth of the data, for a phone or another computer in the network. Settings says

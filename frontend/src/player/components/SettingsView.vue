@@ -262,7 +262,7 @@ function jumpTo(id: string): void {
           <input ref="file" type="file" accept="application/json,.json" hidden @change="restore" />
         </label>
         <button v-if="!confirmReset" class="ghost" @click="confirmReset = true"><Icon name="trash" :size="16" /> Start afresh…</button>
-        <button v-else class="ghost danger" @click="reset">Yes - forget playlists, favourites, plays and settings</button>
+        <button v-else class="ghost danger" @click="reset">Yes - forget playlists, favourites, stars, plays and settings</button>
       </div>
       <p class="hint">The songs themselves are not in the backup: they stay in their folders.</p>
     </section>

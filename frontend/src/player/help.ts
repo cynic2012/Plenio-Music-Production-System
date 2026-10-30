@@ -56,6 +56,7 @@ export const TOPICS: HelpTopic[] = [
     lead: 'Play a song, open its page, watch it in Now playing.',
     body: [
       '**▶ on a cover** plays the song; **a click on the card** opens its page - the lyrics with their times, the notation, the sheet music, every detail of how it was made, its other takes and songs alike.',
+      '**Stars**: under a song\'s title, give it 0 to 5 stars by ear (a star\'s left half gives a half star). Until you do, the measured stars stand there faded - the lyrics sung as written, the harmony, the beat, what went wrong (*Details* lists each): a hint where to listen first.',
       '**The bar at the bottom** shows the song that plays. A click on its cover - on a phone, on the slim player - opens **Now playing**: the cover and the lyrics as they are sung (*Stage*), the lyrics large (*Lyrics*), the sheet music following the music (*Notation*) or only the visual (*Visual*).',
       'On a phone, **swipe** the slim player sideways for the next or the previous song, up for Now playing; in Now playing, swipe down to close it.',
       '**Put the player on your home screen**: in the browser\'s menu, *Add to Home screen* (Android) or *Share › Add to Home Screen* (iPhone, iPad) - it then opens like an app, on the whole screen.',

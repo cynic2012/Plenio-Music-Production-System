@@ -127,6 +127,33 @@
         "why": { "type": "array", "items": { "type": "string" } }
       }
     },
+    "quality": {
+      "description": "Since 1.4.0: how well the song came out, measured from its sound and its record (plenio.core.quality) - the stars 0-5 in halves, how good it sounds (0-1), every measure with its part, and the measures. A hint where to listen first, not the verdict. Not part of the fingerprint.",
+      "type": "object",
+      "required": ["version", "stars"],
+      "properties": {
+        "version": { "type": "integer", "minimum": 1 },
+        "stars": { "type": ["number", "null"], "minimum": 0, "maximum": 5 },
+        "score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "parts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "label", "value", "score", "weight"],
+            "properties": {
+              "key": { "type": "string" },
+              "label": { "type": "string" },
+              "value": { "type": "string" },
+              "score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+              "weight": { "type": "number", "minimum": 0 },
+              "note": { "type": "string" },
+              "kind": { "enum": ["quality", "fault"] }
+            }
+          }
+        },
+        "measures": { "type": "object", "additionalProperties": { "type": ["number", "boolean"] } }
+      }
+    },
     "made": {
       "description": "Since 1.4.0: how the song was made - when its run began and ended, how long it took, on what (the graphics card and its memory or the processor, the RAM), the lyrics fidelity. Not part of the fingerprint.",
       "type": "object",

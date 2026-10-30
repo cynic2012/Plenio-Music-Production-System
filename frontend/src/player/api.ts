@@ -201,6 +201,28 @@ export interface PlayerState {
   /** The listener's own tags per song (song id -> tags, in the order given). */
   tags: Record<string, string[]>
   settings: Record<string, unknown>
+  /** The stars the listener gave each song by ear, 0 to 5 in halves (owner's request 2026-10-29). */
+  ratings?: Record<string, number>
+}
+
+/** One measure of how well a song came out (``plenio.core.quality``): what was found, its score 0..1 (``null``: not
+ * measured), and its weight - in how good it sounds, or the stars it takes off at most for what went wrong. */
+export interface QualityPart {
+  key: string
+  label: string
+  value: string
+  score: number | null
+  weight: number
+  note?: string
+  kind?: 'quality' | 'fault'
+}
+
+/** How well a song came out, measured: a hint where to listen first, never the verdict. */
+export interface Quality {
+  version: number
+  stars: number | null
+  score: number | null
+  parts: QualityPart[]
 }
 
 export interface RemoveAnswer {
@@ -409,7 +431,7 @@ function browserState(): PlayerState {
   } catch {
     // a private window, or storage switched off: start afresh
   }
-  return { playlists: [], favorites: [], plays: {}, last_played: {}, tags: {}, settings: {} }
+  return { playlists: [], favorites: [], plays: {}, last_played: {}, tags: {}, settings: {}, ratings: {} }
 }
 
 function keepInBrowser(state: PlayerState): void {
@@ -423,6 +445,8 @@ function keepInBrowser(state: PlayerState): void {
 const serverApi = {
   library: () => json<LibraryAnswer>('/api/library'),
   song: (id: string) => json<SongDetail>(`/api/song/${id}`),
+  /** How well a song came out, measured (the record's, else measured now - about half a second). */
+  quality: (id: string) => json<{ quality: Quality | null }>(`/api/quality/${id}`),
   state: async (): Promise<StateAnswer> => (inBrowser ? { ...browserState(), rev: 0 } : json<StateAnswer>('/api/state')),
   /** The number of the last change saved (another page's too). */
   stateRev: async () => (inBrowser ? { rev: 0 } : json<{ rev: number }>('/api/state/rev')),

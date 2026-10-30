@@ -260,7 +260,9 @@ exported, is in the output folder.
 `GET` a file's `url` (on the same ComfyUI) to download it; byte ranges work, so an audio player can stream and seek.
 Only the files the song's release record lists can be fetched this way - nothing else of the computer. The record
 (`role: record`) holds everything: the documents (title, style, lyrics, score), the seeds, every setting, the
-loudness, the lyrics' timing and the models' licences.
+loudness, the lyrics' timing and the models' licences - and, since Plenio 1.4.0, how the song was made (`made`: when,
+how long, on what) and how well it came out, measured (`quality`: 0 to 5 `stars` in halves and every measure in
+`parts` - the lyrics sung as written, the harmony, the beat, and what went wrong; a hint where to listen first).
 
 Which files there are follows the `release` fields: the song as FLAC (default), MP3 (`"mp3": true`) or WAV (no
 `role`), the unmastered take (`original`), the cover (`cover`, with Cover Art on), the sheet music (`sheet_music`,

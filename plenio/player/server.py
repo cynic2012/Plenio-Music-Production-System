@@ -32,6 +32,7 @@ from . import maker as maker_rules
 from . import other as other_music
 from .guest import GuestHub
 from .library import RETIRED_DIR, Library, song_detail
+from .measured import Measured, ratings_of
 from .network import REMOTE_HEADER, REMOTE_HOST_HEADER, NetworkAccess
 from .package import MAX_SONGS, PackageJobs, package_file, packages_dir
 from .package import listing as package_listing
@@ -96,6 +97,7 @@ EMPTY_STATE: dict[str, Any] = {
     "last_played": {},
     "tags": {},
     "settings": {},
+    "ratings": {},
 }
 
 
@@ -261,6 +263,8 @@ def make_handler(
 
     jobs = VideoJobs(videos_dir(state.path.parent))
     packages = PackageJobs()
+    # how well each song came out, measured: the record's, else measured once and kept (owner's request 2026-10-29)
+    measured = Measured(state.path.parent / "cache")
     user_states: dict[str, State] = {}
     states_lock = threading.Lock()
     # the library's answer, made once per change of the songs: JSON and compressed (``version``, raw, gzip)
@@ -661,6 +665,12 @@ def make_handler(
                 return self._send(
                     200, body, "application/json; charset=utf-8", cache="no-cache", etag=etag, gzipped=packed
                 )
+            if route.startswith("/api/quality/"):
+                # how well it came out, measured (owner's request 2026-10-29): the record's, else measured now
+                song = library.song(route.removeprefix("/api/quality/"))
+                if song is None:
+                    return self._error(404, "no such song")
+                return self._json({"quality": measured.of(song)})
             if route.startswith("/api/song/"):
                 song = library.song(route.removeprefix("/api/song/"))
                 if song is None:
@@ -773,8 +783,15 @@ def make_handler(
                 detail = song_detail(song)
                 record = json.loads(song.record.read_text(encoding="utf-8"))
                 own = song.id
+                # the viewer's own stars (a guest keeps theirs in the browser); the page beside the song has the admin's
+                mine = state_of(self.account)
                 page = render_song_page(
-                    detail, record, lambda kind, _name: f"/media/{own}/{kind}", in_player=True
+                    detail,
+                    record,
+                    lambda kind, _name: f"/media/{own}/{kind}",
+                    in_player=True,
+                    rating=ratings_of(mine.read().get("ratings")).get(own) if mine is not None else None,
+                    quality=measured.of(song),
                 )
                 return self._send(200, page.encode("utf-8"), "text/html; charset=utf-8", cache="no-cache")
             if route.startswith("/media/"):
@@ -909,10 +926,18 @@ def make_handler(
             if mine is None:
                 return self._json({"error": "a guest keeps the state in the browser", "guest": True}, 401)
             base = data.get("rev")
+            before = ratings_of(mine.read().get("ratings")) if mine is state else {}
+            data["ratings"] = ratings_of(data.get("ratings"))
             saved = mine.write(
                 {**EMPTY_STATE, **{k: v for k, v in data.items() if k in EMPTY_STATE}},
                 base if isinstance(base, int) and not isinstance(base, bool) else None,
             )
+            if saved is not None and mine is state:
+                # the admin's stars go into the songs' own pages beside them (only the ones that changed)
+                after = data["ratings"]
+                changed = {k: after.get(k) for k in set(before) | set(after) if before.get(k) != after.get(k)}
+                if changed:
+                    measured.write_pages(library, changed)
             if saved is None:
                 # another page saved since: this one merges the two and saves again
                 return self._json(

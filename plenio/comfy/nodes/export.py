@@ -12,6 +12,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from comfy_api.latest import io
 
 from ... import __version__
@@ -28,6 +29,7 @@ from ...core.engines import ENGINES
 from ...core.errors import PlenioCancelledError, PlenioError, PlenioUserError
 from ...core.files import atomic_write_bytes, atomic_write_text
 from ...core.models import AUDIO_MODEL_FOLDERS
+from ...core.quality import song_quality
 from ...core.release import (
     FORMATS,
     PROJECT_EMBEDDED,
@@ -723,6 +725,13 @@ class PlenioExportRelease(io.ComfyNode):
                 carriers = []
                 plain = [{k: v for k, v in f.items() if k != "project"} for f in facts]
                 record = build_record(replace(record_input, files=plain))
+        # how well it came out, measured from the master and the record (owner's request 2026-10-29): a hint where
+        # to listen first; not part of the fingerprint, and a song is exported also when measuring fails
+        try:
+            record["quality"] = song_quality(np.asarray(items[0], dtype=np.float32), rate, record)
+        except Exception as error:  # noqa: BLE001 - the measure is a reading aid
+            LOG.warning("Plenio: the song's quality was not measured: %s", error, exc_info=True)
+            notes.append(f"quality: not measured ({type(error).__name__}: {error})")
         for path in carriers:
             embed_project(path, record)
         record_path = file(RECORD_SUFFIX)

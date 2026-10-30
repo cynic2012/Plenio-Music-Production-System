@@ -394,6 +394,15 @@ dd small{color:var(--muted)}
 .grid section.card{margin:0}
 details summary{cursor:pointer;color:var(--muted);margin:14px 0 8px}
 ul.files{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.rating{display:flex;flex-wrap:wrap;gap:4px 18px;align-items:baseline;margin:-4px 0 12px}
+.rating span{display:inline-flex;gap:8px;align-items:baseline}
+.stars{font-size:22px;letter-spacing:2px;color:#e8a317}
+.measured .stars{opacity:.45}
+.rating small,.parts small{color:var(--muted)}
+.parts{display:grid;grid-template-columns:minmax(150px,max-content) 1fr 90px;gap:6px 14px;align-items:center;margin:0}
+.parts .meter{height:6px;border-radius:9px;background:var(--line);overflow:hidden}
+.parts .meter i{display:block;height:100%;background:var(--accent)}
+.parts .low i{background:#e8a317}
 ul.files small{color:var(--muted)}
 .hint{color:var(--muted);font-size:14px;margin:10px 0 0}
 footer{color:var(--muted);font-size:13px;text-align:center;margin-top:28px}
@@ -449,16 +458,65 @@ def _card(anchor: str, title: str, body: str) -> str:
     return f'<section class="card" id="{_e(anchor)}"><h2>{_e(title)}</h2>{body}</section>'
 
 
+def _stars(value: float) -> str:
+    """★★★½☆ - the stars in text (without numpy: the page is written where the player runs too)."""
+    full = int(value)
+    half = value - full >= 0.5
+    return "★" * full + ("½" if half else "") + "☆" * (5 - full - (1 if half else 0))
+
+
+def rating_html(quality: Mapping[str, Any] | None, rating: float | None) -> tuple[str, str]:
+    """The ratings under the title - rated by ear, clearly; measured, faded - and the measures' card (owner's
+    request 2026-10-29: the measure is a pre-fill, a hint where to listen first; only listening tells)."""
+    measured = quality.get("stars") if isinstance(quality, Mapping) else None
+    line = []
+    if isinstance(rating, (int, float)):
+        line.append(
+            f'<span class="by-ear" title="Rated by ear"><b class="stars">{_stars(float(rating))}</b>'
+            f"<small>{float(rating):g} of 5, rated by ear</small></span>"
+        )
+    if isinstance(measured, (int, float)):
+        line.append(
+            '<span class="measured" title="Measured from the sound and the record - a hint, not the verdict">'
+            f'<b class="stars">{_stars(float(measured))}</b><small>{float(measured):g} of 5, measured</small></span>'
+        )
+    head = f'<p class="rating">{"".join(line)}</p>' if line else ""
+    parts = [p for p in (quality or {}).get("parts") or [] if isinstance(p, Mapping)]
+    if not parts:
+        return head, ""
+    rows = []
+    for part in parts:
+        score = part.get("score")
+        width = f"{round(float(score) * 100)}%" if isinstance(score, (int, float)) else "0%"
+        # a weak measure in amber, what came out well in the accent
+        kind = " low" if isinstance(score, (int, float)) and score < 0.6 else ""
+        rows.append(
+            f'<dt title="{_e(part.get("note") or "")}">{_e(part.get("label"))}</dt>'
+            f"<dd>{_e(part.get('value'))}</dd>"
+            f'<dd class="meter{kind}"><i style="width:{width}"></i></dd>'
+        )
+    body = (
+        f'<dl class="parts">{"".join(rows)}</dl>'
+        '<p class="hint">Measured from the sound and the record: how well the lyrics are sung as written, how '
+        "clean the harmony is, how steady the beat - and what went wrong (an ending cut off, holes, clipping). A "
+        "hint where to listen first: only listening tells how good a song is.</p>"
+    )
+    return head, body
+
+
 def render(
     song: Mapping[str, Any],
     record: Mapping[str, Any],
     link: Link,
     *,
     in_player: bool = False,
+    rating: float | None = None,
+    quality: Mapping[str, Any] | None = None,
 ) -> str:
     """The page. ``song``: the player's detail of the song (``library.song_detail``); ``record``: its release
     record; ``link``: the URL of a file of the song. ``in_player``: the player shows it (its links are the
-    player's; the page beside the song says how to open the song again)."""
+    player's; the page beside the song says how to open the song again). ``rating``: the stars it was given by
+    ear; ``quality``: how well it came out, measured (else the record's)."""
     files: dict[str, str] = dict(song.get("files") or {})
     sheet = record.get("sheet_music")
     if not in_player and "pdf" not in files and isinstance(sheet, Mapping) and sheet.get("file"):
@@ -479,6 +537,8 @@ def render(
         str(song.get("model") or ""),
     ]
     audio_kind = next((k for k in ("audio_mp3", "audio_flac", "audio_wav") if files.get(k)), "")
+    measured = quality if quality is not None else record.get("quality")
+    rating_line, rating_card = rating_html(measured if isinstance(measured, Mapping) else None, rating)
     hero = [
         f'<header class="hero{"" if files.get("cover") else " no-cover"}">',
         f'<img src="{_e(link("cover", files["cover"]))}" alt="Cover of {_e(title)}">'
@@ -489,6 +549,7 @@ def render(
         f"<h1>{_e(title)}</h1>",
         f'<p class="by">{_e(by)}</p>' if by else "",
         '<ul class="chips">' + "".join(f"<li>{_e(c)}</li>" for c in chips if c) + "</ul>",
+        rating_line,
         f'<audio controls preload="none" src="{_e(link(audio_kind, files[audio_kind]))}"></audio>'
         if audio_kind
         else "",
@@ -547,6 +608,8 @@ def render(
         (SEED_LABELS.get(str(name), str(name)), str(value), "")
         for name, value in (song.get("seeds") or {}).items()
     ]
+    if rating_card:
+        sections.append(("rating", "How it came out, measured", rating_card))
     if facts:
         sections.append(("song", "The song", _dl(facts)))
     if made or models or seeds:
@@ -641,10 +704,25 @@ def render(
     )
 
 
-def page_for(record_path: Path, link: Link | None = None, *, in_player: bool = False) -> str:
-    """The page of the song whose release record is ``record_path`` (links beside it unless ``link``)."""
+def page_for(
+    record_path: Path,
+    link: Link | None = None,
+    *,
+    in_player: bool = False,
+    rating: float | None = None,
+    quality: Mapping[str, Any] | None = None,
+) -> str:
+    """The page of the song whose release record is ``record_path`` (links beside it unless ``link``), with the
+    stars it was given by ear and how well it came out, measured (``quality``: else the record's)."""
     from .library import song_detail, summarize
 
     record = json.loads(record_path.read_text(encoding="utf-8"))
     detail = song_detail(summarize(record, record_path, record_path.parent))
-    return render(detail, record, link or relative_link(detail.get("files") or {}), in_player=in_player)
+    return render(
+        detail,
+        record,
+        link or relative_link(detail.get("files") or {}),
+        in_player=in_player,
+        rating=rating,
+        quality=quality,
+    )

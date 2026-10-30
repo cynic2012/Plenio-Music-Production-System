@@ -6,7 +6,7 @@ import type { PlayerState, Playlist } from '../src/player/api'
 import { mergeSet, mergeState } from '../src/player/stateMerge'
 
 const list = (id: string, songs: string[], name = id): Playlist => ({ id, name, songs, created: '2026-10-18' })
-const state = (over: Partial<PlayerState>): PlayerState => ({ playlists: [], favorites: [], plays: {}, last_played: {}, tags: {}, settings: {}, ...over })
+const state = (over: Partial<PlayerState>): PlayerState => ({ playlists: [], favorites: [], plays: {}, last_played: {}, tags: {}, settings: {}, ratings: {}, ...over })
 
 describe('merging two pages’ changes', () => {
   it('keeps both sides’ favourites added and taken out', () => {
