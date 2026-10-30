@@ -16,6 +16,26 @@ from .diagnostics import Finding, error, info, warning
 _TAG = re.compile(r"^\[([^\[\]\n]{1,40})\]$")
 _REPEAT = re.compile(r"(?i)(\(\s*x\s*\d+\s*\)|\bx\s*\d+\s*$|\brepeat\b|\(\s*\d+\s*x\s*\))")
 _DIRECTION = re.compile(r"^\s*[\(\[\{<].*[\)\]\}>]\s*$")
+# What the band plays, said in a line of the lyrics without brackets (owner's report 2026-10-30: a writer filled a
+# metal song's bridge with "Sitar glissando over fast drum fill", "Guitar shred, pentatonic scale", "Sustain note
+# high, no words, just sound" - and the music model sang them): an instrument with a way of playing it, two ways of
+# playing, or words that say there are none. Words common in lyrics too (fill, scale, drop, fade) are not counted.
+_INSTRUMENTS = frozenset(
+    "guitar guitars sitar drum drums bass synth synths piano organ violin violins strings cello brass horns sax "
+    "saxophone flute percussion cymbal cymbals snare hi-hat keyboard keyboards gitarre gitarren schlagzeug klavier "
+    "orgel geige streicher".split()
+)
+_PLAYING = frozenset(
+    "solo solos shred shredding glissando riff riffs breakdown crescendo decrescendo sustain sustained pentatonic "
+    "arpeggio arpeggios tempo bpm staccato legato tremolo palm-muted distortion distorted reverb interlude octave "
+    "octaves tapping whammy blast-beat blastbeat double-kick build-up buildup strumming fingerpicked harmonized "
+    "gitarrensolo schlagzeugsolo".split()
+)
+_NO_WORDS = ("no words", "no vocals", "no lyrics", "without words", "just sound", "ohne worte", "ohne gesang")
+_PERSON = frozenset(
+    "i me my we our us you your ich mir mich mein meine wir uns du dir dich dein deine".split()
+)
+_TOKEN = re.compile(r"[^\W\d_]+(?:-[^\W\d_]+)*")
 _WORD = re.compile(r"[^\W\d_][\w'’-]*", re.UNICODE)
 _VOWELS = re.compile(r"[aeiouyäöüàáâèéêìíîòóôùúûæøå]+", re.IGNORECASE)
 
@@ -79,6 +99,49 @@ def parse_lyrics(text: str) -> Lyrics:
     if current is not None:
         sections.append(LyricsSection(current[0], tuple(current[1])))
     return Lyrics(tuple(preamble), tuple(sections))
+
+
+def playing_direction(line: str) -> bool:
+    """Whether ``line`` tells the band what to play rather than being words to sing - never one that speaks of a
+    person ("I play my guitar solo")."""
+    text = line.casefold()
+    words = _TOKEN.findall(text)
+    if any(word in _PERSON for word in words):
+        return False
+    playing = {word for word in words if word in _PLAYING}
+    instrument = any(word in _INSTRUMENTS for word in words)
+    if any(phrase in text for phrase in _NO_WORDS):
+        return bool(playing) or instrument
+    return len(playing) >= 2 or (bool(playing) and instrument)
+
+
+def without_playing_directions(lines: Sequence[str]) -> tuple[list[str], list[str]]:
+    """The lyrics' lines (section tags among them) without the sections the writer filled with what the band plays:
+    one made mostly of such lines - two at least, half of its lines - is played, not sung; all its lines go, its tag
+    stays (an instrumental part). A single such line among sung ones stays: in the library's 2,583 songs most of
+    those were meant to be sung ("Synth arpeggios begin to climb"). The lines kept, and those taken out."""
+    kept: list[str] = []
+    removed: list[str] = []
+    section: list[str] = []
+
+    def close() -> None:
+        found = [line for line in section if line.strip() and playing_direction(line)]
+        sung = [line for line in section if line.strip()]
+        if len(found) >= 2 and 2 * len(found) >= len(sung):
+            removed.extend(sung)
+            kept.extend(line for line in section if not line.strip())
+        else:
+            kept.extend(section)
+        section.clear()
+
+    for line in lines:
+        if _TAG.match(line.strip()):
+            close()
+            kept.append(line)
+        else:
+            section.append(line)
+    close()
+    return kept, removed
 
 
 def tags_only(tags: Sequence[str]) -> str:
@@ -189,10 +252,11 @@ def check_lyrics(text: str, *, instrumental: bool, vocabulary: Sequence[str] = (
         base = re.sub(r"\s*\d+$", "", section.tag).lower()
         if known and base not in known:
             findings.append(info(f"Unusual section tag [{section.tag}].", "lyrics"))
+        played = set(without_playing_directions(section.lines)[1])
         for line in section.lines:
             if _REPEAT.search(line):
                 findings.append(warning(f"Repeat shorthand in {line!r}; write repeated lines out.", "lyrics"))
-            elif _DIRECTION.match(line):
+            elif _DIRECTION.match(line) or line in played:
                 findings.append(warning(f"Stage direction {line!r} would be sung; remove it.", "lyrics"))
     if not instrumental and lyrics.sections and all(not s.lines for s in lyrics.sections):
         findings.append(error("The song is sung but no section contains words.", "lyrics"))

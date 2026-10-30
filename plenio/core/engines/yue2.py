@@ -588,7 +588,7 @@ def writing_rules(*, instrumental: bool, target_seconds: float, sparse: bool = F
         else "Lyrics: each section starts with a tag on its own line (for example [Verse]), followed by the sung "
         "lines; a blank line between sections. Only words to be sung: no stage directions, no notes, no "
         "parentheses, no repeat marks like (x2) - write repeated lines out. Instrumental sections such as "
-        f"[Intro] stay empty. The song lasts about {int(target_seconds // 60)}:{int(target_seconds % 60):02d}, "
+        f"[Intro] stay empty, and so does a part the band plays without singing (a solo, a break): never describe the playing in the lyrics. The song lasts about {int(target_seconds // 60)}:{int(target_seconds % 60):02d}, "
         f"so write about {lyric_lines(target_seconds)} sung lines in total (YuE2 sings roughly one line every "
         f"{SECONDS_PER_LYRIC_LINE:.0f} seconds)."
     )

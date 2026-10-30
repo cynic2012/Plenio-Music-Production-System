@@ -510,7 +510,8 @@ def _compose_cover(
         parts += [
             f"- Lyrics: new lyrics on the existing melody, with exactly these sections in this order: {section_line}. "
             "Each section starts with its tag on its own line, a blank line between sections, only words to be "
-            "sung (no stage directions, no repeat marks).",
+            "sung (no stage directions, no repeat marks). A part the band plays without singing - a solo, a "
+            "break - is its tag with no lines below it; never describe the playing in the lyrics.",
         ]
         targets = reference_lines(reference_lyrics, sections) if reference_lyrics.strip() else []
         closeness = brief.lyrics_closeness if reference_lyrics.strip() else 0
@@ -736,6 +737,8 @@ def _clean_lyrics(text: str, notes: list[str]) -> str:
         notes.append(f"{converted} section label(s) such as 'Chorus:' were converted to [Chorus] tags")
     if repeated:
         notes.append(f"{repeated} repeat mark(s) such as '(x2)' were written out as repeated lines")
+    lines, playing = lyrics_rules.without_playing_directions(lines)
+    directions += playing
     if directions:
         notes.append(f"{len(directions)} stage direction line(s) were removed, e.g. {directions[0]!r}")
     return lyrics_rules.parse_lyrics("\n".join(lines)).format()

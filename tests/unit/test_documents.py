@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from plenio.core import lyrics
+from plenio.core import lyrics, writing
 from plenio.core.brief import (
     COVER_MODES,
     LENGTHS,
@@ -449,3 +449,36 @@ def test_a_series_asks_the_writer_for_a_different_song_each_run() -> None:
     instrumental = build_song_brief({"genre": "ambient", "vocals": "instrumental"}, mode="batch", variation=1)
     prompt, _ = compose(instrumental, ENGINE)
     assert "Series" in prompt and "Angle" not in prompt  # no story for an instrumental
+
+
+def test_a_section_the_writer_filled_with_what_the_band_plays_is_played_not_sung() -> None:
+    """Owner's report 2026-10-30: a metal song's bridge told the band what to play, without brackets, and the music
+    model sang it. Such a section keeps its tag and loses its lines; one such line among sung ones stays."""
+    assert lyrics.playing_direction("Violin tremolo over a pounding snare")
+    assert lyrics.playing_direction("Guitar tapping, harmonized octaves")
+    assert lyrics.playing_direction("Hold it long on the guitar, no words, just sound")
+    for sung in (
+        "No words to say, no promises made",  # no words alone is a lyric
+        "I play my guitar solo all night",  # a person plays
+        "Drums fill the sky with thunder",  # fill: common in lyrics
+        "Flames climb higher than the moon",
+    ):
+        assert not lyrics.playing_direction(sung), sung
+    text = (
+        "[Verse]\nWe ride the storm tonight\nSynth arpeggios begin to rise\n\n"
+        "[Bridge]\nViolin tremolo over a pounding snare\nGuitar tapping, harmonized octaves\n"
+        "Hold it long on the guitar, no words, just sound\nFlames climb higher than the moon\n\n"
+        "[Chorus]\nWe are fire"
+    )
+    kept, removed = lyrics.without_playing_directions(text.split("\n"))
+    assert len(removed) == 4 and "Flames climb higher than the moon" in removed
+    assert "Synth arpeggios begin to rise" in kept  # alone among sung lines: kept
+    notes: list[str] = []
+    cleaned = writing._clean_lyrics(text, notes)
+    assert (
+        cleaned
+        == "[Verse]\nWe ride the storm tonight\nSynth arpeggios begin to rise\n\n[Bridge]\n\n[Chorus]\nWe are fire"
+    )
+    assert any("stage direction" in note for note in notes)
+    warnings = severities(lyrics.check_lyrics(text, instrumental=False), "warning")
+    assert sum("Stage direction" in w for w in warnings) == 4
