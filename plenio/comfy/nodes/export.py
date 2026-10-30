@@ -76,10 +76,9 @@ TIMING_OVERLAP = 8
 """The take is separated with an eighth of a chunk overlapping: 30 s instead of 55 s for four minutes (GPU), the
 vocals 23 dB from the full separation's - plenty for the times."""
 TIMING_TOOLTIP = (
-    "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the song (the default, "
-    "quicker) or the take's vocal stem - a little more exact times, fewer words timed in silence, but the "
-    "separation takes extra time: about half a minute per take, more while the graphics card is busy. Without the "
-    "separation model the song."
+    "What the lyrics ASR hears for the subtitles and the player: the song (quicker) or the take's vocal stem - "
+    "more exact times, but the separation takes extra time: half a minute per take, more while the GPU "
+    "is busy."
 )
 ORIGINAL_SUFFIX = " (original).flac"
 TAG_MODES = ("title only", "tags", "copy from loaded file")

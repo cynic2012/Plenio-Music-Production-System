@@ -2081,7 +2081,7 @@
          "vocal stem"
         ],
         "title": "lyrics heard on",
-        "description": "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the song (the default, quicker) or the take's vocal stem - a little more exact times, fewer words timed in silence, but the separation takes extra time: about half a minute per take, more while the graphics card is busy. Without the separation model the song.",
+        "description": "What the lyrics ASR hears for the subtitles and the player: the song (quicker) or the take's vocal stem - more exact times, but the separation takes extra time: half a minute per take, more while the GPU is busy.",
         "default": "the song"
        },
        "song_page": {
@@ -2812,7 +2812,7 @@
          "vocal stem"
         ],
         "title": "lyrics heard on",
-        "description": "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the song (the default, quicker) or the take's vocal stem - a little more exact times, fewer words timed in silence, but the separation takes extra time: about half a minute per take, more while the graphics card is busy. Without the separation model the song.",
+        "description": "What the lyrics ASR hears for the subtitles and the player: the song (quicker) or the take's vocal stem - more exact times, but the separation takes extra time: half a minute per take, more while the GPU is busy.",
         "default": "the song"
        },
        "song_page": {
