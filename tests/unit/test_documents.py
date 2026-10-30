@@ -458,26 +458,26 @@ def test_a_section_the_writer_filled_with_what_the_band_plays_is_played_not_sung
     assert lyrics.playing_direction("Guitar tapping, harmonized octaves")
     assert lyrics.playing_direction("Hold it long on the guitar, no words, just sound")
     for sung in (
-        "No words to say, no promises made",  # no words alone is a lyric
+        "No words left, only the rain",  # no words alone is a lyric
         "I play my guitar solo all night",  # a person plays
         "Drums fill the sky with thunder",  # fill: common in lyrics
         "Flames climb higher than the moon",
     ):
         assert not lyrics.playing_direction(sung), sung
     text = (
-        "[Verse]\nWe ride the storm tonight\nSynth arpeggios begin to rise\n\n"
+        "[Verse]\nWe ride the storm tonight\nSynth arpeggios rise into the night\n\n"
         "[Bridge]\nViolin tremolo over a pounding snare\nGuitar tapping, harmonized octaves\n"
         "Hold it long on the guitar, no words, just sound\nFlames climb higher than the moon\n\n"
         "[Chorus]\nWe are fire"
     )
     kept, removed = lyrics.without_playing_directions(text.split("\n"))
     assert len(removed) == 4 and "Flames climb higher than the moon" in removed
-    assert "Synth arpeggios begin to rise" in kept  # alone among sung lines: kept
+    assert "Synth arpeggios rise into the night" in kept  # alone among sung lines: kept
     notes: list[str] = []
     cleaned = writing._clean_lyrics(text, notes)
     assert (
         cleaned
-        == "[Verse]\nWe ride the storm tonight\nSynth arpeggios begin to rise\n\n[Bridge]\n\n[Chorus]\nWe are fire"
+        == "[Verse]\nWe ride the storm tonight\nSynth arpeggios rise into the night\n\n[Bridge]\n\n[Chorus]\nWe are fire"
     )
     assert any("stage direction" in note for note in notes)
     warnings = severities(lyrics.check_lyrics(text, instrumental=False), "warning")

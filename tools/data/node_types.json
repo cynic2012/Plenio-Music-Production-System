@@ -2919,13 +2919,12 @@
       "COMBO",
       {
        "display_name": "lyrics heard on",
-       "tooltip": "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the take's vocal stem (about half a minute more; fewer words timed in silence) or the song (quicker). Without the separation model the song.",
-       "advanced": true,
-       "default": "vocal stem",
+       "tooltip": "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the song (the default, quicker) or the take's vocal stem - a little more exact times, fewer words timed in silence, but the separation takes extra time: about half a minute per take, more while the graphics card is busy. Without the separation model the song.",
+       "default": "the song",
        "multiselect": false,
        "options": [
-        "vocal stem",
-        "the song"
+        "the song",
+        "vocal stem"
        ]
       }
      ],

@@ -67,16 +67,19 @@ LOG = logging.getLogger(__name__)
 COLLISIONS = ("number", "overwrite", "error")
 TIMING_STEM = "vocal stem"
 TIMING_SONG = "the song"
-LYRICS_TIMING = (TIMING_STEM, TIMING_SONG)
+# the song first: the default since 1.4.1 - the vocal stem's separation made an export take minutes now and then
+# (owner's request 2026-10-30), and the times on the song are good enough for most songs
+LYRICS_TIMING = (TIMING_SONG, TIMING_STEM)
 SEPARATION = "model_bs_roformer_ep_17_sdr_9.6568.ckpt"
 """The separation model the lyrics are heard on (the one of Stems and Sung Pitch, in models/audio_separation)."""
 TIMING_OVERLAP = 8
 """The take is separated with an eighth of a chunk overlapping: 30 s instead of 55 s for four minutes (GPU), the
 vocals 23 dB from the full separation's - plenty for the times."""
 TIMING_TOOLTIP = (
-    "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the take's vocal stem "
-    "(about half a minute more; fewer words timed in silence) or the song (quicker). Without the separation model "
-    "the song."
+    "What the lyrics ASR hears for the subtitles, the lyrics as sung and the player: the song (the default, "
+    "quicker) or the take's vocal stem - a little more exact times, fewer words timed in silence, but the "
+    "separation takes extra time: about half a minute per take, more while the graphics card is busy. Without the "
+    "separation model the song."
 )
 ORIGINAL_SUFFIX = " (original).flac"
 TAG_MODES = ("title only", "tags", "copy from loaded file")
@@ -425,9 +428,8 @@ class PlenioExportRelease(io.ComfyNode):
                     "lyrics_timing",
                     display_name="lyrics heard on",
                     options=list(LYRICS_TIMING),
-                    default=TIMING_STEM,
+                    default=TIMING_SONG,
                     optional=True,
-                    advanced=True,
                     tooltip=TIMING_TOOLTIP,
                 ),
                 io.Boolean.Input(
@@ -474,7 +476,7 @@ class PlenioExportRelease(io.ComfyNode):
         project_in_flac: bool = True,
         brief: Any = None,
         lyrics_srt: bool = True,
-        lyrics_timing: str = TIMING_STEM,
+        lyrics_timing: str = TIMING_SONG,
         song_page: bool = True,
     ) -> io.NodeOutput:
         if sheet_music not in SHEET_MUSIC_OPTIONS:

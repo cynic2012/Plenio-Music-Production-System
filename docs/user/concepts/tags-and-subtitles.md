@@ -69,12 +69,12 @@ as it was heard; nothing corrects them after the export. Misheard words are corr
 themselves come from an ASR: a cover's original lyrics, before the render
 ([Fix Misheard Words](../paths/yue2-cover.md#misheard-words)).
 
-**How the times are measured.** The lyrics ASR listens to the exported song's **vocal stem**: Export Release
-separates the take's vocals first (BS-RoFormer, the model of Stems and Sung Pitch - about 30 seconds for four
-minutes on a GPU), so the music does not pull words into the instrumental parts. Measured on 20 songs against
-the vocals' own onsets and silence: words timed where nobody sings 2.5 % -> 0.3 %, words within 0.3 s of a sung
-onset 86.7 % -> 88.8 %. *lyrics heard on* (an advanced option of Export Release) chooses *vocal stem* (default)
-or *the song* (quicker); without the separation model the song is heard, and the summary says so. **Qwen3-ASR
+**How the times are measured.** The lyrics ASR listens to the exported song. *lyrics heard on* (an option of
+Export Release) chooses *the song* (the default, quicker) or its **vocal stem**: Export Release then separates
+the take's vocals first (BS-RoFormer, the model of Stems and Sung Pitch - about 30 seconds for four minutes on a
+free GPU, longer while it is busy), so the music does not pull words into the instrumental parts. Measured on 20
+songs against the vocals' own onsets and silence: words timed where nobody sings 2.5 % -> 0.3 %, words within
+0.3 s of a sung onset 86.7 % -> 88.8 %. Without the separation model the song is heard, and the summary says so. **Qwen3-ASR
 1.7B** hears the words and **Qwen3-ForcedAligner 0.6B** places every word on the audio (Apache-2.0, 4.1 + 1.8 GB, downloaded on
 first use; its results are cached). It hears the song in pieces of at most 20 seconds, cut at quiet moments,
 each with a second and a half of its neighbours (a word heard by both at a cut is kept once): over a whole song

@@ -17,9 +17,9 @@ _TAG = re.compile(r"^\[([^\[\]\n]{1,40})\]$")
 _REPEAT = re.compile(r"(?i)(\(\s*x\s*\d+\s*\)|\bx\s*\d+\s*$|\brepeat\b|\(\s*\d+\s*x\s*\))")
 _DIRECTION = re.compile(r"^\s*[\(\[\{<].*[\)\]\}>]\s*$")
 # What the band plays, said in a line of the lyrics without brackets (owner's report 2026-10-30: a writer filled a
-# metal song's bridge with "Sitar glissando over fast drum fill", "Guitar shred, pentatonic scale", "Sustain note
-# high, no words, just sound" - and the music model sang them): an instrument with a way of playing it, two ways of
-# playing, or words that say there are none. Words common in lyrics too (fill, scale, drop, fade) are not counted.
+# metal song's bridge with lines like "Violin tremolo over a pounding snare" or "Hold it long, no words, just
+# sound" - and the music model sang them): an instrument with a way of playing it, two ways of playing, or words
+# that say there are none. Words common in lyrics too (fill, scale, drop, fade) are not counted.
 _INSTRUMENTS = frozenset(
     "guitar guitars sitar drum drums bass synth synths piano organ violin violins strings cello brass horns sax "
     "saxophone flute percussion cymbal cymbals snare hi-hat keyboard keyboards gitarre gitarren schlagzeug klavier "
@@ -118,8 +118,9 @@ def playing_direction(line: str) -> bool:
 def without_playing_directions(lines: Sequence[str]) -> tuple[list[str], list[str]]:
     """The lyrics' lines (section tags among them) without the sections the writer filled with what the band plays:
     one made mostly of such lines - two at least, half of its lines - is played, not sung; all its lines go, its tag
-    stays (an instrumental part). A single such line among sung ones stays: in the library's 2,583 songs most of
-    those were meant to be sung ("Synth arpeggios begin to climb"). The lines kept, and those taken out."""
+    stays (an instrumental part). A single such line among sung ones stays: in the owner's library most of those
+    were meant to be sung (a line like "Synth arpeggios rise into the night"). The lines kept, and those taken
+    out."""
     kept: list[str] = []
     removed: list[str] = []
     section: list[str] = []

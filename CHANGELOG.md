@@ -4,11 +4,13 @@ All notable changes of the current version and the one before. Versions follow s
 
 ## 1.4.1 - 2026-10-30
 
-**Plenio Nova calm and sharp, any visual with one click, and the lyrics as written unless you choose otherwise.** Plenio Nova's visuals no longer flicker at their edges and in their finest detail - most of all the Mandelbulb, Spectrum City and the Mandala -, their stars shine steadily, no strip of another picture shows at a picture's edge, and *Balanced* draws them at the screen's own size. In the visuals' settings a visual's name shows it at once, and *Fixed* lists every Nova visual, those this graphics card does not play smoothly greyed with why. The player shows a song's lyrics as sung only when you choose it.
+**Plenio Nova calm and sharp, any visual with one click, songs filtered by their stars, and a quicker export.** Plenio Nova's visuals no longer flicker at their edges and in their finest detail - most of all the Mandelbulb, Spectrum City and the Mandala -, their stars shine steadily, no strip of another picture shows at a picture's edge, and *Balanced* draws them at the screen's own size. In the visuals' settings a visual's name shows it at once, and *Fixed* lists every Nova visual, those this graphics card does not play smoothly greyed with why. The player shows a song's lyrics as sung only when you choose it, and filters the songs by your stars and by the measured ones. Export Release hears the lyrics on the song by default - the vocal stem is a choice that takes extra time - and says how long each of its steps took. A section the writer filled with what the band plays is no longer sung.
 
 ### Added
 
 - **Any visual at once**: in the visuals' settings (✦ in Now playing, or **V**), a click on a visual's name shows it right away - with *Fixed* it stays, otherwise the mode takes over again at the next change; its tick lets the mode choose it, as before.
+- **Songs filtered by their stars**: *My stars* and *Measured stars* among the library's filters - 5, 4-4½, 3-3½, 2-2½, below 2, or not rated / not measured yet; typed as `stars:>=4`, `measured:<2` or `stars:none`. The running player measures the songs exported before 1.4.0 in the background, one at a time and resting as long as each took, so their measured stars come in by and by.
+- **How long each step of an export took**: Export Release's summary and ComfyUI's log say it - the audio files, the vocal stem, the lyrics ASR (and how much of it its worker spent hearing), the lyrics' timing, the quality, the record and page - so a slow export shows where the time went.
 
 ### Changed
 
@@ -16,6 +18,7 @@ All notable changes of the current version and the one before. Versions follow s
 - **Plenio Nova at the screen's own size**: *Plenio Drop and Nova › Quality › Balanced*, the default, draws Nova's visuals at the full size of the screen (it drew three quarters of it and scaled them up), and *Sharp* finer still - up to one and a half times each way - smoothed down onto the screen; each visual as far as the graphics card keeps it smooth. Plenio Drop draws as before.
 - **Steady stars**: the stars of the nebula, the black hole, the galaxy, the northern lights, the moonlit sea, Spectrum City and Outrun no longer blink: each is a soft dot whose light stays the same as it moves between pixels, and a star smaller than the screen can show fades out instead of sparkling. The galaxy's arms brighten with the mids, where its clusters sparkled with the highs.
 - Spectrum City flies a little slower, and the Mandelbulb's shape breathes with the music's level rather than jumping with every bass note.
+- **Export Release hears the lyrics on the song by default**: *lyrics heard on* is *the song* in new workflows and the templates, and shows among the node's options (it was an advanced one). *vocal stem* times the words a little more exactly, but its separation takes about half a minute per take on a free graphics card and minutes while it is busy. Saved workflows keep their choice.
 
 ### Fixed
 
@@ -23,6 +26,7 @@ All notable changes of the current version and the one before. Versions follow s
 - **A strip of another picture at the top and right edge of a Plenio Nova visual**, most visible while one visual turned into the next: scaling the picture onto the screen blended in what was drawn beside it. The picture now has an edge of its own to blend with.
 - **Spectrum City flew through its towers**; they now stay below the flight.
 - **Plenio Nova's visuals were missing from *Fixed***: a visual is offered once it has been timed smooth on the graphics card, and one timed while the card was busy - a song being made on it - stayed out. Every visual is timed anew with this version, one timed too heavy again each time the player opens (keeping its faster timing), and the lists of one visual - *Fixed*, this song's, the playlist's - show the ones not offered here greyed, with why (*being timed on this graphics card …*, *too heavy for this graphics card*).
+- **A section the writer filled with what the band plays was sung**: lines that describe the playing - an instrument and how it is played, or *no words, just sound* - without brackets, went into the lyrics, and the music model sang them. A section made mostly of such lines keeps its tag without lines - an instrumental part - and the writers are told that a solo or a break is its tag alone; a Song Sheet warns of such a section. A single such line among sung ones stays, as it may be meant to be sung.
 
 ## 1.4.0 - 2026-10-29
 

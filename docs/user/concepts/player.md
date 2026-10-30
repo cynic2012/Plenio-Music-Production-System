@@ -1126,9 +1126,9 @@ a cover's original lyrics, before the render ([Fix Misheard Words](../paths/yue2
 Since 1.0.0, Export Release listens to every song as it exports it. It writes when each lyrics line and
 syllable is sung into the release record and into the [subtitle files](tags-and-subtitles.md), and for songs
 with a score, where each syllable sits in the score. The player reads these times. On the songs measured
-for 1.0.0, half the words were within 0.16 seconds and 82 % within half a second. Since 1.2.1 it listens to the
-take's vocal stem: words lit up while nobody sings went from 2.5 % to 0.3 % in the songs measured
-([how](tags-and-subtitles.md#lyrics-subtitles)).
+for 1.0.0, half the words were within 0.16 seconds and 82 % within half a second. Set to listen to the take's
+vocal stem (Export Release's *lyrics heard on*, since 1.4.1 a choice - it takes extra time), words lit up while
+nobody sings went from 2.5 % to 0.3 % in the songs measured ([how](tags-and-subtitles.md#lyrics-subtitles)).
 
 - **Songs without measured times** - exported before 1.0.0, with *lyrics subtitles (SRT)* off, or when the
   lyrics ASR could not run - follow the **score's** times instead (since 1.1.0): where the player finds the
