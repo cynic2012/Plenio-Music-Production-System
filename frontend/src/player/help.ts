@@ -18,7 +18,7 @@ export interface Tutorial {
 export const PLAYLIST = 'https://www.youtube.com/playlist?list=PLAFqTtP59fgE'
 
 export const TUTORIALS: Tutorial[] = [
-  { id: 'tonTYMSrnkM', number: '8', title: 'The Plenio Player', text: 'Live lyrics, the full lyrics to copy, a page per song with how it was made, the notation following the music, visuals, playlists, Live Play with the guests’ reactions, lyric videos and a player in one file to share.', topic: 'start', where: 'player' },
+  { id: 'V7irEvnbKhU', number: '8', title: 'The Plenio Player', text: 'Live lyrics, the full lyrics to copy, a page per song with its stars and how it was made, the notation following the music, the visuals with Plenio Nova, playlists, Live Play with the guests’ reactions, lyric videos and a player in one file to share.', topic: 'start', where: 'player' },
   { id: 'zlfVKXzPj_c', number: '9', title: 'Party songs', text: 'Make songs from the player: presets, takes, ComfyUI started the way you start it - and your guests ordering songs on their phones, who made which song at which party, their reactions kept.', topic: 'make', where: 'player' },
   { id: 'XpNpks9ZCgE', number: '★', title: 'Your idea. Your song. Your control.', text: 'Plenio in 54 seconds.', topic: 'start', where: 'intro' },
   { id: 'q_dMH834E1o', number: '★', title: 'Plenio in 75 seconds', text: 'What Plenio does, from the first idea to the mastered song.', topic: 'start', where: 'intro' },
