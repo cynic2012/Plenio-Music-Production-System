@@ -144,6 +144,8 @@ export interface NovaPicture {
 
 /** At most this many steps of a state in one frame (a long pause does not make the next frame wait). */
 const MAX_STEPS = 40
+/** Picture sizes kept at once (their scene and bloom pictures): two visuals of a crossfade and the timing. */
+const CHAINS = 3
 
 export class NovaRenderer {
   readonly canvas: HTMLCanvasElement
@@ -448,8 +450,9 @@ export class NovaRenderer {
     this.gl.deleteFramebuffer(target.buffer)
   }
 
-  /** The scene's picture and the bloom's levels at this size (two sizes kept: a crossfade between two visuals of
-   * different weight draws both every frame). */
+  /** The scene's picture and the bloom's levels at this size (three sizes kept: a crossfade between two visuals of
+   * different weight draws both every frame, and the timing draws at its own size between them). The chain made now
+   * is the newest - the ones let go are the least recently used of the others, never the one this frame draws into. */
   private chain(width: number, height: number): Chain {
     let chain = this.chains.find((c) => c.width === width && c.height === height)
     if (!chain) {
@@ -464,11 +467,11 @@ export class NovaRenderer {
         down.push(this.target(w, h))
       }
       for (let i = 0; i < down.length - 1; i++) up.push(this.target(down[i].width, down[i].height))
-      chain = { width, height, scene: this.target(width, height), down, up, used: 0 }
+      chain = { width, height, scene: this.target(width, height), down, up, used: this.frames }
       this.chains.push(chain)
-      if (this.chains.length > 2) {
+      if (this.chains.length > CHAINS) {
         this.chains.sort((a, b) => b.used - a.used)
-        for (const old of this.chains.splice(2)) for (const t of [old.scene, ...old.down, ...old.up]) this.free(t)
+        for (const old of this.chains.splice(CHAINS)) for (const t of [old.scene, ...old.down, ...old.up]) this.free(t)
       }
     }
     chain.used = this.frames

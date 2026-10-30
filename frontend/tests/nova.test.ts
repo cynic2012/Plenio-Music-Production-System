@@ -2,7 +2,7 @@
  * this device's graphics can draw (owner's request 2026-10-30: no WebGL visual offered where it cannot be drawn,
  * none chosen that would not play smoothly). The shaders themselves are compiled and looked at in a browser; here:
  * that every scene is complete, how the music is heard, and which visuals are offered. */
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { Frame } from '../src/player/visuals/analysis'
 import { chooseVisual, withDefaults } from '../src/player/visuals/chooser'
@@ -24,7 +24,7 @@ import {
   takeBackLeftOut,
 } from '../src/player/visuals/gpu'
 import { NOVA, NOVA_PRESETS, NOVA_VERSION } from '../src/player/visuals/nova'
-import { NovaMusic } from '../src/player/visuals/nova/renderer'
+import { NovaMusic, NovaRenderer } from '../src/player/visuals/nova/renderer'
 import { PRESETS, presetById } from '../src/player/visuals/presets'
 
 const MOODS = ['energetic', 'calm', 'acoustic', 'electronic', 'dark']
@@ -244,5 +244,60 @@ describe('the governor', () => {
     g.fresh()
     expect(g.factor).toBe(1)
     expect(g.struggling).toBe(0)
+  })
+})
+
+/** A WebGL2 context that draws nothing and notes every use of a picture already let go (deleted). */
+function fakeWebGl(): { gl: WebGL2RenderingContext; misuse: string[] } {
+  const misuse: string[] = []
+  let made = 0
+  const object = () => ({ id: ++made, deleted: false })
+  const methods: Record<string, (...args: never[]) => unknown> = {
+    getExtension: (name: string) => (name === 'EXT_color_buffer_float' ? {} : name === 'WEBGL_lose_context' ? { loseContext() {} } : null),
+    getProgramParameter: () => true,
+    getShaderParameter: () => true,
+    getUniformLocation: () => ({}),
+    getShaderInfoLog: () => '',
+    getProgramInfoLog: () => '',
+    deleteTexture: (t: { deleted: boolean }) => void (t.deleted = true),
+    deleteFramebuffer: (f: { deleted: boolean }) => void (f.deleted = true),
+    bindTexture: (_target: number, t: { id: number; deleted: boolean } | null) => void (t?.deleted && misuse.push(`texture ${t.id}`)),
+    bindFramebuffer: (_target: number, f: { id: number; deleted: boolean } | null) => void (f?.deleted && misuse.push(`framebuffer ${f.id}`)),
+  }
+  for (const name of ['createTexture', 'createFramebuffer', 'createProgram', 'createShader', 'createVertexArray', 'createBuffer']) methods[name] = object
+  const gl = new Proxy({} as Record<string, unknown>, {
+    get(_target, key: string) {
+      if (key in methods) return methods[key]
+      if (/^[A-Z0-9_]+$/.test(key)) return 1
+      return () => undefined
+    },
+  })
+  return { gl: gl as unknown as WebGL2RenderingContext, misuse }
+}
+
+describe('the Nova renderer', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('never draws into a picture it let go - a crossfade, the timing and the governor ask for several sizes', () => {
+    // as on a weaker graphics card: each visual gets the pixels it draws smoothly, so their pictures differ in size
+    const { gl, misuse } = fakeWebGl()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => gl as never)
+    const renderer = new NovaRenderer()
+    const [a, b] = NOVA
+    const music = new NovaMusic()
+    music.update(frame({ bass: 0.6, time: 1 }), a.speed)
+    const palette = new Uint8ClampedArray(256 * 3)
+    const [slotA, slotB] = [{}, {}]
+    const screen = 1600 * 900
+    for (let i = 0; i < 3; i++) {
+      expect(renderer.render(a, music, palette, 1600, 900, slotA, screen * 0.5)).not.toBeNull()
+      expect(renderer.render(b, music, palette, 1600, 900, slotB, screen * 0.25)).not.toBeNull()
+    }
+    expect(renderer.measure(a, palette)).toBeGreaterThanOrEqual(0)
+    for (let i = 0; i < 3; i++) {
+      expect(renderer.render(a, music, palette, 1600, 900, slotA, screen * 0.1)).not.toBeNull()
+      expect(renderer.render(b, music, palette, 1600, 900, slotB, screen * 0.25)).not.toBeNull()
+    }
+    expect(misuse).toEqual([])
   })
 })
